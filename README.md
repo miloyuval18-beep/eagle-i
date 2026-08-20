@@ -25,4 +25,4 @@ Open http://localhost:3000
 ## Notes
 
 - `ANTHROPIC_API_KEY` must never be committed. `.env` is gitignored; only `.env.example` (no real key) is tracked.
-- The Anthropic API key is billed per request. Since `/api/claude` has no auth in front of it, anyone who visits the live site and clicks "Generate" buttons enough times uses your API quota. Fine for a small internal/client tool; add auth or rate limiting before wide public traffic.
+- The Anthropic API key is billed per request. `/api/claude` has no login in front of it, so it's protected by a per-IP rate limit instead (30 requests/hour/visitor, see `RATE_LIMIT_MAX` in `server.js`). That caps worst-case cost from a single visitor but doesn't stop many different visitors from each using their own 30/hour. Add real auth (e.g. a shared password) if this needs to be locked down further.

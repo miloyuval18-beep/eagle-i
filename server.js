@@ -10,7 +10,22 @@ const PORT = process.env.PORT || 3000;
 const MODEL = 'claude-sonnet-4-20250514';
 const MAX_TOKENS_CAP = 4096;
 
+// Per-IP sliding-window rate limit on the (paid) Claude proxy, so a single
+// visitor can't run up the API bill. No login required — just a sane cap.
+const RATE_LIMIT_MAX = 30;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const rateLimitHits = new Map(); // ip -> array of request timestamps
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const hits = (rateLimitHits.get(ip) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  hits.push(now);
+  rateLimitHits.set(ip, hits);
+  return hits.length > RATE_LIMIT_MAX;
+}
+
 const app = express();
+app.set('trust proxy', true); // Render/Railway/Fly sit behind a proxy; needed for real client IPs
 app.use(express.json({ limit: '256kb' }));
 app.use(express.static(path.join(__dirname)));
 
@@ -18,6 +33,10 @@ app.post('/api/claude', async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY is not set on the server.' } });
+  }
+
+  if (isRateLimited(req.ip)) {
+    return res.status(429).json({ error: { message: `Rate limit exceeded — max ${RATE_LIMIT_MAX} requests/hour per visitor. Try again later.` } });
   }
 
   const { messages, max_tokens } = req.body || {};
