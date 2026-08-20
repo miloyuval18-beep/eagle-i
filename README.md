@@ -22,7 +22,14 @@ Open http://localhost:3000
 4. Deploy. Render gives you a `https://<name>.onrender.com` URL — that's your live site.
 5. (Optional) Settings → Custom Domain to point your own domain at it.
 
+## Password-protect the site
+
+Set both `SITE_USER` and `SITE_PASSWORD` (locally in `.env`, or in Render's Environment tab)
+and the whole site requires an HTTP login before anything loads — the browser shows its
+built-in username/password prompt. Leave either one unset and the site stays open (this is
+the default, so local dev needs no config). No new dependency, no database.
+
 ## Notes
 
-- `ANTHROPIC_API_KEY` must never be committed. `.env` is gitignored; only `.env.example` (no real key) is tracked.
-- The Anthropic API key is billed per request. `/api/claude` has no login in front of it, so it's protected by a per-IP rate limit instead (30 requests/hour/visitor, see `RATE_LIMIT_MAX` in `server.js`). That caps worst-case cost from a single visitor but doesn't stop many different visitors from each using their own 30/hour. Add real auth (e.g. a shared password) if this needs to be locked down further.
+- `ANTHROPIC_API_KEY`, `SITE_USER`, `SITE_PASSWORD` must never be committed. `.env` is gitignored; only `.env.example` (no real values) is tracked.
+- The Anthropic API key is billed per request. `/api/claude` is protected by a per-IP rate limit (30 requests/hour/visitor, see `RATE_LIMIT_MAX` in `server.js`) in addition to whatever site-wide password you set above.
