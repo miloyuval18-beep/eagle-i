@@ -1,0 +1,17 @@
+{
+  "name": "eagle-i",
+  "version": "1.0.0",
+  "description": "Eagle I — AI Marketing Command Center (Levi Homes) with a server-side Claude API proxy",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
