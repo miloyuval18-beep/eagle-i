@@ -1,17 +1,28 @@
 {
   "name": "eagle-i",
-  "version": "1.0.0",
-  "description": "Eagle I — AI Marketing Command Center (Levi Homes) with a server-side Claude API proxy",
+  "version": "2.0.0",
+  "description": "Eagle I — multi-tenant AI marketing command center",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "migrate": "node-pg-migrate up",
+    "migrate:down": "node-pg-migrate down",
+    "migrate:create": "node-pg-migrate create"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "bcryptjs": "^3.0.3",
+    "connect-pg-simple": "^9.0.1",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "pg": "^8.12.0",
+    "stripe": "^16.8.0"
+  },
+  "devDependencies": {
+    "node-pg-migrate": "^9.0.0"
   }
 }

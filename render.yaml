@@ -8,7 +8,27 @@ services:
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: SITE_USER
+      - key: DATABASE_URL
         sync: false
-      - key: SITE_PASSWORD
+      - key: SESSION_SECRET
         sync: false
+      - key: SOCIAL_CREDENTIALS_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_REDIRECT_URI
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production

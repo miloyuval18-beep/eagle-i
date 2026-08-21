@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Eagle I — Set Up Your Business</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Exo+2:wght@400;500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#04070e;--bg3:#0a1626;--bg4:#0f1f35;--bg5:#152845;--bdr2:rgba(30,140,255,.20);
+--ink:#e0eaf8;--ink2:#6e96c0;--ink3:#2e5070;--blue:#1a7ee8;--blue2:#3aa0ff;--green:#00d97a;--red:#ff2d4a;
+--fh:'Rajdhani',sans-serif;--fb:'Exo 2',sans-serif;--fm:'Share Tech Mono',monospace;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{width:100%;max-width:560px;background:var(--bg3);border:1px solid var(--bdr2);border-radius:14px;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+h1{font-family:var(--fh);font-size:24px;letter-spacing:1px;margin-bottom:6px}
+.sub{font-family:var(--fm);font-size:10px;color:var(--blue2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:22px}
+label{display:block;font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin:14px 0 5px}
+input,textarea{width:100%;background:var(--bg5);border:1px solid var(--bdr2);border-radius:7px;padding:10px 12px;font-family:var(--fb);font-size:14px;color:var(--ink);outline:none;resize:vertical}
+textarea{min-height:64px}
+button.primary{width:100%;margin-top:24px;background:var(--blue);color:#fff;border:none;border-radius:7px;padding:13px;font-family:var(--fh);font-size:15px;font-weight:600;letter-spacing:1px;cursor:pointer;text-transform:uppercase}
+button.primary:hover{background:var(--blue2)}
+button.primary:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--red);font-size:12px;margin-top:12px;text-align:center;display:none}
+.status{font-family:var(--fm);font-size:11px;color:var(--ink2);margin-top:14px;text-align:center;display:none}
+.hint{font-size:11px;color:var(--ink3);margin-top:4px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Set up your business</h1>
+  <div class="sub">This builds your dashboard — takes about a minute</div>
+  <form id="form">
+    <label>Founder / Contact Name</label>
+    <input type="text" id="founderName">
+    <label>Phone</label>
+    <input type="tel" id="phone">
+    <label>Business Email</label>
+    <input type="email" id="email">
+    <label>Business Address</label>
+    <input type="text" id="address">
+    <label>Website</label>
+    <input type="text" id="site" placeholder="yourcompany.com">
+    <label>Service Area</label>
+    <input type="text" id="serviceArea" placeholder="e.g. Austin metro, or nationwide">
+    <label>Services Offered <span style="color:var(--red)">*</span></label>
+    <textarea id="services" placeholder="What does this business actually do?" required></textarea>
+    <label>Key Differentiators</label>
+    <textarea id="differentiators" placeholder="What makes this business different from competitors?"></textarea>
+    <label>Brand Voice</label>
+    <input type="text" id="voice" placeholder="e.g. warm and community-focused, or sharp and authoritative">
+    <label>Google Review Link (optional)</label>
+    <input type="text" id="googleReviewUrl" placeholder="Link customers use to leave you a Google review">
+    <label>Yelp Review Link (optional)</label>
+    <input type="text" id="yelpReviewUrl" placeholder="Link customers use to leave you a Yelp review">
+    <label>Logo (optional, PNG/JPG/SVG, max 1MB)</label>
+    <input type="file" id="logo" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+    <div id="logoPreviewWrap" style="display:none;margin-top:8px;text-align:center">
+      <img id="logoPreview" style="max-width:120px;max-height:120px;border-radius:8px;background:#152845;padding:8px">
+    </div>
+    <div class="hint" id="logoErr" style="color:var(--red);display:none"></div>
+    <button class="primary" type="submit" id="submitBtn">Generate My Dashboard</button>
+  </form>
+  <div class="status" id="status"></div>
+  <div class="err" id="err"></div>
+</div>
+
+<script>
+const MAX_LOGO_BYTES = 1024 * 1024; // 1MB
+let logoDataUrl = null;
+
+document.getElementById('logo').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  const errEl = document.getElementById('logoErr');
+  const previewWrap = document.getElementById('logoPreviewWrap');
+  errEl.style.display = 'none';
+  logoDataUrl = null;
+  previewWrap.style.display = 'none';
+  if (!file) return;
+  if (file.size > MAX_LOGO_BYTES) {
+    errEl.textContent = 'Logo file is too large — please use an image under 1MB.';
+    errEl.style.display = 'block';
+    e.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    logoDataUrl = reader.result;
+    document.getElementById('logoPreview').src = logoDataUrl;
+    previewWrap.style.display = 'block';
+  };
+  reader.onerror = () => {
+    errEl.textContent = 'Could not read that file — try a different image.';
+    errEl.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const btn=document.getElementById('submitBtn');
+  const status=document.getElementById('status');
+  const err=document.getElementById('err');
+  err.style.display='none';
+  btn.disabled=true;
+  status.style.display='block';
+  status.textContent='Generating your strategy, keywords, competitors, and opportunities... this takes a moment.';
+
+  const body={
+    founderName: document.getElementById('founderName').value,
+    phone: document.getElementById('phone').value,
+    email: document.getElementById('email').value,
+    address: document.getElementById('address').value,
+    site: document.getElementById('site').value,
+    serviceArea: document.getElementById('serviceArea').value,
+    services: document.getElementById('services').value,
+    differentiators: document.getElementById('differentiators').value,
+    voice: document.getElementById('voice').value,
+    googleReviewUrl: document.getElementById('googleReviewUrl').value,
+    yelpReviewUrl: document.getElementById('yelpReviewUrl').value,
+    logoDataUrl: logoDataUrl
+  };
+
+  try{
+    const r=await fetch('/api/onboarding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(!r.ok){
+      err.textContent=d.error?.message||'Setup failed';
+      err.style.display='block';
+      status.style.display='none';
+      btn.disabled=false;
+      return;
+    }
+    if (d.partial) {
+      const failedSections = Object.keys(d.errors || {}).join(', ');
+      status.textContent = `Some sections generated, others failed (${failedSections}) — loading what we have...`;
+      setTimeout(() => { window.location.href = '/'; }, 1800);
+    } else {
+      status.textContent = 'Done — loading your dashboard...';
+      window.location.href = '/';
+    }
+  }catch(e){
+    err.textContent='Network error: '+e.message;
+    err.style.display='block';
+    status.style.display='none';
+    btn.disabled=false;
+  }
+});
+</script>
+</body>
+</html>

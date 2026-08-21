@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Eagle I — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Exo+2:wght@400;500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#04070e;--bg3:#0a1626;--bg4:#0f1f35;--bg5:#152845;--bdr2:rgba(30,140,255,.20);--bdr3:rgba(30,140,255,.40);
+--ink:#e0eaf8;--ink2:#6e96c0;--ink3:#2e5070;--blue:#1a7ee8;--blue2:#3aa0ff;--red:#ff2d4a;
+--fh:'Rajdhani',sans-serif;--fb:'Exo 2',sans-serif;--fm:'Share Tech Mono',monospace;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:380px;background:var(--bg3);border:1px solid var(--bdr2);border-radius:14px;padding:28px 26px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.brand{font-family:var(--fh);font-size:26px;font-weight:700;letter-spacing:3px;text-align:center;margin-bottom:4px;
+background:linear-gradient(90deg,#fff,#72c4ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tag{font-family:var(--fm);font-size:9px;color:var(--blue2);letter-spacing:2px;text-align:center;text-transform:uppercase;margin-bottom:22px}
+.tabs{display:flex;gap:6px;margin-bottom:18px;background:var(--bg4);border-radius:8px;padding:3px}
+.tab{flex:1;text-align:center;padding:8px;border-radius:6px;cursor:pointer;font-family:var(--fh);font-size:13px;font-weight:600;letter-spacing:.5px;color:var(--ink3);transition:all .15s}
+.tab.active{background:var(--blue);color:#fff}
+label{display:block;font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin:12px 0 5px}
+input,select{width:100%;background:var(--bg5);border:1px solid var(--bdr2);border-radius:7px;padding:10px 12px;font-family:var(--fb);font-size:14px;color:var(--ink);outline:none}
+input:focus,select:focus{border-color:var(--blue2)}
+button.primary{width:100%;margin-top:20px;background:var(--blue);color:#fff;border:none;border-radius:7px;padding:12px;font-family:var(--fh);font-size:14px;font-weight:600;letter-spacing:1px;cursor:pointer;text-transform:uppercase}
+button.primary:hover{background:var(--blue2)}
+button.primary:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--red);font-size:12px;margin-top:12px;text-align:center;display:none}
+.hidden{display:none}
+.forgot{display:block;text-align:right;font-size:11px;color:var(--blue2);margin-top:8px}
+.terms-row{display:flex;align-items:flex-start;gap:8px;margin-top:16px}
+.terms-row input{width:auto;margin-top:2px}
+.terms-row label{font-size:11px;color:var(--ink2);text-transform:none;letter-spacing:0;font-family:var(--fb);margin:0}
+.terms-row a{color:var(--blue2)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">EAGLE I</div>
+  <div class="tag">AI Marketing Command Center</div>
+  <div class="tabs">
+    <div class="tab active" id="tab-login" onclick="switchTab('login')">Sign In</div>
+    <div class="tab" id="tab-signup" onclick="switchTab('signup')">Sign Up</div>
+  </div>
+
+  <form id="form-login">
+    <label>Email</label>
+    <input type="email" id="login-email" required autocomplete="email">
+    <label>Password</label>
+    <input type="password" id="login-password" required autocomplete="current-password">
+    <a class="forgot" href="/forgot-password.html">Forgot password?</a>
+    <button class="primary" type="submit">Sign In</button>
+  </form>
+
+  <form id="form-signup" class="hidden">
+    <label>Company Name</label>
+    <input type="text" id="signup-company" required>
+    <label>Industry</label>
+    <select id="signup-industry">
+      <option value="home_services">Home Services / Contractor</option>
+      <option value="real_estate">Real Estate</option>
+      <option value="professional_services">Professional Services</option>
+      <option value="retail">Retail</option>
+      <option value="other">Other</option>
+    </select>
+    <label>Email</label>
+    <input type="email" id="signup-email" required autocomplete="email">
+    <label>Password (min 8 characters)</label>
+    <input type="password" id="signup-password" required minlength="8" autocomplete="new-password">
+    <div class="terms-row">
+      <input type="checkbox" id="signup-terms" required>
+      <label for="signup-terms">I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></label>
+    </div>
+    <button class="primary" type="submit">Create Account</button>
+  </form>
+
+  <div class="err" id="err"></div>
+</div>
+
+<script>
+function switchTab(which){
+  document.getElementById('tab-login').classList.toggle('active', which==='login');
+  document.getElementById('tab-signup').classList.toggle('active', which==='signup');
+  document.getElementById('form-login').classList.toggle('hidden', which!=='login');
+  document.getElementById('form-signup').classList.toggle('hidden', which!=='signup');
+  document.getElementById('err').style.display='none';
+}
+function showErr(msg){
+  const el=document.getElementById('err');
+  el.textContent=msg;
+  el.style.display='block';
+}
+document.getElementById('form-login').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const email=document.getElementById('login-email').value;
+  const password=document.getElementById('login-password').value;
+  try{
+    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const d=await r.json();
+    if(!r.ok) return showErr(d.error?.message||'Login failed');
+    window.location.href='/';
+  }catch(err){showErr('Network error: '+err.message);}
+});
+document.getElementById('form-signup').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const companyName=document.getElementById('signup-company').value;
+  const industry=document.getElementById('signup-industry').value;
+  const email=document.getElementById('signup-email').value;
+  const password=document.getElementById('signup-password').value;
+  const acceptedTerms=document.getElementById('signup-terms').checked;
+  if(!acceptedTerms) return showErr('You must accept the Terms of Service and Privacy Policy.');
+  try{
+    const r=await fetch('/api/auth/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companyName,industry,email,password,acceptedTerms})});
+    const d=await r.json();
+    if(!r.ok) return showErr(d.error?.message||'Signup failed');
+    window.location.href='/onboarding.html';
+  }catch(err){showErr('Network error: '+err.message);}
+});
+</script>
+</body>
+</html>

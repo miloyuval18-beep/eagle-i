@@ -1,110 +1,74 @@
-// Eagle I — server-side proxy for the Anthropic API.
-// Keeps ANTHROPIC_API_KEY out of the browser. The frontend calls POST /api/claude
-// with { messages, max_tokens } and this server attaches the key and forwards
-// the request to Anthropic, returning the response as-is.
+// Eagle I — multi-tenant server. Auth (auth.js) gates everything except the
+// public login/signup/onboarding pages and the Stripe webhook. Business
+// logic lives in routes/*; this file just wires it together.
 
 const express = require('express');
 const path = require('path');
-const crypto = require('crypto');
+
+const { sessionMiddleware, registerAuthRoutes } = require('./auth');
+const { query } = require('./db');
+const claudeRoutes = require('./routes/claude');
+const onboardingRoutes = require('./routes/onboarding');
+const { router: socialRoutes } = require('./routes/social');
+const { router: stripeRoutes, handleWebhook } = require('./routes/stripe');
+const scheduledPostsRoutes = require('./routes/scheduledPosts');
+const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
+const leadsRoutes = require('./routes/leads');
+const reviewsRoutes = require('./routes/reviews');
 
 const PORT = process.env.PORT || 3000;
-const MODEL = 'claude-sonnet-4-20250514';
-const MAX_TOKENS_CAP = 4096;
-
-// Whole-site HTTP Basic Auth. If SITE_USER/SITE_PASSWORD aren't set, the site
-// stays open (so local dev works with zero config) — set both in production
-// to require a login before anything (including the app itself) loads.
-function timingSafeEqual(a, b) {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
-}
-
-function basicAuth(req, res, next) {
-  const user = process.env.SITE_USER;
-  const pass = process.env.SITE_PASSWORD;
-  if (!user || !pass) return next(); // not configured — no gate
-
-  const header = req.headers.authorization || '';
-  const [scheme, encoded] = header.split(' ');
-  if (scheme === 'Basic' && encoded) {
-    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
-    const sep = decoded.indexOf(':');
-    const reqUser = sep === -1 ? decoded : decoded.slice(0, sep);
-    const reqPass = sep === -1 ? '' : decoded.slice(sep + 1);
-    if (timingSafeEqual(reqUser, user) && timingSafeEqual(reqPass, pass)) {
-      return next();
-    }
-  }
-
-  res.set('WWW-Authenticate', 'Basic realm="Eagle I"');
-  res.status(401).send('Authentication required.');
-}
-
-// Per-IP sliding-window rate limit on the (paid) Claude proxy, so a single
-// visitor can't run up the API bill. No login required — just a sane cap.
-const RATE_LIMIT_MAX = 30;
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const rateLimitHits = new Map(); // ip -> array of request timestamps
-
-function isRateLimited(ip) {
-  const now = Date.now();
-  const hits = (rateLimitHits.get(ip) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-  hits.push(now);
-  rateLimitHits.set(ip, hits);
-  return hits.length > RATE_LIMIT_MAX;
-}
-
 const app = express();
-app.set('trust proxy', true); // Render/Railway/Fly sit behind a proxy; needed for real client IPs
-app.use(basicAuth);
-app.use(express.json({ limit: '256kb' }));
-app.use(express.static(path.join(__dirname)));
+app.set('trust proxy', true); // Render sits behind a proxy; needed for real client IPs + secure cookies
 
-app.post('/api/claude', async (req, res) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY is not set on the server.' } });
-  }
+// Stripe requires the RAW body to verify webhook signatures, so this route
+// must be mounted before express.json() parses (and consumes) the body.
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
-  if (isRateLimited(req.ip)) {
-    return res.status(429).json({ error: { message: `Rate limit exceeded — max ${RATE_LIMIT_MAX} requests/hour per visitor. Try again later.` } });
-  }
+// 2mb accommodates a base64-encoded logo upload (client caps the source file at 1MB).
+app.use(express.json({ limit: '2mb' }));
+app.use(sessionMiddleware());
 
-  const { messages, max_tokens } = req.body || {};
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return res.status(400).json({ error: { message: 'Request body must include a non-empty "messages" array.' } });
-  }
+// Public, unauthenticated pages (login/signup/onboarding UI).
+app.use(express.static(path.join(__dirname, 'public')));
 
-  const cappedMaxTokens = Math.min(Number(max_tokens) || 1000, MAX_TOKENS_CAP);
-
-  try {
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({ model: MODEL, max_tokens: cappedMaxTokens, messages })
-    });
-
-    const data = await upstream.json();
-    res.status(upstream.status).json(data);
-  } catch (err) {
-    res.status(502).json({ error: { message: 'Failed to reach Anthropic API: ' + err.message } });
-  }
-});
+registerAuthRoutes(app);
+app.use(onboardingRoutes);
+app.use(claudeRoutes);
+app.use(socialRoutes);
+app.use(scheduledPostsRoutes);
+app.use(leadsRoutes);
+app.use(reviewsRoutes);
+app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
+// The dashboard itself: not logged in -> /login.html; logged in but never
+// finished onboarding -> /onboarding.html; otherwise serve the app.
+app.get(['/', '/index.html'], async (req, res) => {
+  if (!req.session || !req.session.userId) {
+    return res.redirect('/login.html');
+  }
+  try {
+    const result = await query(
+      'SELECT generated_content FROM business_profile WHERE tenant_id = $1',
+      [req.session.tenantId]
+    );
+    const onboarded = result.rows.length && Object.keys(result.rows[0].generated_content || {}).length > 0;
+    if (!onboarded) return res.redirect('/onboarding.html');
+  } catch (err) {
+    console.error('Onboarding-status check failed:', err.message);
+    // Fail open to the dashboard rather than locking someone out on a transient DB error.
+  }
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Everything else static (none of it should contain per-tenant secrets).
+app.use(express.static(path.join(__dirname), { index: false }));
+
 app.listen(PORT, () => {
   console.log(`Eagle I server running at http://localhost:${PORT}`);
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn('WARNING: ANTHROPIC_API_KEY is not set — /api/claude will return 500 until it is.');
+  for (const key of ['ANTHROPIC_API_KEY', 'DATABASE_URL', 'SESSION_SECRET', 'SOCIAL_CREDENTIALS_KEY', 'RESEND_API_KEY', 'GOOGLE_PLACES_API_KEY']) {
+    if (!process.env[key]) console.warn(`WARNING: ${key} is not set.`);
   }
-  if (!process.env.SITE_USER || !process.env.SITE_PASSWORD) {
-    console.warn('WARNING: SITE_USER / SITE_PASSWORD are not set — the site is publicly accessible with no login.');
-  }
+  startScheduledPostsWorker();
 });

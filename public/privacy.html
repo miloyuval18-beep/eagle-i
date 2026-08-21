@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Eagle I — Privacy Policy</title>
+<style>
+:root{--bg:#04070e;--bg3:#0a1626;--ink:#e0eaf8;--ink2:#8fa8c4;--blue2:#3aa0ff;--bdr2:rgba(30,140,255,.20);}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:760px;margin:0 auto;padding:48px 24px 80px;line-height:1.6}
+h1{font-size:28px;margin-bottom:4px}
+.updated{color:var(--ink2);font-size:13px;margin-bottom:32px}
+h2{font-size:19px;margin:32px 0 10px;color:var(--blue2)}
+p,li{color:var(--ink2);font-size:14.5px}
+ul{margin:8px 0 8px 22px}
+a{color:var(--blue2)}
+.note{background:var(--bg3);border:1px solid var(--bdr2);border-radius:8px;padding:14px 16px;margin-bottom:28px;font-size:13px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<h1>Privacy Policy</h1>
+<div class="updated">Last updated: August 21, 2026</div>
+
+<div class="note">This policy covers Eagle I ("we," "our," "the platform"), a marketing dashboard product. It is provided as a plain-language description of our actual data practices, written for both users and platform reviewers (e.g. Meta's App Review). If you operate Eagle I commercially, replace the placeholder contact details below with your registered business's own before relying on this page for a live app review submission.</div>
+
+<h2>What we collect</h2>
+<ul>
+  <li><strong>Account information:</strong> the email address and password (stored as a salted bcrypt hash, never in plain text) you use to sign in.</li>
+  <li><strong>Business profile:</strong> the company details you provide during onboarding — company name, industry, contact info, service area, services offered, differentiators, brand voice, and an optional logo image.</li>
+  <li><strong>Connected social accounts:</strong> if you choose to connect a Facebook Page or Instagram Business account, we store the Page/account identifiers and an encrypted access token issued to us by Meta, so we can publish posts on your behalf when you ask us to. We request only the permissions needed to read your Page list and publish posts: <code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>pages_manage_posts</code>, <code>business_management</code>, <code>instagram_basic</code>, <code>instagram_content_publish</code>.</li>
+  <li><strong>Usage data:</strong> a per-account monthly count of AI content generations, used only to enforce your plan's usage limit.</li>
+  <li><strong>Billing information:</strong> payment details are collected and processed entirely by Stripe; we store only your Stripe customer/subscription IDs, never your card details.</li>
+</ul>
+
+<h2>How we use it</h2>
+<ul>
+  <li>To generate marketing content (strategy suggestions, keyword ideas, competitor analysis, opportunity ideas) tailored to your business profile, using the Anthropic API. Generated content is cached in our database so we don't need to resend your business data to the AI provider every time you view a page.</li>
+  <li>To publish content to Facebook/Instagram only when you explicitly click a "Publish" action inside the product — we never post automatically or without an action you took.</li>
+  <li>To enforce plan usage limits and process subscription billing.</li>
+  <li>To operate, secure, and improve the product itself.</li>
+</ul>
+
+<h2>What we don't do</h2>
+<ul>
+  <li>We do not sell your data.</li>
+  <li>We do not share your business data or connected-account tokens with anyone other than the service providers strictly needed to run the product (Anthropic for AI generation, Meta for publishing you request, Stripe for billing, and our hosting/database provider).</li>
+  <li>We do not post to your connected accounts except in direct response to an action you took in the product.</li>
+</ul>
+
+<h2>Data storage and security</h2>
+<p>Data is stored in a managed PostgreSQL database with encrypted connections. Social platform access tokens are encrypted at rest (AES-256-GCM) with a key that never leaves our server. Passwords are hashed with bcrypt and never stored or logged in plain text.</p>
+
+<h2>Your controls</h2>
+<ul>
+  <li>You can disconnect a Facebook/Instagram connection at any time from the product's Social HQ settings — this immediately deletes the stored access token.</li>
+  <li>You can request full account and data deletion by contacting us (see below); we will delete your business profile, generated content, and any connected-account tokens.</li>
+</ul>
+
+<h2>Contact</h2>
+<p>Questions about this policy or a data request: <a href="mailto:miloyuval18@gmail.com">miloyuval18@gmail.com</a></p>
+</body>
+</html>

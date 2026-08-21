@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Eagle I — Verify Email</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Exo+2:wght@400;500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#04070e;--bg3:#0a1626;--bg5:#152845;--bdr2:rgba(30,140,255,.20);
+--ink:#e0eaf8;--ink2:#6e96c0;--ink3:#2e5070;--blue:#1a7ee8;--blue2:#3aa0ff;--green:#00d97a;--red:#ff2d4a;
+--fh:'Rajdhani',sans-serif;--fb:'Exo 2',sans-serif;--fm:'Share Tech Mono',monospace;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{width:100%;max-width:420px;background:var(--bg3);border:1px solid var(--bdr2);border-radius:14px;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.5);text-align:center}
+h1{font-family:var(--fh);font-size:22px;letter-spacing:1px;margin-bottom:6px}
+.sub{font-family:var(--fm);font-size:10px;color:var(--blue2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:22px}
+button.primary{width:100%;margin-top:10px;background:var(--blue);color:#fff;border:none;border-radius:7px;padding:13px;font-family:var(--fh);font-size:15px;font-weight:600;letter-spacing:1px;cursor:pointer;text-transform:uppercase}
+button.primary:hover{background:var(--blue2)}
+button.primary:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--red);font-size:13px;margin-top:14px}
+.status{font-family:var(--fm);font-size:13px;color:var(--green);margin-top:14px}
+a{color:var(--blue2);font-size:12px;display:block;text-align:center;margin-top:16px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Verify your email</h1>
+  <div class="sub" id="sub">Confirm this is really you</div>
+  <button class="primary" id="confirmBtn" onclick="confirmEmail()">Confirm Email</button>
+  <div class="status" id="status" style="display:none"></div>
+  <div class="err" id="err" style="display:none"></div>
+  <a href="/">Go to dashboard</a>
+</div>
+<script>
+const token=new URLSearchParams(window.location.search).get('token');
+if(!token){
+  document.getElementById('confirmBtn').style.display='none';
+  const err=document.getElementById('err');
+  err.textContent='Missing or invalid verification link.';
+  err.style.display='block';
+}
+async function confirmEmail(){
+  const btn=document.getElementById('confirmBtn');
+  const status=document.getElementById('status');
+  const err=document.getElementById('err');
+  btn.disabled=true;
+  err.style.display='none';
+  try{
+    const r=await fetch('/api/auth/verify-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    const d=await r.json();
+    if(!r.ok){
+      err.textContent=d.error?.message||'Verification failed';
+      err.style.display='block';
+      btn.disabled=false;
+      return;
+    }
+    status.textContent='Email verified — thanks!';
+    status.style.display='block';
+    btn.style.display='none';
+  }catch(e){
+    err.textContent='Network error: '+e.message;
+    err.style.display='block';
+    btn.disabled=false;
+  }
+}
+</script>
+</body>
+</html>
