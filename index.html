@@ -470,6 +470,7 @@ tbody tr:last-child td{border-bottom:none}
       <img id="topbar-logo" src="" alt="" class="cl-logo" style="display:none">
       <div><div class="cl-name" id="topbar-company-name">Loading...</div><div class="cl-status" id="topbar-plan-tier">●</div></div>
     </div>
+    <button class="vorb" id="admin-btn" onclick="goTo('admin',document.getElementById('t-admin'));loadAdminTenants()" title="Admin — All Tenants" style="background:var(--red);display:none">👁</button>
     <button class="vorb" id="account-btn" onclick="goTo('account',document.getElementById('t-account'))" title="Account Settings" style="background:var(--bg5)">⚙</button>
     <button class="vorb" id="vorb-btn" onclick="toggleVP()" title="Eagle I Voice"><svg viewBox="0 0 24 24" fill="none" width="15" height="15"><rect x="9" y="2" width="6" height="12" rx="3" stroke="white" stroke-width="2"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></button>
     <div class="spill"><div class="sl">S&amp;P</div><div class="sv cup" id="hdr-sp">—</div></div>
@@ -1775,6 +1776,9 @@ async function bootstrap(){
     verifyBanner.style.display='block';
     const addrEl=document.getElementById('verify-email-addr');if(addrEl)addrEl.textContent=ME.accountEmail||'';
   }
+
+  const adminBtn=document.getElementById('admin-btn');
+  if(adminBtn)adminBtn.style.display=ME.isAdmin?'':'none';
 }
 window.addEventListener('load',bootstrap);
 </script>
@@ -2141,6 +2145,57 @@ async function loadReviewRequests(){
       </div>`).join('');
   }catch(e){/* leave existing content on transient failure */}
 }
+/* ---------- ADMIN (platform owner, read-only across all tenants) ---------- */
+async function loadAdminTenants(){
+  const el=document.getElementById('admin-tenant-list');if(!el)return;
+  try{
+    const r=await fetch('/api/admin/tenants');
+    const d=await r.json();
+    if(!r.ok){el.innerHTML=`<div style="text-align:center;padding:24px;color:var(--red);font-size:13px">${d.error?.message||'Failed to load'}</div>`;return;}
+    renderAdminTenants(d.tenants||[]);
+  }catch(e){el.innerHTML=`<div style="text-align:center;padding:24px;color:var(--red);font-size:13px">Network error: ${e.message}</div>`;}
+}
+function renderAdminTenants(tenants){
+  const el=document.getElementById('admin-tenant-list');if(!el)return;
+  if(!tenants.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">No tenants yet</div>';return;}
+  el.innerHTML=tenants.map(t=>`
+    <div class="platform-card" style="cursor:pointer" onclick="viewAdminTenantSnapshot('${t.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="platform-name">${t.company_name}</div>
+          <div style="font-size:11px;color:var(--ink2);margin-top:3px">${t.owner_email||'no user yet'} ${t.email_verified?'✓':'(unverified)'} · ${(t.industry||'').replace('_',' ')} · ${t.plan_tier}</div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:var(--ink3)">
+          <div>${t.onboarded?'✓ onboarded':'— not onboarded'}</div>
+          <div>${t.lead_count} leads · ${t.user_count} user${t.user_count==1?'':'s'}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+async function viewAdminTenantSnapshot(id){
+  const el=document.getElementById('admin-snapshot');if(!el)return;
+  el.innerHTML='<div style="text-align:center;padding:20px;color:var(--ink3);font-size:13px">Loading snapshot...</div>';
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+  try{
+    const r=await fetch('/api/admin/tenants/'+id);
+    const d=await r.json();
+    if(!r.ok){el.innerHTML=`<div style="color:var(--red);font-size:13px">${d.error?.message||'Failed to load'}</div>`;return;}
+    el.innerHTML=`
+      <div class="composer">
+        <div class="composer-title">${d.tenant.company_name} — Snapshot</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.8">
+          <strong>Users:</strong> ${d.users.map(u=>u.email+(u.email_verified?' ✓':' (unverified)')).join(', ')||'none'}<br>
+          <strong>Profile:</strong> ${d.profile?[d.profile.phone,d.profile.email,d.profile.address].filter(Boolean).join(' · '):'no profile'}<br>
+          <strong>Leads (${d.leads.length}):</strong> ${d.leads.map(l=>l.name+' ['+l.status+']').join(', ')||'none'}<br>
+          <strong>Landing page:</strong> ${d.landingPage?(d.landingPage.status+' — /lp/'+d.landingPage.slug):'none'}<br>
+          <strong>Scheduled posts:</strong> ${d.scheduledPosts.length}<br>
+          <strong>Social connections:</strong> ${d.socialConnections.map(c=>c.platform+' ('+c.page_name+')').join(', ')||'none'}<br>
+          <strong>Review requests:</strong> ${d.reviewRequests.length}
+        </div>
+      </div>`;
+  }catch(e){el.innerHTML=`<div style="color:var(--red);font-size:13px">Network error: ${e.message}</div>`;}
+}
+
 /* ---------- ACCOUNT SETTINGS ---------- */
 async function changePassword(){
   const currentPassword=document.getElementById('acct-cur-pass').value;
@@ -2943,6 +2998,17 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <div id="inbox-list" style="display:flex;flex-direction:column;gap:8px">
     <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">No leads yet — publish your landing page (Landing Pages tab) to start collecting real submissions</div>
   </div>
+</div>
+</div>
+
+<!-- ==================== ADMIN (platform owner only) ==================== -->
+<div id="page-admin" class="page">
+<div class="wrap">
+  <div class="sh"><div><div class="st">Admin — All Tenants</div><div class="ss">Read-only visibility across every account on the platform · you cannot act as another tenant from here</div></div></div>
+  <div id="admin-tenant-list" style="display:flex;flex-direction:column;gap:8px">
+    <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Loading tenants...</div>
+  </div>
+  <div id="admin-snapshot" style="margin-top:20px"></div>
 </div>
 </div>
 

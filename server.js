@@ -15,6 +15,7 @@ const scheduledPostsRoutes = require('./routes/scheduledPosts');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
 const leadsRoutes = require('./routes/leads');
 const reviewsRoutes = require('./routes/reviews');
+const adminRoutes = require('./routes/admin');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -38,6 +39,7 @@ app.use(socialRoutes);
 app.use(scheduledPostsRoutes);
 app.use(leadsRoutes);
 app.use(reviewsRoutes);
+app.use(adminRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));

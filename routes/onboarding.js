@@ -60,7 +60,7 @@ router.get('/api/me', requireAuth, async (req, res) => {
     );
     const generationsUsed = usageRes.rows[0] ? usageRes.rows[0].generation_count : 0;
 
-    const userRes = await query('SELECT email, email_verified FROM users WHERE id = $1', [req.userId]);
+    const userRes = await query('SELECT email, email_verified, is_admin FROM users WHERE id = $1', [req.userId]);
     const user = userRes.rows[0] || {};
 
     res.json({
@@ -72,6 +72,7 @@ router.get('/api/me', requireAuth, async (req, res) => {
       generationsUsed,
       accountEmail: user.email,
       emailVerified: user.email_verified,
+      isAdmin: user.is_admin,
       showRealEstateFeatures: REAL_ESTATE_INDUSTRIES.has(tenant.industry),
       onboarded: Object.keys(profile.generated_content || {}).length > 0,
       profile: {

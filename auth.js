@@ -48,6 +48,20 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// Attach after requireAuth on platform-admin-only routes (read-only visibility
+// across all tenants — not impersonation/write access to other tenants' data).
+async function requireAdmin(req, res, next) {
+  try {
+    const result = await query('SELECT is_admin FROM users WHERE id = $1', [req.userId]);
+    if (!result.rows.length || !result.rows[0].is_admin) {
+      return res.status(403).json({ error: { message: 'Admin access required.' } });
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to verify admin access: ' + err.message } });
+  }
+}
+
 function registerAuthRoutes(app) {
   app.post('/api/auth/signup', async (req, res) => {
     const { email, password, companyName, industry, acceptedTerms } = req.body || {};
@@ -149,14 +163,14 @@ function registerAuthRoutes(app) {
     }
     try {
       const result = await query(
-        `SELECT u.email, u.email_verified, t.id AS tenant_id, t.company_name, t.industry, t.plan_tier
+        `SELECT u.email, u.email_verified, u.is_admin, t.id AS tenant_id, t.company_name, t.industry, t.plan_tier
          FROM users u JOIN tenants t ON t.id = u.tenant_id
          WHERE u.id = $1`,
         [req.session.userId]
       );
       if (!result.rows.length) return res.status(401).json({ error: { message: 'Not logged in.' } });
       const row = result.rows[0];
-      res.json({ email: row.email, emailVerified: row.email_verified, tenant_id: row.tenant_id, company_name: row.company_name, industry: row.industry, plan_tier: row.plan_tier });
+      res.json({ email: row.email, emailVerified: row.email_verified, isAdmin: row.is_admin, tenant_id: row.tenant_id, company_name: row.company_name, industry: row.industry, plan_tier: row.plan_tier });
     } catch (err) {
       res.status(500).json({ error: { message: 'Failed to load session: ' + err.message } });
     }
@@ -348,4 +362,4 @@ function registerAuthRoutes(app) {
   });
 }
 
-module.exports = { sessionMiddleware, requireAuth, registerAuthRoutes };
+module.exports = { sessionMiddleware, requireAuth, requireAdmin, registerAuthRoutes };
