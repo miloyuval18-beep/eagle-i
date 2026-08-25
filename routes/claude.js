@@ -6,7 +6,7 @@ const express = require('express');
 const { requireAuth } = require('../auth');
 const { checkAndIncrementUsage } = require('../lib/usage');
 
-const MODEL = 'claude-sonnet-4-20250514';
+const MODEL = 'claude-sonnet-5';
 const MAX_TOKENS_CAP = 4096;
 
 const RATE_LIMIT_MAX = 30;
