@@ -935,6 +935,20 @@ function showNotif(t,b){
 function copyText(t){navigator.clipboard?.writeText(t).then(()=>showNotif('Copied!','Ready to use')).catch(()=>{});}
 
 /* CLAUDE API */
+// Claude occasionally slips a single-quoted property name into otherwise-
+// valid JSON (e.g. 'p':"..." instead of "p":"..."), most often right after
+// a string containing an apostrophe (e.g. "You're..."). Only repairs keys
+// (word-chars immediately followed by a colon) — never touches string
+// VALUES, so a legitimate apostrophe inside content is never altered.
+function repairJsonKeys(str){
+  return str.replace(/'([a-zA-Z_][a-zA-Z0-9_]*)'(\s*:)/g,'"$1"$2');
+}
+function parseJsonLoose(raw){
+  const m=raw.match(/\{[\s\S]*\}/);
+  if(!m)throw new Error('No JSON in response');
+  try{return JSON.parse(m[0]);}
+  catch(e){return JSON.parse(repairJsonKeys(m[0]));}
+}
 async function claude(prompt,mt=2000){
   const r=await fetch('/api/claude',{
     method:'POST',headers:{'Content-Type':'application/json'},
@@ -943,9 +957,7 @@ async function claude(prompt,mt=2000){
   if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'HTTP '+r.status);}
   const d=await r.json();
   const raw=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-  const m=raw.match(/\{[\s\S]*\}/);
-  if(!m)throw new Error('No JSON in response');
-  return JSON.parse(m[0]);
+  return parseJsonLoose(raw);
 }
 
 /* VOICE */
@@ -1139,7 +1151,7 @@ async function loadKw(force=false){
     const p=await claude(`Highest-demand marketing keywords for ${C.name} (industry: ${ME?.industry||'general'}, services: ${C.services}, area: ${C.community||'their service area'}) right now.
 Today: ${TODAY.toDateString()}, ${MONTH}.
 Return ONLY valid JSON: {"keywords":[{"keyword":"realistic keyword for this business","vol":1800,"cpc":22.50,"comp":"high","roi":88,"trend":"+18%","dir":"up","cat":"category","heat":"fire","action":"What to do about it"}],"insight":"Sharp insight.","top_kw":"most searched today","fire_reason":"Why on fire in ${MONTH}"}
-25 keywords tailored to this business's actual services and area. heat: fire (top 3), hot (next 6), warm (rest).`,1800);
+25 keywords tailored to this business's actual services and area. heat: fire (top 3), hot (next 6), warm (rest).`,3200);
     kwData=p.keywords||[];kwLoaded=true;
     const kt=document.getElementById('kw-tile');if(kt)kt.textContent=p.top_kw||'—';
     const ktd=document.getElementById('kw-tile-d');if(ktd)ktd.textContent=(kwData[0]?.vol?.toLocaleString()||'1,800')+' searches/mo';
@@ -1674,7 +1686,7 @@ async function genPlaybook(){
     const p=await claude(`90-day marketing playbook for ${C.name} (${C.phone}, ${C.email}, ${C.addr}). Industry: ${ME?.industry||'general'}. Services: ${C.services}. Differentiators: ${C.unique}. Service area: ${C.community}. ${TODAY.toDateString()}, ${MONTH}.
 Focus on: more prospect clients and more referral-partner awareness for this specific business.
 Return ONLY valid JSON: {"phases":[{"phase":"Week 1–2","title":"Title","focus":"Focus","actions":["Action with ${C.phone}","Action 2","Action 3"],"kpi":"Measurable outcome","budget":"$X","note":"Key note"}]}
-8 phases: W1-2, W3-4, W5-6, W7-8, W9-10, W11-12, M4-5, M6+.`,1800);
+8 phases: W1-2, W3-4, W5-6, W7-8, W9-10, W11-12, M4-5, M6+.`,3000);
     document.getElementById('tl-out').innerHTML=(p.phases||[]).map(ph=>`
       <div class="tl-item">
         <div class="tl-ph">${ph.phase} · ${ph.focus}</div>
