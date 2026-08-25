@@ -60,7 +60,12 @@ router.post('/api/claude', requireAuth, async (req, res) => {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify({ model: MODEL, max_tokens: cappedMaxTokens, messages })
+      // Thinking explicitly disabled: every caller of this proxy wants a
+      // structured JSON answer, not visible reasoning — Sonnet 5 defaults
+      // to spending part of max_tokens on thinking, which was eating the
+      // whole budget on tighter limits and leaving nothing for the actual
+      // text/JSON output.
+      body: JSON.stringify({ model: MODEL, max_tokens: cappedMaxTokens, thinking: { type: 'disabled' }, messages })
     });
 
     const data = await upstream.json();
