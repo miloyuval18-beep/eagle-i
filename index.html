@@ -814,16 +814,16 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== PERMITS ==================== -->
 <div id="page-permits" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Active Permits</div><div class="ss">Public record cross-reference for direct outreach</div></div>
-  <div style="display:flex;gap:7px"><select id="perm-filter" onchange="filterPerms()"><option value="all">All Types</option><option value="addition">Addition</option><option value="remodel">Remodel</option><option value="new">New Construction</option><option value="roofing">Roofing</option><option value="hvac">HVAC</option></select><button class="btn btn-blue" id="perm-btn" onclick="loadPerms()"><span class="spin" id="perm-spin"></span><svg id="perm-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Fetch Permits</button></div></div>
-  <div class="ib" style="margin-bottom:13px"><div class="ibt">Note: illustrative example content, not a live data feed</div><div class="ibb">Below are AI-generated example permit records to illustrate the outreach workflow. Real bulk permit/appraisal-district data isn't available through a free public API in most areas — you'll need to check your local county appraisal district and permitting office directly (for Harris County/Houston, that's <strong style="color:var(--blue2)">hcad.org</strong> and <strong style="color:var(--blue2)">houstonpermittingcenter.org</strong>).</div></div>
-  <div id="perm-grid" class="g3"><div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--ink3)">Click "Fetch Permits"</div></div>
-  <div class="sm" id="perm-s"></div>
+  <div class="sh"><div><div class="st">High-Value Area Permits</div><div class="ss">Real, current Houston building permits · sourced weekly from the city's own published reports</div></div>
+  <button class="btn btn-blue" id="perm-btn" onclick="loadPerms(false)"><span class="spin" id="perm-spin"></span><svg id="perm-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Load Permits</button></div>
+  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 Real data — with two honest limits</div><div class="ibb">Pulled directly from the Houston Permitting Center's weekly published permit reports (real addresses, real permit types, updated weekly — not real-time). No owner name is included in this data, only the property address — which is exactly what's needed for postal mail (addressed to "Property Owner" or "Current Resident" is standard and doesn't require a name). "High-value" areas are a curated reference list of well-known Houston neighborhoods with approximate median home values from public real-estate reporting, not live appraisal data — zip codes outside that list still show real permits, just without a value label.</div></div>
+  <div id="perm-s" style="margin-bottom:10px"></div>
+  <div id="perm-areas"><div style="text-align:center;padding:24px;color:var(--ink3)">Click "Load Permits" to pull this week's real Houston permit data</div></div>
   <div class="g2" style="margin-top:16px">
-    <div class="card"><div class="ce" style="margin-bottom:6px">Property-Record Outreach Letter Template</div><div id="hcad-letter" style="font-size:12px;color:var(--ink);line-height:1.85;font-style:italic;background:var(--bg4);border-radius:var(--r);padding:10px 12px;border-left:3px solid var(--blue)">[Owner Name]<br>[Mailing Address]<br><br>Dear [First Name],<br><br>My name is [FOUNDER_NAME]. I'm reaching out from [COMPANY_NAME], serving [SERVICE_AREA].<br><br>You can reach me directly at [PHONE] or [EMAIL]. We'd be glad to answer any questions about your property — no obligation, no pitch.<br><br>[FOUNDER_NAME] · [COMPANY_NAME]</div><button class="btn-xs p" style="margin-top:7px" onclick="copyPermitLetter()">📋 Copy Letter (fills in your info)</button></div>
-    <div class="card"><div class="ce" style="margin-bottom:6px">Getting Started</div>
-      <div style="font-size:12px;color:var(--ink2);line-height:1.75">Every county has its own public property/appraisal records system and permitting office. Cross-referencing active permits with property owner records lets you send a personalized, well-timed letter to homeowners who've already committed budget to a project.</div>
-      <div style="margin-top:8px;display:flex;gap:5px"><button class="btn-xs" onclick="window.open('https://hcad.org','_blank')">HCAD (Harris Co. example) ↗</button><button class="btn-xs" onclick="window.open('https://www.houstonpermittingcenter.org','_blank')">Houston Permits (example) ↗</button></div>
+    <div class="card"><div class="ce" style="margin-bottom:6px">Direct Mail Letter Template</div><div id="hcad-letter" style="font-size:12px;color:var(--ink);line-height:1.85;font-style:italic;background:var(--bg4);border-radius:var(--r);padding:10px 12px;border-left:3px solid var(--blue)">Property Owner<br>[Mailing Address]<br><br>Hello,<br><br>My name is [FOUNDER_NAME]. I'm reaching out from [COMPANY_NAME], serving [SERVICE_AREA].<br><br>You can reach me directly at [PHONE] or [EMAIL]. We'd be glad to answer any questions about your property — no obligation, no pitch.<br><br>[FOUNDER_NAME] · [COMPANY_NAME]</div><button class="btn-xs p" style="margin-top:7px" onclick="copyPermitLetter()">📋 Copy Letter (fills in your info)</button></div>
+    <div class="card"><div class="ce" style="margin-bottom:6px">Why mail, not phone/email</div>
+      <div style="font-size:12px;color:var(--ink2);line-height:1.75">Cold-calling or texting people from public permit records without consent risks TCPA/Do-Not-Call violations. Postal mail to a permit address isn't subject to that law, which is why this tool surfaces addresses, not phone numbers or emails.</div>
+      <div style="margin-top:8px;display:flex;gap:5px"><button class="btn-xs" onclick="exportPermitAddresses()">📥 Export Addresses (CSV)</button><button class="btn-xs" onclick="window.open('https://www.houstonpermittingcenter.org/sold-permits-search','_blank')">Source ↗</button></div>
     </div>
   </div>
 </div>
@@ -1531,48 +1531,60 @@ Return ONLY valid JSON: {"messages":[{"variant":"Community","subject":"Subject i
   btn.disabled=false;spin.style.display='none';
 }
 
-/* PERMITS */
-let allPerms=[];
-async function loadPerms(){
+/* PERMITS — real, from lib/houstonPermits.js via /api/permits/high-value-areas */
+let permAreas=[];
+async function loadPerms(force){
   const btn=document.getElementById('perm-btn'),spin=document.getElementById('perm-spin'),ico=document.getElementById('perm-ico');
+  const s=document.getElementById('perm-s');
   btn.disabled=true;spin.style.display='block';ico.style.display='none';
-  document.getElementById('perm-s').textContent='Generating illustrative permit examples for '+(C.community||'your service area')+'...';
+  s.textContent='Loading this week\'s real Houston permit reports...';
   try{
-    const p=await claude(`Illustrative EXAMPLE building permits for a business like ${C.name} (services: ${C.services}) operating in ${C.community||'a typical service area'}. ${TODAY.toDateString()}, ${MONTH}. These are for illustrating a workflow, not real data — use generic/plausible street names, not a specific real neighborhood.
-Return ONLY valid JSON: {"permits":[{"address":"123 Example St","type":"Residential Addition","category":"addition","value":"$120,000","filed":"3 days ago","status":"Approved","opportunity":"How ${C.name} could serve this project · ${C.phone}"}]}
-14 example permits relevant to this business's actual services. Values $25k–$800k.`);
-    allPerms=p.permits||[];
-    document.getElementById('perm-badge').textContent=allPerms.length;
-    renderPerms(allPerms);
-    document.getElementById('perm-s').textContent=`${allPerms.length} permits · ${new Date().toLocaleTimeString()}`;
-    showNotif(`${allPerms.length} Active Permits!`,'Cross-reference with your local county records for owner contacts');
-  }catch(e){document.getElementById('perm-s').textContent='Error: '+e.message;}
+    const r=await fetch('/api/permits/high-value-areas'+(force?'?refresh=true':''));
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed to load');
+    permAreas=d.areas||[];
+    document.getElementById('perm-badge').textContent=d.totalPermits;
+    renderPermAreas(permAreas);
+    s.textContent=`${d.totalPermits} real permits across ${permAreas.length} zip codes · as of ${new Date(d.fetchedAt).toLocaleString()}`;
+    showNotif('Permits loaded',`${d.totalPermits} real permits from this week's Houston reports`);
+  }catch(e){s.textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';ico.style.display='';
 }
-function renderPerms(permits){
-  if(!permits.length){document.getElementById('perm-grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--ink3)">No permits match filter</div>';return;}
-  document.getElementById('perm-grid').innerHTML=permits.map(p=>`
-    <div class="pc">
-      <div class="pc-a">${p.address}</div>
-      <div class="pc-t">${p.type}</div>
-      <div class="pc-r"><span class="pk">Value</span><span class="pv-g">${p.value}</span></div>
-      <div class="pc-r"><span class="pk">Filed</span><span class="pv">${p.filed}</span></div>
-      <div class="pc-r"><span class="pk">Status</span><span class="pv"><span class="badge b-new">${p.status}</span></span></div>
-      <div class="pc-opp">💡 ${p.opportunity}</div>
-      <div style="margin-top:7px;display:flex;gap:5px">
-        <button class="btn-xs p" onclick="copyText('Hi, I am ${C.founder||"the owner"} at ${C.name}. I saw a permit at ${p.address} and specialize in this work. Free consultation? ${C.phone} or ${C.email}.')">Copy Outreach</button>
+function renderPermAreas(areas){
+  const el=document.getElementById('perm-areas');if(!el)return;
+  if(!areas.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--ink3)">No permits found</div>';return;}
+  el.innerHTML=areas.map(a=>`
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div>
+          <span class="ce">${a.zip}${a.neighborhood?' — '+a.neighborhood:''}</span>
+          ${a.highValue?'<span class="badge b-new" style="margin-left:7px">HIGH VALUE</span>':''}
+        </div>
+        <span style="font-size:11px;color:var(--ink3)">${a.permitCount} permit${a.permitCount===1?'':'s'}${a.approxMedianValue?' · ~$'+a.approxMedianValue.toLocaleString()+' median':''}</span>
+      </div>
+      <div class="g3">
+        ${a.permits.slice(0,6).map(p=>`
+          <div class="pc">
+            <div class="pc-a">${p.address}</div>
+            <div class="pc-t">${p.permitType||''} · ${p.permitDate||''}</div>
+            <div style="font-size:11px;color:var(--ink2);margin:5px 0">${p.comments||''}</div>
+            <button class="btn-xs p" onclick="copyText('${(p.address||'').replace(/'/g,"\\'")}')">Copy Address</button>
+          </div>`).join('')}
       </div>
     </div>`).join('');
 }
-function filterPerms(){
-  const f=document.getElementById('perm-filter').value;
-  renderPerms(f==='all'?allPerms:allPerms.filter(p=>p.category===f||p.type?.toLowerCase().includes(f)));
+function exportPermitAddresses(){
+  if(!permAreas.length){showNotif('No data','Load permits first');return;}
+  const rows=[['Zip','Neighborhood','Address','Permit Type','Permit Date','Comments']];
+  permAreas.forEach(a=>a.permits.forEach(p=>rows.push([a.zip,a.neighborhood||'',p.address||'',p.permitType||'',p.permitDate||'',`"${(p.comments||'').replace(/"/g,'""')}"`])));
+  const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});
+  const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='houston_permits_'+new Date().toISOString().slice(0,10)+'.csv';link.click();
 }
 function copyPermitLetter(){
-  const letter=`[Owner Name]
+  const letter=`Property Owner
 [Mailing Address]
 
-Dear [First Name],
+Hello,
 
 My name is ${C.founder||'[Founder Name]'}. I'm reaching out from ${C.name}, serving ${C.community||'[Service Area]'}.
 
