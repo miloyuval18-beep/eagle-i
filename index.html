@@ -1568,10 +1568,32 @@ function renderPermAreas(areas){
             <div class="pc-a">${p.address}</div>
             <div class="pc-t">${p.permitType||''} · ${p.permitDate||''}</div>
             <div style="font-size:11px;color:var(--ink2);margin:5px 0">${p.comments||''}</div>
-            <button class="btn-xs p" onclick="copyText('${(p.address||'').replace(/'/g,"\\'")}')">Copy Address</button>
+            <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);margin-bottom:6px">Project #${p.projectNo||'—'}</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+              <button class="btn-xs p" onclick="openOfficialPermitRecord('${(p.projectNo||'').replace(/'/g,"\\'")}')">📋 See Permit</button>
+              <button class="btn-xs" onclick="openPermitLocation('${(p.address||'').replace(/'/g,"\\'")}','${a.zip}')">🗺️ Map</button>
+              <button class="btn-xs" onclick="copyText('${(p.address||'').replace(/'/g,"\\'")}')">Copy Address</button>
+            </div>
           </div>`).join('')}
       </div>
     </div>`).join('');
+}
+function openOfficialPermitRecord(projectNo){
+  // No reliable direct-link exists to a specific permit's official record —
+  // the city's main portal is login-gated for registered applicants only,
+  // and the one public search tool is a legacy system with no stable URL
+  // pattern for a single result. Best honest option: copy the project
+  // number and open the real public search tool for the user to paste it in.
+  if(projectNo){
+    navigator.clipboard?.writeText(projectNo).catch(()=>{});
+    showNotif('Project # copied',projectNo+' — paste into "Project Number" search on the page that just opened');
+  }
+  window.open('http://cohtora.houstontx.gov/approot/soldpermits/online_permit.htm','_blank');
+}
+function openPermitLocation(address,zip){
+  if(!address){showNotif('No address','Nothing to open');return;}
+  const q=encodeURIComponent(address+', Houston, TX '+(zip||''));
+  window.open('https://www.google.com/maps/search/?api=1&query='+q,'_blank');
 }
 function exportPermitAddresses(){
   if(!permAreas.length){showNotif('No data','Load permits first');return;}
