@@ -60,12 +60,18 @@ router.post('/api/claude', requireAuth, async (req, res) => {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01'
       },
-      // Thinking explicitly disabled: every caller of this proxy wants a
-      // structured JSON answer, not visible reasoning — Sonnet 5 defaults
-      // to spending part of max_tokens on thinking, which was eating the
-      // whole budget on tighter limits and leaving nothing for the actual
-      // text/JSON output.
-      body: JSON.stringify({ model: MODEL, max_tokens: cappedMaxTokens, thinking: { type: 'disabled' }, messages })
+      // Sonnet 5 runs adaptive thinking by default and spends part of
+      // max_tokens on it regardless — explicitly disabling thinking doesn't
+      // reliably stop that spend. effort:"low" keeps thinking shallow
+      // instead, which is the documented approach for simple structured-
+      // output tasks like these and leaves enough budget for the actual JSON.
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: cappedMaxTokens,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'low' },
+        messages
+      })
     });
 
     const data = await upstream.json();
