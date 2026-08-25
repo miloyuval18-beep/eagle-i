@@ -794,7 +794,7 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== VENDORS ==================== -->
 <div id="page-vendors" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Strategic Vendors</div><div class="ss">AI-suggested referral partners for your industry · ready-to-send messages</div></div>
+  <div class="sh"><div><div class="st">Strategic Vendors</div><div class="ss">AI-suggested referral categories · real nearby businesses via Google · ready-to-send messages</div></div>
   <div style="display:flex;gap:7px"><button class="btn btn-blue" id="ven-btn" onclick="loadVendors()"><span class="spin" id="ven-spin"></span><span id="ven-lbl">Find Referral Partners</span></button></div></div>
   <div id="ven-out"><div style="text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click "Find Referral Partners"</div><div style="font-size:12px">AI-generated referral partner categories with ready-to-send outreach messages</div></div></div>
   <div class="sm" id="ven-s"></div>
@@ -1497,8 +1497,9 @@ Client: ${C.name}, ${C.phone}, ${C.email}. Founder: ${C.founder}.
 Return ONLY valid JSON: {"vendors":[{"type":"short category label appropriate to this industry, e.g. 'Real Estate Agent' or 'Complementary Service'","specialty":"why this category is a good referral fit","first_msg":"Personalized 2-sentence outreach message from ${C.founder} at ${C.phone} mentioning ${C.name} and specific value to this category"}]}
 6-8 categories genuinely relevant to this specific industry.`,1500);
     const vendors=p.vendors||[];
-    document.getElementById('ven-out').innerHTML=`<div class="g3">${vendors.map(v=>{
+    document.getElementById('ven-out').innerHTML=`<div class="g3">${vendors.map((v,i)=>{
       const safeMsg=(v.first_msg||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      const safeCat=(v.type||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       return `
       <div class="vc">
         <div class="vc-top">
@@ -1508,11 +1509,35 @@ Return ONLY valid JSON: {"vendors":[{"type":"short category label appropriate to
         <div class="vc-msg"><div class="vml">First Message</div><div class="vmt">${v.first_msg||''}</div></div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">
           <button class="btn-xs p" onclick="copyText('${safeMsg}')">📋 Copy Message</button>
+          <button class="btn-xs" onclick="loadRealVendors('${safeCat}',${i})">🌐 Find Real Businesses</button>
         </div>
+        <div id="real-ven-${i}" style="margin-top:8px"></div>
       </div>`}).join('')}</div>`;
     document.getElementById('ven-s').textContent=`${vendors.length} referral categories found`;
   }catch(e){document.getElementById('ven-s').textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';document.getElementById('ven-lbl').textContent='Refresh Directory';
+}
+async function loadRealVendors(category,idx){
+  const el=document.getElementById('real-ven-'+idx);
+  if(!el)return;
+  el.innerHTML='<div style="font-size:11px;color:var(--ink3)">Searching for real businesses...</div>';
+  try{
+    const r=await fetch('/api/vendors/places?category='+encodeURIComponent(category));
+    const d=await r.json();
+    if(!r.ok){el.innerHTML=`<div style="font-size:11px;color:var(--red)">${d.error?.message||'Failed to load'}</div>`;return;}
+    const vendors=d.vendors||[];
+    if(!vendors.length){
+      el.innerHTML=`<div style="font-size:11px;color:var(--ink3)">No real ${category} businesses found nearby${d.sparse?' — coverage may be sparse in this area':''}.</div>`;
+      return;
+    }
+    el.innerHTML=`<div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">🌐 Real businesses · ${d.source==='cache'?'cached':'live'}</div>`+
+      vendors.map(v=>`
+        <div style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
+          <div style="color:var(--ink);font-weight:600">${v.name}</div>
+          <div style="color:var(--ink2)">${v.rating?('★ '+v.rating+' ('+(v.reviewCount||0)+' reviews)'):'No rating yet'}${v.address?' · '+v.address:''}</div>
+          ${v.website?`<a href="${v.website}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
+        </div>`).join('');
+  }catch(e){el.innerHTML=`<div style="font-size:11px;color:var(--red)">Network error: ${e.message}</div>`;}
 }
 async function genOutreach(){
   const btn=document.getElementById('out-btn'),spin=document.getElementById('out-spin');

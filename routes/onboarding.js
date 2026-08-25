@@ -294,4 +294,62 @@ router.get('/api/competitors/places', requireAuth, async (req, res) => {
   }
 });
 
+// Real referral-partner businesses for one category, e.g. "Real Estate
+// Agent" — the AI-suggested category type (from POST /api/claude's vendor
+// prompt) is the search term; this finds who actually exists nearby.
+// Cached per-category since a tenant looks up several categories over time.
+router.get('/api/vendors/places', requireAuth, async (req, res) => {
+  const category = (req.query.category || '').trim();
+  const forceRefresh = req.query.refresh === 'true';
+  if (!category) {
+    return res.status(400).json({ error: { message: 'A category is required.' } });
+  }
+
+  try {
+    const profileRes = await query(
+      `SELECT service_area, places_vendors FROM business_profile WHERE tenant_id = $1`,
+      [req.tenantId]
+    );
+    if (!profileRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    const profile = profileRes.rows[0];
+    const cached = (profile.places_vendors || {})[category];
+
+    const fetchedAt = cached?.fetchedAt ? new Date(cached.fetchedAt) : null;
+    const isFresh = fetchedAt && (Date.now() - fetchedAt.getTime()) < PLACES_CACHE_MAX_AGE_MS;
+
+    if (isFresh && !forceRefresh) {
+      return res.json({
+        vendors: cached.results || [],
+        source: 'cache',
+        fetchedAt: cached.fetchedAt,
+        sparse: (cached.results || []).length === 0
+      });
+    }
+
+    if (!process.env.GOOGLE_PLACES_API_KEY) {
+      return res.status(503).json({ error: { message: 'Real vendor lookup is not configured on this server yet (missing GOOGLE_PLACES_API_KEY).' } });
+    }
+
+    const usage = await checkAndIncrementPlacesUsage(req.tenantId);
+    if (!usage.allowed) {
+      return res.status(429).json({ error: { message: `Monthly lookup limit reached (${usage.used}/${usage.cap}). Upgrade your plan for more.` } });
+    }
+
+    const vendors = await searchNearbyCompetitors({
+      services: category,
+      serviceArea: profile.service_area
+    });
+
+    const updatedVendors = { ...(profile.places_vendors || {}), [category]: { results: vendors, fetchedAt: new Date().toISOString() } };
+    await query(
+      `UPDATE business_profile SET places_vendors = $1 WHERE tenant_id = $2`,
+      [JSON.stringify(updatedVendors), req.tenantId]
+    );
+
+    res.json({ vendors, source: 'live', fetchedAt: new Date().toISOString(), sparse: vendors.length === 0 });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to load real vendor data: ' + err.message } });
+  }
+});
+
 module.exports = router;
