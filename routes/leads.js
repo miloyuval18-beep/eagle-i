@@ -121,12 +121,15 @@ router.patch('/api/leads/:id', requireAuth, async (req, res) => {
   }
 });
 
-router.get('/api/landing-page', requireAuth, async (req, res) => {
+router.get('/api/landing-pages', requireAuth, async (req, res) => {
   try {
-    const result = await query(`SELECT * FROM landing_pages WHERE tenant_id = $1`, [req.tenantId]);
-    res.json({ page: result.rows[0] || null });
+    const result = await query(
+      `SELECT * FROM landing_pages WHERE tenant_id = $1 ORDER BY created_at DESC`,
+      [req.tenantId]
+    );
+    res.json({ pages: result.rows });
   } catch (err) {
-    res.status(500).json({ error: { message: 'Failed to load landing page: ' + err.message } });
+    res.status(500).json({ error: { message: 'Failed to load landing pages: ' + err.message } });
   }
 });
 
@@ -141,6 +144,7 @@ const ANGLE_HINTS = {
 
 router.post('/api/landing-page/generate', requireAuth, async (req, res) => {
   const angleHint = ANGLE_HINTS[req.body && req.body.angle] || ANGLE_HINTS.primary;
+  const targetLabel = (req.body && req.body.targetLabel || '').trim() || null;
   try {
     const tenantRes = await query('SELECT company_name FROM tenants WHERE id = $1', [req.tenantId]);
     const profileRes = await query('SELECT * FROM business_profile WHERE tenant_id = $1', [req.tenantId]);
@@ -154,7 +158,7 @@ router.post('/api/landing-page/generate', requireAuth, async (req, res) => {
     }
 
     const prompt = `Landing page for ${companyName}${profile.site ? ' (' + profile.site + ')' : ''}.
-Angle: ${angleHint}. Phone: ${profile.phone || 'N/A'}. Email: ${profile.email || 'N/A'}. Address: ${profile.address || 'N/A'}.
+Angle: ${angleHint}${targetLabel ? '. Specific target/focus for this page: ' + targetLabel : ''}. Phone: ${profile.phone || 'N/A'}. Email: ${profile.email || 'N/A'}. Address: ${profile.address || 'N/A'}.
 Service area: ${profile.service_area || 'not specified'}. Services: ${profile.services || 'not specified'}.
 Differentiators: ${profile.differentiators || 'not specified'}. Voice: ${profile.voice || 'professional and approachable'}.
 Landing page best practices: clear headline with a real benefit, phone above fold, strong CTA, service section, trust/credentials section, service area mention.
@@ -162,30 +166,22 @@ Return ONLY valid JSON: {"headline":"H1 headline","subheadline":"Supporting line
 
     const draft = await generateJSON(prompt, 1200);
 
+    // Every generated page is now its own row — a tenant can hold several
+    // pages (one per ZIP/service angle) instead of one page total.
     let slug;
-    const existing = await query('SELECT slug FROM landing_pages WHERE tenant_id = $1', [req.tenantId]);
-    if (existing.rows.length) {
-      slug = existing.rows[0].slug;
-    } else {
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const candidate = `${slugify(companyName)}-${crypto.randomBytes(3).toString('hex')}`;
-        const clash = await query('SELECT 1 FROM landing_pages WHERE slug = $1', [candidate]);
-        if (!clash.rows.length) { slug = candidate; break; }
-      }
-      if (!slug) return res.status(500).json({ error: { message: 'Could not generate a unique page URL — try again.' } });
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = `${slugify(targetLabel || companyName)}-${crypto.randomBytes(3).toString('hex')}`;
+      const clash = await query('SELECT 1 FROM landing_pages WHERE slug = $1', [candidate]);
+      if (!clash.rows.length) { slug = candidate; break; }
     }
+    if (!slug) return res.status(500).json({ error: { message: 'Could not generate a unique page URL — try again.' } });
 
     const result = await query(
       `INSERT INTO landing_pages
-         (tenant_id, slug, headline, subheadline, offer, about_para, service_para, trust_para, cta_primary, cta_secondary, meta_title, meta_desc)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       ON CONFLICT (tenant_id) DO UPDATE SET
-         headline=EXCLUDED.headline, subheadline=EXCLUDED.subheadline, offer=EXCLUDED.offer,
-         about_para=EXCLUDED.about_para, service_para=EXCLUDED.service_para, trust_para=EXCLUDED.trust_para,
-         cta_primary=EXCLUDED.cta_primary, cta_secondary=EXCLUDED.cta_secondary,
-         meta_title=EXCLUDED.meta_title, meta_desc=EXCLUDED.meta_desc, updated_at=now()
+         (tenant_id, slug, target_label, headline, subheadline, offer, about_para, service_para, trust_para, cta_primary, cta_secondary, meta_title, meta_desc)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING *`,
-      [req.tenantId, slug, draft.headline, draft.subheadline, draft.offer, draft.about_para,
+      [req.tenantId, slug, targetLabel, draft.headline, draft.subheadline, draft.offer, draft.about_para,
        draft.service_para, draft.trust_para, draft.cta_primary, draft.cta_secondary, draft.meta_title, draft.meta_desc]
     );
     res.json({ ok: true, page: result.rows[0] });
@@ -196,7 +192,7 @@ Return ONLY valid JSON: {"headline":"H1 headline","subheadline":"Supporting line
 
 const EDITABLE_FIELDS = ['headline', 'subheadline', 'offer', 'about_para', 'service_para', 'trust_para', 'cta_primary', 'cta_secondary', 'meta_title', 'meta_desc'];
 
-router.put('/api/landing-page', requireAuth, async (req, res) => {
+router.put('/api/landing-page/:id', requireAuth, async (req, res) => {
   const sets = [];
   const values = [];
   EDITABLE_FIELDS.forEach((field) => {
@@ -205,17 +201,21 @@ router.put('/api/landing-page', requireAuth, async (req, res) => {
       sets.push(`${field} = $${values.length}`);
     }
   });
+  if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'targetLabel')) {
+    values.push(req.body.targetLabel);
+    sets.push(`target_label = $${values.length}`);
+  }
   if (!sets.length) {
     return res.status(400).json({ error: { message: 'No editable fields provided.' } });
   }
-  values.push(req.tenantId);
+  values.push(req.params.id, req.tenantId);
   try {
     const result = await query(
-      `UPDATE landing_pages SET ${sets.join(', ')}, updated_at = now() WHERE tenant_id = $${values.length} RETURNING *`,
+      `UPDATE landing_pages SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length - 1} AND tenant_id = $${values.length} RETURNING *`,
       values
     );
     if (!result.rows.length) {
-      return res.status(404).json({ error: { message: 'No landing page yet — generate a draft first.' } });
+      return res.status(404).json({ error: { message: 'Page not found.' } });
     }
     res.json({ ok: true, page: result.rows[0] });
   } catch (err) {
@@ -223,11 +223,11 @@ router.put('/api/landing-page', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/api/landing-page/publish', requireAuth, async (req, res) => {
+router.post('/api/landing-page/:id/publish', requireAuth, async (req, res) => {
   try {
-    const pageRes = await query('SELECT * FROM landing_pages WHERE tenant_id = $1', [req.tenantId]);
+    const pageRes = await query('SELECT * FROM landing_pages WHERE id = $1 AND tenant_id = $2', [req.params.id, req.tenantId]);
     if (!pageRes.rows.length) {
-      return res.status(400).json({ error: { message: 'Generate a draft first.' } });
+      return res.status(404).json({ error: { message: 'Page not found.' } });
     }
     const page = pageRes.rows[0];
     const profileRes = await query('SELECT phone, email FROM business_profile WHERE tenant_id = $1', [req.tenantId]);
@@ -238,19 +238,36 @@ router.post('/api/landing-page/publish', requireAuth, async (req, res) => {
     if (!profile.phone && !profile.email) {
       return res.status(400).json({ error: { message: 'Add a phone number or email to your business profile before publishing.' } });
     }
-    await query(`UPDATE landing_pages SET status = 'published', updated_at = now() WHERE tenant_id = $1`, [req.tenantId]);
+    await query(`UPDATE landing_pages SET status = 'published', updated_at = now() WHERE id = $1`, [req.params.id]);
     res.json({ ok: true, url: '/lp/' + page.slug });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to publish: ' + err.message } });
   }
 });
 
-router.post('/api/landing-page/unpublish', requireAuth, async (req, res) => {
+router.post('/api/landing-page/:id/unpublish', requireAuth, async (req, res) => {
   try {
-    await query(`UPDATE landing_pages SET status = 'draft', updated_at = now() WHERE tenant_id = $1`, [req.tenantId]);
+    const result = await query(
+      `UPDATE landing_pages SET status = 'draft', updated_at = now() WHERE id = $1 AND tenant_id = $2 RETURNING id`,
+      [req.params.id, req.tenantId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: { message: 'Page not found.' } });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to unpublish: ' + err.message } });
+  }
+});
+
+router.delete('/api/landing-page/:id', requireAuth, async (req, res) => {
+  try {
+    const result = await query(
+      `DELETE FROM landing_pages WHERE id = $1 AND tenant_id = $2 RETURNING id`,
+      [req.params.id, req.tenantId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: { message: 'Page not found.' } });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to delete: ' + err.message } });
   }
 });
 

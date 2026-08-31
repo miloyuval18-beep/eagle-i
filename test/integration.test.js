@@ -192,6 +192,102 @@ describe('"not configured" fallbacks (external keys unset in this test run)', ()
   });
 });
 
+describe('signals: industry gating + real live data', () => {
+  test('403s for an industry outside real estate / home services', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('signalswrongind'), password: 'TestPass1234!', companyName: 'Not Real Estate', industry: 'restaurant', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.get('/api/signals');
+    assert.equal(r.status, 403);
+  });
+
+  test('200s with real weather-alert and permit-spike data for a home_services tenant', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('signalsok'), password: 'TestPass1234!', companyName: 'Signals OK', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.get('/api/signals');
+    assert.equal(r.status, 200);
+    const body = await r.json();
+    assert.ok(Array.isArray(body.weatherAlerts), 'expected a real (possibly empty) weatherAlerts array from NWS — no key needed');
+    assert.ok(Array.isArray(body.permitSpikes), 'expected a real (possibly empty) permitSpikes array from live permit data');
+  }, { timeout: 30000 });
+
+  test('draft-outreach requires a valid type', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('signalsdraft'), password: 'TestPass1234!', companyName: 'Signals Draft', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.post('/api/signals/draft-outreach', { type: 'not-a-real-type' });
+    assert.equal(r.status, 400);
+  });
+});
+
+describe('landing pages: multi-page support', () => {
+  test('a fresh tenant has zero pages, and unknown-id operations 404 rather than crashing', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('lppages'), password: 'TestPass1234!', companyName: 'LP Pages Co', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const list = await client.get('/api/landing-pages');
+    assert.equal(list.status, 200);
+    const listBody = await list.json();
+    assert.deepEqual(listBody.pages, []);
+
+    const fakeId = '00000000-0000-0000-0000-000000000000';
+    assert.equal((await client.put('/api/landing-page/' + fakeId, { headline: 'x' })).status, 404);
+    assert.equal((await client.post('/api/landing-page/' + fakeId + '/publish')).status, 404);
+    assert.equal((await client.delete('/api/landing-page/' + fakeId)).status, 404);
+  });
+
+  test("tenant A's landing pages are invisible to tenant B", async () => {
+    const clientA = makeClient();
+    const signupA = await clientA.post('/api/auth/signup', {
+      email: uniqueEmail('lpA'), password: 'TestPass1234!', companyName: 'LP Tenant A', industry: 'home_services', acceptedTerms: true
+    });
+    const tenantA = (await signupA.json()).tenantId;
+    trackTenant(tenantA);
+
+    const clientB = makeClient();
+    const signupB = await clientB.post('/api/auth/signup', {
+      email: uniqueEmail('lpB'), password: 'TestPass1234!', companyName: 'LP Tenant B', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signupB.json()).tenantId);
+
+    const pool = getTestPool();
+    let pageId;
+    try {
+      const inserted = await pool.query(
+        `INSERT INTO landing_pages (tenant_id, slug, target_label, headline, status) VALUES ($1, $2, 'Test Page', 'Headline', 'draft') RETURNING id`,
+        [tenantA, 'lp-test-' + Date.now()]
+      );
+      pageId = inserted.rows[0].id;
+    } finally {
+      await pool.end();
+    }
+
+    const bListsIt = await (await clientB.get('/api/landing-pages')).json();
+    assert.deepEqual(bListsIt.pages, []);
+
+    // Tenant B can't edit or delete tenant A's page even by guessing its id.
+    assert.equal((await clientB.put('/api/landing-page/' + pageId, { headline: 'hijacked' })).status, 404);
+    assert.equal((await clientB.delete('/api/landing-page/' + pageId)).status, 404);
+
+    const aListsIt = await (await clientA.get('/api/landing-pages')).json();
+    assert.equal(aListsIt.pages.length, 1);
+    assert.equal(aListsIt.pages[0].target_label, 'Test Page');
+  });
+});
+
 describe('regression: scheduled/automatic posting stays removed', () => {
   test('/api/scheduled-posts no longer exists', async () => {
     const client = makeClient();

@@ -102,6 +102,7 @@ function makeClient() {
   return {
     get: (path) => req(path, { method: 'GET' }),
     post: (path, body) => req(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }),
+    put: (path, body) => req(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }),
     patch: (path, body) => req(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }),
     delete: (path) => req(path, { method: 'DELETE' }),
     raw: req

@@ -690,6 +690,11 @@ tbody tr:last-child td{border-bottom:none}
       </div>
     </div>
   </div>
+  <div class="section real-estate-only" id="signals-section" style="display:none">
+    <div class="sh"><div><div class="st">🛰️ Real Signals — Live Data</div><div class="ss">National Weather Service alerts + real Houston permit-spike detection · not AI-generated</div></div><button class="btn-ghost" id="sig-btn" onclick="loadSignals(true)"><span class="spin" id="sig-spin"></span>Refresh</button></div>
+    <div id="signals-out"></div>
+    <div class="sm" id="sig-s"></div>
+  </div>
   <div class="section">
     <div class="sh"><div><div class="st">Weather Trigger Protocols</div><div class="ss">AI-generated response protocols for your service area</div></div></div>
     <div class="g3" id="wx-grid"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3)">Click "Load Full Weather Protocols" above</div></div>
@@ -763,7 +768,12 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== LANDING PAGES ==================== -->
 <div id="page-landing" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Landing Pages</div><div class="ss">One real, published page that actually captures leads — not just preview copy</div></div></div>
+  <div class="sh"><div><div class="st">Landing Pages</div><div class="ss">Multiple real, published pages that actually capture leads — one per ZIP or service angle</div></div></div>
+  <div class="section" style="margin-bottom:16px">
+    <div class="sh"><div><div class="st" style="font-size:15px">Your Pages</div></div><button class="btn-xs p" onclick="startNewLandingPage()">+ New Page</button></div>
+    <div id="lp-list"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Loading...</div></div>
+  </div>
+  <div id="lp-editor-wrap" style="display:none">
   <div id="lp-publish-banner" style="display:none;margin-bottom:14px;padding:12px 16px;border-radius:var(--r2);border:1px solid rgba(0,217,122,.3);background:rgba(0,217,122,.08)">
     <div style="font-size:13px;color:var(--ink)">🌐 Live at <a id="lp-public-link" href="#" target="_blank" style="color:var(--green);font-weight:600"></a></div>
     <div style="display:flex;gap:6px;margin-top:8px">
@@ -773,22 +783,28 @@ tbody tr:last-child td{border-bottom:none}
   </div>
   <div class="lp-layout">
     <div class="lp-sb">
-      <div style="font-family:var(--fm);font-size:7px;color:var(--blue2);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Select Angle (for AI draft)</div>
-      <div class="lp-gh">🔥 Core Pages</div>
-      <div class="lp-trig active" onclick="selLP(this,'primary')">⭐ Primary Service</div>
-      <div class="lp-trig" onclick="selLP(this,'consult')">📅 Free Consultation</div>
-      <div class="lp-trig" onclick="selLP(this,'offer')">🏷️ Special Offer</div>
-      <div class="lp-gh">⚖️ Trust & Positioning</div>
-      <div class="lp-trig" onclick="selLP(this,'differentiator')">⭐ Your Differentiator</div>
-      <div class="lp-trig" onclick="selLP(this,'trust')">🛡️ Trust & Credentials</div>
-      <div class="lp-trig" onclick="selLP(this,'about')">💬 About Your Business</div>
-      <button class="btn btn-blue" id="lp-btn" onclick="genLP()" style="width:100%;justify-content:center;margin-top:10px"><span class="spin" id="lp-spin"></span><svg id="lp-ico" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Generate Draft</button>
+      <div id="lp-new-only">
+        <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Page target (optional)</label>
+        <input id="lp-target-label" placeholder="e.g. 77024 Kitchen Remodel" style="width:100%;margin-bottom:10px">
+        <div style="font-family:var(--fm);font-size:7px;color:var(--blue2);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Select Angle (for AI draft)</div>
+        <div class="lp-gh">🔥 Core Pages</div>
+        <div class="lp-trig active" onclick="selLP(this,'primary')">⭐ Primary Service</div>
+        <div class="lp-trig" onclick="selLP(this,'consult')">📅 Free Consultation</div>
+        <div class="lp-trig" onclick="selLP(this,'offer')">🏷️ Special Offer</div>
+        <div class="lp-gh">⚖️ Trust & Positioning</div>
+        <div class="lp-trig" onclick="selLP(this,'differentiator')">⭐ Your Differentiator</div>
+        <div class="lp-trig" onclick="selLP(this,'trust')">🛡️ Trust & Credentials</div>
+        <div class="lp-trig" onclick="selLP(this,'about')">💬 About Your Business</div>
+        <button class="btn btn-blue" id="lp-btn" onclick="genLP()" style="width:100%;justify-content:center;margin-top:10px"><span class="spin" id="lp-spin"></span><svg id="lp-ico" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Generate Draft</button>
+      </div>
       <button class="btn-ghost" id="lp-save-btn" onclick="saveLandingPageDraft()" style="width:100%;justify-content:center;margin-top:5px;display:none">💾 Save Edits</button>
       <button class="btn btn-blue" id="lp-publish-btn" onclick="publishLandingPage()" style="width:100%;justify-content:center;margin-top:5px;display:none">🚀 Publish</button>
       <button class="btn-ghost" onclick="copyLP()" style="width:100%;justify-content:center;margin-top:5px">📋 Copy HTML</button>
+      <button class="btn-ghost" onclick="closeLandingPageEditor()" style="width:100%;justify-content:center;margin-top:5px">← Back to list</button>
       <div class="sm" id="lp-s" style="text-align:center"></div>
     </div>
     <div id="lp-area"><div style="text-align:center;padding:44px 18px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:20px;letter-spacing:2px;margin-bottom:7px;color:var(--ink2)">Select an angle and generate</div><div style="font-size:12px">AI-generated landing page copy built from your business profile — edit and publish to start collecting real leads</div></div></div>
+  </div>
   </div>
 </div>
 </div>
@@ -797,9 +813,14 @@ tbody tr:last-child td{border-bottom:none}
 <div id="page-vendors" class="page">
 <div class="wrap">
   <div class="sh"><div><div class="st">Strategic Vendors</div><div class="ss">AI-suggested referral categories · real nearby businesses via Google · ready-to-send messages</div></div>
-  <div style="display:flex;gap:7px"><button class="btn btn-blue" id="ven-btn" onclick="loadVendors()"><span class="spin" id="ven-spin"></span><span id="ven-lbl">Find Referral Partners</span></button></div></div>
+  <div style="display:flex;gap:7px;flex-wrap:wrap">
+    <button class="btn btn-blue" id="ven-btn" onclick="loadVendors()"><span class="spin" id="ven-spin"></span><span id="ven-lbl">Find Referral Partners</span></button>
+    <button class="btn-ghost real-estate-only" id="ppn-btn" style="display:none" onclick="loadProfessionalPartners()"><span class="spin" id="ppn-spin"></span><span id="ppn-lbl">🏗️ Professional Partner Network</span></button>
+  </div></div>
   <div id="ven-out"><div style="text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click "Find Referral Partners"</div><div style="font-size:12px">AI-generated referral partner categories with ready-to-send outreach messages</div></div></div>
   <div class="sm" id="ven-s"></div>
+  <div id="ppn-out"></div>
+  <div class="sm" id="ppn-s"></div>
   <div class="section" style="margin-top:20px">
     <div class="sh"><div><div class="st">Outreach Generator</div><div class="ss">Personalized outreach in your brand voice</div></div></div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:11px">
@@ -1132,6 +1153,66 @@ Return ONLY valid JSON: {"events":[{"event":"Event name","threat":"alert","desc"
   }catch(e){}
 }
 
+/* REAL SIGNALS — live NWS storm alerts + real permit-spike detection */
+async function loadSignals(force){
+  const btn=document.getElementById('sig-btn'),spin=document.getElementById('sig-spin'),out=document.getElementById('signals-out'),s=document.getElementById('sig-s');
+  if(!out)return;
+  if(btn)btn.disabled=true;if(spin)spin.style.display='block';
+  try{
+    const r=await fetch('/api/signals'+(force?'?refresh=true':''));
+    const d=await r.json();
+    if(!r.ok){out.innerHTML=`<div class="ib"><div class="ibb" style="color:var(--red)">${d.error?.message||'Failed to load signals'}</div></div>`;return;}
+    renderSignals(d);
+    if(s)s.textContent='Weather: '+(d.weatherFetchedAt?new Date(d.weatherFetchedAt).toLocaleString():'—')+' · Permits: '+(d.permitsFetchedAt?new Date(d.permitsFetchedAt).toLocaleString():'—');
+  }catch(e){out.innerHTML=`<div class="ib"><div class="ibb" style="color:var(--red)">Network error: ${e.message}</div></div>`;}
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';
+}
+function renderSignals(d){
+  const out=document.getElementById('signals-out');if(!out)return;
+  const alerts=d.weatherAlerts||[],spikes=d.permitSpikes||[];
+  if(!alerts.length&&!spikes.length){
+    out.innerHTML='<div class="ib"><div class="ibb">No active storm alerts and no permit-volume spikes right now — this is real, live data, not a placeholder.</div></div>';
+    return;
+  }
+  let html='<div class="g3">';
+  alerts.forEach((a,i)=>{
+    const sev=(a.severity||'').toLowerCase();
+    const bc=sev==='extreme'||sev==='severe'?'rgba(255,45,74,.3)':'rgba(255,168,0,.28)';
+    const lc=sev==='extreme'||sev==='severe'?'var(--red)':'var(--amber)';
+    html+=`<div class="card" style="border:1px solid ${bc}">
+      <span class="badge" style="background:${lc}20;color:${lc};font-size:8px">🌩️ LIVE · ${(a.severity||'').toUpperCase()}</span>
+      <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 3px">${a.event||''}</div>
+      <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">${(a.headline||'').slice(0,200)}</div>
+      <button class="btn-xs p" onclick='draftSignalOutreach("weather",${JSON.stringify({event:a.event,headline:a.headline}).replace(/'/g,"&#39;")})'>✍️ Draft outreach</button>
+      <div id="sig-draft-w${i}" style="margin-top:8px"></div>
+    </div>`;
+  });
+  spikes.forEach((sp,i)=>{
+    html+=`<div class="card" style="border:1px solid var(--bdr2)">
+      <span class="badge b-blue" style="font-size:8px">📈 LIVE · +${sp.percentAboveAverage}% vs avg</span>
+      <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 3px">ZIP ${sp.zip}${sp.neighborhood?' — '+sp.neighborhood:''}</div>
+      <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">${sp.recentCount} permits filed this week vs a ${sp.priorAvgCount}/week average — real permit-volume data, not estimated.</div>
+      <button class="btn-xs p" onclick='draftSignalOutreach("permit_spike",${JSON.stringify({zip:sp.zip,recentCount:sp.recentCount,neighborhood:sp.neighborhood}).replace(/'/g,"&#39;")})'>✍️ Draft outreach</button>
+      <div id="sig-draft-p${i}" style="margin-top:8px"></div>
+    </div>`;
+  });
+  html+='</div>';
+  out.innerHTML=html;
+}
+async function draftSignalOutreach(type,context){
+  try{
+    const r=await fetch('/api/signals/draft-outreach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,context})});
+    const d=await r.json();
+    if(!r.ok){showNotif('Could not draft',d.error?.message||'');return;}
+    const draft=d.draft||{};
+    const text=draft.email_body?`Subject: ${draft.email_subject}\n\n${draft.email_body}`:'';
+    const combined=(draft.post?('POST:\n'+draft.post+'\n\n'):'')+(text?'EMAIL:\n'+text:'');
+    const win=window.open('','_blank','width=520,height=520');
+    if(win){win.document.write('<pre style="font-family:sans-serif;white-space:pre-wrap;padding:20px;font-size:14px">'+combined.replace(/</g,'&lt;')+'</pre>');}
+    else{copyText(combined);showNotif('Draft copied','Popup blocked — copied to clipboard instead');}
+  }catch(e){showNotif('Network error',e.message);}
+}
+
 /* TODAY BAR */
 /* STRATEGY */
 function renderStrategyCards(strategies){
@@ -1401,27 +1482,82 @@ function exportLeads(){
   const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='levi_leads_'+TODAY.toISOString().slice(0,10)+'.csv';link.click();
 }
 
-/* LANDING PAGES — real, persisted, publishable at a public URL */
-let lpTrig='primary',lpHTML='',currentLpPage=null;
+/* LANDING PAGES — real, persisted, publishable at a public URL. A tenant
+   can hold several pages (one per ZIP/service angle), not just one. */
+let lpTrig='primary',lpHTML='',currentLpPage=null,landingPages=[];
 function selLP(el,t){document.querySelectorAll('.lp-trig').forEach(e=>e.classList.remove('active'));el.classList.add('active');lpTrig=t;}
 async function loadLandingPageState(){
   try{
-    const r=await fetch('/api/landing-page');
+    const r=await fetch('/api/landing-pages');
     const d=await r.json();
-    if(d.page){currentLpPage=d.page;renderLpEditor(d.page);}
-  }catch(e){/* no page yet — leave the placeholder */}
+    landingPages=d.pages||[];
+    renderLpList();
+  }catch(e){/* leave existing content on transient failure */}
+}
+function renderLpList(){
+  const el=document.getElementById('lp-list');if(!el)return;
+  if(!landingPages.length){
+    el.innerHTML='<div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">No pages yet — click "+ New Page" to generate your first one.</div>';
+    return;
+  }
+  el.innerHTML=landingPages.map(p=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--bdr2)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:var(--ink);font-weight:600">${p.target_label||p.headline||'Untitled page'}</div>
+        <div style="font-size:11px;color:var(--ink3)">${p.status==='published'?'🟢 Live at /lp/'+p.slug:'⚪ Draft'} · ${new Date(p.updated_at||p.created_at).toLocaleDateString()}</div>
+      </div>
+      <button class="btn-xs" onclick="editLandingPage('${p.id}')">Edit</button>
+      ${p.status==='published'?`<button class="btn-xs" onclick="window.open('/lp/${p.slug}','_blank')">View</button>`:''}
+      <button class="btn-xs" style="color:var(--red)" onclick="deleteLandingPage('${p.id}')">Delete</button>
+    </div>`).join('');
+}
+function startNewLandingPage(){
+  currentLpPage=null;
+  document.getElementById('lp-editor-wrap').style.display='';
+  document.getElementById('lp-new-only').style.display='';
+  document.getElementById('lp-save-btn').style.display='none';
+  document.getElementById('lp-publish-btn').style.display='none';
+  document.getElementById('lp-publish-banner').style.display='none';
+  document.getElementById('lp-target-label').value='';
+  document.getElementById('lp-area').innerHTML='<div style="text-align:center;padding:44px 18px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:20px;letter-spacing:2px;margin-bottom:7px;color:var(--ink2)">Select an angle and generate</div><div style="font-size:12px">AI-generated landing page copy built from your business profile — edit and publish to start collecting real leads</div></div>';
+  document.getElementById('lp-editor-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function editLandingPage(id){
+  const p=landingPages.find(x=>x.id===id);if(!p)return;
+  currentLpPage=p;
+  document.getElementById('lp-editor-wrap').style.display='';
+  document.getElementById('lp-new-only').style.display='none';
+  renderLpEditor(p);
+  document.getElementById('lp-editor-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeLandingPageEditor(){
+  document.getElementById('lp-editor-wrap').style.display='none';
+  currentLpPage=null;
+}
+async function deleteLandingPage(id){
+  if(!confirm('Delete this page? This cannot be undone.'))return;
+  try{
+    const r=await fetch('/api/landing-page/'+id,{method:'DELETE'});
+    if(!r.ok){const d=await r.json();showNotif('Could not delete',d.error?.message||'');return;}
+    showNotif('Deleted','Page removed');
+    if(currentLpPage&&currentLpPage.id===id)closeLandingPageEditor();
+    loadLandingPageState();
+  }catch(e){showNotif('Network error',e.message);}
 }
 async function genLP(){
   const btn=document.getElementById('lp-btn'),spin=document.getElementById('lp-spin'),ico=document.getElementById('lp-ico');
   btn.disabled=true;spin.style.display='block';ico.style.display='none';
   document.getElementById('lp-s').textContent='Generating landing page draft...';
+  const targetLabel=document.getElementById('lp-target-label')?.value.trim()||'';
   try{
-    const r=await fetch('/api/landing-page/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({angle:lpTrig})});
+    const r=await fetch('/api/landing-page/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({angle:lpTrig,targetLabel})});
     const d=await r.json();
     if(!r.ok)throw new Error(d.error?.message||'Generation failed');
     currentLpPage=d.page;
+    document.getElementById('lp-new-only').style.display='none';
     renderLpEditor(d.page);
     document.getElementById('lp-s').textContent='Draft ready — edit below, then Publish';
+    loadLandingPageState();
   }catch(e){document.getElementById('lp-s').textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';ico.style.display='';
 }
@@ -1472,12 +1608,13 @@ function renderLpEditor(p){
   }
 }
 async function saveLandingPageDraft(){
+  if(!currentLpPage?.id)return;
   const fields=['headline','subheadline','offer','about_para','service_para','trust_para','cta_primary'];
   const body={};
   fields.forEach(f=>{const el=document.getElementById('lp-f-'+f);if(el)body[f]=el.value;});
   document.getElementById('lp-s').textContent='Saving...';
   try{
-    const r=await fetch('/api/landing-page',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const r=await fetch('/api/landing-page/'+currentLpPage.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();
     if(!r.ok)throw new Error(d.error?.message||'Save failed');
     currentLpPage=d.page;
@@ -1487,9 +1624,10 @@ async function saveLandingPageDraft(){
   }catch(e){document.getElementById('lp-s').textContent='Error: '+e.message;}
 }
 async function publishLandingPage(){
+  if(!currentLpPage?.id)return;
   await saveLandingPageDraft();
   try{
-    const r=await fetch('/api/landing-page/publish',{method:'POST'});
+    const r=await fetch('/api/landing-page/'+currentLpPage.id+'/publish',{method:'POST'});
     const d=await r.json();
     if(!r.ok){showNotif('Could not publish',d.error?.message||'');return;}
     showNotif('Published!','Your landing page is now live and collecting leads');
@@ -1497,8 +1635,9 @@ async function publishLandingPage(){
   }catch(e){showNotif('Network error',e.message);}
 }
 async function unpublishLandingPage(){
+  if(!currentLpPage?.id)return;
   try{
-    await fetch('/api/landing-page/unpublish',{method:'POST'});
+    await fetch('/api/landing-page/'+currentLpPage.id+'/unpublish',{method:'POST'});
     showNotif('Unpublished','Your page is no longer public');
     loadLandingPageState();
     document.getElementById('lp-publish-banner').style.display='none';
@@ -1545,8 +1684,8 @@ Return ONLY valid JSON: {"vendors":[{"type":"short category label appropriate to
   }catch(e){document.getElementById('ven-s').textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';document.getElementById('ven-lbl').textContent='Refresh Directory';
 }
-async function loadRealVendors(category,idx){
-  const el=document.getElementById('real-ven-'+idx);
+async function loadRealVendors(category,idx,idPrefix){
+  const el=document.getElementById((idPrefix||'real-ven-')+idx);
   if(!el)return;
   el.innerHTML='<div style="font-size:11px;color:var(--ink3)">Searching for real businesses...</div>';
   try{
@@ -1566,6 +1705,48 @@ async function loadRealVendors(category,idx){
           ${v.website?`<a href="${v.website}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
         </div>`).join('');
   }catch(e){el.innerHTML=`<div style="font-size:11px;color:var(--red)">Network error: ${e.message}</div>`;}
+}
+
+// Curated 9 professional-partner types for construction/real-estate tenants
+// — real sourcing hints and revenue-impact figures, not AI-guessed. The
+// search term feeds a real Google Places lookup per type; only the
+// first-message copy is AI-generated (per type, in ${C.founder}'s voice).
+const PROFESSIONAL_PARTNER_TYPES=[
+  {type:'Architects',search:'architect',sourcing:'LinkedIn (ZIP + title) · AIA Houston · permit records',revenue:'$150K–$800K per referral'},
+  {type:'Realtors',search:'real estate agent',sourcing:'HAR.com filtered by ZIP · CE course attendees',revenue:'5 partners/mo ≈ 60 leads/yr'},
+  {type:'Engineers (PE)',search:'structural engineer',sourcing:'LinkedIn · TX PE license lookup',revenue:'$200K+ in mutual referrals/yr'},
+  {type:'Interior Designers',search:'interior designer',sourcing:'ASID Houston · Houzz · Instagram',revenue:'4 partnerships ≈ 8–16 projects/yr'},
+  {type:'Insurance Adjusters',search:'insurance adjuster',sourcing:'IIAT member directory · TDI license lookup',revenue:'5 adjusters × storms ≈ 75–225 jobs/yr'},
+  {type:'Private Bankers',search:'private banker',sourcing:'LinkedIn at major regional banks',revenue:'2 relationships ≈ 4–8 HNWI leads/yr'},
+  {type:'Title Companies',search:'title company',sourcing:'TX Dept. of Insurance · LinkedIn',revenue:'3 relationships ≈ 6–12 pre-close referrals/yr'},
+  {type:'Real Estate Attorneys',search:'real estate attorney',sourcing:'local Bar Association · LinkedIn',revenue:'$10K–$60K/yr advisory income'},
+  {type:'Landscape Architects',search:'landscape architect',sourcing:'ASLA · Houzz · landscape permits',revenue:'4–8 co-referred projects/yr'}
+];
+async function loadProfessionalPartners(){
+  const btn=document.getElementById('ppn-btn'),spin=document.getElementById('ppn-spin'),out=document.getElementById('ppn-out'),s=document.getElementById('ppn-s');
+  if(btn)btn.disabled=true;if(spin)spin.style.display='block';
+  const lbl=document.getElementById('ppn-lbl');if(lbl)lbl.textContent='Generating outreach...';
+  try{
+    const p=await claude(`For ${C.name} (${C.founder}), a ${ME?.industry||'construction'} business in ${C.community||'their area'}, write a personalized 2-sentence first-outreach message to each of these 9 professional partner types, from ${C.founder} at ${C.phone}, proposing a referral relationship: ${PROFESSIONAL_PARTNER_TYPES.map(t=>t.type).join(', ')}.
+Return ONLY valid JSON: {"messages":{"Architects":"msg","Realtors":"msg","Engineers (PE)":"msg","Interior Designers":"msg","Insurance Adjusters":"msg","Private Bankers":"msg","Title Companies":"msg","Real Estate Attorneys":"msg","Landscape Architects":"msg"}}`,1800);
+    const msgs=p.messages||{};
+    out.innerHTML=`<div class="g3">${PROFESSIONAL_PARTNER_TYPES.map((t,i)=>{
+      const msg=msgs[t.type]||'';
+      const safeMsg=msg.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      return `
+      <div class="vc">
+        <div class="vc-top"><div><div class="vc-n">${t.type}</div></div></div>
+        <div style="font-size:11px;color:var(--ink2);margin:6px 0;line-height:1.55"><strong>Where to find them:</strong> ${t.sourcing}<br><strong>Revenue impact:</strong> ${t.revenue}</div>
+        <div class="vc-msg"><div class="vml">First Message</div><div class="vmt">${msg}</div></div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">
+          <button class="btn-xs p" onclick="copyText('${safeMsg}')">📋 Copy Message</button>
+          <button class="btn-xs" onclick="loadRealVendors('${t.search}',${i},'ppn-real-')">🌐 Find Real Businesses</button>
+        </div>
+        <div id="ppn-real-${i}" style="margin-top:8px"></div>
+      </div>`}).join('')}</div>`;
+    if(s)s.textContent=`9 professional partner types · ${new Date().toLocaleTimeString()}`;
+  }catch(e){if(s)s.textContent='Error: '+e.message;}
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';if(lbl)lbl.textContent='🏗️ Professional Partner Network';
 }
 async function genOutreach(){
   const btn=document.getElementById('out-btn'),spin=document.getElementById('out-spin');

@@ -15,7 +15,9 @@ const leadsRoutes = require('./routes/leads');
 const reviewsRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');
 const permitsRoutes = require('./routes/permits');
+const signalsRoutes = require('./routes/signals');
 const { sendCrashAlert } = require('./lib/alerting');
+const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 
 // Last-resort safety net: anything that escapes every route's own try/catch
 // (a genuine bug, not a "service not configured" 4xx) gets emailed to the
@@ -67,6 +69,7 @@ app.use(leadsRoutes);
 app.use(reviewsRoutes);
 app.use(adminRoutes);
 app.use(permitsRoutes);
+app.use(signalsRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
@@ -110,4 +113,5 @@ app.listen(PORT, () => {
   for (const key of ['ANTHROPIC_API_KEY', 'DATABASE_URL', 'SESSION_SECRET', 'SOCIAL_CREDENTIALS_KEY', 'RESEND_API_KEY', 'GOOGLE_PLACES_API_KEY']) {
     if (!process.env[key]) console.warn(`WARNING: ${key} is not set.`);
   }
+  startWeatherSignalPoller();
 });
