@@ -1016,6 +1016,27 @@ tab_ids: dash, strategy, market, keywords, competitors, opps, landing, vendors, 
     setVPS('Ready — speak or type');
   }catch(e){hideTyping();addMsg('ai','Error reaching server. Check your API connection.');setVPS('Ready');}
 }
+// SpeechRecognition's error events give a specific reason code but every
+// call site here was previously swallowing it and just resetting the UI —
+// so a real failure (mic permission denied, no mic hardware, etc.) looked
+// identical to "nothing happened." Surface it instead.
+function micErrorMessage(code){
+  switch(code){
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return {title:'Microphone blocked',detail:'Check your browser\'s site permissions and allow microphone access for this page, then try again.'};
+    case 'no-speech':
+      return {title:'No speech detected',detail:'Didn\'t catch that — try again and speak right after clicking the mic.'};
+    case 'audio-capture':
+      return {title:'No microphone found',detail:'Your browser can\'t find a microphone — check it\'s connected and not in use by another app.'};
+    case 'network':
+      return {title:'Voice recognition network error',detail:'Chrome\'s speech service couldn\'t be reached — check your connection and try again.'};
+    case 'aborted':
+      return null; // user-initiated stop, not a real error
+    default:
+      return {title:'Voice input error',detail:'('+(code||'unknown')+') — try again, or type your question instead.'};
+  }
+}
 function toggleMic(){
   const btn=document.getElementById('vp-mic');
   if(!('webkitSpeechRecognition'in window||'SpeechRecognition'in window)){showNotif('Voice needs Chrome/Edge','');return;}
@@ -1029,7 +1050,12 @@ function toggleMic(){
     if(e.results[e.results.length-1].isFinal){recog.stop();ask(t);}
   };
   recog.onend=()=>{isListen=false;btn.classList.remove('on');document.getElementById('vorb-btn').classList.remove('listening');setVPS('Ready');};
-  recog.onerror=()=>{isListen=false;btn.classList.remove('on');setVPS('Mic error');};
+  recog.onerror=(e)=>{
+    isListen=false;btn.classList.remove('on');
+    const m=micErrorMessage(e.error);
+    setVPS(m?('Mic error: '+m.title):'Ready');
+    if(m)showNotif(m.title,m.detail);
+  };
   recog.start();
 }
 
@@ -2129,7 +2155,11 @@ function toggleTcMic(){
   tcRecog=new SR();tcRecog.lang='en-US';tcRecog.continuous=false;tcRecog.interimResults=false;
   tcRecog.onresult=(ev)=>{const t=ev.results[0][0].transcript;const inp=document.getElementById('tc-input');if(inp){inp.value=t;sendTcMsg();}};
   tcRecog.onend=()=>{tcListening=false;if(micEl)micEl.classList.remove('on');};
-  tcRecog.onerror=()=>{tcListening=false;if(micEl)micEl.classList.remove('on');};
+  tcRecog.onerror=(e)=>{
+    tcListening=false;if(micEl)micEl.classList.remove('on');
+    const m=micErrorMessage(e.error);
+    if(m)showNotif(m.title,m.detail);
+  };
   tcRecog.start();tcListening=true;if(micEl)micEl.classList.add('on');
 }
 
