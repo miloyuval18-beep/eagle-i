@@ -908,6 +908,7 @@ const TODAY=new Date(),MONTH=TODAY.toLocaleString('en-US',{month:'long'});
 const C={name:'',founder:'',phone:'',email:'',addr:'',site:'',community:'',services:'',team:'',unique:'',voice:''};
 let ME=null; // full /api/me response — tenantId, industry, planTier, generatedContent, etc.
 let metaConnection=null; // { page_name, ig_username, connected_at } if Facebook/Instagram is connected, else null
+let gbpConnection=null; // { locationName } if Google Business Profile is connected, else null
 
 var tcTab='dash';
 
@@ -2048,6 +2049,7 @@ async function bootstrap(){
 
   handleSocialRedirectParams();
   loadSocialConnections();
+  loadGbpConnection();
   loadInbox();
   loadLandingPageState();
   loadReviewRequests();
@@ -2347,7 +2349,7 @@ function toggleTcMic(){
 }
 
 /* ---------- CREDENTIALS (localStorage) ---------- */
-const CRED_FIELDS=['cred-ig-token','cred-ig-id','cred-fb-token','cred-fb-id','cred-li-token','cred-li-urn','cred-li-company','cred-go-token','cred-go-loc','cred-yw-email','cred-yw-key','cred-hz-email','cred-hz-pass','cred-wp-url','cred-wp-pass','cred-wp-user','cred-nd-email','cred-nd-pass'];
+const CRED_FIELDS=['cred-ig-token','cred-ig-id','cred-fb-token','cred-fb-id','cred-li-token','cred-li-urn','cred-li-company','cred-yw-email','cred-yw-key','cred-hz-email','cred-hz-pass','cred-wp-url','cred-wp-pass','cred-wp-user','cred-nd-email','cred-nd-pass'];
 function saveAllCreds(){
   try{
     const data={};CRED_FIELDS.forEach(id=>{const el=document.getElementById(id);if(el)data[id]=el.value;});
@@ -2403,16 +2405,66 @@ async function disconnectMeta(){
   }catch(e){showNotif('Disconnect failed',e.message);}
   loadSocialConnections();
 }
+async function loadGbpConnection(){
+  const card=document.getElementById('gbp-connect-card');
+  const goStatus=document.getElementById('sh-go-status');
+  try{
+    const r=await fetch('/api/gbp/status');
+    const d=await r.json();
+    gbpConnection=d.connected?{locationName:d.locationName}:null;
+    if(card)card.dataset.configured=d.configured?'1':'0';
+  }catch(e){gbpConnection=null;}
+
+  if(goStatus)goStatus.textContent=gbpConnection?'Connected · '+(gbpConnection.locationName||''):'Not connected';
+  if(!card)return;
+  if(!card.dataset.configured||card.dataset.configured==='0'){
+    card.querySelector('.gbp-sub').textContent='Not configured on this server yet';
+    card.querySelector('.gbp-actions').innerHTML='';
+    return;
+  }
+  if(gbpConnection){
+    card.querySelector('.gbp-sub').textContent='Connected · '+(gbpConnection.locationName||'');
+    card.querySelector('.gbp-actions').innerHTML='<button class="btn-xs" onclick="disconnectGbp()">Disconnect</button>';
+  }else{
+    card.querySelector('.gbp-sub').textContent='Not connected';
+    card.querySelector('.gbp-actions').innerHTML=`<button class="btn-xs p" onclick="window.location.href='/api/gbp/connect'">Connect Google Business Profile</button>`;
+  }
+}
+async function disconnectGbp(){
+  if(!confirm('Disconnect Google Business Profile? Eagle I will no longer be able to post to this listing.'))return;
+  try{
+    await fetch('/api/gbp',{method:'DELETE'});
+    showNotif('Disconnected','Google Business Profile access removed');
+  }catch(e){showNotif('Disconnect failed',e.message);}
+  loadGbpConnection();
+}
 function handleSocialRedirectParams(){
   const params=new URLSearchParams(window.location.search);
-  const connected=params.get('social_connected');
-  const error=params.get('social_error');
-  if(connected)showNotif('Connected',connected.charAt(0).toUpperCase()+connected.slice(1)+' is now connected');
-  if(error)showNotif('Connection failed',error);
-  if(connected||error){
-    params.delete('social_connected');params.delete('social_error');
+  // Every OAuth callback in this app (organic Meta, Meta Ads, Google Ads,
+  // Google Business Profile) redirects back here with its own pair of
+  // query params — handled generically so a new one just needs an entry
+  // below, not a new handler function.
+  const pairs=[
+    ['social_connected',v=>'Connected',v=>v.charAt(0).toUpperCase()+v.slice(1)+' is now connected'],
+    ['social_error',null,v=>v],
+    ['ads_connected',v=>'Ads connected',v=>(v==='meta'?'Meta':'Google')+' Ads is now connected'],
+    ['ads_error',null,v=>v],
+    ['gbp_connected',()=>'Connected','Google Business Profile is now connected'],
+    ['gbp_error',null,v=>v]
+  ];
+  let touched=false;
+  for(const [key,titleFn,bodyFn] of pairs){
+    const v=params.get(key);
+    if(!v)continue;
+    touched=true;
+    const isError=key.endsWith('_error');
+    showNotif(isError?'Connection failed':(typeof titleFn==='function'?titleFn(v):titleFn),typeof bodyFn==='function'?bodyFn(v):bodyFn);
+    params.delete(key);
+  }
+  if(touched){
     const qs=params.toString();
     window.history.replaceState({},'',window.location.pathname+(qs?'?'+qs:''));
+    loadAdsStatus();loadGbpConnection();loadSocialConnections();
   }
 }
 async function sendReviewRequest(){
@@ -2565,7 +2617,6 @@ function testCred(platform){
     instagram:{need:['cred-ig-token','cred-ig-id'],statusEl:'cred-ig-s'},
     facebook:{need:['cred-fb-token','cred-fb-id'],statusEl:'cred-fb-s'},
     linkedin:{need:['cred-li-token','cred-li-urn'],statusEl:'cred-li-s'},
-    google:{need:['cred-go-token','cred-go-loc'],statusEl:'cred-go-s'},
     yelp:{need:['cred-yw-email','cred-yw-key'],statusEl:'cred-yw-s'},
     houzz:{need:['cred-hz-email','cred-hz-pass'],statusEl:'cred-hz-s'},
     website:{need:['cred-wp-url','cred-wp-pass','cred-wp-user'],statusEl:'cred-wp-s'},
@@ -2634,7 +2685,8 @@ async function runPublish(platforms,text){
   if(btn)btn.disabled=true;if(spin)spin.style.display='block';if(results)results.innerHTML='';
 
   const metaTargets=platforms.filter(p=>p==='facebook'||p==='instagram');
-  const demoTargets=platforms.filter(p=>p!=='facebook'&&p!=='instagram');
+  const gbpTargets=platforms.filter(p=>p==='google');
+  const demoTargets=platforms.filter(p=>p!=='facebook'&&p!=='instagram'&&p!=='google');
 
   if(metaTargets.includes('instagram')&&!firstHostedImageUrl()){
     showNotif('No image attached','Instagram requires an image — attach one below or the Instagram post will fail');
@@ -2646,7 +2698,7 @@ async function runPublish(platforms,text){
     wrap.innerHTML=`<span style="font-size:16px">${platIcon(plat)}</span><strong style="color:var(--ink)">${plat}</strong><span style="color:var(--ink3);margin-left:auto" id="pr-${plat}">⏳ Publishing...</span>`;
     if(results)results.appendChild(wrap);
   }
-  [...metaTargets,...demoTargets].forEach(addRow);
+  [...metaTargets,...gbpTargets,...demoTargets].forEach(addRow);
 
   if(metaTargets.length){
     if(!metaConnection){
@@ -2675,6 +2727,21 @@ async function runPublish(platforms,text){
     }
   }
 
+  if(gbpTargets.length){
+    const cell=document.getElementById('pr-google');
+    if(!gbpConnection){
+      if(cell)cell.innerHTML='<span style="color:var(--amber)">⚠ Not connected</span> · go to ⚙ Credentials';
+    }else{
+      try{
+        const r=await fetch('/api/gbp/post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({summary:text,imageUrl:firstHostedImageUrl()})});
+        const d=await r.json();
+        if(cell)cell.innerHTML=r.ok?'<span style="color:var(--green)">✓ Published</span> · live post':`<span style="color:var(--red)">✗ ${d.error?.message||'Failed'}</span>`;
+      }catch(e){
+        if(cell)cell.innerHTML='<span style="color:var(--red)">✗ Network error</span>';
+      }
+    }
+  }
+
   for(const plat of demoTargets){
     await new Promise(r=>setTimeout(r,600+Math.random()*900));
     const ok=checkCred(plat);
@@ -2695,7 +2762,7 @@ function checkCred(platform){
   try{
     const raw=localStorage.getItem('eagle_creds');if(!raw)return false;
     const d=JSON.parse(raw);
-    const map={instagram:['cred-ig-token','cred-ig-id'],facebook:['cred-fb-token','cred-fb-id'],linkedin:['cred-li-token','cred-li-urn'],google:['cred-go-token','cred-go-loc'],yelp:['cred-yw-email','cred-yw-key'],houzz:['cred-hz-email','cred-hz-pass'],website:['cred-wp-url','cred-wp-pass','cred-wp-user'],nextdoor:['cred-nd-email','cred-nd-pass']};
+    const map={instagram:['cred-ig-token','cred-ig-id'],facebook:['cred-fb-token','cred-fb-id'],linkedin:['cred-li-token','cred-li-urn'],yelp:['cred-yw-email','cred-yw-key'],houzz:['cred-hz-email','cred-hz-pass'],website:['cred-wp-url','cred-wp-pass','cred-wp-user'],nextdoor:['cred-nd-email','cred-nd-pass']};
     const need=map[platform]||[];
     return need.every(k=>d[k]&&d[k].trim());
   }catch(e){return false;}
@@ -3219,7 +3286,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
     </div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Platforms</div><div class="ss">Facebook &amp; Instagram post for real once connected in the Credentials tab · other platforms remain demo-only until real API credentials are added</div></div></div>
+    <div class="sh"><div><div class="st" style="font-size:18px">Platforms</div><div class="ss">Facebook, Instagram &amp; Google Business post for real once connected in the Credentials tab · Yelp/Houzz/Nextdoor/Website have no public posting API for any app to use — see the readiness report</div></div></div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       <div class="platform-card">
         <div class="platform-icon pi-ig">📸</div>
@@ -3496,18 +3563,14 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       </div>
       <div class="sm" id="cred-li-s"></div>
     </div>
-    <div class="platform-card">
+    <div class="platform-card" id="gbp-connect-card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
         <div class="platform-icon pi-go" style="width:36px;height:36px;font-size:18px;margin:0">🌟</div>
-        <div><div class="platform-name">Google Business</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2)">65 reviews · 4.9 ★</div></div>
+        <div><div class="platform-name">Google Business Profile</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2)" class="gbp-sub">Not connected</div></div>
       </div>
-      <div class="cred-row"><div class="cred-label">Google OAuth Token</div><input class="cred-input" id="cred-go-token" type="password" placeholder="Google Business Profile OAuth token" autocomplete="off"></div>
-      <div class="cred-row"><div class="cred-label">Location ID</div><input class="cred-input" id="cred-go-loc" placeholder="accounts/XXXXX/locations/XXXXX" autocomplete="off"></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-        <button class="btn-xs p" onclick="testCred('google')">Test Connection</button>
-        <button class="btn-xs" onclick="window.open('https://console.cloud.google.com/','_blank')">Get Token ↗</button>
-      </div>
-      <div class="sm" id="cred-go-s"></div>
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:11px">Real posting via Google's Business Profile API — no pasted tokens. Log in with Google, pick your listing, and Eagle I can publish updates directly to it.</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" class="gbp-actions"></div>
+      <div class="sm" id="gbp-connect-s"></div>
     </div>
     <div class="platform-card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">

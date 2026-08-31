@@ -87,6 +87,24 @@ manual step the tenant takes in Meta Ads Manager / Google Ads. A daily-budget sa
 ceiling ($1,000/day, see `MAX_DAILY_BUDGET_CENTS` in `routes/ads.js`) is enforced
 server-side and isn't exposed as a setting.
 
+## Google Business Profile posting
+
+`routes/gbp.js` posts real updates to a Business Profile listing via Google's
+"local posts" API — unlike Yelp/Houzz/Nextdoor (which have no public posting API at
+all, see the readiness report's "Can't be fully run through AI" section), this one is
+real and buildable, just gated behind Google's own manual review. A local post is
+organic content, not ad spend, so — unlike `routes/ads.js` — it publishes immediately,
+nothing is created "paused."
+
+Needs `GOOGLE_GBP_CLIENT_ID`, `GOOGLE_GBP_CLIENT_SECRET`, `GOOGLE_GBP_REDIRECT_URI` (a
+Google Cloud OAuth client with the `business.manage` scope — can reuse the same Cloud
+project as Places/Google Ads, with its own OAuth client and redirect URI). The tenant's
+Google login also needs **Business Profile API access approved by Google** — a separate
+manual request at [Google's Basic API Access form](https://support.google.com/business/contact/api_default)
+(their own listing must be 60+ days old and verified; Google's stated review window is
+7–10 business days, reported as ranging up to several weeks) — not something this app
+can obtain on a tenant's behalf.
+
 ## Instagram image hosting
 
 `routes/images.js` stores uploaded post images in Postgres (`post_images`, bytea) and

@@ -245,6 +245,44 @@ describe('"not configured" fallbacks (external keys unset in this test run)', ()
     const r = await client.get('/api/ads/google/connect');
     assert.equal(r.status, 503);
   });
+
+  test('Google Business Profile post returns a clean 503, not a crash', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('gbpcheck'), password: 'TestPass1234!', companyName: 'GBP Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.post('/api/gbp/post', { summary: 'hello' });
+    assert.equal(r.status, 503);
+    const body = await r.json();
+    assert.match(body.error.message, /not configured/i);
+  });
+
+  test('Google Business Profile OAuth connect returns a clean 503, not a crash', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('gbpoauth'), password: 'TestPass1234!', companyName: 'GBP OAuth Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.get('/api/gbp/connect');
+    assert.equal(r.status, 503);
+  });
+
+  test('Google Business Profile status reports unconfigured, not a crash', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('gbpstatus'), password: 'TestPass1234!', companyName: 'GBP Status Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.get('/api/gbp/status');
+    assert.equal(r.status, 200);
+    const body = await r.json();
+    assert.equal(body.configured, false);
+    assert.equal(body.connected, false);
+  });
 });
 
 describe('image hosting (routes/images.js)', () => {

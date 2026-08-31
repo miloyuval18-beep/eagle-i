@@ -18,6 +18,7 @@ const permitsRoutes = require('./routes/permits');
 const signalsRoutes = require('./routes/signals');
 const imagesRoutes = require('./routes/images');
 const adsRoutes = require('./routes/ads');
+const gbpRoutes = require('./routes/gbp');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 
@@ -76,6 +77,7 @@ app.use(permitsRoutes);
 app.use(signalsRoutes);
 app.use(imagesRoutes);
 app.use(adsRoutes);
+app.use(gbpRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));

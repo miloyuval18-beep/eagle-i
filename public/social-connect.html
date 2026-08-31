@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Eagle I — Choose a Page</title>
+<title>Eagle I — Choose an Account</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Exo+2:wght@400;500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -25,26 +25,68 @@ h1{font-family:var(--fh);font-size:22px;letter-spacing:1px;margin-bottom:6px}
 </head>
 <body>
 <div class="card">
-  <h1>Choose a Page to connect</h1>
-  <div class="sub">Your Facebook account manages more than one Page</div>
-  <div id="pages"><div class="status">Loading your Pages...</div></div>
+  <h1 id="title">Choose an account to connect</h1>
+  <div class="sub" id="sub">Loading...</div>
+  <div id="rows"><div class="status">Loading...</div></div>
   <div class="err" id="err"></div>
 </div>
 
 <script>
+// This page handles the "pick one" step for every OAuth flow in this app
+// that can return more than one connectable account/page/location — Meta
+// Pages (organic + ads re-auth), Google Ads customer accounts, and Google
+// Business Profile locations. Which one loaded is read from ?provider=.
+const PROVIDERS={
+  meta:{
+    title:'Choose a Page to connect', sub:'Your Facebook account manages more than one Page',
+    listUrl:'/api/social/meta/pending-pages', listKey:'pages',
+    rowLabel:p=>p.name, rowKey:p=>p.id,
+    selectUrl:'/api/social/meta/select-page', selectBody:id=>({pageId:id}),
+    redirectOnSuccess:'/?social_connected=facebook'
+  },
+  meta_ads:{
+    title:'Choose a Page to connect', sub:'Your Facebook account manages more than one Page',
+    listUrl:'/api/social/meta/pending-pages', listKey:'pages',
+    rowLabel:p=>p.name, rowKey:p=>p.id,
+    selectUrl:'/api/social/meta/select-page', selectBody:id=>({pageId:id}),
+    redirectOnSuccess:'/?ads_connected=meta'
+  },
+  google_ads:{
+    title:'Choose a Google Ads account', sub:'Your Google login manages more than one Ads account',
+    listUrl:'/api/ads/google/pending-customers', listKey:'customerIds',
+    rowLabel:id=>id, rowKey:id=>id,
+    selectUrl:'/api/ads/google/select-customer', selectBody:id=>({customerId:id}),
+    redirectOnSuccess:'/?ads_connected=google'
+  },
+  gbp:{
+    title:'Choose a Business Profile location', sub:'Your Google login manages more than one location',
+    listUrl:'/api/gbp/pending-locations', listKey:'options',
+    rowLabel:o=>o.locationName||o.locationId, rowKey:o=>o.locationId,
+    selectUrl:'/api/gbp/select-location', selectBody:id=>({locationId:id}),
+    redirectOnSuccess:'/?gbp_connected=1'
+  }
+};
+const provider=PROVIDERS[new URLSearchParams(window.location.search).get('provider')]||PROVIDERS.meta;
+
 async function load(){
-  const wrap=document.getElementById('pages');
+  document.getElementById('title').textContent=provider.title;
+  document.getElementById('sub').textContent=provider.sub;
+  const wrap=document.getElementById('rows');
   const err=document.getElementById('err');
   try{
-    const r=await fetch('/api/social/meta/pending-pages');
+    const r=await fetch(provider.listUrl);
     const d=await r.json();
-    if(!d.pages || !d.pages.length){
+    const items=d[provider.listKey]||[];
+    if(!items.length){
       wrap.innerHTML='';
-      err.textContent='No pending connection found — start again from the dashboard\'s Social HQ tab.';
+      err.textContent='No pending connection found — start again from the dashboard.';
       err.style.display='block';
       return;
     }
-    wrap.innerHTML=d.pages.map(p=>`<div class="page-row" onclick="choose('${p.id}')"><span class="page-name">${p.name}</span><span class="page-go">Connect →</span></div>`).join('');
+    wrap.innerHTML=items.map(item=>{
+      const key=provider.rowKey(item).replace(/'/g,"\\'");
+      return `<div class="page-row" onclick="choose('${key}')"><span class="page-name">${provider.rowLabel(item)}</span><span class="page-go">Connect →</span></div>`;
+    }).join('');
   }catch(e){
     wrap.innerHTML='';
     err.textContent='Network error: '+e.message;
@@ -52,18 +94,18 @@ async function load(){
   }
 }
 
-async function choose(pageId){
+async function choose(key){
   const err=document.getElementById('err');
   err.style.display='none';
   try{
-    const r=await fetch('/api/social/meta/select-page',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pageId})});
+    const r=await fetch(provider.selectUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(provider.selectBody(key))});
     const d=await r.json();
     if(!r.ok){
       err.textContent=d.error?.message||'Connection failed';
       err.style.display='block';
       return;
     }
-    window.location.href='/?social_connected=facebook';
+    window.location.href=provider.redirectOnSuccess;
   }catch(e){
     err.textContent='Network error: '+e.message;
     err.style.display='block';
