@@ -29,6 +29,21 @@ and the whole site requires an HTTP login before anything loads — the browser 
 built-in username/password prompt. Leave either one unset and the site stays open (this is
 the default, so local dev needs no config). No new dependency, no database.
 
+## Tests
+
+```bash
+npm test
+```
+
+Runs `test/unit.test.js` (pure logic, no DB/network) and `test/integration.test.js`
+(spins up a real local server against the real `DATABASE_URL` from `.env`, exercises
+auth/tenant-isolation/usage-caps/permits/error-handling over real HTTP, then deletes
+every tenant it created). There's no separate test database — `ANTHROPIC_API_KEY`,
+`GOOGLE_PLACES_API_KEY`, `RESEND_API_KEY`, and `STRIPE_SECRET_KEY` are deliberately
+unset for the test run so the "service not configured" fallback paths are what gets
+asserted; those same routes behave differently once real keys are present. See
+`test/helpers.js` for details.
+
 ## Notes
 
 - `ANTHROPIC_API_KEY`, `SITE_USER`, `SITE_PASSWORD` must never be committed. `.env` is gitignored; only `.env.example` (no real values) is tracked.

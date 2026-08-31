@@ -15,6 +15,23 @@ const leadsRoutes = require('./routes/leads');
 const reviewsRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');
 const permitsRoutes = require('./routes/permits');
+const { sendCrashAlert } = require('./lib/alerting');
+
+// Last-resort safety net: anything that escapes every route's own try/catch
+// (a genuine bug, not a "service not configured" 4xx) gets emailed to the
+// admin instead of silently vanishing into Render's logs. Not a substitute
+// for real uptime monitoring — see the "safety nets" note in project memory.
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+  sendCrashAlert('Uncaught exception', err.message, err.stack || '')
+    .finally(() => process.exit(1)); // process state is unreliable after this — let Render restart it
+});
+process.on('unhandledRejection', (reason) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : '';
+  console.error('Unhandled promise rejection:', reason);
+  sendCrashAlert('Unhandled promise rejection', message, stack);
+});
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -26,6 +43,17 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), handl
 
 // 2mb accommodates a base64-encoded logo upload (client caps the source file at 1MB).
 app.use(express.json({ limit: '2mb' }));
+// A malformed JSON body throws inside express.json() itself, before any
+// route runs — without this it falls through to Express's default HTML
+// error page, breaking the "every error is JSON" contract every route
+// otherwise follows. This is a client mistake, not a server fault, so it
+// isn't alerted on.
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: { message: 'Malformed JSON in request body.' } });
+  }
+  next(err);
+});
 app.use(sessionMiddleware());
 
 // Public, unauthenticated pages (login/signup/onboarding UI).
@@ -65,6 +93,17 @@ app.get(['/', '/index.html'], async (req, res) => {
 
 // Everything else static (none of it should contain per-tenant secrets).
 app.use(express.static(path.join(__dirname), { index: false }));
+
+// Last-resort handler for any route that calls next(err) instead of handling
+// its own error (every route in this codebase currently self-handles via
+// try/catch, so this mainly guards future code) — alerts the admin and
+// returns clean JSON instead of Express's default HTML error page.
+app.use((err, req, res, next) => {
+  console.error('Unhandled route error:', err);
+  sendCrashAlert('Unhandled route error', err.message, `${req.method} ${req.originalUrl}\n${err.stack || ''}`);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: { message: 'Internal server error.' } });
+});
 
 app.listen(PORT, () => {
   console.log(`Eagle I server running at http://localhost:${PORT}`);
