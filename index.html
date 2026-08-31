@@ -1836,7 +1836,6 @@ async function bootstrap(){
 
   handleSocialRedirectParams();
   loadSocialConnections();
-  loadScheduledPosts();
   loadInbox();
   loadLandingPageState();
   loadReviewRequests();
@@ -2389,24 +2388,8 @@ async function publishOne(platform){
   if(!text){showNotif('Empty post','Write something or use AI Generate');return;}
   await runPublish([platform],text);
 }
-function computeScheduledAt(sched){
-  if(sched==='custom'){
-    const v=document.getElementById('post-schedule-custom')?.value;
-    if(!v)return null;
-    const d=new Date(v);
-    return isNaN(d.getTime())?null:d.toISOString();
-  }
-  const d=new Date();
-  d.setDate(d.getDate()+1);
-  if(sched==='morning')d.setHours(8,0,0,0);
-  else if(sched==='noon')d.setHours(12,0,0,0);
-  else if(sched==='evening')d.setHours(18,0,0,0);
-  else return null;
-  return d.toISOString();
-}
 async function runPublish(platforms,text){
   const btn=document.getElementById('post-btn'),spin=document.getElementById('post-spin');
-  const sched=document.getElementById('post-schedule')?.value||'now';
   const results=document.getElementById('post-results');
   if(btn)btn.disabled=true;if(spin)spin.style.display='block';if(results)results.innerHTML='';
 
@@ -2427,31 +2410,6 @@ async function runPublish(platforms,text){
         const cell=document.getElementById('pr-'+plat);
         if(cell)cell.innerHTML='<span style="color:var(--amber)">⚠ Not connected</span> · go to ⚙ Credentials';
       });
-    }else if(sched!=='now'){
-      const scheduledAt=computeScheduledAt(sched);
-      if(!scheduledAt){
-        metaTargets.forEach(plat=>{
-          const cell=document.getElementById('pr-'+plat);
-          if(cell)cell.innerHTML='<span style="color:var(--amber)">⚠ Pick a custom date/time</span>';
-        });
-      }else{
-        try{
-          const r=await fetch('/api/scheduled-posts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,targets:metaTargets,scheduledAt})});
-          const d=await r.json();
-          const when=r.ok?new Date(scheduledAt).toLocaleString():null;
-          metaTargets.forEach(plat=>{
-            const cell=document.getElementById('pr-'+plat);
-            if(!cell)return;
-            cell.innerHTML=r.ok?`<span style="color:var(--blue2)">📅 Scheduled</span> · ${when}`:`<span style="color:var(--red)">✗ ${d.error?.message||'Failed to schedule'}</span>`;
-          });
-          if(r.ok)loadScheduledPosts();
-        }catch(e){
-          metaTargets.forEach(plat=>{
-            const cell=document.getElementById('pr-'+plat);
-            if(cell)cell.innerHTML='<span style="color:var(--red)">✗ Network error</span>';
-          });
-        }
-      }
     }else{
       try{
         const r=await fetch('/api/social/meta/post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,targets:metaTargets})});
@@ -2479,14 +2437,14 @@ async function runPublish(platforms,text){
     const cell=document.getElementById('pr-'+plat);
     if(cell){
       if(ok){
-        cell.innerHTML=sched==='now'?'<span style="color:var(--green)">✓ Published (DEMO)</span> · would post via API with saved credentials':'<span style="color:var(--blue2)">📅 Scheduled (DEMO)</span> · '+sched;
+        cell.innerHTML='<span style="color:var(--green)">✓ Published (DEMO)</span> · would post via API with saved credentials';
       }else{
         cell.innerHTML='<span style="color:var(--amber)">⚠ No credentials saved</span> · go to ⚙ Credentials';
       }
     }
   }
   if(btn)btn.disabled=false;if(spin)spin.style.display='none';
-  addPostHistory(text,platforms,sched);
+  addPostHistory(text,platforms);
 }
 function platIcon(p){return ({instagram:'📸',facebook:'👤',linkedin:'🔗',google:'🌟',yelp:'⭐',houzz:'🏠',website:'🌐',nextdoor:'🏘️'})[p]||'📱';}
 function checkCred(platform){
@@ -2498,26 +2456,11 @@ function checkCred(platform){
     return need.every(k=>d[k]&&d[k].trim());
   }catch(e){return false;}
 }
-async function schedulePost(){
-  const ta=document.getElementById('post-content');
-  const text=(ta&&ta.value||'').trim();
-  if(!text){showNotif('Empty post','Write something or use AI Generate');return;}
-  const selected=Array.from(document.querySelectorAll('.plat-toggle.sel')).map(t=>t.getAttribute('data-plat'));
-  if(!selected.length){showNotif('No platforms','Select at least one platform');return;}
-  const sched=document.getElementById('post-schedule')?.value||'now';
-  if(sched==='now'){showNotif('Pick a time','Choose a schedule time above, or use "Publish" to post now');return;}
-  await runPublish(selected,text);
-  showNotif('Scheduled','See results and Upcoming Scheduled Posts below');
-}
 let postHistory=[];
-function addPostHistory(text,platforms,sched){
+function addPostHistory(text,platforms){
   const metaCount=platforms.filter(p=>p==='facebook'||p==='instagram').length;
-  const isScheduled=sched&&sched!=='now';
-  let tag;
-  if(metaCount===0)tag='DEMO';
-  else if(isScheduled)tag=metaCount===platforms.length?'SCHEDULED':'MIXED';
-  else tag=metaCount===platforms.length?'LIVE':'MIXED';
-  postHistory.unshift({text,platforms,when:sched||'now',at:new Date(),tag});
+  const tag=metaCount===0?'DEMO':(metaCount===platforms.length?'LIVE':'MIXED');
+  postHistory.unshift({text,platforms,at:new Date(),tag});
   renderPostHistory();
 }
 function renderPostHistory(){
@@ -2532,42 +2475,12 @@ function renderPostHistory(){
       </div>
       <div style="font-size:12px;color:var(--ink);line-height:1.5;white-space:pre-wrap">${p.text.length>240?p.text.slice(0,240)+'…':p.text}</div>
       <div style="margin-top:6px;display:flex;gap:5px">
-        <span style="font-family:var(--fm);font-size:8px;color:var(--green);background:rgba(0,217,122,.1);padding:2px 7px;border-radius:9px;letter-spacing:1px">${p.when==='now'?'PUBLISHED':'SCHEDULED · '+p.when}</span>
+        <span style="font-family:var(--fm);font-size:8px;color:var(--green);background:rgba(0,217,122,.1);padding:2px 7px;border-radius:9px;letter-spacing:1px">PUBLISHED</span>
         <span style="font-family:var(--fm);font-size:8px;color:${tagColor[p.tag]||'var(--ink3)'};letter-spacing:1px">${p.tag}</span>
       </div>
     </div>`).join('');
 }
 
-async function loadScheduledPosts(){
-  const el=document.getElementById('scheduled-posts-list');
-  if(!el)return;
-  try{
-    const r=await fetch('/api/scheduled-posts?status=pending');
-    const d=await r.json();
-    renderScheduledPosts(d.posts||[]);
-  }catch(e){/* leave existing content on transient failure */}
-}
-function renderScheduledPosts(posts){
-  const el=document.getElementById('scheduled-posts-list');if(!el)return;
-  if(!posts.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">No posts scheduled</div>';return;}
-  el.innerHTML=posts.map(p=>`
-    <div style="border:1px solid var(--bdr2);border-radius:var(--r2);padding:10px 12px;background:var(--bg3)" id="sp-${p.id}">
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
-        ${(p.targets||[]).map(plt=>'<span style="font-size:14px">'+platIcon(plt)+'</span>').join('')}
-        <span style="font-family:var(--fm);font-size:8px;color:var(--blue2);letter-spacing:1px;margin-left:auto">${new Date(p.scheduled_at).toLocaleString()}</span>
-      </div>
-      <div style="font-size:12px;color:var(--ink);line-height:1.5;white-space:pre-wrap">${(p.message||'').length>200?p.message.slice(0,200)+'…':p.message}</div>
-      <div style="margin-top:6px"><button class="btn-xs" onclick="cancelScheduledPost('${p.id}')">Cancel</button></div>
-    </div>`).join('');
-}
-async function cancelScheduledPost(id){
-  try{
-    const r=await fetch('/api/scheduled-posts/'+id,{method:'DELETE'});
-    if(!r.ok){const d=await r.json();showNotif('Could not cancel',d.error?.message||'');return;}
-    showNotif('Canceled','Scheduled post removed');
-    loadScheduledPosts();
-  }catch(e){showNotif('Network error',e.message);}
-}
 
 /* ---------- LEADS INBOX (real, from the published landing page) ---------- */
 let inboxLeads=[];
@@ -2998,19 +2911,10 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       </div>
       <div class="media-preview" id="media-preview"></div>
       <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:11px">
-        <select id="post-schedule" style="flex:1;min-width:130px" onchange="document.getElementById('post-schedule-custom').style.display=this.value==='custom'?'':'none'">
-          <option value="now">Post Now</option>
-          <option value="morning">Tomorrow 8 AM</option>
-          <option value="noon">Tomorrow Noon</option>
-          <option value="evening">Tomorrow 6 PM</option>
-          <option value="custom">Custom Time</option>
-        </select>
-        <input type="datetime-local" id="post-schedule-custom" style="display:none;flex:1;min-width:170px">
         <button class="btn btn-blue" id="post-btn" onclick="publishPost()" style="flex:2;min-width:180px;justify-content:center">
           <span class="spin" id="post-spin"></span>
           🚀 Publish to All Selected Platforms
         </button>
-        <button class="btn-ghost" onclick="schedulePost()">📅 Schedule</button>
       </div>
       <div style="margin-top:10px">
         <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Or publish to one platform only:</div>
@@ -3044,10 +2948,6 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       <div class="sh"><div><div class="st" style="font-size:18px">Post History & Impact</div><div class="ss">All posts · performance metrics · engagement rates</div></div></div>
       <div id="post-history" style="display:flex;flex-direction:column;gap:8px">
         <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Post history loads here after publishing</div>
-      </div>
-      <div class="sh" style="margin-top:18px"><div><div class="st" style="font-size:18px">Upcoming Scheduled Posts</div><div class="ss">Facebook &amp; Instagram · fires automatically at the scheduled time</div></div></div>
-      <div id="scheduled-posts-list" style="display:flex;flex-direction:column;gap:8px">
-        <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">No posts scheduled</div>
       </div>
     </div>
   </div>

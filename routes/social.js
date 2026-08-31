@@ -195,9 +195,6 @@ router.delete('/api/social/meta', requireAuth, async (req, res) => {
 // a publicly reachable image URL (no base64/file upload support) — Eagle I
 // has no image hosting configured yet, so an Instagram target without
 // imageUrl is rejected with a clear explanation rather than silently no-op'ing.
-// Shared by the live "Post Now" route below and the scheduled-posts
-// background worker (lib/scheduledPostsWorker.js), so both paths publish
-// through the exact same logic.
 async function publishToMeta(tenantId, { message, imageUrl, targets }) {
   if (!message || !message.trim()) {
     throw new Error('Post text is required.');

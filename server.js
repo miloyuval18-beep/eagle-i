@@ -11,8 +11,6 @@ const claudeRoutes = require('./routes/claude');
 const onboardingRoutes = require('./routes/onboarding');
 const { router: socialRoutes } = require('./routes/social');
 const { router: stripeRoutes, handleWebhook } = require('./routes/stripe');
-const scheduledPostsRoutes = require('./routes/scheduledPosts');
-const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
 const leadsRoutes = require('./routes/leads');
 const reviewsRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');
@@ -37,7 +35,6 @@ registerAuthRoutes(app);
 app.use(onboardingRoutes);
 app.use(claudeRoutes);
 app.use(socialRoutes);
-app.use(scheduledPostsRoutes);
 app.use(leadsRoutes);
 app.use(reviewsRoutes);
 app.use(adminRoutes);
@@ -74,5 +71,4 @@ app.listen(PORT, () => {
   for (const key of ['ANTHROPIC_API_KEY', 'DATABASE_URL', 'SESSION_SECRET', 'SOCIAL_CREDENTIALS_KEY', 'RESEND_API_KEY', 'GOOGLE_PLACES_API_KEY']) {
     if (!process.env[key]) console.warn(`WARNING: ${key} is not set.`);
   }
-  startScheduledPostsWorker();
 });
