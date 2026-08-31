@@ -194,6 +194,102 @@ describe('"not configured" fallbacks (external keys unset in this test run)', ()
     const r = await client.get('/api/vendors/places?category=roofing');
     assert.equal(r.status, 503);
   });
+
+  test('Meta Ads campaign creation returns a clean 503, not a crash', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('metaadscheck'), password: 'TestPass1234!', companyName: 'Meta Ads Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.post('/api/ads/meta/campaign', { name: 'Test', dailyBudgetCents: 2000, message: 'hi', link: 'https://example.com' });
+    assert.equal(r.status, 503);
+    const body = await r.json();
+    assert.match(body.error.message, /not configured/i);
+  });
+
+  test('Meta Ads OAuth connect returns a clean 503, not a crash', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('metaadsoauth'), password: 'TestPass1234!', companyName: 'Meta Ads OAuth Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.get('/api/ads/meta/connect');
+    assert.equal(r.status, 503);
+  });
+
+  test('Google Ads campaign creation returns a clean 503, not a crash', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('googleadscheck'), password: 'TestPass1234!', companyName: 'Google Ads Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.post('/api/ads/google/campaign', {
+      name: 'Test', dailyBudgetCents: 2000, finalUrl: 'https://example.com',
+      headlines: ['a', 'b', 'c'], descriptions: ['d', 'e']
+    });
+    assert.equal(r.status, 503);
+    const body = await r.json();
+    assert.match(body.error.message, /not configured/i);
+  });
+
+  test('Google Ads OAuth connect returns a clean 503, not a crash', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('googleadsoauth'), password: 'TestPass1234!', companyName: 'Google Ads OAuth Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.get('/api/ads/google/connect');
+    assert.equal(r.status, 503);
+  });
+});
+
+describe('image hosting (routes/images.js)', () => {
+  // A real 1x1 transparent PNG — small enough to keep the test fast, real
+  // enough to exercise the actual base64-decode/store/serve round trip.
+  const TINY_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+  test('uploads a real image and serves it back publicly with the right content type', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('imgupload'), password: 'TestPass1234!', companyName: 'Image Upload Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const upload = await client.post('/api/images/upload', { dataUrl: `data:image/png;base64,${TINY_PNG_BASE64}` });
+    assert.equal(upload.status, 200);
+    const uploadBody = await upload.json();
+    assert.ok(uploadBody.url.includes('/img/'));
+
+    // The serving route is public — fetch it with a fresh, unauthenticated
+    // client to confirm no session is required (Instagram's own servers
+    // can't send one).
+    const publicResp = await fetch(uploadBody.url);
+    assert.equal(publicResp.status, 200);
+    assert.equal(publicResp.headers.get('content-type'), 'image/png');
+    const bytes = Buffer.from(await publicResp.arrayBuffer());
+    assert.equal(bytes.toString('base64'), TINY_PNG_BASE64);
+  });
+
+  test('rejects a non-image upload with a clean 400', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('imgbad'), password: 'TestPass1234!', companyName: 'Image Bad Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.post('/api/images/upload', { dataUrl: 'not-a-data-url' });
+    assert.equal(r.status, 400);
+  });
+
+  test('unknown image id returns 404, not a crash', async () => {
+    const client = makeClient();
+    const r = await client.get('/img/00000000-0000-0000-0000-000000000000');
+    assert.equal(r.status, 404);
+  });
 });
 
 describe('signals: industry gating + real live data', () => {

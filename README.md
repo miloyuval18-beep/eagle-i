@@ -62,6 +62,40 @@ plenty. Run it from a machine with `DATABASE_URL` set to the real database (same
 not do (it does not store parcel-level owner names or addresses — only per-zip
 aggregates).
 
+## Real ad campaigns (Meta Ads + Google Ads)
+
+`routes/ads.js` creates real (always PAUSED) campaigns via each platform's own API —
+see that file's header comment for the full picture, including why neither has been
+exercised against a live account yet. Both are gated behind server config and return
+a clean 503 until it's supplied:
+
+- **Meta Ads**: `META_APP_ID`, `META_APP_SECRET` (same app as organic Facebook/Instagram
+  posting), plus its own `META_ADS_REDIRECT_URI` — a *second*, separately-registered
+  OAuth redirect URI in the Meta App dashboard (distinct from `META_REDIRECT_URI`),
+  because reconnecting for ads requests the additional `ads_management` permission.
+  A tenant also needs their own funded ad account (entered as `act_...` in Social HQ →
+  Ads) — Eagle I can't create or fund one for them.
+- **Google Ads**: `GOOGLE_ADS_DEVELOPER_TOKEN` (applied for separately at
+  [ads.google.com/aw/apicenter](https://ads.google.com/aw/apicenter) — this approval is
+  its own process, not something this app can obtain), `GOOGLE_ADS_CLIENT_ID`,
+  `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REDIRECT_URI` (a Google Cloud OAuth client
+  with the `adwords` scope enabled — can be the same Cloud project already used for
+  Places, with a new OAuth client).
+
+Every campaign created is left **PAUSED** — activating it (spending real money) is a
+manual step the tenant takes in Meta Ads Manager / Google Ads. A daily-budget safety
+ceiling ($1,000/day, see `MAX_DAILY_BUDGET_CENTS` in `routes/ads.js`) is enforced
+server-side and isn't exposed as a setting.
+
+## Instagram image hosting
+
+`routes/images.js` stores uploaded post images in Postgres (`post_images`, bytea) and
+serves them publicly at `/img/:id` — no new external account, no new dependency. This
+is what lets Instagram posting actually work: Instagram's Graph API requires a publicly
+reachable image URL, which Eagle I previously had no way to provide. Wired into the
+composer's existing drop-zone in `index.html` — dropping/selecting an image uploads it
+immediately and the resulting URL is used automatically when publishing to Instagram.
+
 ## Notes
 
 - `ANTHROPIC_API_KEY`, `SITE_USER`, `SITE_PASSWORD` must never be committed. `.env` is gitignored; only `.env.example` (no real values) is tracked.

@@ -16,6 +16,8 @@ const reviewsRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');
 const permitsRoutes = require('./routes/permits');
 const signalsRoutes = require('./routes/signals');
+const imagesRoutes = require('./routes/images');
+const adsRoutes = require('./routes/ads');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 
@@ -43,8 +45,10 @@ app.set('trust proxy', true); // Render sits behind a proxy; needed for real cli
 // must be mounted before express.json() parses (and consumes) the body.
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
-// 2mb accommodates a base64-encoded logo upload (client caps the source file at 1MB).
-app.use(express.json({ limit: '2mb' }));
+// 12mb accommodates a base64-encoded post image (routes/images.js caps the
+// raw file at 8MB; base64 adds ~33% overhead on top of that, plus a little
+// JSON envelope — 8MB raw comes to ~10.9MB encoded).
+app.use(express.json({ limit: '12mb' }));
 // A malformed JSON body throws inside express.json() itself, before any
 // route runs — without this it falls through to Express's default HTML
 // error page, breaking the "every error is JSON" contract every route
@@ -70,6 +74,8 @@ app.use(reviewsRoutes);
 app.use(adminRoutes);
 app.use(permitsRoutes);
 app.use(signalsRoutes);
+app.use(imagesRoutes);
+app.use(adsRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));

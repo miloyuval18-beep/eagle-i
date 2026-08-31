@@ -920,6 +920,7 @@ function goTo(id,btn){
   if(btn)btn.classList.add('active');
   if(id==='keywords')loadKw(false);
   if(id==='budget')renderBudget(10000);
+  if(id==='social')loadAdsStatus();
   tcTab=id;
   if(typeof TAB_CONTEXTS!=='undefined'){
     var ctx=TAB_CONTEXTS[id]||TAB_CONTEXTS['dash'];
@@ -2635,6 +2636,10 @@ async function runPublish(platforms,text){
   const metaTargets=platforms.filter(p=>p==='facebook'||p==='instagram');
   const demoTargets=platforms.filter(p=>p!=='facebook'&&p!=='instagram');
 
+  if(metaTargets.includes('instagram')&&!firstHostedImageUrl()){
+    showNotif('No image attached','Instagram requires an image — attach one below or the Instagram post will fail');
+  }
+
   function addRow(plat){
     const wrap=document.createElement('div');
     wrap.style.cssText='border:1px solid var(--bdr2);border-radius:var(--r);padding:9px 12px;margin-bottom:6px;background:var(--bg4);font-size:12px;display:flex;align-items:center;gap:9px';
@@ -2651,7 +2656,7 @@ async function runPublish(platforms,text){
       });
     }else{
       try{
-        const r=await fetch('/api/social/meta/post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,targets:metaTargets})});
+        const r=await fetch('/api/social/meta/post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,targets:metaTargets,imageUrl:firstHostedImageUrl()})});
         const d=await r.json();
         metaTargets.forEach(plat=>{
           const cell=document.getElementById('pr-'+plat);
@@ -2838,11 +2843,44 @@ async function loadSocialAnalytics(){
 }
 
 /* ---------- FILE DROP / UPLOAD ---------- */
-let uploadedFiles=[];
+// Images are really uploaded to Eagle I's own hosting (POST /api/images/upload
+// -> stored in Postgres, served publicly at /img/:id) so Instagram's Graph
+// API — which requires a publicly reachable image URL, not a file upload —
+// has something real to point at. Video isn't hosted here; the same
+// drop-zone still accepts video files for the (still cosmetic) multi-file
+// preview, but only images are actually uploaded/usable for a real post.
+let uploadedFiles=[]; // {file, status:'uploading'|'done'|'error', url, error}
+const MAX_UPLOAD_IMAGE_BYTES=8*1024*1024;
+
 function handleFiles(fileList){
   if(!fileList)return;
-  uploadedFiles=uploadedFiles.concat(Array.from(fileList).slice(0,20-uploadedFiles.length));
+  const room=20-uploadedFiles.length;
+  const incoming=Array.from(fileList).slice(0,room);
+  incoming.forEach(file=>{
+    const entry={file,status:file.type.startsWith('image/')?'uploading':'unsupported',url:null,error:null};
+    uploadedFiles.push(entry);
+    if(entry.status==='uploading')uploadImageFile(entry,file);
+  });
   renderMediaPreview();
+}
+function uploadImageFile(entry,file){
+  if(file.size>MAX_UPLOAD_IMAGE_BYTES){
+    entry.status='error';entry.error='Too large (max 8MB)';renderMediaPreview();return;
+  }
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    try{
+      const r=await fetch('/api/images/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dataUrl:reader.result})});
+      const d=await r.json();
+      if(!r.ok)throw new Error(d.error?.message||'Upload failed');
+      entry.status='done';entry.url=d.url;
+    }catch(e){
+      entry.status='error';entry.error=e.message;
+    }
+    renderMediaPreview();
+  };
+  reader.onerror=()=>{entry.status='error';entry.error='Could not read file';renderMediaPreview();};
+  reader.readAsDataURL(file);
 }
 function handleFileDrop(ev){
   ev.preventDefault();
@@ -2853,15 +2891,150 @@ function renderMediaPreview(){
   const wrap=document.getElementById('media-preview');if(!wrap)return;
   if(!uploadedFiles.length){wrap.innerHTML='';return;}
   wrap.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:8px';
-  wrap.innerHTML=uploadedFiles.map((f,i)=>`
-    <div style="position:relative;border:1px solid var(--bdr2);border-radius:var(--r);padding:6px 9px;background:var(--bg4);font-size:11px;color:var(--ink2);display:flex;align-items:center;gap:6px;max-width:200px">
+  wrap.innerHTML=uploadedFiles.map((entry,i)=>{
+    const f=entry.file;
+    const statusBadge=f.type.startsWith('image/')
+      ?(entry.status==='uploading'?'<span style="color:var(--ink3)">⏳ hosting...</span>'
+        :entry.status==='done'?'<span style="color:var(--green)">✓ hosted</span>'
+        :`<span style="color:var(--red)" title="${entry.error||''}">⚠ ${entry.error||'failed'}</span>`)
+      :'<span style="color:var(--ink3)">not hosted (video)</span>';
+    return `
+    <div style="position:relative;border:1px solid var(--bdr2);border-radius:var(--r);padding:6px 9px;background:var(--bg4);font-size:11px;color:var(--ink2);display:flex;align-items:center;gap:6px;max-width:220px">
       <span>${f.type.startsWith('image')?'🖼️':'🎬'}</span>
       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span>
+      ${statusBadge}
       <span style="cursor:pointer;color:var(--ink3);font-weight:bold" onclick="removeMedia(${i})">✕</span>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 function removeMedia(i){uploadedFiles.splice(i,1);renderMediaPreview();}
+// The first successfully-hosted image, if any — used as the imageUrl for
+// Instagram (and as the picture for a Meta Ads creative, see adsCreateMetaCampaign()).
+function firstHostedImageUrl(){
+  const hosted=uploadedFiles.find(e=>e.status==='done'&&e.url);
+  return hosted?hosted.url:null;
+}
+
+/* ---------- REAL AD CAMPAIGNS (Meta Ads + Google Ads) ---------- */
+// See routes/ads.js's header comment: both integrations are built against
+// each platform's real API, but neither has been exercised against a live
+// account — that needs a real funded ad account only the tenant can supply.
+async function loadAdsStatus(){
+  try{
+    const [metaR,googleR]=await Promise.all([fetch('/api/ads/meta/status'),fetch('/api/ads/google/status')]);
+    const meta=metaR.ok?await metaR.json():{configured:false};
+    const google=googleR.ok?await googleR.json():{configured:false};
+    renderAdsMeta(meta);
+    renderAdsGoogle(google);
+  }catch(e){
+    const m=document.getElementById('ads-meta-body');if(m)m.innerHTML='<div style="color:var(--red);font-size:12px">Failed to load: '+e.message+'</div>';
+    const g=document.getElementById('ads-google-body');if(g)g.innerHTML='<div style="color:var(--red);font-size:12px">Failed to load: '+e.message+'</div>';
+  }
+}
+function renderAdsMeta(s){
+  const el=document.getElementById('ads-meta-body');if(!el)return;
+  if(!s.configured){
+    el.innerHTML='<div style="color:var(--ink3);font-size:12px">Not configured on this server yet (needs META_APP_ID/META_APP_SECRET/META_ADS_REDIRECT_URI).</div>';
+    return;
+  }
+  if(!s.pageConnected){
+    el.innerHTML='<div style="color:var(--ink2);font-size:12px;margin-bottom:8px">Connect Facebook/Instagram with ad permissions first.</div><button class="btn-xs p" onclick="location.href=\'/api/ads/meta/connect\'">Connect Meta Ads</button>';
+    return;
+  }
+  if(!s.adAccountId){
+    el.innerHTML=`
+      <div style="color:var(--green);font-size:11px;margin-bottom:8px">✓ Connected with ads permission</div>
+      <div style="font-size:11px;color:var(--ink2);margin-bottom:5px">Add your Meta ad account id (Ads Manager → Account Overview):</div>
+      <div style="display:flex;gap:6px">
+        <input id="ads-meta-account-input" placeholder="act_1234567890" style="flex:1">
+        <button class="btn-xs p" onclick="adSaveMetaAdAccount()">Save</button>
+      </div>`;
+    return;
+  }
+  el.innerHTML=`
+    <div style="color:var(--green);font-size:11px;margin-bottom:10px">✓ Ad account ${s.adAccountId} connected</div>
+    <input id="ads-meta-name" placeholder="Campaign name" style="margin-bottom:6px;width:100%">
+    <input id="ads-meta-budget" type="number" min="1" step="1" placeholder="Daily budget ($)" style="margin-bottom:6px;width:100%">
+    <input id="ads-meta-link" placeholder="Destination link (https://...)" style="margin-bottom:6px;width:100%">
+    <textarea id="ads-meta-message" placeholder="Ad text" style="margin-bottom:6px;width:100%;min-height:60px"></textarea>
+    <div style="font-size:10px;color:var(--ink3);margin-bottom:6px">Uses the first hosted image from the composer above, if any.</div>
+    <button class="btn btn-blue" onclick="adCreateMetaCampaign()" style="width:100%;justify-content:center">Create Campaign (Paused)</button>`;
+}
+async function adSaveMetaAdAccount(){
+  const v=document.getElementById('ads-meta-account-input')?.value.trim();
+  if(!v){showNotif('Missing account id','Enter your Meta ad account id');return;}
+  try{
+    const r=await fetch('/api/ads/meta/ad-account',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({adAccountId:v})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed to save');
+    showNotif('Ad account saved',d.adAccountId);
+    loadAdsStatus();
+  }catch(e){showNotif('Failed',e.message);}
+}
+async function adCreateMetaCampaign(){
+  const name=document.getElementById('ads-meta-name')?.value.trim();
+  const budget=Number(document.getElementById('ads-meta-budget')?.value);
+  const link=document.getElementById('ads-meta-link')?.value.trim();
+  const message=document.getElementById('ads-meta-message')?.value.trim();
+  const out=document.getElementById('ads-result');
+  if(!name||!budget||!link||!message){showNotif('Missing fields','Fill in name, budget, link, and ad text');return;}
+  if(out)out.innerHTML='<div style="color:var(--ink3);font-size:12px">Creating campaign (paused)...</div>';
+  try{
+    const r=await fetch('/api/ads/meta/campaign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name,dailyBudgetCents:Math.round(budget*100),message,link,imageUrl:firstHostedImageUrl()
+    })});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed');
+    if(out)out.innerHTML=`<div class="ib"><div class="ibt">✓ Meta campaign created — PAUSED</div><div class="ibb">${d.note} <a href="${d.manageUrl}" target="_blank" rel="noopener">Open in Meta Ads Manager ↗</a></div></div>`;
+    showNotif('Campaign created','Paused — review and activate it in Meta Ads Manager');
+  }catch(e){
+    if(out)out.innerHTML=`<div class="ib"><div class="ibt" style="color:var(--red)">✗ Failed</div><div class="ibb">${e.message}</div></div>`;
+  }
+}
+function renderAdsGoogle(s){
+  const el=document.getElementById('ads-google-body');if(!el)return;
+  if(!s.configured){
+    el.innerHTML='<div style="color:var(--ink3);font-size:12px">Not configured on this server yet (needs GOOGLE_ADS_DEVELOPER_TOKEN/GOOGLE_ADS_CLIENT_ID/GOOGLE_ADS_CLIENT_SECRET/GOOGLE_ADS_REDIRECT_URI).</div>';
+    return;
+  }
+  if(!s.connected){
+    el.innerHTML='<div style="color:var(--ink2);font-size:12px;margin-bottom:8px">Connect your Google Ads account.</div><button class="btn-xs p" onclick="location.href=\'/api/ads/google/connect\'">Connect Google Ads</button>';
+    return;
+  }
+  el.innerHTML=`
+    <div style="color:var(--green);font-size:11px;margin-bottom:10px">✓ Account ${s.customerId} connected</div>
+    <input id="ads-google-name" placeholder="Campaign name" style="margin-bottom:6px;width:100%">
+    <input id="ads-google-budget" type="number" min="1" step="1" placeholder="Daily budget ($)" style="margin-bottom:6px;width:100%">
+    <input id="ads-google-url" placeholder="Landing page URL (https://...)" style="margin-bottom:6px;width:100%">
+    <textarea id="ads-google-headlines" placeholder="Headlines, one per line (3-15, max 30 chars each)" style="margin-bottom:6px;width:100%;min-height:56px"></textarea>
+    <textarea id="ads-google-descriptions" placeholder="Descriptions, one per line (2-4, max 90 chars each)" style="margin-bottom:6px;width:100%;min-height:44px"></textarea>
+    <input id="ads-google-keywords" placeholder="Keywords, comma-separated (optional)" style="margin-bottom:6px;width:100%">
+    <button class="btn btn-blue" onclick="adCreateGoogleCampaign()" style="width:100%;justify-content:center">Create Campaign (Paused)</button>`;
+}
+async function adCreateGoogleCampaign(){
+  const name=document.getElementById('ads-google-name')?.value.trim();
+  const budget=Number(document.getElementById('ads-google-budget')?.value);
+  const finalUrl=document.getElementById('ads-google-url')?.value.trim();
+  const headlines=(document.getElementById('ads-google-headlines')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  const descriptions=(document.getElementById('ads-google-descriptions')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  const keywords=(document.getElementById('ads-google-keywords')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const out=document.getElementById('ads-result');
+  if(!name||!budget||!finalUrl){showNotif('Missing fields','Fill in name, budget, and landing page URL');return;}
+  if(headlines.length<3){showNotif('Need more headlines','Google requires at least 3 headlines');return;}
+  if(descriptions.length<2){showNotif('Need more descriptions','Google requires at least 2 descriptions');return;}
+  if(out)out.innerHTML='<div style="color:var(--ink3);font-size:12px">Creating campaign (paused)...</div>';
+  try{
+    const r=await fetch('/api/ads/google/campaign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name,dailyBudgetCents:Math.round(budget*100),finalUrl,headlines,descriptions,keywords
+    })});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed');
+    if(out)out.innerHTML=`<div class="ib"><div class="ibt">✓ Google campaign created — PAUSED</div><div class="ibb">${d.note} <a href="${d.manageUrl}" target="_blank" rel="noopener">Open in Google Ads ↗</a></div></div>`;
+    showNotif('Campaign created','Paused — review and activate it in Google Ads');
+  }catch(e){
+    if(out)out.innerHTML=`<div class="ib"><div class="ibt" style="color:var(--red)">✗ Failed</div><div class="ibb">${e.message}</div></div>`;
+  }
+}
 
 /* ---------- NETWORKING EVENTS ---------- */
 async function loadTargetGroups(){
@@ -3172,6 +3345,24 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       <div class="sm" id="post-s"></div>
     </div>
   </div>
+
+  <!-- ==================== REAL AD CAMPAIGNS (Meta Ads + Google Ads) ==================== -->
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:18px">🎯 Real Ad Campaigns</div><div class="ss">Creates a real campaign via the Meta Ads / Google Ads API — always PAUSED. You review and turn it on yourself; Eagle I never activates spend.</div></div></div>
+    <div class="ib" style="margin-bottom:13px"><div class="ibt">⚠ Real money, once you activate it</div><div class="ibb">Every campaign created here is created <b>paused</b>. Nothing in Eagle I ever switches a campaign on — you do that in Meta Ads Manager / Google Ads yourself, after reviewing it. Daily budgets above $1,000 are blocked outright as a safety ceiling.</div></div>
+    <div class="g2">
+      <div class="card" id="ads-meta-card">
+        <div style="font-family:var(--fh);font-weight:600;margin-bottom:8px">Meta Ads (Facebook &amp; Instagram)</div>
+        <div id="ads-meta-body"><div style="color:var(--ink3);font-size:12px">Loading status...</div></div>
+      </div>
+      <div class="card" id="ads-google-card">
+        <div style="font-family:var(--fh);font-weight:600;margin-bottom:8px">Google Ads (Search)</div>
+        <div id="ads-google-body"><div style="color:var(--ink3);font-size:12px">Loading status...</div></div>
+      </div>
+    </div>
+    <div id="ads-result" style="margin-top:11px"></div>
+  </div>
+
   <div class="g2">
     <div>
       <div class="sh">

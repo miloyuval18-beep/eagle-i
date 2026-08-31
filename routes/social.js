@@ -265,4 +265,4 @@ router.post('/api/social/meta/post', requireAuth, async (req, res) => {
   }
 });
 
-module.exports = { router, publishToMeta };
+module.exports = { router, publishToMeta, connectPage, GRAPH_VERSION, GRAPH_BASE, graphGet };

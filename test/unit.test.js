@@ -9,6 +9,8 @@ const { escapeHtml } = require('../lib/landingPageTemplate');
 const { readXlsxFirstSheet } = require('../lib/xlsxReader');
 const { detectPermitSpikes } = require('../lib/houstonPermits');
 const { buildRealAcctHeaderIndex, parseRealAcctLine, aggregateZipValues } = require('../lib/hcadZipValues');
+const { budgetError } = require('../routes/ads');
+const { parseImageDataUrl } = require('../routes/images');
 
 describe('parseClaudeJson (lib/anthropic.js)', () => {
   test('parses well-formed JSON embedded in surrounding text', () => {
@@ -124,6 +126,64 @@ describe('HCAD real_acct.txt parsing (lib/hcadZipValues.js)', () => {
     const stats = aggregateZipValues(rows);
     assert.equal(stats[0].zip, 'B');
     assert.equal(stats[1].zip, 'A');
+  });
+});
+
+describe('budgetError (routes/ads.js)', () => {
+  test('rejects non-positive or non-numeric budgets', () => {
+    assert.match(budgetError(0), /positive number/);
+    assert.match(budgetError(-500), /positive number/);
+    assert.match(budgetError(NaN), /positive number/);
+    assert.match(budgetError(undefined), /positive number/);
+  });
+
+  test('rejects a budget below the $1/day floor', () => {
+    assert.match(budgetError(50), /at least \$1/);
+  });
+
+  test('rejects a budget above the $1,000/day safety ceiling', () => {
+    assert.match(budgetError(100001), /safety ceiling/);
+  });
+
+  test('accepts a budget within range', () => {
+    assert.equal(budgetError(5000), null);
+    assert.equal(budgetError(100), null); // exactly at the $1/day floor
+    assert.equal(budgetError(100000), null); // exactly at the $1,000/day ceiling
+  });
+});
+
+describe('parseImageDataUrl (routes/images.js)', () => {
+  const TINY_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+  test('accepts a well-formed PNG data URL', () => {
+    const result = parseImageDataUrl(`data:image/png;base64,${TINY_PNG_BASE64}`);
+    assert.equal(result.ok, true);
+    assert.equal(result.mimeType, 'image/png');
+    assert.ok(Buffer.isBuffer(result.buf));
+    assert.ok(result.buf.length > 0);
+  });
+
+  test('normalizes image/jpg to image/jpeg', () => {
+    const result = parseImageDataUrl(`data:image/jpg;base64,${TINY_PNG_BASE64}`);
+    assert.equal(result.ok, true);
+    assert.equal(result.mimeType, 'image/jpeg');
+  });
+
+  test('rejects a non-data-URL string', () => {
+    const result = parseImageDataUrl('https://example.com/image.png');
+    assert.equal(result.ok, false);
+  });
+
+  test('rejects an unsupported image type', () => {
+    const result = parseImageDataUrl(`data:image/gif;base64,${TINY_PNG_BASE64}`);
+    assert.equal(result.ok, false);
+  });
+
+  test('rejects an oversized image', () => {
+    const bigBase64 = Buffer.alloc(9 * 1024 * 1024).toString('base64'); // 9MB raw > 8MB cap
+    const result = parseImageDataUrl(`data:image/png;base64,${bigBase64}`);
+    assert.equal(result.ok, false);
+    assert.match(result.error, /too large/);
   });
 });
 
