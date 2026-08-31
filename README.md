@@ -44,6 +44,24 @@ unset for the test run so the "service not configured" fallback paths are what g
 asserted; those same routes behave differently once real keys are present. See
 `test/helpers.js` for details.
 
+## HCAD real home-value data
+
+```bash
+node scripts/importHcadZipValues.js            # downloads HCAD's public export, writes hcad_zip_stats
+node scripts/importHcadZipValues.js --dry-run   # same, but prints a summary instead of writing to the DB
+```
+
+Populates real, county-appraiser-sourced average/median home values per Houston-area
+zip (used by the Permits and Signals pages) from Harris Central Appraisal District's
+own public bulk export. This is a manual/periodic script, not something the live app
+runs — HCAD's export is a single ~200MB county-wide file (no per-address or per-zip
+API), refreshed by HCAD roughly annually, so re-running this a few times a year is
+plenty. Run it from a machine with `DATABASE_URL` set to the real database (same as
+`npm test` and `node-pg-migrate`) — it writes real rows into production. See
+`lib/hcadZipValues.js` and `scripts/importHcadZipValues.js` for what it does and does
+not do (it does not store parcel-level owner names or addresses — only per-zip
+aggregates).
+
 ## Notes
 
 - `ANTHROPIC_API_KEY`, `SITE_USER`, `SITE_PASSWORD` must never be committed. `.env` is gitignored; only `.env.example` (no real values) is tracked.

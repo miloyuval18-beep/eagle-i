@@ -8,6 +8,7 @@ const { getHighValueZipInfo, HOUSTON_HIGH_VALUE_ZIPS } = require('../lib/houston
 const { escapeHtml } = require('../lib/landingPageTemplate');
 const { readXlsxFirstSheet } = require('../lib/xlsxReader');
 const { detectPermitSpikes } = require('../lib/houstonPermits');
+const { buildRealAcctHeaderIndex, parseRealAcctLine, aggregateZipValues } = require('../lib/hcadZipValues');
 
 describe('parseClaudeJson (lib/anthropic.js)', () => {
   test('parses well-formed JSON embedded in surrounding text', () => {
@@ -67,6 +68,62 @@ describe('escapeHtml (lib/landingPageTemplate.js)', () => {
 describe('readXlsxFirstSheet (lib/xlsxReader.js)', () => {
   test('throws a clear error on a buffer that is not a zip at all', () => {
     assert.throws(() => readXlsxFirstSheet(Buffer.from('not a zip file')));
+  });
+});
+
+describe('HCAD real_acct.txt parsing (lib/hcadZipValues.js)', () => {
+  test('buildRealAcctHeaderIndex maps column names to positions', () => {
+    const idx = buildRealAcctHeaderIndex('acct\tyr\tsite_addr_3\ttot_mkt_val');
+    assert.equal(idx.acct, 0);
+    assert.equal(idx.site_addr_3, 2);
+    assert.equal(idx.tot_mkt_val, 3);
+  });
+
+  test('parseRealAcctLine extracts zip + market value from a real-shaped row', () => {
+    const idx = { site_addr_3: 2, tot_mkt_val: 3 };
+    const row = parseRealAcctLine(idx, 'X\tY\t77019\t450000');
+    assert.deepEqual(row, { zip: '77019', marketValue: 450000 });
+  });
+
+  test('parseRealAcctLine trims a zip+4 down to 5 digits', () => {
+    const idx = { site_addr_3: 0, tot_mkt_val: 1 };
+    const row = parseRealAcctLine(idx, '77019-1234\t450000');
+    assert.equal(row.zip, '77019');
+  });
+
+  test('parseRealAcctLine returns null for a blank/malformed row rather than throwing', () => {
+    const idx = { site_addr_3: 0, tot_mkt_val: 1 };
+    assert.equal(parseRealAcctLine(idx, ''), null);
+    assert.equal(parseRealAcctLine(idx, '\t'), null);
+    assert.equal(parseRealAcctLine(idx, 'notazip\t450000'), null);
+    assert.equal(parseRealAcctLine(idx, '77019\t0'), null);
+  });
+
+  test('aggregateZipValues computes avg/median/count per zip', () => {
+    const rows = [
+      { zip: '77019', marketValue: 100 },
+      { zip: '77019', marketValue: 200 },
+      { zip: '77019', marketValue: 300 },
+      { zip: '77002', marketValue: 50 }
+    ];
+    const stats = aggregateZipValues(rows);
+    const z19 = stats.find(s => s.zip === '77019');
+    assert.equal(z19.avgMarketValue, 200);
+    assert.equal(z19.medianMarketValue, 200);
+    assert.equal(z19.parcelCount, 3);
+    const z02 = stats.find(s => s.zip === '77002');
+    assert.equal(z02.avgMarketValue, 50);
+    assert.equal(z02.parcelCount, 1);
+  });
+
+  test('aggregateZipValues sorts by parcel count descending', () => {
+    const rows = [
+      { zip: 'A', marketValue: 1 },
+      { zip: 'B', marketValue: 1 }, { zip: 'B', marketValue: 1 }, { zip: 'B', marketValue: 1 }
+    ];
+    const stats = aggregateZipValues(rows);
+    assert.equal(stats[0].zip, 'B');
+    assert.equal(stats[1].zip, 'A');
   });
 });
 

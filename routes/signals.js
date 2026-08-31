@@ -15,6 +15,7 @@ const { requireAuth } = require('../auth');
 const { getActiveAlerts } = require('../lib/weatherSignals');
 const { getRecentPermits, detectPermitSpikes } = require('../lib/houstonPermits');
 const { getHighValueZipInfo } = require('../lib/houstonZipValues');
+const { getRealHcadZipStatsForZips } = require('../lib/hcadZipValues');
 const { generateJSON } = require('../lib/anthropic');
 const { checkAndIncrementUsage } = require('../lib/usage');
 
@@ -46,9 +47,16 @@ router.get('/api/signals', requireAuth, async (req, res) => {
     ]);
 
     const stormAlerts = (weather.alerts || []).filter(a => a.isStormTrigger);
-    const spikes = detectPermitSpikes(permitsData.records || []).map(s => {
+    const rawSpikes = detectPermitSpikes(permitsData.records || []);
+    const hcadByZip = await getRealHcadZipStatsForZips(rawSpikes.map(s => s.zip));
+    const spikes = rawSpikes.map(s => {
       const zipInfo = getHighValueZipInfo(s.zip);
-      return { ...s, neighborhood: zipInfo ? zipInfo.neighborhood : null, highValue: !!zipInfo };
+      return {
+        ...s,
+        neighborhood: zipInfo ? zipInfo.neighborhood : null,
+        highValue: !!zipInfo,
+        hcad: hcadByZip.get(s.zip) || null // real HCAD appraisal-district avg/median home value, when imported — see lib/hcadZipValues.js
+      };
     });
 
     res.json({
@@ -91,7 +99,11 @@ Return ONLY valid JSON: {"post":"social post text","email_subject":"subject line
       const zip = (context && context.zip) || '';
       const recentCount = (context && context.recentCount) || 0;
       const neighborhood = (context && context.neighborhood) || '';
-      prompt = `Real permit data just showed a genuine spike in building-permit activity in ZIP ${zip}${neighborhood ? ' (' + neighborhood + ')' : ''} — ${recentCount} permits filed this week, well above the recent average. Write a short outreach email ${tenant.company_name} could send to a real estate agent or homeowner contact in that ZIP mentioning this real trend, and phone ${profile.phone || '[phone]'}. This is a REAL data trend, not hypothetical.
+      const hcadAvgValue = context && context.hcadAvgValue;
+      const valueLine = hcadAvgValue
+        ? ` This ZIP's real average home value, from Harris County's own appraisal records, is $${Number(hcadAvgValue).toLocaleString()} — you may cite that exact figure, it is real, not estimated.`
+        : '';
+      prompt = `Real permit data just showed a genuine spike in building-permit activity in ZIP ${zip}${neighborhood ? ' (' + neighborhood + ')' : ''} — ${recentCount} permits filed this week, well above the recent average.${valueLine} Write a short outreach email ${tenant.company_name} could send to a real estate agent or homeowner contact in that ZIP mentioning this real trend, and phone ${profile.phone || '[phone]'}. This is a REAL data trend, not hypothetical.
 Return ONLY valid JSON: {"email_subject":"subject line","email_body":"email body"}`;
     }
 

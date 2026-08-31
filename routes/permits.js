@@ -6,6 +6,7 @@ const { query } = require('../db');
 const { requireAuth } = require('../auth');
 const { getRecentPermits } = require('../lib/houstonPermits');
 const { HOUSTON_HIGH_VALUE_ZIPS, getHighValueZipInfo } = require('../lib/houstonZipValues');
+const { getRealHcadZipStatsForZips } = require('../lib/hcadZipValues');
 
 const router = express.Router();
 const REAL_ESTATE_INDUSTRIES = new Set(['home_services', 'real_estate']);
@@ -27,13 +28,17 @@ router.get('/api/permits/high-value-areas', requireAuth, async (req, res) => {
       byZip.get(rec.zip).push(rec);
     }
 
+    const hcadByZip = await getRealHcadZipStatsForZips([...byZip.keys()]);
+
     const areas = [...byZip.entries()].map(([zip, permits]) => {
       const zipInfo = getHighValueZipInfo(zip);
+      const hcad = hcadByZip.get(zip) || null;
       return {
         zip,
         neighborhood: zipInfo ? zipInfo.neighborhood : null,
         approxMedianValue: zipInfo ? zipInfo.approxMedianValue : null,
         highValue: !!zipInfo,
+        hcad, // real HCAD appraisal-district data, when the import has covered this zip — see lib/hcadZipValues.js
         permitCount: permits.length,
         permits: permits
           .sort((a, b) => (b.permitDate || '').localeCompare(a.permitDate || ''))
@@ -41,10 +46,12 @@ router.get('/api/permits/high-value-areas', requireAuth, async (req, res) => {
       };
     });
 
-    // High-value tracked zips first (richest first), then everything else
-    // by permit volume — so the list is useful even for zips outside the
-    // curated reference table, just clearly unlabeled as "high value."
+    // Real HCAD data ranks first when present (it's the most trustworthy
+    // signal); the curated high-value list is the fallback ranking signal
+    // for zips HCAD import hasn't covered yet; permit volume breaks ties.
     areas.sort((a, b) => {
+      if (!!a.hcad !== !!b.hcad) return a.hcad ? -1 : 1;
+      if (a.hcad) return b.hcad.avgMarketValue - a.hcad.avgMarketValue;
       if (a.highValue !== b.highValue) return a.highValue ? -1 : 1;
       if (a.highValue) return b.approxMedianValue - a.approxMedianValue;
       return b.permitCount - a.permitCount;

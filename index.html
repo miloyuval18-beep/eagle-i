@@ -839,7 +839,7 @@ tbody tr:last-child td{border-bottom:none}
 <div class="wrap">
   <div class="sh"><div><div class="st">High-Value Area Permits</div><div class="ss">Real, current Houston building permits · sourced weekly from the city's own published reports</div></div>
   <button class="btn btn-blue" id="perm-btn" onclick="loadPerms(false)"><span class="spin" id="perm-spin"></span><svg id="perm-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Load Permits</button></div>
-  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 Real data — with two honest limits</div><div class="ibb">Pulled directly from the Houston Permitting Center's weekly published permit reports (real addresses, real permit types, updated weekly — not real-time). No owner name is included in this data, only the property address — which is exactly what's needed for postal mail (addressed to "Property Owner" or "Current Resident" is standard and doesn't require a name). "High-value" areas are a curated reference list of well-known Houston neighborhoods with approximate median home values from public real-estate reporting, not live appraisal data — zip codes outside that list still show real permits, just without a value label.</div></div>
+  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 Real data — with one honest limit</div><div class="ibb">Pulled directly from the Houston Permitting Center's weekly published permit reports (real addresses, real permit types, updated weekly — not real-time). No owner name is included in this data, only the property address — which is exactly what's needed for postal mail (addressed to "Property Owner" or "Current Resident" is standard and doesn't require a name). Home values marked <b>🏛️ REAL HCAD DATA</b> come directly from Harris Central Appraisal District's own public records (real average/median appraised value, real parcel counts) — see the badge on each zip. A small number of zips outside HCAD's imported set fall back to a curated reference list of well-known neighborhoods with approximate values from public real-estate reporting, clearly unlabeled as "HIGH VALUE" instead; zips with neither still show real permits, just without a value label.</div></div>
   <div id="perm-s" style="margin-bottom:10px"></div>
   <div id="perm-areas"><div style="text-align:center;padding:24px;color:var(--ink3)">Click "Load Permits" to pull this week's real Houston permit data</div></div>
   <div class="g2" style="margin-top:16px">
@@ -1192,7 +1192,8 @@ function renderSignals(d){
       <span class="badge b-blue" style="font-size:8px">📈 LIVE · +${sp.percentAboveAverage}% vs avg</span>
       <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 3px">ZIP ${sp.zip}${sp.neighborhood?' — '+sp.neighborhood:''}</div>
       <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">${sp.recentCount} permits filed this week vs a ${sp.priorAvgCount}/week average — real permit-volume data, not estimated.</div>
-      <button class="btn-xs p" onclick='draftSignalOutreach("permit_spike",${JSON.stringify({zip:sp.zip,recentCount:sp.recentCount,neighborhood:sp.neighborhood}).replace(/'/g,"&#39;")})'>✍️ Draft outreach</button>
+      ${sp.hcad?`<div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">🏛️ Real Harris County appraisal data: avg home value <b>$${sp.hcad.avgMarketValue.toLocaleString()}</b> · median $${sp.hcad.medianMarketValue.toLocaleString()} across ${sp.hcad.parcelCount.toLocaleString()} parcels (HCAD ${sp.hcad.taxYear})</div>`:''}
+      <button class="btn-xs p" onclick='draftSignalOutreach("permit_spike",${JSON.stringify({zip:sp.zip,recentCount:sp.recentCount,neighborhood:sp.neighborhood,hcadAvgValue:sp.hcad?sp.hcad.avgMarketValue:null}).replace(/'/g,"&#39;")})'>✍️ Draft outreach</button>
       <div id="sig-draft-p${i}" style="margin-top:8px"></div>
     </div>`;
   });
@@ -1804,9 +1805,9 @@ function renderPermAreas(areas){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
           <span class="ce">${a.zip}${a.neighborhood?' — '+a.neighborhood:''}</span>
-          ${a.highValue?'<span class="badge b-new" style="margin-left:7px">HIGH VALUE</span>':''}
+          ${a.hcad?'<span class="badge b-new" style="margin-left:7px">🏛️ REAL HCAD DATA</span>':a.highValue?'<span class="badge b-new" style="margin-left:7px">HIGH VALUE</span>':''}
         </div>
-        <span style="font-size:11px;color:var(--ink3)">${a.permitCount} permit${a.permitCount===1?'':'s'}${a.approxMedianValue?' · ~$'+a.approxMedianValue.toLocaleString()+' median':''}</span>
+        <span style="font-size:11px;color:var(--ink3)">${a.permitCount} permit${a.permitCount===1?'':'s'}${a.hcad?' · $'+a.hcad.avgMarketValue.toLocaleString()+' avg ('+a.hcad.parcelCount.toLocaleString()+' parcels, HCAD '+a.hcad.taxYear+')':a.approxMedianValue?' · ~$'+a.approxMedianValue.toLocaleString()+' median':''}</span>
       </div>
       <div class="g3">
         ${a.permits.slice(0,6).map(p=>`

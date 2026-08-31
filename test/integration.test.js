@@ -163,6 +163,10 @@ describe('permits: industry gating + real data', () => {
     const body = await r.json();
     assert.ok(Array.isArray(body.areas));
     assert.ok(body.totalPermits > 0, 'expected real permit records, got 0 — the live data source may be down');
+    // hcad is a real lookup against hcad_zip_stats (see lib/hcadZipValues.js)
+    // — it's `null` for any zip the import script hasn't covered in this
+    // environment, but the key must always be present, never missing.
+    if (body.areas.length) assert.ok('hcad' in body.areas[0]);
   }, { timeout: 30000 });
 });
 
@@ -216,6 +220,7 @@ describe('signals: industry gating + real live data', () => {
     const body = await r.json();
     assert.ok(Array.isArray(body.weatherAlerts), 'expected a real (possibly empty) weatherAlerts array from NWS — no key needed');
     assert.ok(Array.isArray(body.permitSpikes), 'expected a real (possibly empty) permitSpikes array from live permit data');
+    if (body.permitSpikes.length) assert.ok('hcad' in body.permitSpikes[0]);
   }, { timeout: 30000 });
 
   test('draft-outreach requires a valid type', async () => {
