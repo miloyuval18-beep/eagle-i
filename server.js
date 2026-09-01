@@ -11,6 +11,7 @@ const claudeRoutes = require('./routes/claude');
 const onboardingRoutes = require('./routes/onboarding');
 const { router: socialRoutes } = require('./routes/social');
 const { router: stripeRoutes, handleWebhook } = require('./routes/stripe');
+const { handleInboundWebhook } = require('./routes/inboundEmail');
 const leadsRoutes = require('./routes/leads');
 const reviewsRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');
@@ -47,6 +48,8 @@ app.set('trust proxy', true); // Render sits behind a proxy; needed for real cli
 // Stripe requires the RAW body to verify webhook signatures, so this route
 // must be mounted before express.json() parses (and consumes) the body.
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+// Same requirement for Resend's inbound-email webhook signature (svix).
+app.post('/api/webhooks/resend-inbound', express.raw({ type: 'application/json' }), handleInboundWebhook);
 
 // 12mb accommodates a base64-encoded post image (routes/images.js caps the
 // raw file at 8MB; base64 adds ~33% overhead on top of that, plus a little
@@ -122,6 +125,9 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Eagle I server running at http://localhost:${PORT}`);
   for (const key of ['ANTHROPIC_API_KEY', 'DATABASE_URL', 'SESSION_SECRET', 'SOCIAL_CREDENTIALS_KEY', 'RESEND_API_KEY', 'GOOGLE_PLACES_API_KEY']) {
+    // RESEND_INBOUND_DOMAIN/RESEND_WEBHOOK_SECRET are deliberately not in
+    // this list — both are optional (reply-capture degrades gracefully to
+    // reply-straight-to-the-tenant without them, see routes/inboundEmail.js).
     if (!process.env[key]) console.warn(`WARNING: ${key} is not set.`);
   }
   startWeatherSignalPoller();

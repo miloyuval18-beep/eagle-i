@@ -128,6 +128,44 @@ while the instance is asleep fires late on next wake rather than being
 dropped (the query is "still pending," not "due exactly now") — exact-time
 firing needs a paid always-on instance, which is a hosting decision for later.
 
+## Vendor outreach + review requests, with reply capture
+
+Two real, one-at-a-time email flows, both through Resend:
+
+- **Vendor outreach** (Growth & Partners → Vendors): `lib/vendorContactFinder.js`
+  reads a real vendor's own public website for a published contact email (SSRF-
+  guarded — see that file's header comment), the tenant reviews/edits it, and a
+  single **Find & Send** click sends the AI-drafted outreach message — always
+  with a confirm popup showing the exact recipient + message first. Deliberately
+  never a bulk/automatic blast: these are businesses with no relationship to the
+  tenant, and no CAN-SPAM-compliant automated version of "email a stranger"
+  exists. `routes/onboarding.js`'s `/api/vendors/outreach-email` sends it and
+  logs it to `vendor_outreach`; `/api/vendors/outreach` lists the tenant's
+  history, shown on the same page.
+- **Review requests** (Social HQ): unchanged from before, still one customer at
+  a time via `routes/reviews.js`, logged to `review_requests`.
+
+**Reply capture** (optional, on top of both): normally a reply just lands in
+whatever `RESEND_FROM_EMAIL` is, invisible to Eagle I. With `RESEND_INBOUND_DOMAIN`
+and `RESEND_WEBHOOK_SECRET` set, each outbound email's Reply-To becomes a
+`reply+vendor-<id>@…` / `reply+review-<id>@…` address Resend hands to
+`routes/inboundEmail.js` via a webhook (`POST /api/webhooks/resend-inbound`,
+signature-verified with `svix`). That handler fetches the full reply, saves it
+to the matching row, and relays a copy to the tenant's own email — so the reply
+shows up both on the dashboard (right under the message it answered) and in the
+tenant's inbox. Setup is two steps in Resend's dashboard, neither of which this
+code can do on the app's behalf:
+1. Enable email receiving — the zero-DNS-setup option is a Resend-managed
+   `<id>.resend.app` address; a custom domain needs an MX record added instead.
+   That domain is `RESEND_INBOUND_DOMAIN`.
+2. Add a webhook for the `email.received` event, pointed at
+   `https://<your-app>/api/webhooks/resend-inbound`, and put its signing secret
+   in `RESEND_WEBHOOK_SECRET`.
+
+Without either var, both flows still work exactly as before — Reply-To just
+falls back to the tenant's own business email directly, so a reply still
+reaches them via plain email routing, just not captured/shown here.
+
 ## Instagram image hosting
 
 `routes/images.js` stores uploaded post images in Postgres (`post_images`, bytea) and

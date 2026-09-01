@@ -851,6 +851,12 @@ tbody tr:last-child td{border-bottom:none}
     <div id="out-msgs"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Select partner type and channel, then generate</div></div>
     <div class="sm" id="out-s"></div>
   </div>
+  <div class="section" style="margin-top:20px">
+    <div class="sh"><div><div class="st">Sent Outreach &amp; Replies</div><div class="ss">Every real "Find &amp; Send" you've sent, and any reply that's come back</div></div></div>
+    <div id="vendor-outreach-list" style="display:flex;flex-direction:column;gap:8px">
+      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No outreach sent yet</div>
+    </div>
+  </div>
   </div>
 
   <div class="subpage" id="sub-growth-network">
@@ -1869,53 +1875,80 @@ async function loadRealVendors(category,idx,idPrefix){
           <div style="color:var(--ink2)">${v.rating?('★ '+v.rating+' ('+(v.reviewCount||0)+' reviews)'):'No rating yet'}${v.address?' · '+v.address:''}</div>
           ${v.website?`<a href="${v.website}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
           <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
-            <button class="btn-xs" onclick="findVendorEmail(this,'${escAttr(v.website||'')}')">🔍 Find Email</button>
-            <input type="email" class="cred-input vendor-email-input" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Contact email">
-            <button class="btn-xs p" onclick="sendVendorOutreach(this,'${escAttr(v.name||'')}')">✉️ Send</button>
+            <button class="btn-xs p" onclick="findAndSendVendorOutreach(this,'${escAttr(v.name||'')}','${escAttr(v.website||'')}')">🔍✉️ Find &amp; Send</button>
+            <input type="email" class="cred-input vendor-email-input" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Or type an email, then click again">
           </div>
           <div class="sm vendor-contact-s" style="font-size:10px;margin-top:3px"></div>
         </div>`).join('');
   }catch(e){el.innerHTML=`<div style="font-size:11px;color:var(--red)">Network error: ${e.message}</div>`;}
 }
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-async function findVendorEmail(btn,website){
-  const row=btn.closest('.vc-real-row');
-  const input=row.querySelector('.vendor-email-input');
-  const s=row.querySelector('.vendor-contact-s');
-  if(!website){s.textContent='No website on file — enter an email manually.';s.style.color='var(--ink3)';return;}
-  btn.disabled=true;const orig=btn.textContent;btn.textContent='Searching...';s.textContent='';
-  try{
-    const r=await fetch('/api/vendors/contact-email?website='+encodeURIComponent(website));
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed';s.style.color='var(--red)';}
-    else if(d.email){
-      input.value=d.email;
-      s.textContent='Found on their '+(d.source==='contact_page'?'contact page':'homepage')+' — review before sending';
-      s.style.color='var(--green)';
-    }else{
-      s.textContent=d.reason||'No email found — enter one manually if you have it.';
-      s.style.color='var(--ink3)';
-    }
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  btn.disabled=false;btn.textContent=orig;
-}
-async function sendVendorOutreach(btn,vendorName){
+// One button: looks up the vendor's email if the field is still empty (or
+// uses whatever's already typed there), then always confirms the exact
+// recipient + message before actually sending — no undo once an email is
+// sent, and the scraper occasionally finds a generic/wrong address, so
+// this is the one step kept manual even in the collapsed flow.
+async function findAndSendVendorOutreach(btn,vendorName,website){
   const row=btn.closest('.vc-real-row');
   const card=btn.closest('.vc');
-  const email=(row.querySelector('.vendor-email-input').value||'').trim();
+  const input=row.querySelector('.vendor-email-input');
   const s=row.querySelector('.vendor-contact-s');
   const message=(card?.querySelector('.vmt')?.textContent||'').trim();
-  if(!email){s.textContent='Find or enter a contact email first.';s.style.color='var(--red)';return;}
   if(!message){s.textContent='No message drafted for this category yet.';s.style.color='var(--red)';return;}
-  if(!confirm(`Send this outreach email to ${vendorName} <${email}>?\n\n${message}`))return;
-  btn.disabled=true;const orig=btn.textContent;btn.textContent='Sending...';s.textContent='';
+
+  let email=(input.value||'').trim();
+  btn.disabled=true;const orig=btn.textContent;
+
+  if(!email){
+    btn.textContent='Searching...';s.textContent='';
+    if(!website){
+      s.textContent='No website on file — type an email above, then click again.';s.style.color='var(--ink3)';
+      btn.disabled=false;btn.textContent=orig;return;
+    }
+    try{
+      const r=await fetch('/api/vendors/contact-email?website='+encodeURIComponent(website));
+      const d=await r.json();
+      if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
+      if(d.email){
+        email=d.email;input.value=email;
+      }else{
+        s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';
+        btn.disabled=false;btn.textContent=orig;return;
+      }
+    }catch(e){
+      s.textContent='Network error: '+e.message;s.style.color='var(--red)';
+      btn.disabled=false;btn.textContent=orig;return;
+    }
+  }
+
+  if(!confirm(`Send this outreach email to ${vendorName} <${email}>?\n\n${message}`)){
+    btn.disabled=false;btn.textContent=orig;return;
+  }
+  btn.textContent='Sending...';s.textContent='';
   try{
     const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName,message})});
     const d=await r.json();
     if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-    else{s.textContent='✓ Sent to '+email;s.style.color='var(--green)';}
+    else{s.textContent='✓ Sent to '+email;s.style.color='var(--green)';loadVendorOutreach();}
   }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
   btn.disabled=false;btn.textContent=orig;
+}
+async function loadVendorOutreach(){
+  const el=document.getElementById('vendor-outreach-list');if(!el)return;
+  try{
+    const r=await fetch('/api/vendors/outreach');
+    const d=await r.json();
+    const list=d.outreach||[];
+    if(!list.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No outreach sent yet</div>';return;}
+    el.innerHTML=list.slice(0,10).map(o=>`
+      <div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>${escapeHtmlClient(o.vendor_name)} · ${escapeHtmlClient(o.to_email)}</span>
+          <span style="color:${o.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${o.status==='sent'?'✓ SENT':'✗ FAILED'}</span>
+        </div>
+        ${o.reply_text?`<div style="margin-top:6px;padding:7px 9px;background:var(--bg3);border-left:2px solid var(--green);border-radius:var(--r);font-size:11px;color:var(--ink2)"><div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">↩ Replied</div>${escapeHtmlClient(o.reply_text).replace(/\n/g,'<br>')}</div>`:''}
+      </div>`).join('');
+  }catch(e){/* leave existing content on transient failure */}
 }
 
 // Curated 9 professional-partner types for construction/real-estate tenants
@@ -2262,6 +2295,7 @@ async function bootstrap(){
   loadLandingPageState();
   loadReviewRequests();
   loadScheduledPosts();
+  loadVendorOutreach();
   const rrGoogle=document.getElementById('rr-google-url');if(rrGoogle)rrGoogle.value=ME.profile.googleReviewUrl||'';
   const rrYelp=document.getElementById('rr-yelp-url');if(rrYelp)rrYelp.value=ME.profile.yelpReviewUrl||'';
   fillCompanyProfileForm();
@@ -2579,9 +2613,12 @@ async function loadReviewRequests(){
     const list=d.reviewRequests||[];
     if(!list.length){el.innerHTML='';return;}
     el.innerHTML=list.slice(0,8).map(rr=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:7px 10px;background:var(--bg4);border-radius:var(--r)">
-        <span>${rr.customer_name} · ${rr.customer_email}</span>
-        <span style="color:${rr.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${rr.status==='sent'?'✓ SENT':'✗ FAILED'}</span>
+      <div style="padding:7px 10px;background:var(--bg4);border-radius:var(--r)">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
+          <span>${rr.customer_name} · ${rr.customer_email}</span>
+          <span style="color:${rr.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${rr.status==='sent'?'✓ SENT':'✗ FAILED'}</span>
+        </div>
+        ${rr.reply_text?`<div style="margin-top:6px;padding:7px 9px;background:var(--bg3);border-left:2px solid var(--green);border-radius:var(--r);font-size:11px;color:var(--ink2)"><div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">↩ Replied</div>${escapeHtmlClient(rr.reply_text).replace(/\n/g,'<br>')}</div>`:''}
       </div>`).join('');
   }catch(e){/* leave existing content on transient failure */}
 }

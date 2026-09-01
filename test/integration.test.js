@@ -348,6 +348,31 @@ describe('"not configured" fallbacks (external keys unset in this test run)', ()
     assert.equal(body.configured, false);
     assert.equal(body.connected, false);
   });
+
+  test('Vendor outreach-email send returns a clean 503, not a crash', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('vendoroutreach'), password: 'TestPass1234!', companyName: 'Vendor Outreach Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.post('/api/vendors/outreach-email', { toEmail: 'vendor@example.com', vendorName: 'Acme', message: 'Hi there' });
+    assert.equal(r.status, 503);
+  });
+
+  test('Resend inbound-email webhook returns a clean 503 rather than attempting signature verification', async () => {
+    // No session needed — this is a public webhook endpoint (Resend, not a
+    // logged-in tenant, calls it), so it should 503 on the missing
+    // RESEND_WEBHOOK_SECRET before ever looking at the (absent, and here
+    // deliberately not svix-signed) body/headers.
+    const client = makeClient();
+    const r = await client.raw('/api/webhooks/resend-inbound', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'email.received', data: {} })
+    });
+    assert.equal(r.status, 503);
+  });
 });
 
 describe('image hosting (routes/images.js)', () => {
@@ -489,6 +514,49 @@ describe('landing pages: multi-page support', () => {
     const aListsIt = await (await clientA.get('/api/landing-pages')).json();
     assert.equal(aListsIt.pages.length, 1);
     assert.equal(aListsIt.pages[0].target_label, 'Test Page');
+  });
+});
+
+describe('vendor outreach history + reply tracking', () => {
+  test('a fresh tenant has zero outreach, and only sees their own', async () => {
+    const clientA = makeClient();
+    const signupA = await clientA.post('/api/auth/signup', {
+      email: uniqueEmail('outreachA'), password: 'TestPass1234!', companyName: 'Outreach Tenant A', industry: 'home_services', acceptedTerms: true
+    });
+    const tenantA = (await signupA.json()).tenantId;
+    trackTenant(tenantA);
+
+    const clientB = makeClient();
+    const signupB = await clientB.post('/api/auth/signup', {
+      email: uniqueEmail('outreachB'), password: 'TestPass1234!', companyName: 'Outreach Tenant B', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signupB.json()).tenantId);
+
+    const emptyList = await (await clientA.get('/api/vendors/outreach')).json();
+    assert.deepEqual(emptyList.outreach, []);
+
+    // Simulate what routes/inboundEmail.js does on a real reply: directly
+    // insert a row (as the send route would) with a reply already attached,
+    // and confirm the list reflects it — and stays invisible to tenant B.
+    const pool = getTestPool();
+    try {
+      await pool.query(
+        `INSERT INTO vendor_outreach (id, tenant_id, vendor_name, to_email, message, status, reply_text, replied_at)
+         VALUES (gen_random_uuid(), $1, 'Acme Roofing', 'acme@example.com', 'Hi there', 'sent', 'Sure, let''s talk', now())`,
+        [tenantA]
+      );
+    } finally {
+      await pool.end();
+    }
+
+    const aList = await (await clientA.get('/api/vendors/outreach')).json();
+    assert.equal(aList.outreach.length, 1);
+    assert.equal(aList.outreach[0].vendor_name, 'Acme Roofing');
+    assert.equal(aList.outreach[0].reply_text, "Sure, let's talk");
+    assert.ok(aList.outreach[0].replied_at);
+
+    const bList = await (await clientB.get('/api/vendors/outreach')).json();
+    assert.deepEqual(bList.outreach, []);
   });
 });
 

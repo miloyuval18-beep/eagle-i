@@ -3,13 +3,14 @@
 // generation pass whose output is cached in Postgres (business_profile.
 // generated_content) instead of being regenerated on every page load.
 const express = require('express');
+const crypto = require('crypto');
 const { query } = require('../db');
 const { requireAuth } = require('../auth');
 const { checkAndIncrementUsage, checkAndIncrementPlacesUsage, currentMonth } = require('../lib/usage');
 const { generateJSON } = require('../lib/anthropic');
 const { searchNearbyCompetitors } = require('../lib/googlePlaces');
 const { findContactEmail } = require('../lib/vendorContactFinder');
-const { sendEmail } = require('../lib/email');
+const { sendEmail, buildReplyToAddress } = require('../lib/email');
 const { escapeHtml } = require('../lib/landingPageTemplate');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -420,10 +421,11 @@ router.get('/api/vendors/contact-email', requireAuth, async (req, res) => {
 // Sends one AI-drafted outreach message to one real vendor, only when the
 // tenant clicks Send for that specific vendor — deliberately not a bulk/
 // automatic blast (no consent from these businesses, and Resend's/CAN-SPAM's
-// rules on unsolicited commercial email don't allow one). Same "fire it
-// off, no persisted log" shape as everywhere else outreach copy is
-// generated in this app — routes/reviews.js's review-request emails are the
-// one place that does log, because there's a dedicated history UI for it.
+// rules on unsolicited commercial email don't allow one).
+//
+// Persisted as a vendor_outreach row (id generated here, not by the DB
+// default) so a reply can be matched back to it — see
+// lib/email.js's buildReplyToAddress and routes/inboundEmail.js.
 router.post('/api/vendors/outreach-email', requireAuth, async (req, res) => {
   const { toEmail, vendorName, message } = req.body || {};
   if (!toEmail || !EMAIL_RE.test(toEmail)) {
@@ -435,6 +437,7 @@ router.post('/api/vendors/outreach-email', requireAuth, async (req, res) => {
   if (!process.env.RESEND_API_KEY) {
     return res.status(503).json({ error: { message: 'Outreach emails are not configured on this server yet (missing RESEND_API_KEY).' } });
   }
+  const outreachId = crypto.randomUUID();
   try {
     const tenantRes = await query('SELECT company_name FROM tenants WHERE id = $1', [req.tenantId]);
     const profileRes = await query('SELECT founder_name, phone, email FROM business_profile WHERE tenant_id = $1', [req.tenantId]);
@@ -448,10 +451,46 @@ ${escapeHtml(message).split('\n').map(line => `<p>${line}</p>`).join('')}
 <p style="color:#5a7290;font-size:13px">${signatureLine}</p>
 </div>`;
 
-    const sent = await sendEmail({ to: toEmail.trim(), subject: `Quick note from ${companyName}`, html, text: message });
+    // Reply-To is a reply+vendor-<id>@ address this app controls when
+    // inbound email is configured (RESEND_INBOUND_DOMAIN) — that's what
+    // lets a reply show up on the dashboard. Otherwise it falls back to
+    // the tenant's own email directly: still reaches them via normal
+    // email routing, just not captured/shown here. Only used when the
+    // profile email actually looks like one.
+    const validProfileEmail = profile.email && EMAIL_RE.test(profile.email) ? profile.email : undefined;
+    const replyTo = buildReplyToAddress('vendor', outreachId) || validProfileEmail;
+
+    let sent, sendError;
+    try {
+      sent = await sendEmail({ to: toEmail.trim(), subject: `Quick note from ${companyName}`, html, text: message, replyTo });
+    } catch (err) {
+      sendError = err;
+    }
+
+    await query(
+      `INSERT INTO vendor_outreach (id, tenant_id, vendor_name, to_email, message, status, error, resend_email_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [outreachId, req.tenantId, vendorName || toEmail.trim(), toEmail.trim(), message,
+       sendError ? 'failed' : 'sent', sendError ? sendError.message : null, sent && sent.id ? sent.id : null]
+    );
+
+    if (sendError) return res.status(502).json({ error: { message: 'Failed to send: ' + sendError.message } });
     res.json({ ok: true, id: sent.id || null, vendorName: vendorName || null });
   } catch (err) {
     res.status(502).json({ error: { message: 'Failed to send: ' + err.message } });
+  }
+});
+
+router.get('/api/vendors/outreach', requireAuth, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT id, vendor_name, to_email, message, status, error, reply_text, replied_at, created_at
+       FROM vendor_outreach WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 50`,
+      [req.tenantId]
+    );
+    res.json({ outreach: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to load outreach history: ' + err.message } });
   }
 });
 

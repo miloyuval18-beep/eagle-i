@@ -1,9 +1,11 @@
 const express = require('express');
+const crypto = require('crypto');
 const { query } = require('../db');
 const { requireAuth } = require('../auth');
-const { sendEmail } = require('../lib/email');
+const { sendEmail, buildReplyToAddress } = require('../lib/email');
 
 const router = express.Router();
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function buildReviewRequestEmail(companyName, customerName, links) {
   const buttons = links.map(l =>
@@ -36,7 +38,7 @@ router.post('/api/review-requests', requireAuth, async (req, res) => {
 
   try {
     const tenantRes = await query('SELECT company_name FROM tenants WHERE id = $1', [req.tenantId]);
-    const profileRes = await query('SELECT google_review_url, yelp_review_url FROM business_profile WHERE tenant_id = $1', [req.tenantId]);
+    const profileRes = await query('SELECT google_review_url, yelp_review_url, email FROM business_profile WHERE tenant_id = $1', [req.tenantId]);
     if (!tenantRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
     const companyName = tenantRes.rows[0].company_name;
     const profile = profileRes.rows[0] || {};
@@ -50,20 +52,29 @@ router.post('/api/review-requests', requireAuth, async (req, res) => {
 
     const { subject, html, text } = buildReviewRequestEmail(companyName, customerName.trim(), links);
     const includedPlatforms = links.map(l => l.label.toLowerCase());
+    const reviewRequestId = crypto.randomUUID();
+
+    // Reply-To is a reply+review-<id>@ address this app controls when
+    // inbound email is configured (RESEND_INBOUND_DOMAIN) — that's what
+    // lets a customer's reply show up on the dashboard. Otherwise it falls
+    // back to the tenant's own email directly: still reaches them via
+    // normal email routing, just not captured/shown here.
+    const validProfileEmail = profile.email && EMAIL_RE.test(profile.email) ? profile.email : undefined;
+    const replyTo = buildReplyToAddress('review', reviewRequestId) || validProfileEmail;
 
     try {
-      const sent = await sendEmail({ to: customerEmail.trim(), subject, html, text });
+      const sent = await sendEmail({ to: customerEmail.trim(), subject, html, text, replyTo });
       const row = await query(
-        `INSERT INTO review_requests (tenant_id, sent_by, customer_name, customer_email, included_platforms, status, resend_email_id)
-         VALUES ($1,$2,$3,$4,$5,'sent',$6) RETURNING *`,
-        [req.tenantId, req.userId, customerName.trim(), customerEmail.trim(), JSON.stringify(includedPlatforms), sent.id || null]
+        `INSERT INTO review_requests (id, tenant_id, sent_by, customer_name, customer_email, included_platforms, status, resend_email_id)
+         VALUES ($1,$2,$3,$4,$5,$6,'sent',$7) RETURNING *`,
+        [reviewRequestId, req.tenantId, req.userId, customerName.trim(), customerEmail.trim(), JSON.stringify(includedPlatforms), sent.id || null]
       );
       res.json({ ok: true, reviewRequest: row.rows[0] });
     } catch (sendErr) {
       const row = await query(
-        `INSERT INTO review_requests (tenant_id, sent_by, customer_name, customer_email, included_platforms, status, error)
-         VALUES ($1,$2,$3,$4,$5,'failed',$6) RETURNING *`,
-        [req.tenantId, req.userId, customerName.trim(), customerEmail.trim(), JSON.stringify(includedPlatforms), sendErr.message]
+        `INSERT INTO review_requests (id, tenant_id, sent_by, customer_name, customer_email, included_platforms, status, error)
+         VALUES ($1,$2,$3,$4,$5,$6,'failed',$7) RETURNING *`,
+        [reviewRequestId, req.tenantId, req.userId, customerName.trim(), customerEmail.trim(), JSON.stringify(includedPlatforms), sendErr.message]
       );
       res.status(502).json({ error: { message: 'Failed to send: ' + sendErr.message }, reviewRequest: row.rows[0] });
     }

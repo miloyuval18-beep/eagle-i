@@ -21,7 +21,8 @@
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "pg": "^8.12.0",
-    "stripe": "^16.8.0"
+    "stripe": "^16.8.0",
+    "svix": "^2.2.0"
   },
   "devDependencies": {
     "node-pg-migrate": "^9.0.0"

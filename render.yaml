@@ -48,6 +48,10 @@ services:
         sync: false
       - key: RESEND_FROM_EMAIL
         sync: false
+      - key: RESEND_INBOUND_DOMAIN
+        sync: false
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
       - key: GOOGLE_PLACES_API_KEY
         sync: false
       - key: ADMIN_ALERT_EMAIL

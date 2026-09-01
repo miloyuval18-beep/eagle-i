@@ -12,6 +12,8 @@ const { buildRealAcctHeaderIndex, parseRealAcctLine, aggregateZipValues } = requ
 const { budgetError } = require('../routes/ads');
 const { parseImageDataUrl } = require('../routes/images');
 const { isPrivateOrReservedIp, extractEmails, findContactPageUrl } = require('../lib/vendorContactFinder');
+const { buildReplyToAddress } = require('../lib/email');
+const { REPLY_ADDRESS_RE } = require('../routes/inboundEmail');
 
 describe('parseClaudeJson (lib/anthropic.js)', () => {
   test('parses well-formed JSON embedded in surrounding text', () => {
@@ -291,5 +293,55 @@ describe('findContactPageUrl (lib/vendorContactFinder.js)', () => {
   test('returns null when no contact-ish link exists', () => {
     const html = '<nav><a href="/about">About</a><a href="/services">Services</a></nav>';
     assert.equal(findContactPageUrl(html, 'https://example-vendor.com/'), null);
+  });
+});
+
+describe('buildReplyToAddress (lib/email.js)', () => {
+  test('returns null when RESEND_INBOUND_DOMAIN is not set', () => {
+    const saved = process.env.RESEND_INBOUND_DOMAIN;
+    delete process.env.RESEND_INBOUND_DOMAIN;
+    try {
+      assert.equal(buildReplyToAddress('vendor', 'abc-123'), null);
+    } finally {
+      if (saved !== undefined) process.env.RESEND_INBOUND_DOMAIN = saved;
+    }
+  });
+
+  test('builds a reply+<kind>-<id>@<domain> address when configured', () => {
+    const saved = process.env.RESEND_INBOUND_DOMAIN;
+    process.env.RESEND_INBOUND_DOMAIN = 'xyz.resend.app';
+    try {
+      const id = '11111111-1111-1111-1111-111111111111';
+      assert.equal(buildReplyToAddress('vendor', id), `reply+vendor-${id}@xyz.resend.app`);
+      assert.equal(buildReplyToAddress('review', id), `reply+review-${id}@xyz.resend.app`);
+    } finally {
+      if (saved === undefined) delete process.env.RESEND_INBOUND_DOMAIN;
+      else process.env.RESEND_INBOUND_DOMAIN = saved;
+    }
+  });
+
+  test('rejects an unknown kind rather than silently building a bad address', () => {
+    process.env.RESEND_INBOUND_DOMAIN = 'xyz.resend.app';
+    try {
+      assert.throws(() => buildReplyToAddress('bogus', 'abc-123'));
+    } finally {
+      delete process.env.RESEND_INBOUND_DOMAIN;
+    }
+  });
+});
+
+describe('REPLY_ADDRESS_RE (routes/inboundEmail.js)', () => {
+  test('matches a well-formed reply+<kind>-<uuid>@ address and captures kind + id', () => {
+    const id = '550e8400-e29b-41d4-a716-446655440000';
+    const m = REPLY_ADDRESS_RE.exec(`reply+vendor-${id}@abc123.resend.app`);
+    assert.ok(m);
+    assert.equal(m[1], 'vendor');
+    assert.equal(m[2], id);
+  });
+
+  test('rejects addresses that are not our reply+ token shape', () => {
+    assert.equal(REPLY_ADDRESS_RE.exec('someone@example.com'), null);
+    assert.equal(REPLY_ADDRESS_RE.exec('reply+unknown-550e8400-e29b-41d4-a716-446655440000@abc.resend.app'), null);
+    assert.equal(REPLY_ADDRESS_RE.exec('reply+vendor-not-a-uuid@abc.resend.app'), null);
   });
 });
