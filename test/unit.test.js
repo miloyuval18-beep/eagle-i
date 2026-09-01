@@ -11,6 +11,7 @@ const { detectPermitSpikes } = require('../lib/houstonPermits');
 const { buildRealAcctHeaderIndex, parseRealAcctLine, aggregateZipValues } = require('../lib/hcadZipValues');
 const { budgetError } = require('../routes/ads');
 const { parseImageDataUrl } = require('../routes/images');
+const { isPrivateOrReservedIp, extractEmails, findContactPageUrl } = require('../lib/vendorContactFinder');
 
 describe('parseClaudeJson (lib/anthropic.js)', () => {
   test('parses well-formed JSON embedded in surrounding text', () => {
@@ -222,5 +223,73 @@ describe('detectPermitSpikes (lib/houstonPermits.js)', () => {
       { zip: '77004', permitDate: '2026-08-11' }
     ];
     assert.deepEqual(detectPermitSpikes(records, { minRecentCount: 3 }), []);
+  });
+});
+
+describe('isPrivateOrReservedIp (lib/vendorContactFinder.js — SSRF guard)', () => {
+  test('blocks loopback, private ranges, link-local/cloud-metadata, and CGNAT', () => {
+    assert.equal(isPrivateOrReservedIp('127.0.0.1'), true);
+    assert.equal(isPrivateOrReservedIp('10.0.0.5'), true);
+    assert.equal(isPrivateOrReservedIp('172.16.0.1'), true);
+    assert.equal(isPrivateOrReservedIp('172.31.255.255'), true);
+    assert.equal(isPrivateOrReservedIp('192.168.1.1'), true);
+    assert.equal(isPrivateOrReservedIp('169.254.169.254'), true); // cloud metadata endpoint
+    assert.equal(isPrivateOrReservedIp('100.64.0.1'), true); // CGNAT
+    assert.equal(isPrivateOrReservedIp('0.0.0.0'), true);
+  });
+
+  test('allows ordinary public IPv4 addresses', () => {
+    assert.equal(isPrivateOrReservedIp('8.8.8.8'), false);
+    assert.equal(isPrivateOrReservedIp('93.184.216.34'), false);
+    // A 172.x address just outside the 172.16.0.0/12 private block.
+    assert.equal(isPrivateOrReservedIp('172.32.0.1'), false);
+  });
+
+  test('blocks IPv6 loopback, link-local, unique-local, and mapped-IPv4-private', () => {
+    assert.equal(isPrivateOrReservedIp('::1'), true);
+    assert.equal(isPrivateOrReservedIp('fe80::1'), true);
+    assert.equal(isPrivateOrReservedIp('fd00::1'), true);
+    assert.equal(isPrivateOrReservedIp('::ffff:127.0.0.1'), true);
+  });
+
+  test('fails closed on a non-IP string', () => {
+    assert.equal(isPrivateOrReservedIp('not-an-ip'), true);
+  });
+});
+
+describe('extractEmails (lib/vendorContactFinder.js)', () => {
+  test('prefers a mailto: link over plain-text email matches', () => {
+    const html = '<a href="mailto:info@example-vendor.com">Email us</a><p>fallback@other.com</p>';
+    assert.deepEqual(extractEmails(html), ['info@example-vendor.com']);
+  });
+
+  test('falls back to a plain-text email when no mailto: link exists', () => {
+    const html = '<p>Reach us at contact@example-vendor.com any time.</p>';
+    assert.deepEqual(extractEmails(html), ['contact@example-vendor.com']);
+  });
+
+  test('filters out image-filename false positives and known junk/tracking domains', () => {
+    const html = `
+      <img src="team@2x.png">
+      <script>ga('set', 'x', 'abc@wixpress.com')</script>
+      <a href="mailto:noreply@example-vendor.com">no-reply</a>
+      <p>real-contact@example-vendor.com</p>`;
+    assert.deepEqual(extractEmails(html), ['real-contact@example-vendor.com']);
+  });
+
+  test('returns an empty array when nothing looks like a real email', () => {
+    assert.deepEqual(extractEmails('<p>No contact info here.</p>'), []);
+  });
+});
+
+describe('findContactPageUrl (lib/vendorContactFinder.js)', () => {
+  test('finds a link whose text says "Contact" and resolves it against the base URL', () => {
+    const html = '<nav><a href="/about">About</a><a href="/contact-us">Contact Us</a></nav>';
+    assert.equal(findContactPageUrl(html, 'https://example-vendor.com/'), 'https://example-vendor.com/contact-us');
+  });
+
+  test('returns null when no contact-ish link exists', () => {
+    const html = '<nav><a href="/about">About</a><a href="/services">Services</a></nav>';
+    assert.equal(findContactPageUrl(html, 'https://example-vendor.com/'), null);
   });
 });

@@ -8,6 +8,11 @@ const { requireAuth } = require('../auth');
 const { checkAndIncrementUsage, checkAndIncrementPlacesUsage, currentMonth } = require('../lib/usage');
 const { generateJSON } = require('../lib/anthropic');
 const { searchNearbyCompetitors } = require('../lib/googlePlaces');
+const { findContactEmail } = require('../lib/vendorContactFinder');
+const { sendEmail } = require('../lib/email');
+const { escapeHtml } = require('../lib/landingPageTemplate');
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const PLACES_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -394,6 +399,59 @@ router.get('/api/vendors/places', requireAuth, async (req, res) => {
     res.json({ vendors, source: 'live', fetchedAt: new Date().toISOString(), sparse: vendors.length === 0 });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to load real vendor data: ' + err.message } });
+  }
+});
+
+// Best-effort contact-email lookup on a real vendor's own public website —
+// see lib/vendorContactFinder.js for what this does and does not do (no
+// bulk crawling, no private data, returns null rather than guessing).
+// Not usage-capped like the Places lookups above — it's a plain HTTP fetch
+// with no per-call third-party cost, just SSRF-guarded and time/size-bounded.
+router.get('/api/vendors/contact-email', requireAuth, async (req, res) => {
+  const website = (req.query.website || '').toString();
+  try {
+    const result = await findContactEmail(website);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Contact lookup failed: ' + err.message } });
+  }
+});
+
+// Sends one AI-drafted outreach message to one real vendor, only when the
+// tenant clicks Send for that specific vendor — deliberately not a bulk/
+// automatic blast (no consent from these businesses, and Resend's/CAN-SPAM's
+// rules on unsolicited commercial email don't allow one). Same "fire it
+// off, no persisted log" shape as everywhere else outreach copy is
+// generated in this app — routes/reviews.js's review-request emails are the
+// one place that does log, because there's a dedicated history UI for it.
+router.post('/api/vendors/outreach-email', requireAuth, async (req, res) => {
+  const { toEmail, vendorName, message } = req.body || {};
+  if (!toEmail || !EMAIL_RE.test(toEmail)) {
+    return res.status(400).json({ error: { message: 'A valid contact email is required.' } });
+  }
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: { message: 'Message text is required.' } });
+  }
+  if (!process.env.RESEND_API_KEY) {
+    return res.status(503).json({ error: { message: 'Outreach emails are not configured on this server yet (missing RESEND_API_KEY).' } });
+  }
+  try {
+    const tenantRes = await query('SELECT company_name FROM tenants WHERE id = $1', [req.tenantId]);
+    const profileRes = await query('SELECT founder_name, phone, email FROM business_profile WHERE tenant_id = $1', [req.tenantId]);
+    if (!tenantRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    const companyName = tenantRes.rows[0].company_name;
+    const profile = profileRes.rows[0] || {};
+
+    const signatureLine = [profile.founder_name || companyName, profile.phone, profile.email].filter(Boolean).map(escapeHtml).join(' · ');
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#12203a">
+${escapeHtml(message).split('\n').map(line => `<p>${line}</p>`).join('')}
+<p style="color:#5a7290;font-size:13px">${signatureLine}</p>
+</div>`;
+
+    const sent = await sendEmail({ to: toEmail.trim(), subject: `Quick note from ${companyName}`, html, text: message });
+    res.json({ ok: true, id: sent.id || null, vendorName: vendorName || null });
+  } catch (err) {
+    res.status(502).json({ error: { message: 'Failed to send: ' + err.message } });
   }
 });
 

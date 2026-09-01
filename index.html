@@ -464,7 +464,6 @@ tbody tr:last-child td{border-bottom:none}
     <div class="tab active" id="t-dash" onclick="goTo('dash',this)">⚡ Command</div>
     <div class="tab" id="t-strategy" onclick="goTo('strategy',this)">🎯 Strategy<span class="tbadge on" id="strat-badge">NOW</span></div>
     <div class="tab" id="t-market" onclick="goTo('market',this)">📊 Market Intel</div>
-    <div class="tab" id="t-keywords" onclick="goTo('keywords',this)">🔥 Keywords<span class="tbadge on" id="kw-badge">LIVE</span></div>
     <div class="tab" id="t-competitors" onclick="goTo('competitors',this)">🏆 Competitors</div>
     <div class="tab" id="t-opps" onclick="goTo('opps',this)">🎯 Opportunities<span class="tbadge on" id="opp-badge">!</span></div>
     <div class="tab" id="t-leads" onclick="goTo('leads',this)">📥 Leads<span class="tbadge on" id="inbox-badge" style="display:none">0</span></div>
@@ -545,7 +544,7 @@ tbody tr:last-child td{border-bottom:none}
       <div class="kpi-s">High-priority items<br>from your strategy</div>
       <div class="kpi-tr cdn">NOW</div>
     </div>
-    <div class="kpi" style="--kc:var(--blue2)" onclick="goTo('keywords',document.getElementById('t-keywords'))">
+    <div class="kpi" style="--kc:var(--blue2)" onclick="goToKeywords()">
       <div class="kpi-l">Keywords Tracked</div>
       <div class="kpi-v cbl" id="kpi-vis">0</div>
       <div class="kpi-s" id="kpi-vis-s">Click to scan keywords</div>
@@ -605,7 +604,7 @@ tbody tr:last-child td{border-bottom:none}
     <div class="card span2" style="--acc:var(--amber)">
       <div class="ch">
         <div><div class="ct">🔥 Hottest Keywords</div><div class="cs">AI-estimated · click to scan</div></div>
-        <button class="btn-ghost" onclick="goTo('keywords',document.getElementById('t-keywords'))">Full Analysis →</button>
+        <button class="btn-ghost" onclick="goToKeywords()">Full Analysis →</button>
       </div>
       <div id="dash-kw-grid" class="g3"><div style="grid-column:1/-1;text-align:center;padding:18px;color:var(--ink3);font-size:12px">Visit the Keywords tab to scan</div></div>
     </div>
@@ -723,19 +722,6 @@ tbody tr:last-child td{border-bottom:none}
     <div style="margin-top:8px;display:flex;gap:6px"><button class="btn-ghost" onclick="exportLeads()">Export CSV</button><button class="btn-ghost" onclick="clearLeads()">Clear</button></div>
     <div class="sm" id="scan-s"></div>
   </div>
-</div>
-</div>
-
-<!-- ==================== KEYWORDS ==================== -->
-<div id="page-keywords" class="page">
-<div class="wrap">
-  <div class="sh"><div><div class="st">Hottest Keywords</div><div class="ss">AI-estimated · not live search data</div></div><button class="btn btn-blue" id="kw-btn" onclick="loadKw(true)"><span class="spin" id="kw-spin"></span>Refresh</button></div>
-  <div id="kw-prog" class="scan-prog"><div class="sp-bar"><div class="sp-fill"></div></div><span class="sp-lbl">Scanning your keyword market...</span></div>
-  <div id="kw-insight" class="ib" style="margin-bottom:15px;display:none"></div>
-  <div id="kw-fire-sec" style="display:none;margin-bottom:20px"><div class="sh"><div><div class="st">🔥 On Fire — Build Landing Pages NOW</div></div></div><div class="g3" id="kw-fire"></div></div>
-  <div id="kw-hot-sec" style="display:none;margin-bottom:20px"><div class="sh"><div><div class="st">⚡ Hot Keywords</div></div></div><div class="g3" id="kw-hot"></div></div>
-  <div id="kw-tbl-sec" style="display:none"><div class="sh"><div><div class="st">Full Keyword Table</div></div></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>Keyword</th><th>Category</th><th class="r">Searches/Mo</th><th class="r">CPC</th><th class="r">ROI</th><th class="r">Trend</th><th class="r">Competition</th><th>Vol</th></tr></thead><tbody id="kw-tbody"></tbody></table></div></div>
-  <div class="sm" id="kw-s" style="margin-top:9px"></div>
 </div>
 </div>
 
@@ -1077,7 +1063,6 @@ function goTo(id,btn){
   document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active');});
   var pg=document.getElementById('page-'+id); if(pg)pg.classList.add('active');
   if(btn)btn.classList.add('active');
-  if(id==='keywords')loadKw(false);
   if(id==='budgetads')renderBudget(10000);
   if(id==='social'){loadAdsStatus();loadScheduledPosts();}
   tcTab=id;
@@ -1108,13 +1093,23 @@ function goTo(id,btn){
   }
 }
 // In-page sub-tabs for merged top-level tabs (Leads, Budget & Ads, Growth &
-// Partners) — same active/inactive toggle as goTo(), scoped to one page's
-// own .subpage/.subtab elements so it can't touch another tab's state.
+// Partners, Social HQ) — same active/inactive toggle as goTo(), scoped to
+// one page's own .subpage/.subtab elements so it can't touch another tab's
+// state.
 function goSub(page,sub,btn){
   document.querySelectorAll('#page-'+page+' .subpage').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('#page-'+page+' .subtab').forEach(function(b){b.classList.remove('active');});
   var el=document.getElementById('sub-'+page+'-'+sub); if(el)el.classList.add('active');
   if(btn)btn.classList.add('active');
+  // Keywords used to auto-load on its own tab's first visit (kwLoaded
+  // guards against refetching); now that trigger moves to its sub-tab.
+  if(page==='social'&&sub==='keywords')loadKw(false);
+}
+// Keywords now lives as a Social HQ sub-tab — dash quick-links that used to
+// jump straight to a standalone Keywords tab go through this instead.
+function goToKeywords(){
+  goTo('social',document.getElementById('t-social'));
+  goSub('social','keywords',document.getElementById('subtab-social-keywords'));
 }
 
 /* NOTIFY */
@@ -1869,12 +1864,58 @@ async function loadRealVendors(category,idx,idPrefix){
     }
     el.innerHTML=`<div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">🌐 Real businesses · ${d.source==='cache'?'cached':'live'}</div>`+
       vendors.map(v=>`
-        <div style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
+        <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
           <div style="color:var(--ink);font-weight:600">${v.name}</div>
           <div style="color:var(--ink2)">${v.rating?('★ '+v.rating+' ('+(v.reviewCount||0)+' reviews)'):'No rating yet'}${v.address?' · '+v.address:''}</div>
           ${v.website?`<a href="${v.website}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
+          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
+            <button class="btn-xs" onclick="findVendorEmail(this,'${escAttr(v.website||'')}')">🔍 Find Email</button>
+            <input type="email" class="cred-input vendor-email-input" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Contact email">
+            <button class="btn-xs p" onclick="sendVendorOutreach(this,'${escAttr(v.name||'')}')">✉️ Send</button>
+          </div>
+          <div class="sm vendor-contact-s" style="font-size:10px;margin-top:3px"></div>
         </div>`).join('');
   }catch(e){el.innerHTML=`<div style="font-size:11px;color:var(--red)">Network error: ${e.message}</div>`;}
+}
+function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+async function findVendorEmail(btn,website){
+  const row=btn.closest('.vc-real-row');
+  const input=row.querySelector('.vendor-email-input');
+  const s=row.querySelector('.vendor-contact-s');
+  if(!website){s.textContent='No website on file — enter an email manually.';s.style.color='var(--ink3)';return;}
+  btn.disabled=true;const orig=btn.textContent;btn.textContent='Searching...';s.textContent='';
+  try{
+    const r=await fetch('/api/vendors/contact-email?website='+encodeURIComponent(website));
+    const d=await r.json();
+    if(!r.ok){s.textContent=d.error?.message||'Failed';s.style.color='var(--red)';}
+    else if(d.email){
+      input.value=d.email;
+      s.textContent='Found on their '+(d.source==='contact_page'?'contact page':'homepage')+' — review before sending';
+      s.style.color='var(--green)';
+    }else{
+      s.textContent=d.reason||'No email found — enter one manually if you have it.';
+      s.style.color='var(--ink3)';
+    }
+  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
+  btn.disabled=false;btn.textContent=orig;
+}
+async function sendVendorOutreach(btn,vendorName){
+  const row=btn.closest('.vc-real-row');
+  const card=btn.closest('.vc');
+  const email=(row.querySelector('.vendor-email-input').value||'').trim();
+  const s=row.querySelector('.vendor-contact-s');
+  const message=(card?.querySelector('.vmt')?.textContent||'').trim();
+  if(!email){s.textContent='Find or enter a contact email first.';s.style.color='var(--red)';return;}
+  if(!message){s.textContent='No message drafted for this category yet.';s.style.color='var(--red)';return;}
+  if(!confirm(`Send this outreach email to ${vendorName} <${email}>?\n\n${message}`))return;
+  btn.disabled=true;const orig=btn.textContent;btn.textContent='Sending...';s.textContent='';
+  try{
+    const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName,message})});
+    const d=await r.json();
+    if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
+    else{s.textContent='✓ Sent to '+email;s.style.color='var(--green)';}
+  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
+  btn.disabled=false;btn.textContent=orig;
 }
 
 // Curated 9 professional-partner types for construction/real-estate tenants
@@ -2278,8 +2319,6 @@ const TAB_CONTEXTS = {
                chips:['What\'s the highest-ROI move this week?','Which strategy item should I delegate?']},
   market:     {icon:'📊', title:'Market Intelligence', ctx:'S&P · weather · market notes · social leads',
                chips:['How should weather affect my outreach this week?','What market signals matter most?']},
-  keywords:   {icon:'🔥', title:'Keywords', ctx:'AI-estimated search demand for your business',
-               chips:['Which keyword should I target first?','Group these into ad campaigns']},
   competitors:{icon:'🏆', title:'Competitors', ctx:'AI-estimated competitive landscape',
                chips:['What are competitor weaknesses I can exploit?','How do I differentiate?']},
   opps:       {icon:'🎯', title:'Live Opportunities', ctx:'News · social · weather · permit data',
@@ -2292,8 +2331,8 @@ const TAB_CONTEXTS = {
                chips:['Am I over- or under-spending anywhere?','Which platform should I prioritize?']},
   growth:     {icon:'🤝', title:'Growth & Partners', ctx:'Referral vendors · networking events · awards & press',
                chips:['Which vendor is best for referrals?','Which award should I apply for first?']},
-  social:     {icon:'📱', title:'Social Media HQ', ctx:'All platforms · posts · engagement · analytics',
-               chips:['What should I post today?','How do I increase engagement?']},
+  social:     {icon:'📱', title:'Social Media HQ', ctx:'All platforms · posts · engagement · analytics · keyword research',
+               chips:['What should I post today?','Which keyword should I target first?']},
   credentials:{icon:'⚙️', title:'Credentials', ctx:'API tokens & platform access',
                chips:['How do I get an Instagram API token?','Why is my LinkedIn token failing?']}
 };
@@ -3458,6 +3497,11 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       <button class="btn-ghost" onclick="goTo('credentials',document.getElementById('t-social'))">⚙ Credentials</button>
     </div>
   </div>
+  <div class="subtabs">
+    <div class="subtab active" onclick="goSub('social','hq',this)">📱 Social HQ</div>
+    <div class="subtab" id="subtab-social-keywords" onclick="goSub('social','keywords',this)">🔥 Keywords<span class="tbadge on" id="kw-badge">LIVE</span></div>
+  </div>
+  <div class="subpage active" id="sub-social-hq">
   <div class="section">
     <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;display:flex;align-items:center;gap:7px">
       <div class="stdot" style="background:var(--green)"></div>PLATFORM ANALYTICS — EXAMPLE DATA UNTIL CONNECTED
@@ -3646,6 +3690,17 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
         <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Post history loads here after publishing</div>
       </div>
     </div>
+  </div>
+  </div>
+
+  <div class="subpage" id="sub-social-keywords">
+  <div class="sh"><div><div class="st">Hottest Keywords</div><div class="ss">AI-estimated · not live search data</div></div><button class="btn btn-blue" id="kw-btn" onclick="loadKw(true)"><span class="spin" id="kw-spin"></span>Refresh</button></div>
+  <div id="kw-prog" class="scan-prog"><div class="sp-bar"><div class="sp-fill"></div></div><span class="sp-lbl">Scanning your keyword market...</span></div>
+  <div id="kw-insight" class="ib" style="margin-bottom:15px;display:none"></div>
+  <div id="kw-fire-sec" style="display:none;margin-bottom:20px"><div class="sh"><div><div class="st">🔥 On Fire — Build Landing Pages NOW</div></div></div><div class="g3" id="kw-fire"></div></div>
+  <div id="kw-hot-sec" style="display:none;margin-bottom:20px"><div class="sh"><div><div class="st">⚡ Hot Keywords</div></div></div><div class="g3" id="kw-hot"></div></div>
+  <div id="kw-tbl-sec" style="display:none"><div class="sh"><div><div class="st">Full Keyword Table</div></div></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>Keyword</th><th>Category</th><th class="r">Searches/Mo</th><th class="r">CPC</th><th class="r">ROI</th><th class="r">Trend</th><th class="r">Competition</th><th>Vol</th></tr></thead><tbody id="kw-tbody"></tbody></table></div></div>
+  <div class="sm" id="kw-s" style="margin-top:9px"></div>
   </div>
 </div>
 </div>
