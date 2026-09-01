@@ -385,6 +385,15 @@ tbody tr:last-child td{border-bottom:none}
 .plat-toggle.sel{background:rgba(30,140,255,.12);border-color:rgba(30,140,255,.4);color:var(--blue2);}
 .plat-toggle.sel .pt-dot{background:var(--green);}
 .pt-dot{width:7px;height:7px;border-radius:50%;background:var(--ink3);flex-shrink:0;}
+/* In-page sub-tabs — used by merged tabs (Leads, Budget & Ads, Growth &
+   Partners) to switch between sections that used to be separate top-level
+   nav tabs, without a second full-page nav bar. */
+.subtabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}
+.subtab{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--bg4);cursor:pointer;transition:all .14s;font-family:var(--fh);font-size:12px;font-weight:600;letter-spacing:.5px;color:var(--ink2);user-select:none}
+.subtab:hover{border-color:var(--bdr2)}
+.subtab.active{background:rgba(30,140,255,.12);border-color:rgba(30,140,255,.4);color:var(--blue2)}
+.subpage{display:none}
+.subpage.active{display:block;animation:fu .22s ease}
 .file-drop{border:2px dashed var(--bdr2);border-radius:var(--r2);padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin:8px 0;background:rgba(30,140,255,.02);}
 .file-drop:hover,.file-drop.dragover{border-color:var(--blue2);background:rgba(30,140,255,.07);}
 .fd-icon{font-size:26px;margin-bottom:5px;}.fd-text{font-size:13px;color:var(--ink2);}.fd-sub{font-family:var(--fm);font-size:9px;color:var(--ink3);margin-top:3px;}
@@ -458,15 +467,11 @@ tbody tr:last-child td{border-bottom:none}
     <div class="tab" id="t-keywords" onclick="goTo('keywords',this)">🔥 Keywords<span class="tbadge on" id="kw-badge">LIVE</span></div>
     <div class="tab" id="t-competitors" onclick="goTo('competitors',this)">🏆 Competitors</div>
     <div class="tab" id="t-opps" onclick="goTo('opps',this)">🎯 Opportunities<span class="tbadge on" id="opp-badge">!</span></div>
-    <div class="tab" id="t-landing" onclick="goTo('landing',this)">🚀 Landing Pages</div>
-    <div class="tab" id="t-vendors" onclick="goTo('vendors',this)">🤝 Vendors</div>
+    <div class="tab" id="t-leads" onclick="goTo('leads',this)">📥 Leads<span class="tbadge on" id="inbox-badge" style="display:none">0</span></div>
     <div class="tab" id="t-permits" onclick="goTo('permits',this)">📋 Permits<span class="tbadge on" id="perm-badge">0</span></div>
-    <div class="tab" id="t-ads" onclick="goTo('ads',this)">📢 Ads</div>
-    <div class="tab" id="t-budget" onclick="goTo('budget',this)">💰 Budget</div>
-    <div class="tab" id="t-network" onclick="goTo('network',this)">🤝 Networking<span class="tbadge on">NEW</span></div>
-    <div class="tab" id="t-pr"      onclick="goTo('pr',this)">🏆 PR &amp; Awards<span class="tbadge on">NEW</span></div>
+    <div class="tab" id="t-budgetads" onclick="goTo('budgetads',this)">💰 Budget &amp; Ads</div>
+    <div class="tab" id="t-growth" onclick="goTo('growth',this)">🤝 Growth &amp; Partners</div>
     <div class="tab" id="t-social"  onclick="goTo('social',this)">📱 Social HQ<span class="tbadge on" id="social-badge">!</span></div>
-    <div class="tab" id="t-inbox"   onclick="goTo('inbox',this)">📥 Leads<span class="tbadge on" id="inbox-badge" style="display:none">0</span></div>
   </nav>
   <div class="topbar-r">
     <div class="client-badge">
@@ -765,10 +770,15 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 </div>
 
-<!-- ==================== LANDING PAGES ==================== -->
-<div id="page-landing" class="page">
+<!-- ==================== LEADS (landing pages that capture them + the inbox they land in) ==================== -->
+<div id="page-leads" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Landing Pages</div><div class="ss">Multiple real, published pages that actually capture leads — one per ZIP or service angle</div></div></div>
+  <div class="sh"><div><div class="st">Leads</div><div class="ss">Real, published pages that capture leads · the leads they've caught</div></div></div>
+  <div class="subtabs">
+    <div class="subtab active" onclick="goSub('leads','pages',this)">🚀 Landing Pages</div>
+    <div class="subtab" onclick="goSub('leads','inbox',this)">📥 Inbox</div>
+  </div>
+  <div class="subpage active" id="sub-leads-pages">
   <div class="section" style="margin-bottom:16px">
     <div class="sh"><div><div class="st" style="font-size:15px">Your Pages</div></div><button class="btn-xs p" onclick="startNewLandingPage()">+ New Page</button></div>
     <div id="lp-list"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Loading...</div></div>
@@ -806,12 +816,36 @@ tbody tr:last-child td{border-bottom:none}
     <div id="lp-area"><div style="text-align:center;padding:44px 18px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:20px;letter-spacing:2px;margin-bottom:7px;color:var(--ink2)">Select an angle and generate</div><div style="font-size:12px">AI-generated landing page copy built from your business profile — edit and publish to start collecting real leads</div></div></div>
   </div>
   </div>
+  </div>
+  <div class="subpage" id="sub-leads-inbox">
+  <div class="sh">
+    <div><div class="ss">Real submissions from your published landing page · not simulated</div></div>
+    <select id="inbox-filter" onchange="loadInbox()" style="max-width:160px">
+      <option value="">All statuses</option>
+      <option value="new">New</option>
+      <option value="contacted">Contacted</option>
+      <option value="won">Won</option>
+      <option value="lost">Lost</option>
+    </select>
+  </div>
+  <div id="inbox-list" style="display:flex;flex-direction:column;gap:8px">
+    <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">No leads yet — publish your landing page (Landing Pages sub-tab) to start collecting real submissions</div>
+  </div>
+  </div>
 </div>
 </div>
 
-<!-- ==================== VENDORS ==================== -->
-<div id="page-vendors" class="page">
+<!-- ==================== GROWTH & PARTNERS (Vendors + Networking + PR/Awards) ==================== -->
+<div id="page-growth" class="page">
 <div class="wrap">
+  <div class="sh"><div><div class="st">Growth &amp; Partners</div><div class="ss">Referral partners · networking events · awards &amp; press — everything that grows the business through relationships, not ad spend</div></div></div>
+  <div class="subtabs">
+    <div class="subtab active" onclick="goSub('growth','vendors',this)">🤝 Vendors</div>
+    <div class="subtab" onclick="goSub('growth','network',this)">🧑‍🤝‍🧑 Networking</div>
+    <div class="subtab" onclick="goSub('growth','pr',this)">🏆 PR &amp; Awards</div>
+  </div>
+
+  <div class="subpage active" id="sub-growth-vendors">
   <div class="sh"><div><div class="st">Strategic Vendors</div><div class="ss">AI-suggested referral categories · real nearby businesses via Google · ready-to-send messages</div></div>
   <div style="display:flex;gap:7px;flex-wrap:wrap">
     <button class="btn btn-blue" id="ven-btn" onclick="loadVendors()"><span class="spin" id="ven-spin"></span><span id="ven-lbl">Find Referral Partners</span></button>
@@ -830,6 +864,126 @@ tbody tr:last-child td{border-bottom:none}
     </div>
     <div id="out-msgs"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Select partner type and channel, then generate</div></div>
     <div class="sm" id="out-s"></div>
+  </div>
+  </div>
+
+  <div class="subpage" id="sub-growth-network">
+  <div class="sh"><div><div class="st">Networking &amp; Referral Partners</div><div class="ss">AI-generated referral partner categories and outreach for your industry</div></div>
+  <button class="btn btn-blue" id="net-btn" onclick="loadTargetGroups()"><span class="spin" id="net-spin"></span><span id="net-lbl">Find Referral Groups</span></button></div>
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:18px">Target Groups — What They Need</div><div class="ss">Deliver value before asking for a referral</div></div></div>
+    <div class="g3" id="target-groups"><div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:5px">Click "Find Referral Groups"</div><div style="font-size:12px">AI-generated referral partner categories relevant to your industry, with an opening line for each</div></div></div>
+  </div>
+  <div class="section">
+    <div class="sh">
+      <div><div class="st" style="font-size:18px">Live Event Intelligence</div><div class="ss">AI-suggested event types for your industry — not a live calendar feed</div></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <select id="net-time"><option value="30">Next 30 Days</option><option value="60">Next 60 Days</option><option value="90">Next 90 Days</option></select>
+        <button class="btn btn-blue" id="net-btn2" onclick="loadNetworking()"><span class="spin" id="net-spin2"></span><span id="net-lbl2">Find Events</span></button>
+      </div>
+    </div>
+    <div id="net-events" class="g3"><div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:5px">Click "Find Events"</div><div style="font-size:12px">AI-suggested networking event types for your industry</div></div></div>
+    <div class="sm" id="net-s"></div>
+  </div>
+  </div>
+
+  <div class="subpage" id="sub-growth-pr">
+  <div class="sh"><div><div class="st">PR &amp; Awards Engine</div><div class="ss">Eagle I is your PR platform — awards · publications · authority building · media coverage</div></div>
+  <button class="btn btn-blue" id="pr-btn" onclick="loadPR()"><span class="spin" id="pr-spin"></span><span id="pr-lbl">Generate PR Strategy</span></button></div>
+  <div class="ib" style="margin-bottom:18px">
+    <div class="ibt">Eagle I isn't just marketing — it's authority building</div>
+    <div class="ibb">Every award nomination, every published article, every media mention makes your business the obvious choice when someone needs to decide who to hire — or who to refer. Eagle I helps you find realistic opportunities and draft every submission.</div>
+  </div>
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:18px">Award Nominations</div><div class="ss">Broadly-applicable awards, plus AI-suggested ones below — with submission templates</div></div></div>
+    <div id="pr-awards" class="g3">
+      <div class="card" style="border-top:2px solid var(--green)">
+        <div class="ce" style="color:var(--green)">🏆 Better Business Bureau Torch Award</div>
+        <div class="ct">Local BBB Chapter</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">BBB's highest recognition for ethical business practices. Many customers check BBB before hiring.<br><br><strong style="color:var(--green)">Angle:</strong> Transparent pricing, community involvement, and your stated differentiators all demonstrate the ethics pillar.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Annual · check your local BBB chapter</div>
+        <div><button class="btn-xs p" onclick="genAwardApp('BBB Torch Award for Marketplace Ethics')">Generate Nomination →</button></div>
+      </div>
+      <div class="card" style="border-top:2px solid var(--amber)">
+        <div class="ce" style="color:var(--amber)">🏆 Inc. 5000 Fastest-Growing</div>
+        <div class="ct">Inc. Magazine</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">National recognition that appears in every future marketing piece.<br><br><strong style="color:var(--green)">Angle:</strong> Your growth story, framed around real revenue/customer growth.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Apply annually · inc.com/inc5000</div>
+        <div><button class="btn-xs p" onclick="genAwardApp('Inc. 5000 Fastest-Growing Private Companies')">Generate Nomination →</button></div>
+      </div>
+      <div class="card real-estate-only" style="border-top:2px solid var(--purple)">
+        <div class="ce" style="color:var(--purple)">🏆 Houzz Best of Design/Service</div>
+        <div class="ct">Houzz Platform Award (home services/real estate)</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Houzz is where many homeowners discover contractors and designers.<br><br><strong style="color:var(--green)">Angle:</strong> Complete a Houzz profile with project descriptions and photos.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Annual · Auto-nominated based on Houzz activity · houzz.com</div>
+        <div><button class="btn-xs p" onclick="window.open('https://www.houzz.com','_blank')">Setup Houzz Profile ↗</button></div>
+      </div>
+      <div class="card real-estate-only" style="border-top:2px solid var(--red)">
+        <div class="ce" style="color:var(--red)">🏆 Angi Super Service Award</div>
+        <div class="ct">Angi (home services)</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Awarded to top-rated pros on the Angi platform.<br><br><strong style="color:var(--green)">Angle:</strong> Create an Angi profile, import reviews, maintain a strong rating.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Annual · angi.com</div>
+        <div><button class="btn-xs p" onclick="window.open('https://pro.angi.com','_blank')">Setup Angi ↗</button></div>
+      </div>
+      <div class="card" style="border-top:2px solid var(--amber)">
+        <div class="ce" style="color:var(--amber)">🏆 Inc. 5000 Fastest-Growing</div>
+        <div class="ct">Inc. Magazine</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">National recognition that appears in every future marketing piece forever.<br><br><strong style="color:var(--green)">Angle:</strong> 3-year revenue growth story from referral-only to digital expansion.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Apply annually · inc.com/inc5000</div>
+        <div><button class="btn-xs p" onclick="genAwardApp('Inc. 5000 Fastest-Growing Private Companies')">Generate Nomination →</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:18px">AI Award Discovery</div><div class="ss">Eagle I finds additional awards relevant to your industry</div></div></div>
+    <div id="pr-awards-ai"><div style="text-align:center;padding:18px;color:var(--ink3);font-size:12px">Click "Generate PR Strategy" above to find additional awards</div></div>
+  </div>
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:18px">Publication Opportunities</div><div class="ss">Where to publish articles — authority building for your industry</div></div></div>
+    <div id="pr-pubs" class="g3">
+      <div class="card" style="border-left:3px solid var(--blue2)">
+        <div class="ce">Publication Target</div>
+        <div class="ct">Local Business Journal</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Most metro areas have a local business journal (often part of the American City Business Journals network) that runs guest columns from local business owners.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Pitch to their relevant desk/editor for your industry</div>
+        <button class="btn-xs p" onclick="genArticleGeneric('local_journal')">Generate Article Draft →</button>
+      </div>
+      <div class="card" style="border-left:3px solid var(--gold)">
+        <div class="ce">Publication Target</div>
+        <div class="ct">Local Newspaper</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">An op-ed or expert-perspective piece for your local paper's relevant section.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Pitch to the relevant desk at your local paper</div>
+        <button class="btn-xs p" onclick="genArticleGeneric('local_paper')">Generate Article Draft →</button>
+      </div>
+      <div class="card" style="border-left:3px solid var(--purple)">
+        <div class="ce">Publication Target</div>
+        <div class="ct">Industry Trade Publication</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">A trade magazine or publication specific to your industry, aimed at peers and referral partners.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Search for the leading trade publication in your industry</div>
+        <button class="btn-xs p" onclick="genArticleGeneric('trade_pub')">Generate Article Draft →</button>
+      </div>
+      <div class="card" style="border-left:3px solid var(--amber)">
+        <div class="ce">Publication Target</div>
+        <div class="ct">Partner/Referral Network Resource</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Educational content aimed at the professionals most likely to refer you clients.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Pitch via your referral partners' association or newsletter</div>
+        <button class="btn-xs p" onclick="genArticleGeneric('referral_resource')">Generate Article Draft →</button>
+      </div>
+      <div class="card" style="border-left:3px solid var(--green)">
+        <div class="ce">Publication Target</div>
+        <div class="ct">Community Platform (Nextdoor, local FB groups)</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Regular helpful posts in your service area — seasonal tips, advice, or community engagement.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Free · Monthly cadence</div>
+        <button class="btn-xs p" onclick="genArticleGeneric('community')">Generate Post Draft →</button>
+      </div>
+    </div>
+    <div id="pr-article-out" style="margin-top:14px;display:none"></div>
+    <div class="sm" id="pr-art-s"></div>
+  </div>
+  <div id="pr-strategy-out" style="margin-top:14px"></div>
+  <div class="sm" id="pr-s"></div>
+  <div id="pr-award-out" style="margin-top:14px;display:none"></div>
+  <div class="sm" id="pr-award-s"></div>
   </div>
 </div>
 </div>
@@ -852,25 +1006,16 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 </div>
 
-<!-- ==================== ADS ==================== -->
-<div id="page-ads" class="page">
+<!-- ==================== BUDGET & ADS ==================== -->
+<div id="page-budgetads" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Ad Generator</div><div class="ss">Google · Meta · Nextdoor · LinkedIn · Direct Mail · Email Newsletter</div></div></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:13px">
-    <select id="ads-trig"><option value="primary">Primary Service</option><option value="offer">Special Offer</option><option value="differentiator">Key Differentiator</option><option value="advisory">Free Consultation</option><option value="seasonal">Seasonal/Timely Angle</option><option value="mkt_up">S&amp;P Up — Growth Mode</option></select>
-    <select id="ads-plat"><option value="google">Google Search</option><option value="meta">Facebook/Instagram</option><option value="nextdoor">Nextdoor</option><option value="linkedin">LinkedIn</option><option value="newsletter">Email Newsletter</option><option value="directmail">Direct Mail</option></select>
-    <button class="btn btn-blue" id="ads-btn" onclick="genAds('ads-btn','ads-spin','ads-ico','ads-out','ads-s','ads-trig','ads-plat')"><span class="spin" id="ads-spin"></span><svg id="ads-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Generate Ads</button>
-    <button class="btn-ghost" onclick="genAds('ads-btn','ads-spin','ads-ico','ads-out','ads-s','ads-trig','ads-plat')">New Variants</button>
+  <div class="sh"><div><div class="st">Budget &amp; Ads</div><div class="ss">Plan the spend · generate the ad copy to spend it on</div></div></div>
+  <div class="subtabs">
+    <div class="subtab active" onclick="goSub('budgetads','budget',this)">💰 Budget &amp; Playbook</div>
+    <div class="subtab" onclick="goSub('budgetads','ads',this)">📢 Ad Generator</div>
   </div>
-  <div id="ads-out" style="display:flex;flex-direction:column;gap:9px"><div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">Select trigger + platform to generate 4 ad variants</div></div>
-  <div class="sm" id="ads-s"></div>
-</div>
-</div>
 
-<!-- ==================== BUDGET ==================== -->
-<div id="page-budget" class="page">
-<div class="wrap">
-  <div class="sh"><div><div class="st">Budget &amp; 90-Day Playbook</div><div class="ss">Precision allocation · ROI analysis · week-by-week execution</div></div></div>
+  <div class="subpage active" id="sub-budgetads-budget">
   <div class="g2">
     <div>
       <div class="sh"><div><div class="st" style="font-size:17px">Budget Planner</div></div></div>
@@ -889,6 +1034,19 @@ tbody tr:last-child td{border-bottom:none}
       <button class="btn btn-blue" id="tl-btn" onclick="genPlaybook()" style="margin-top:10px"><span class="spin" id="tl-spin"></span><span id="tl-lbl">Generate 90-Day Playbook</span></button>
       <div class="sm" id="tl-s"></div>
     </div>
+  </div>
+  </div>
+
+  <div class="subpage" id="sub-budgetads-ads">
+  <div class="sh"><div><div class="st">Ad Generator</div><div class="ss">Google · Meta · Nextdoor · LinkedIn · Direct Mail · Email Newsletter</div></div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:13px">
+    <select id="ads-trig"><option value="primary">Primary Service</option><option value="offer">Special Offer</option><option value="differentiator">Key Differentiator</option><option value="advisory">Free Consultation</option><option value="seasonal">Seasonal/Timely Angle</option><option value="mkt_up">S&amp;P Up — Growth Mode</option></select>
+    <select id="ads-plat"><option value="google">Google Search</option><option value="meta">Facebook/Instagram</option><option value="nextdoor">Nextdoor</option><option value="linkedin">LinkedIn</option><option value="newsletter">Email Newsletter</option><option value="directmail">Direct Mail</option></select>
+    <button class="btn btn-blue" id="ads-btn" onclick="genAds('ads-btn','ads-spin','ads-ico','ads-out','ads-s','ads-trig','ads-plat')"><span class="spin" id="ads-spin"></span><svg id="ads-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Generate Ads</button>
+    <button class="btn-ghost" onclick="genAds('ads-btn','ads-spin','ads-ico','ads-out','ads-s','ads-trig','ads-plat')">New Variants</button>
+  </div>
+  <div id="ads-out" style="display:flex;flex-direction:column;gap:9px"><div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">Select trigger + platform to generate 4 ad variants</div></div>
+  <div class="sm" id="ads-s"></div>
   </div>
 </div>
 </div>
@@ -920,8 +1078,8 @@ function goTo(id,btn){
   var pg=document.getElementById('page-'+id); if(pg)pg.classList.add('active');
   if(btn)btn.classList.add('active');
   if(id==='keywords')loadKw(false);
-  if(id==='budget')renderBudget(10000);
-  if(id==='social')loadAdsStatus();
+  if(id==='budgetads')renderBudget(10000);
+  if(id==='social'){loadAdsStatus();loadScheduledPosts();}
   tcTab=id;
   if(typeof TAB_CONTEXTS!=='undefined'){
     var ctx=TAB_CONTEXTS[id]||TAB_CONTEXTS['dash'];
@@ -937,17 +1095,26 @@ function goTo(id,btn){
     }
   }
   // Tabs with content generated once at onboarding render from that cache —
-  // no live API call, no cost, instant. Tabs without cached content (vendors,
-  // networking, PR, social) stay manual-trigger only (click "Generate") so
-  // visiting a tab for the first time never silently spends a tenant's
-  // monthly generation quota. This replaces the old behavior of firing a
-  // live Claude call automatically on every tab's first visit.
+  // no live API call, no cost, instant. Tabs without cached content (Growth
+  // & Partners' sub-sections, social) stay manual-trigger only (click
+  // "Generate") so visiting a tab for the first time never silently spends
+  // a tenant's monthly generation quota. This replaces the old behavior of
+  // firing a live Claude call automatically on every tab's first visit.
   if(!_pgLoaded[id]){
     _pgLoaded[id]=true;
     if(id==='strategy')renderStrategyFromCache();
     if(id==='competitors')renderCompetitorsFromCache();
     if(id==='opps')renderOpportunitiesFromCache();
   }
+}
+// In-page sub-tabs for merged top-level tabs (Leads, Budget & Ads, Growth &
+// Partners) — same active/inactive toggle as goTo(), scoped to one page's
+// own .subpage/.subtab elements so it can't touch another tab's state.
+function goSub(page,sub,btn){
+  document.querySelectorAll('#page-'+page+' .subpage').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('#page-'+page+' .subtab').forEach(function(b){b.classList.remove('active');});
+  var el=document.getElementById('sub-'+page+'-'+sub); if(el)el.classList.add('active');
+  if(btn)btn.classList.add('active');
 }
 
 /* NOTIFY */
@@ -1310,7 +1477,7 @@ Return ONLY valid JSON: {"keywords":[{"keyword":"realistic keyword for this busi
   btn.disabled=false;spin.style.display='none';
 }
 function goLPKw(kw){
-  goTo('landing',document.getElementById('t-landing'));
+  goTo('leads',document.getElementById('t-leads'));
   const el=document.querySelector(`.lp-trig[onclick*="primary"]`);
   if(el)selLP(el,'primary');
 }
@@ -2053,8 +2220,10 @@ async function bootstrap(){
   loadInbox();
   loadLandingPageState();
   loadReviewRequests();
+  loadScheduledPosts();
   const rrGoogle=document.getElementById('rr-google-url');if(rrGoogle)rrGoogle.value=ME.profile.googleReviewUrl||'';
   const rrYelp=document.getElementById('rr-yelp-url');if(rrYelp)rrYelp.value=ME.profile.yelpReviewUrl||'';
+  fillCompanyProfileForm();
 
   const verifyBanner=document.getElementById('verify-banner');
   if(verifyBanner&&ME.emailVerified===false){
@@ -2067,131 +2236,6 @@ async function bootstrap(){
 }
 window.addEventListener('load',bootstrap);
 </script>
-
-<!-- ==================== NETWORKING EVENTS ==================== -->
-<div id="page-network" class="page">
-<div class="wrap">
-  <div class="sh"><div><div class="st">Networking &amp; Referral Partners</div><div class="ss">AI-generated referral partner categories and outreach for your industry</div></div>
-  <button class="btn btn-blue" id="net-btn" onclick="loadTargetGroups()"><span class="spin" id="net-spin"></span><span id="net-lbl">Find Referral Groups</span></button></div>
-  <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Target Groups — What They Need</div><div class="ss">Deliver value before asking for a referral</div></div></div>
-    <div class="g3" id="target-groups"><div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:5px">Click "Find Referral Groups"</div><div style="font-size:12px">AI-generated referral partner categories relevant to your industry, with an opening line for each</div></div></div>
-  </div>
-  <div class="section">
-    <div class="sh">
-      <div><div class="st" style="font-size:18px">Live Event Intelligence</div><div class="ss">AI-suggested event types for your industry — not a live calendar feed</div></div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <select id="net-time"><option value="30">Next 30 Days</option><option value="60">Next 60 Days</option><option value="90">Next 90 Days</option></select>
-        <button class="btn btn-blue" id="net-btn2" onclick="loadNetworking()"><span class="spin" id="net-spin2"></span><span id="net-lbl2">Find Events</span></button>
-      </div>
-    </div>
-    <div id="net-events" class="g3"><div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:5px">Click "Find Events"</div><div style="font-size:12px">AI-suggested networking event types for your industry</div></div></div>
-    <div class="sm" id="net-s"></div>
-  </div>
-</div>
-</div>
-
-<!-- ==================== PR & AWARDS ==================== -->
-<div id="page-pr" class="page">
-<div class="wrap">
-  <div class="sh"><div><div class="st">PR & Awards Engine</div><div class="ss">Eagle I is your PR platform — awards · publications · authority building · media coverage</div></div>
-  <button class="btn btn-blue" id="pr-btn" onclick="loadPR()"><span class="spin" id="pr-spin"></span><span id="pr-lbl">Generate PR Strategy</span></button></div>
-  <div class="ib" style="margin-bottom:18px">
-    <div class="ibt">Eagle I isn't just marketing — it's authority building</div>
-    <div class="ibb">Every award nomination, every published article, every media mention makes your business the obvious choice when someone needs to decide who to hire — or who to refer. Eagle I helps you find realistic opportunities and draft every submission.</div>
-  </div>
-  <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Award Nominations</div><div class="ss">Broadly-applicable awards, plus AI-suggested ones below — with submission templates</div></div></div>
-    <div id="pr-awards" class="g3">
-      <div class="card" style="border-top:2px solid var(--green)">
-        <div class="ce" style="color:var(--green)">🏆 Better Business Bureau Torch Award</div>
-        <div class="ct">Local BBB Chapter</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">BBB's highest recognition for ethical business practices. Many customers check BBB before hiring.<br><br><strong style="color:var(--green)">Angle:</strong> Transparent pricing, community involvement, and your stated differentiators all demonstrate the ethics pillar.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Annual · check your local BBB chapter</div>
-        <div><button class="btn-xs p" onclick="genAwardApp('BBB Torch Award for Marketplace Ethics')">Generate Nomination →</button></div>
-      </div>
-      <div class="card" style="border-top:2px solid var(--amber)">
-        <div class="ce" style="color:var(--amber)">🏆 Inc. 5000 Fastest-Growing</div>
-        <div class="ct">Inc. Magazine</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">National recognition that appears in every future marketing piece.<br><br><strong style="color:var(--green)">Angle:</strong> Your growth story, framed around real revenue/customer growth.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Apply annually · inc.com/inc5000</div>
-        <div><button class="btn-xs p" onclick="genAwardApp('Inc. 5000 Fastest-Growing Private Companies')">Generate Nomination →</button></div>
-      </div>
-      <div class="card real-estate-only" style="border-top:2px solid var(--purple)">
-        <div class="ce" style="color:var(--purple)">🏆 Houzz Best of Design/Service</div>
-        <div class="ct">Houzz Platform Award (home services/real estate)</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Houzz is where many homeowners discover contractors and designers.<br><br><strong style="color:var(--green)">Angle:</strong> Complete a Houzz profile with project descriptions and photos.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Annual · Auto-nominated based on Houzz activity · houzz.com</div>
-        <div><button class="btn-xs p" onclick="window.open('https://www.houzz.com','_blank')">Setup Houzz Profile ↗</button></div>
-      </div>
-      <div class="card real-estate-only" style="border-top:2px solid var(--red)">
-        <div class="ce" style="color:var(--red)">🏆 Angi Super Service Award</div>
-        <div class="ct">Angi (home services)</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Awarded to top-rated pros on the Angi platform.<br><br><strong style="color:var(--green)">Angle:</strong> Create an Angi profile, import reviews, maintain a strong rating.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Annual · angi.com</div>
-        <div><button class="btn-xs p" onclick="window.open('https://pro.angi.com','_blank')">Setup Angi ↗</button></div>
-      </div>
-      <div class="card" style="border-top:2px solid var(--amber)">
-        <div class="ce" style="color:var(--amber)">🏆 Inc. 5000 Fastest-Growing</div>
-        <div class="ct">Inc. Magazine</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">National recognition that appears in every future marketing piece forever.<br><br><strong style="color:var(--green)">Angle:</strong> 3-year revenue growth story from referral-only to digital expansion.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--amber);margin-bottom:7px">📅 Apply annually · inc.com/inc5000</div>
-        <div><button class="btn-xs p" onclick="genAwardApp('Inc. 5000 Fastest-Growing Private Companies')">Generate Nomination →</button></div>
-      </div>
-    </div>
-  </div>
-  <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">AI Award Discovery</div><div class="ss">Eagle I finds additional awards relevant to your industry</div></div></div>
-    <div id="pr-awards-ai"><div style="text-align:center;padding:18px;color:var(--ink3);font-size:12px">Click "Generate PR Strategy" above to find additional awards</div></div>
-  </div>
-  <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Publication Opportunities</div><div class="ss">Where to publish articles — authority building for your industry</div></div></div>
-    <div id="pr-pubs" class="g3">
-      <div class="card" style="border-left:3px solid var(--blue2)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Local Business Journal</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Most metro areas have a local business journal (often part of the American City Business Journals network) that runs guest columns from local business owners.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Pitch to their relevant desk/editor for your industry</div>
-        <button class="btn-xs p" onclick="genArticleGeneric('local_journal')">Generate Article Draft →</button>
-      </div>
-      <div class="card" style="border-left:3px solid var(--gold)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Local Newspaper</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">An op-ed or expert-perspective piece for your local paper's relevant section.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Pitch to the relevant desk at your local paper</div>
-        <button class="btn-xs p" onclick="genArticleGeneric('local_paper')">Generate Article Draft →</button>
-      </div>
-      <div class="card" style="border-left:3px solid var(--purple)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Industry Trade Publication</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">A trade magazine or publication specific to your industry, aimed at peers and referral partners.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Search for the leading trade publication in your industry</div>
-        <button class="btn-xs p" onclick="genArticleGeneric('trade_pub')">Generate Article Draft →</button>
-      </div>
-      <div class="card" style="border-left:3px solid var(--amber)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Partner/Referral Network Resource</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Educational content aimed at the professionals most likely to refer you clients.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Pitch via your referral partners' association or newsletter</div>
-        <button class="btn-xs p" onclick="genArticleGeneric('referral_resource')">Generate Article Draft →</button>
-      </div>
-      <div class="card" style="border-left:3px solid var(--green)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Community Platform (Nextdoor, local FB groups)</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Regular helpful posts in your service area — seasonal tips, advice, or community engagement.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Free · Monthly cadence</div>
-        <button class="btn-xs p" onclick="genArticleGeneric('community')">Generate Post Draft →</button>
-      </div>
-    </div>
-    <div id="pr-article-out" style="margin-top:14px;display:none"></div>
-    <div class="sm" id="pr-art-s"></div>
-  </div>
-  <div id="pr-strategy-out" style="margin-top:14px"></div>
-  <div class="sm" id="pr-s"></div>
-  <div id="pr-award-out" style="margin-top:14px;display:none"></div>
-  <div class="sm" id="pr-award-s"></div>
-</div>
-</div>
 
 <!-- PER-TAB AI CHAT -->
 <div id="tab-chat" class="tab-chat">
@@ -2240,20 +2284,14 @@ const TAB_CONTEXTS = {
                chips:['What are competitor weaknesses I can exploit?','How do I differentiate?']},
   opps:       {icon:'🎯', title:'Live Opportunities', ctx:'News · social · weather · permit data',
                chips:['Which opportunity is hottest right now?','Draft outreach for the top lead']},
-  landing:    {icon:'🚀', title:'Landing Pages', ctx:'SEO-optimized pages by service',
-               chips:['Which page should I publish first?','Suggest A/B test variations']},
-  vendors:    {icon:'🤝', title:'Vendors & Partners', ctx:'Architects · engineers · designers · attorneys',
-               chips:['Which vendor is best for referrals?','Draft a partnership proposal']},
+  leads:      {icon:'📥', title:'Leads', ctx:'Landing pages that capture leads · the leads they\'ve caught',
+               chips:['Which page should I publish first?','Which new leads should I follow up with today?']},
   permits:    {icon:'📋', title:'Permits', ctx:'Property-record outreach (real-estate/home-services)',
                chips:['Which permits are highest value?','How do I pitch permit leads?']},
-  ads:        {icon:'📢', title:'Ads', ctx:'Google · Meta · platform-specific copy',
-               chips:['Which platform should I prioritize?','What budget should I allocate?']},
-  budget:     {icon:'💰', title:'Budget', ctx:'Allocation across all marketing channels',
-               chips:['Am I over- or under-spending anywhere?','Where do I cut first if I need to?']},
-  network:    {icon:'🤝', title:'Networking', ctx:'Architects · engineers · designers · insurance · attorneys · realtors',
-               chips:['Which group has the highest referral ROI?','Draft a referral partner pitch']},
-  pr:         {icon:'🏆', title:'PR & Awards', ctx:'Awards · publications · thought leadership',
-               chips:['Which award should I apply for first?','Draft a press release']},
+  budgetads:  {icon:'💰', title:'Budget & Ads', ctx:'Allocation across channels · platform-specific ad copy',
+               chips:['Am I over- or under-spending anywhere?','Which platform should I prioritize?']},
+  growth:     {icon:'🤝', title:'Growth & Partners', ctx:'Referral vendors · networking events · awards & press',
+               chips:['Which vendor is best for referrals?','Which award should I apply for first?']},
   social:     {icon:'📱', title:'Social Media HQ', ctx:'All platforms · posts · engagement · analytics',
                chips:['What should I post today?','How do I increase engagement?']},
   credentials:{icon:'⚙️', title:'Credentials', ctx:'API tokens & platform access',
@@ -2587,6 +2625,76 @@ async function changeEmail(){
     document.getElementById('acct-email-pass').value='';
   }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
 }
+/* COMPANY PROFILE (editable after signup, separate from the AI-generation-triggering onboarding submit) */
+function fillCompanyProfileForm(){
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
+  set('prof-company-name',ME.companyName);
+  set('prof-industry',ME.industry);
+  set('prof-founder',ME.profile.founderName);
+  set('prof-phone',ME.profile.phone);
+  set('prof-email',ME.profile.email);
+  set('prof-address',ME.profile.address);
+  set('prof-site',ME.profile.site);
+  set('prof-service-area',ME.profile.serviceArea);
+  set('prof-services',ME.profile.services);
+  set('prof-differentiators',ME.profile.differentiators);
+  set('prof-voice',ME.profile.voice);
+  if(ME.profile.logoUrl){
+    const wrap=document.getElementById('prof-logo-preview-wrap'),img=document.getElementById('prof-logo-preview');
+    if(wrap&&img){img.src=ME.profile.logoUrl;wrap.style.display='block';}
+  }
+}
+const PROF_MAX_LOGO_BYTES=1024*1024; // 1MB, matches the server-side cap in routes/onboarding.js
+let profLogoDataUrl=null;
+function handleProfileLogoChange(file){
+  const s=document.getElementById('prof-s');
+  const wrap=document.getElementById('prof-logo-preview-wrap'),img=document.getElementById('prof-logo-preview');
+  profLogoDataUrl=null;
+  if(!file)return;
+  if(file.size>PROF_MAX_LOGO_BYTES){
+    if(s){s.textContent='Logo file is too large — please use an image under 1MB.';s.style.color='var(--red)';}
+    document.getElementById('prof-logo').value='';
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    profLogoDataUrl=reader.result;
+    if(img)img.src=profLogoDataUrl;
+    if(wrap)wrap.style.display='block';
+  };
+  reader.onerror=()=>{if(s){s.textContent='Could not read that file — try a different image.';s.style.color='var(--red)';}};
+  reader.readAsDataURL(file);
+}
+async function saveCompanyProfile(){
+  const btn=document.getElementById('prof-save-btn'),spin=document.getElementById('prof-spin'),s=document.getElementById('prof-s');
+  const val=id=>(document.getElementById(id)?.value||'').trim();
+  const companyName=val('prof-company-name'), services=val('prof-services');
+  if(!companyName){s.textContent='Company name is required.';s.style.color='var(--red)';return;}
+  if(!services){s.textContent='Please describe the services this business offers.';s.style.color='var(--red)';return;}
+  if(btn)btn.disabled=true;if(spin)spin.style.display='block';
+  s.textContent='Saving...';s.style.color='var(--ink2)';
+  try{
+    const r=await fetch('/api/onboarding/profile',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      companyName, industry:val('prof-industry'),
+      founderName:val('prof-founder'), phone:val('prof-phone'), email:val('prof-email'), address:val('prof-address'),
+      site:val('prof-site'), serviceArea:val('prof-service-area'), services, differentiators:val('prof-differentiators'),
+      voice:val('prof-voice'), logoDataUrl:profLogoDataUrl
+    })});
+    const d=await r.json();
+    if(!r.ok){s.textContent=d.error?.message||'Failed to save';s.style.color='var(--red)';return;}
+    s.textContent='Saved';s.style.color='var(--green)';
+    profLogoDataUrl=null;
+    // Refresh cached name/industry/profile used throughout the dashboard
+    // (topbar company name, industry-gated real-estate sections, etc.)
+    // without a full page reload.
+    ME.companyName=companyName;ME.industry=val('prof-industry');
+    Object.assign(ME.profile,{founderName:val('prof-founder'),phone:val('prof-phone'),email:val('prof-email'),address:val('prof-address'),site:val('prof-site'),serviceArea:val('prof-service-area'),services,differentiators:val('prof-differentiators'),voice:val('prof-voice')});
+    const nameEl=document.getElementById('topbar-company-name');if(nameEl)nameEl.textContent=companyName;
+    ME.showRealEstateFeatures=(ME.industry==='home_services'||ME.industry==='real_estate');
+    document.querySelectorAll('.real-estate-only').forEach(el=>{el.style.display=ME.showRealEstateFeatures?'':'none';});
+  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';
+}
 async function resendVerification(){
   try{
     const r=await fetch('/api/auth/resend-verification',{method:'POST'});
@@ -2665,19 +2773,98 @@ function openPostComposer(platform){
     showNotif('Composer ready','Posting to '+platform+' only — change selection if needed');
   },300);
 }
+function togglePostSchedule(){
+  const when=document.getElementById('post-when')?.value;
+  const inp=document.getElementById('post-schedule-at');
+  const lbl=document.getElementById('post-btn-lbl');
+  if(inp)inp.style.display=when==='later'?'':'none';
+  if(lbl)lbl.textContent=when==='later'?'📅 Schedule Post':'🚀 Publish to All Selected Platforms';
+  if(inp&&when==='later'&&!inp.value){
+    const d=new Date(Date.now()+60*60*1000); // default an hour out
+    d.setSeconds(0,0);
+    d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+    inp.value=d.toISOString().slice(0,16);
+  }
+}
+const SCHEDULABLE_PLATFORMS=['facebook','instagram','google'];
 async function publishPost(){
   const ta=document.getElementById('post-content');
   const text=(ta&&ta.value||'').trim();
   if(!text){showNotif('Empty post','Write something or use AI Generate');return;}
   const selected=Array.from(document.querySelectorAll('.plat-toggle.sel')).map(t=>t.getAttribute('data-plat'));
   if(!selected.length){showNotif('No platforms','Select at least one platform');return;}
-  await runPublish(selected,text);
+  const when=document.getElementById('post-when')?.value;
+  if(when==='later'){
+    await schedulePost(selected,text);
+  }else{
+    await runPublish(selected,text);
+  }
 }
 async function publishOne(platform){
   const ta=document.getElementById('post-content');
   const text=(ta&&ta.value||'').trim();
   if(!text){showNotif('Empty post','Write something or use AI Generate');return;}
   await runPublish([platform],text);
+}
+async function schedulePost(selected,text){
+  const schedulable=selected.filter(p=>SCHEDULABLE_PLATFORMS.includes(p));
+  const skipped=selected.filter(p=>!SCHEDULABLE_PLATFORMS.includes(p));
+  if(!schedulable.length){
+    showNotif('Can\'t schedule those platforms','Scheduling supports Facebook, Instagram, and Google only — post now instead, or select one of those');
+    return;
+  }
+  const atInput=document.getElementById('post-schedule-at');
+  const atVal=atInput&&atInput.value;
+  if(!atVal){showNotif('Pick a time','Choose when this post should go out');return;}
+  const scheduledAt=new Date(atVal);
+  if(isNaN(scheduledAt.getTime())||scheduledAt.getTime()<=Date.now()){
+    showNotif('Pick a future time','The scheduled time must be later than now');
+    return;
+  }
+  const btn=document.getElementById('post-btn'),spin=document.getElementById('post-spin');
+  if(btn)btn.disabled=true;if(spin)spin.style.display='block';
+  try{
+    const r=await fetch('/api/scheduled-posts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,targets:schedulable,imageUrl:firstHostedImageUrl(),scheduledAt:scheduledAt.toISOString()})});
+    const d=await r.json();
+    if(!r.ok){showNotif('Could not schedule',d.error?.message||'Failed');return;}
+    showNotif('Post scheduled',skipped.length?`For ${schedulable.join(', ')} · ${skipped.join(', ')} skipped (scheduling isn't supported there)`:`For ${scheduledAt.toLocaleString()}`);
+    loadScheduledPosts();
+  }catch(e){
+    showNotif('Network error',e.message);
+  }
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';
+}
+async function loadScheduledPosts(){
+  const el=document.getElementById('scheduled-posts-list');if(!el)return;
+  try{
+    const r=await fetch('/api/scheduled-posts?status=pending');
+    const d=await r.json();
+    renderScheduledPosts(d.posts||[]);
+  }catch(e){/* leave existing content on transient failure */}
+}
+function renderScheduledPosts(posts){
+  const el=document.getElementById('scheduled-posts-list');if(!el)return;
+  if(!posts.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No posts scheduled</div>';return;}
+  el.innerHTML=posts.map(p=>{
+    const targets=(p.targets||[]).map(t=>platIcon(t)+' '+t).join(' · ');
+    const when=new Date(p.scheduled_at).toLocaleString();
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;padding:8px 11px;background:var(--bg4);border-radius:var(--r)">
+      <div style="min-width:0"><div style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px">${escapeHtmlClient(p.message)}</div><div style="color:var(--ink3);font-family:var(--fm);font-size:10px;margin-top:2px">${targets} · ${when}</div></div>
+      <button class="btn-xs" onclick="cancelScheduledPost('${p.id}')" style="flex-shrink:0">Cancel</button>
+    </div>`;
+  }).join('');
+}
+function escapeHtmlClient(s){
+  const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;
+}
+async function cancelScheduledPost(id){
+  try{
+    const r=await fetch('/api/scheduled-posts/'+id,{method:'DELETE'});
+    const d=await r.json();
+    if(!r.ok){showNotif('Could not cancel',d.error?.message||'Failed');return;}
+    showNotif('Canceled','Scheduled post removed');
+    loadScheduledPosts();
+  }catch(e){showNotif('Network error',e.message);}
 }
 async function runPublish(platforms,text){
   const btn=document.getElementById('post-btn'),spin=document.getElementById('post-spin');
@@ -3389,10 +3576,15 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
         <div class="fd-sub">JPG · PNG · MP4 · MOV · Up to 20 files</div>
       </div>
       <div class="media-preview" id="media-preview"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:11px">
+        <label style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px">When:</label>
+        <select id="post-when" onchange="togglePostSchedule()"><option value="now">Post now</option><option value="later">Schedule for later</option></select>
+        <input type="datetime-local" id="post-schedule-at" style="display:none">
+      </div>
       <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:11px">
         <button class="btn btn-blue" id="post-btn" onclick="publishPost()" style="flex:2;min-width:180px;justify-content:center">
           <span class="spin" id="post-spin"></span>
-          🚀 Publish to All Selected Platforms
+          <span id="post-btn-lbl">🚀 Publish to All Selected Platforms</span>
         </button>
       </div>
       <div style="margin-top:10px">
@@ -3410,6 +3602,13 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       </div>
       <div id="post-results" style="margin-top:11px"></div>
       <div class="sm" id="post-s"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:18px">Upcoming Scheduled Posts</div><div class="ss">Fires automatically at the scheduled time via the same live posting used above</div></div></div>
+    <div id="scheduled-posts-list" style="display:flex;flex-direction:column;gap:6px">
+      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No posts scheduled</div>
     </div>
   </div>
 
@@ -3451,25 +3650,6 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
 </div>
 </div>
 
-<!-- ==================== LEADS INBOX ==================== -->
-<div id="page-inbox" class="page">
-<div class="wrap">
-  <div class="sh">
-    <div><div class="st">Leads</div><div class="ss">Real submissions from your published landing page · not simulated</div></div>
-    <select id="inbox-filter" onchange="loadInbox()" style="max-width:160px">
-      <option value="">All statuses</option>
-      <option value="new">New</option>
-      <option value="contacted">Contacted</option>
-      <option value="won">Won</option>
-      <option value="lost">Lost</option>
-    </select>
-  </div>
-  <div id="inbox-list" style="display:flex;flex-direction:column;gap:8px">
-    <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">No leads yet — publish your landing page (Landing Pages tab) to start collecting real submissions</div>
-  </div>
-</div>
-</div>
-
 <!-- ==================== ADMIN (platform owner only) ==================== -->
 <div id="page-admin" class="page">
 <div class="wrap">
@@ -3489,6 +3669,39 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <div id="verify-banner" class="ib" style="display:none;margin-bottom:16px;border-color:rgba(255,180,0,.35)">
     <div class="ibt">📧 Verify your email</div>
     <div class="ibb">We sent a verification link to <span id="verify-email-addr"></span>. <button class="btn-xs p" onclick="resendVerification()" style="margin-left:6px">Resend link</button></div>
+  </div>
+
+  <div class="platform-card" style="margin-bottom:16px">
+    <div class="platform-name" style="margin-bottom:12px">Company Profile</div>
+    <div style="font-size:12px;color:var(--ink2);margin-bottom:12px">What you entered at signup — edit anytime. This does not regenerate your Strategy/Keywords/Competitors/Opportunities content; use each tab's "Refresh" button for that.</div>
+    <div class="g2" style="gap:10px">
+      <div class="cred-row"><div class="cred-label">Company Name</div><input class="cred-input" type="text" id="prof-company-name"></div>
+      <div class="cred-row"><div class="cred-label">Industry</div>
+        <select class="cred-input" id="prof-industry" style="text-transform:none;font-weight:400;cursor:pointer">
+          <option value="home_services">Home Services / Contractor</option>
+          <option value="real_estate">Real Estate</option>
+          <option value="professional_services">Professional Services</option>
+          <option value="retail">Retail</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="cred-row"><div class="cred-label">Founder / Contact Name</div><input class="cred-input" type="text" id="prof-founder"></div>
+      <div class="cred-row"><div class="cred-label">Phone</div><input class="cred-input" type="tel" id="prof-phone"></div>
+      <div class="cred-row"><div class="cred-label">Business Email</div><input class="cred-input" type="email" id="prof-email"></div>
+      <div class="cred-row"><div class="cred-label">Business Address</div><input class="cred-input" type="text" id="prof-address"></div>
+      <div class="cred-row"><div class="cred-label">Website</div><input class="cred-input" type="text" id="prof-site" placeholder="yourcompany.com"></div>
+      <div class="cred-row"><div class="cred-label">Service Area</div><input class="cred-input" type="text" id="prof-service-area" placeholder="e.g. Austin metro, or nationwide"></div>
+    </div>
+    <div class="cred-row"><div class="cred-label">Services Offered</div><textarea class="cred-input" id="prof-services" style="min-height:60px;resize:vertical" placeholder="What does this business actually do?"></textarea></div>
+    <div class="cred-row"><div class="cred-label">Key Differentiators</div><textarea class="cred-input" id="prof-differentiators" style="min-height:60px;resize:vertical" placeholder="What makes this business different from competitors?"></textarea></div>
+    <div class="cred-row"><div class="cred-label">Brand Voice</div><input class="cred-input" type="text" id="prof-voice" placeholder="e.g. warm and community-focused, or sharp and authoritative"></div>
+    <div class="cred-row">
+      <div class="cred-label">Logo (optional, PNG/JPG/SVG/WebP, max 1MB)</div>
+      <input type="file" id="prof-logo" accept="image/png,image/jpeg,image/svg+xml,image/webp" onchange="handleProfileLogoChange(this.files[0])">
+      <div id="prof-logo-preview-wrap" style="display:none;margin-top:8px"><img id="prof-logo-preview" style="max-width:90px;max-height:90px;border-radius:8px;background:var(--bg5);padding:6px"></div>
+    </div>
+    <button class="btn btn-blue" id="prof-save-btn" onclick="saveCompanyProfile()" style="margin-top:10px"><span class="spin" id="prof-spin"></span>Save Company Profile</button>
+    <div class="sm" id="prof-s"></div>
   </div>
 
   <div class="g2">

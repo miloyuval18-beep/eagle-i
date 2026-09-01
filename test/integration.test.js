@@ -108,6 +108,71 @@ describe('tenant isolation', () => {
   });
 });
 
+describe('company profile editing (PATCH /api/onboarding/profile)', () => {
+  test('updates the tenant + business_profile without touching generated_content or the usage cap', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('profedit'), password: 'TestPass1234!', companyName: 'Original Name', industry: 'home_services', acceptedTerms: true
+    });
+    const tenantId = (await signup.json()).tenantId;
+    trackTenant(tenantId);
+
+    const before = await (await client.get('/api/me')).json();
+    assert.equal(before.generationsUsed, 0);
+
+    const r = await client.patch('/api/onboarding/profile', {
+      companyName: 'Updated Name', industry: 'professional_services',
+      founderName: 'Jane Owner', phone: '555-0123', email: 'jane@example.com', address: '1 Main St',
+      site: 'example.com', serviceArea: 'Metro area', services: 'Updated services', differentiators: 'Fast',
+      voice: 'warm'
+    });
+    assert.equal(r.status, 200);
+
+    const after = await (await client.get('/api/me')).json();
+    assert.equal(after.companyName, 'Updated Name');
+    assert.equal(after.industry, 'professional_services');
+    assert.equal(after.profile.founderName, 'Jane Owner');
+    assert.equal(after.profile.services, 'Updated services');
+    // Unrelated to onboarding's AI generation — must not have run or counted.
+    assert.equal(after.generationsUsed, 0);
+    assert.deepEqual(after.generatedContent, {});
+  });
+
+  test('rejects a missing company name, missing services, or invalid industry', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('profedit2'), password: 'TestPass1234!', companyName: 'X Co', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const base = { companyName: 'X Co', industry: 'home_services', services: 'Something' };
+    assert.equal((await client.patch('/api/onboarding/profile', { ...base, companyName: '' })).status, 400);
+    assert.equal((await client.patch('/api/onboarding/profile', { ...base, services: '' })).status, 400);
+    assert.equal((await client.patch('/api/onboarding/profile', { ...base, industry: 'not_a_real_industry' })).status, 400);
+  });
+
+  test("tenant A editing their profile doesn't affect tenant B", async () => {
+    const clientA = makeClient();
+    const signupA = await clientA.post('/api/auth/signup', {
+      email: uniqueEmail('profA'), password: 'TestPass1234!', companyName: 'Profile Tenant A', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signupA.json()).tenantId);
+
+    const clientB = makeClient();
+    const signupB = await clientB.post('/api/auth/signup', {
+      email: uniqueEmail('profB'), password: 'TestPass1234!', companyName: 'Profile Tenant B', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signupB.json()).tenantId);
+
+    await clientA.patch('/api/onboarding/profile', {
+      companyName: 'A Renamed', industry: 'home_services', services: 'A services'
+    });
+
+    const bAfter = await (await clientB.get('/api/me')).json();
+    assert.equal(bAfter.companyName, 'Profile Tenant B');
+  });
+});
+
 describe('usage caps (lib/usage.js checkAndIncrementCounter)', () => {
   test('blocks once the monthly cap is reached, and does not increment past it', async () => {
     const client = makeClient();
@@ -427,11 +492,76 @@ describe('landing pages: multi-page support', () => {
   });
 });
 
-describe('regression: scheduled/automatic posting stays removed', () => {
-  test('/api/scheduled-posts no longer exists', async () => {
+describe('scheduled posts', () => {
+  test('validates targets, future time, and requires a connected platform', async () => {
     const client = makeClient();
-    const r = await client.get('/api/scheduled-posts');
-    assert.equal(r.status, 404);
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('sched'), password: 'TestPass1234!', companyName: 'Sched Co', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    assert.equal((await client.post('/api/scheduled-posts', { message: '', targets: ['facebook'], scheduledAt: future })).status, 400);
+    assert.equal((await client.post('/api/scheduled-posts', { message: 'hi', targets: [], scheduledAt: future })).status, 400);
+    assert.equal((await client.post('/api/scheduled-posts', { message: 'hi', targets: ['linkedin'], scheduledAt: future })).status, 400);
+    assert.equal((await client.post('/api/scheduled-posts', { message: 'hi', targets: ['facebook'], scheduledAt: new Date(Date.now() - 1000).toISOString() })).status, 400);
+
+    // No Meta connection on this fresh tenant — a well-formed request is
+    // still rejected, with a clear reason rather than silently queuing a
+    // post that can never actually send.
+    const noConn = await client.post('/api/scheduled-posts', { message: 'hi', targets: ['facebook'], scheduledAt: future });
+    assert.equal(noConn.status, 400);
+    const noConnBody = await noConn.json();
+    assert.match(noConnBody.error.message, /no facebook\/instagram account connected/i);
+  });
+
+  test('list only returns the caller\'s own tenant, and cancel only touches still-pending rows', async () => {
+    const clientA = makeClient();
+    const signupA = await clientA.post('/api/auth/signup', {
+      email: uniqueEmail('schedA'), password: 'TestPass1234!', companyName: 'Sched Tenant A', industry: 'home_services', acceptedTerms: true
+    });
+    const tenantA = (await signupA.json()).tenantId;
+    trackTenant(tenantA);
+
+    const clientB = makeClient();
+    const signupB = await clientB.post('/api/auth/signup', {
+      email: uniqueEmail('schedB'), password: 'TestPass1234!', companyName: 'Sched Tenant B', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signupB.json()).tenantId);
+
+    const pool = getTestPool();
+    let pendingId, sentId;
+    try {
+      const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      const pending = await pool.query(
+        `INSERT INTO scheduled_posts (tenant_id, message, targets, scheduled_at, status) VALUES ($1, 'pending post', '["facebook"]', $2, 'pending') RETURNING id`,
+        [tenantA, future]
+      );
+      pendingId = pending.rows[0].id;
+      const sent = await pool.query(
+        `INSERT INTO scheduled_posts (tenant_id, message, targets, scheduled_at, status) VALUES ($1, 'already sent', '["facebook"]', $2, 'sent') RETURNING id`,
+        [tenantA, future]
+      );
+      sentId = sent.rows[0].id;
+    } finally {
+      await pool.end();
+    }
+
+    // Tenant B can't see or cancel tenant A's scheduled posts.
+    const bList = await (await clientB.get('/api/scheduled-posts')).json();
+    assert.deepEqual(bList.posts, []);
+    assert.equal((await clientB.delete('/api/scheduled-posts/' + pendingId)).status, 404);
+
+    const aList = await (await clientA.get('/api/scheduled-posts?status=pending')).json();
+    assert.equal(aList.posts.length, 1);
+    assert.equal(aList.posts[0].id, pendingId);
+
+    // Only the still-pending row can be canceled — a sent one 404s rather
+    // than silently flipping status on something already fired.
+    assert.equal((await clientA.delete('/api/scheduled-posts/' + sentId)).status, 404);
+    assert.equal((await clientA.delete('/api/scheduled-posts/' + pendingId)).status, 200);
+    assert.equal((await clientA.delete('/api/scheduled-posts/' + pendingId)).status, 404); // already canceled, not pending anymore
   });
 });
 

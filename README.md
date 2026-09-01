@@ -105,6 +105,27 @@ manual request at [Google's Basic API Access form](https://support.google.com/bu
 7–10 business days, reported as ranging up to several weeks) — not something this app
 can obtain on a tenant's behalf.
 
+## Scheduled posts
+
+The Social HQ composer can queue a post for a future time instead of publishing
+immediately — `routes/scheduledPosts.js` persists it (`scheduled_posts` table),
+and `lib/scheduledPostsWorker.js` polls every 60s for due rows and fires them
+through the exact same `publishToMeta`/`publishToGbp` functions the live
+"Post Now" button uses (no separate/duplicated posting logic). Only
+Facebook, Instagram, and Google are schedulable — the other composer platforms
+have no real posting API at all (see above) and stay immediate-DEMO-only.
+
+A claimed row is atomically flipped `pending` → `sending` before it's published,
+so two overlapping ticks can't double-post. No auto-retry: a failed send stays
+visible as `failed` with the real error from the platform's API, and the tenant
+can just try again from the composer.
+
+**Known limitation, not solved here**: `render.yaml` runs on Render's free
+tier, which spins the instance down after ~15 min idle. A scheduled post due
+while the instance is asleep fires late on next wake rather than being
+dropped (the query is "still pending," not "due exactly now") — exact-time
+firing needs a paid always-on instance, which is a hosting decision for later.
+
 ## Instagram image hosting
 
 `routes/images.js` stores uploaded post images in Postgres (`post_images`, bytea) and

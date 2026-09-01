@@ -18,9 +18,11 @@ const permitsRoutes = require('./routes/permits');
 const signalsRoutes = require('./routes/signals');
 const imagesRoutes = require('./routes/images');
 const adsRoutes = require('./routes/ads');
-const gbpRoutes = require('./routes/gbp');
+const { router: gbpRoutes } = require('./routes/gbp');
+const scheduledPostsRoutes = require('./routes/scheduledPosts');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
+const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
 
 // Last-resort safety net: anything that escapes every route's own try/catch
 // (a genuine bug, not a "service not configured" 4xx) gets emailed to the
@@ -78,6 +80,7 @@ app.use(signalsRoutes);
 app.use(imagesRoutes);
 app.use(adsRoutes);
 app.use(gbpRoutes);
+app.use(scheduledPostsRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
@@ -122,4 +125,5 @@ app.listen(PORT, () => {
     if (!process.env[key]) console.warn(`WARNING: ${key} is not set.`);
   }
   startWeatherSignalPoller();
+  startScheduledPostsWorker();
 });

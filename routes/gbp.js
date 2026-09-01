@@ -204,25 +204,34 @@ router.delete('/api/gbp', requireAuth, async (req, res) => {
   }
 });
 
+// Real publish, factored out so lib/scheduledPostsWorker.js can call the
+// exact same code path a live "Post Now" click uses — same convention as
+// routes/social.js's publishToMeta.
+async function publishToGbp(tenantId, { summary, ctaUrl, imageUrl }) {
+  if (!summary || !summary.trim()) throw new Error('Post text is required.');
+
+  const conn = await getConnection(tenantId);
+  if (!conn) throw new Error('No Google Business Profile connected yet — connect one in Social HQ first.');
+
+  const accessToken = await refreshAccessToken(conn.refreshToken);
+  const body = { languageCode: 'en-US', summary: summary.trim(), topicType: 'STANDARD' };
+  if (ctaUrl && /^https?:\/\//.test(ctaUrl)) body.callToAction = { actionType: 'LEARN_MORE', url: ctaUrl };
+  if (imageUrl) body.media = [{ mediaFormat: 'PHOTO', sourceUrl: imageUrl }];
+
+  const result = await googleFetch(`${LOCAL_POSTS_BASE}/${conn.accountId}/${conn.locationId}/localPosts`, {
+    method: 'POST', accessToken, body
+  });
+  return { postId: result.name, searchUrl: result.searchUrl || null };
+}
+
 router.post('/api/gbp/post', requireAuth, requireGbpConfig, async (req, res) => {
+  const { summary, ctaUrl, imageUrl } = req.body || {};
   try {
-    const { summary, ctaUrl, imageUrl } = req.body || {};
-    if (!summary || !summary.trim()) return res.status(400).json({ error: { message: 'Post text is required.' } });
-
-    const conn = await getConnection(req.tenantId);
-    if (!conn) return res.status(400).json({ error: { message: 'No Google Business Profile connected yet — connect one in Social HQ first.' } });
-
-    const accessToken = await refreshAccessToken(conn.refreshToken);
-    const body = { languageCode: 'en-US', summary: summary.trim(), topicType: 'STANDARD' };
-    if (ctaUrl && /^https?:\/\//.test(ctaUrl)) body.callToAction = { actionType: 'LEARN_MORE', url: ctaUrl };
-    if (imageUrl) body.media = [{ mediaFormat: 'PHOTO', sourceUrl: imageUrl }];
-
-    const result = await googleFetch(`${LOCAL_POSTS_BASE}/${conn.accountId}/${conn.locationId}/localPosts`, {
-      method: 'POST', accessToken, body
-    });
-    res.json({ ok: true, postId: result.name, searchUrl: result.searchUrl || null });
+    const result = await publishToGbp(req.tenantId, { summary, ctaUrl, imageUrl });
+    res.json({ ok: true, ...result });
   } catch (err) {
-    res.status(502).json({ error: { message: 'Google Business Profile post failed: ' + err.message } });
+    const status = err.message === 'Post text is required.' || err.message.startsWith('No Google Business Profile connected') ? 400 : 502;
+    res.status(status).json({ error: { message: (status === 502 ? 'Google Business Profile post failed: ' : '') + err.message } });
   }
 });
 
@@ -238,4 +247,4 @@ router.get('/api/gbp/posts', requireAuth, requireGbpConfig, async (req, res) => 
   }
 });
 
-module.exports = router;
+module.exports = { router, publishToGbp };

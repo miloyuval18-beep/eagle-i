@@ -14,6 +14,8 @@ const PLACES_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const router = express.Router();
 
 const REAL_ESTATE_INDUSTRIES = new Set(['home_services', 'real_estate']);
+// Must match the list auth.js's signup handler validates against.
+const VALID_INDUSTRIES = new Set(['home_services', 'real_estate', 'professional_services', 'retail', 'other']);
 
 function buildGenerationPrompts(profile, companyName, industry) {
   const ctx = `Business: ${companyName} (industry: ${industry}).
@@ -186,6 +188,49 @@ router.post('/api/onboarding', requireAuth, async (req, res) => {
     res.json({ ok: true, generated, partial: hasErrors, errors: hasErrors ? errors : undefined });
   } catch (err) {
     res.status(500).json({ error: { message: 'Onboarding failed: ' + err.message } });
+  }
+});
+
+// Lightweight edit for the whole company/business profile — deliberately
+// separate from POST /api/onboarding above, which re-runs AI generation and
+// counts against the usage cap. This one doesn't, so a tenant can fix a
+// phone number, address, company name, etc. anytime after signup without
+// burning a generation or waiting on an AI call. Same convention as
+// PATCH /api/onboarding/review-links just below.
+router.patch('/api/onboarding/profile', requireAuth, async (req, res) => {
+  const {
+    companyName, industry,
+    founderName, phone, email, address, site,
+    serviceArea, services, differentiators, voice, logoDataUrl
+  } = req.body || {};
+
+  if (!companyName || !companyName.trim()) {
+    return res.status(400).json({ error: { message: 'Company name is required.' } });
+  }
+  if (!services || !services.trim()) {
+    return res.status(400).json({ error: { message: 'Please describe the services this business offers.' } });
+  }
+  if (!VALID_INDUSTRIES.has(industry)) {
+    return res.status(400).json({ error: { message: 'Invalid industry.' } });
+  }
+  const logoCheck = validateLogoDataUrl(logoDataUrl);
+  if (!logoCheck.ok) {
+    return res.status(400).json({ error: { message: logoCheck.error } });
+  }
+
+  try {
+    await query(`UPDATE tenants SET company_name = $1, industry = $2 WHERE id = $3`, [companyName.trim(), industry, req.tenantId]);
+    await query(
+      `UPDATE business_profile SET
+         founder_name = $1, phone = $2, email = $3, address = $4, site = $5,
+         service_area = $6, services = $7, differentiators = $8, voice = $9,
+         logo_url = COALESCE($10, logo_url), updated_at = now()
+       WHERE tenant_id = $11`,
+      [founderName, phone, email, address, site, serviceArea, services, differentiators, voice, logoCheck.value, req.tenantId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to save profile: ' + err.message } });
   }
 });
 
