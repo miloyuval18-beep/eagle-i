@@ -1,33 +1,35 @@
 # Eagle I — AI Marketing Command Center
 
-Levi Homes' marketing dashboard. Static frontend (`index.html`) served by a small
-Express proxy (`server.js`) that keeps the Anthropic API key server-side.
+Multi-tenant AI marketing SaaS: real per-tenant login/signup (`auth.js`), a Postgres-backed
+business profile + AI-generated content per tenant, and a dashboard (`index.html`) served by
+an Express app (`server.js`) that keeps every third-party API key server-side.
 
 ## Run locally
 
 ```bash
 npm install
-cp .env.example .env   # then edit .env and add your real ANTHROPIC_API_KEY
+cp .env.example .env   # then edit .env — DATABASE_URL and SESSION_SECRET are required,
+                        # ANTHROPIC_API_KEY is needed for AI generation to work
+npx node-pg-migrate up # creates the schema in that database
 npm start
 ```
 
-Open http://localhost:3000
+Open http://localhost:3000 — it redirects to `/login.html` (sign up to create the first tenant).
 
 ## Deploy (Render)
 
 1. Push this repo to GitHub.
 2. On [render.com](https://render.com), New → Blueprint → pick this repo (uses `render.yaml`).
    Or: New → Web Service → pick this repo, Build Command `npm install`, Start Command `npm start`.
-3. In the service's Environment tab, add `ANTHROPIC_API_KEY` with your real key.
-4. Deploy. Render gives you a `https://<name>.onrender.com` URL — that's your live site.
-5. (Optional) Settings → Custom Domain to point your own domain at it.
-
-## Password-protect the site
-
-Set both `SITE_USER` and `SITE_PASSWORD` (locally in `.env`, or in Render's Environment tab)
-and the whole site requires an HTTP login before anything loads — the browser shows its
-built-in username/password prompt. Leave either one unset and the site stays open (this is
-the default, so local dev needs no config). No new dependency, no database.
+3. Add a Postgres database (Render's managed Postgres, or any other host) and set `DATABASE_URL`
+   to its connection string in the service's Environment tab, along with `SESSION_SECRET` and
+   `ANTHROPIC_API_KEY`. The other vars in `render.yaml` (Stripe, Meta, Google Ads/Places/Business
+   Profile, Resend) are each optional — every route that needs one is gated behind a clean
+   "not configured yet" 503 until it's supplied, see the feature sections below.
+4. Run the migrations against that database once (`DATABASE_URL=<...> npx node-pg-migrate up`,
+   from your machine or a Render shell).
+5. Deploy. Render gives you a `https://<name>.onrender.com` URL — that's your live site.
+6. (Optional) Settings → Custom Domain to point your own domain at it.
 
 ## Tests
 

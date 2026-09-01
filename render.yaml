@@ -18,17 +18,39 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      - key: STRIPE_PRICE_STARTER
+        sync: false
+      - key: STRIPE_PRICE_PRO
+        sync: false
       - key: META_APP_ID
         sync: false
       - key: META_APP_SECRET
         sync: false
       - key: META_REDIRECT_URI
         sync: false
+      - key: META_ADS_REDIRECT_URI
+        sync: false
+      - key: GOOGLE_ADS_DEVELOPER_TOKEN
+        sync: false
+      - key: GOOGLE_ADS_CLIENT_ID
+        sync: false
+      - key: GOOGLE_ADS_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_ADS_REDIRECT_URI
+        sync: false
+      - key: GOOGLE_GBP_CLIENT_ID
+        sync: false
+      - key: GOOGLE_GBP_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_GBP_REDIRECT_URI
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM_EMAIL
         sync: false
       - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: ADMIN_ALERT_EMAIL
         sync: false
       - key: NODE_ENV
         value: production
