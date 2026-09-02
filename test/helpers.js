@@ -17,6 +17,12 @@ const PORT = process.env.TEST_PORT || 3999;
 const BASE_URL = `http://localhost:${PORT}`;
 const ROOT = path.join(__dirname, '..');
 
+// Deliberately SET (unlike the real external keys above) so tests can sign
+// real payloads with the real svix library and exercise real signature
+// verification in routes/inboundEmail.js — a fixed, fake-but-well-formed
+// secret, never a real Resend value.
+const TEST_WEBHOOK_SECRET = 'whsec_dGVzdG9ubHlzZWNyZXRuZXZlcnJlYWw=';
+
 function loadDotEnvValue(key) {
   const fs = require('fs');
   try {
@@ -59,7 +65,13 @@ async function startServer() {
       GOOGLE_PLACES_API_KEY: '',
       RESEND_API_KEY: '',
       STRIPE_SECRET_KEY: '',
-      SOCIAL_CREDENTIALS_KEY: ''
+      SOCIAL_CREDENTIALS_KEY: '',
+      // Set (see TEST_WEBHOOK_SECRET above) so the inbound-email webhook's
+      // signature verification is actually exercisable in tests, even
+      // though RESEND_API_KEY staying unset still caps how far a "valid"
+      // webhook call can be processed (same not-configured-boundary as
+      // every other external-key-gated route in this suite).
+      RESEND_WEBHOOK_SECRET: TEST_WEBHOOK_SECRET
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
@@ -141,4 +153,4 @@ function getTestPool() {
   return new Pool({ connectionString: databaseUrl });
 }
 
-module.exports = { BASE_URL, startServer, stopServer, makeClient, trackTenant, cleanupTenants, uniqueEmail, getTestPool };
+module.exports = { BASE_URL, startServer, stopServer, makeClient, trackTenant, cleanupTenants, uniqueEmail, getTestPool, TEST_WEBHOOK_SECRET };

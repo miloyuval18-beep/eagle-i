@@ -64,6 +64,35 @@ plenty. Run it from a machine with `DATABASE_URL` set to the real database (same
 not do (it does not store parcel-level owner names or addresses — only per-zip
 aggregates).
 
+## Permits: area filtering + personalized mailer PDFs
+
+The Permits tab (real estate / home services tenants only, `routes/permits.js`)
+groups every loaded permit's zip into a named Houston-area region
+(`lib/houstonZipRegions.js` — a broader companion to the curated high-value
+list above, covering every zip the weekly reports touch) so results can be
+filtered down to just the areas a tenant cares about, with a running count
+per area.
+
+From the filtered (or full) list, individual permits can be checked
+directly, or picked automatically with **Select Top N by Value** (10 through
+200) — ranked by each zip's best-available real value (HCAD average, falling
+back to the curated estimate). That ranking always runs over whatever's
+currently filtered, and only reaches across every loaded zip when no area
+filter is active.
+
+**Generate Mailer PDF** turns the selection into one real letter per permit —
+`POST /api/permits/mailer-letters` builds each letter's text server-side
+(`lib/permitMailer.js`), referencing that permit's own address, work type
+(roof, remodel, pool, etc. — detected from the permit type text), and date,
+plus the tenant's own saved business profile; several opening/body/closing
+phrasings rotate in by a hash of the permit so a batch doesn't read as one
+paragraph pasted at every address. Deliberately not AI-generated — a batch
+can be up to 200 letters, which would blow through `/api/claude`'s per-IP
+rate limit and cost real money for something a template handles well. The
+browser then lays out one page per letter with jsPDF (loaded from cdnjs,
+same pattern as Chart.js above — no server-side PDF dependency) and either
+downloads the file or opens it print-ready.
+
 ## Real ad campaigns (Meta Ads + Google Ads)
 
 `routes/ads.js` creates real (always PAUSED) campaigns via each platform's own API —
@@ -144,6 +173,17 @@ Two real, one-at-a-time email flows, both through Resend:
   history, shown on the same page.
 - **Review requests** (Social HQ): unchanged from before, still one customer at
   a time via `routes/reviews.js`, logged to `review_requests`.
+
+**High-value-focus targeting** (real vendor lookups only): `lib/vendorTargeting.js`
+does a deterministic keyword check (luxury, high-end, custom estate, etc. — no AI
+call) on the tenant's own `services`/`differentiators` text. When it matches — e.g.
+a bio like Levi Homes' luxury-home focus — the real Places search for that vendor
+category is biased toward Houston's known high-value neighborhoods (from
+`lib/houstonZipValues.js`) instead of a plain service-area search, and any result
+whose own address falls in one of those zips gets tagged and sorted first. Shown
+honestly on the page (an explicit banner + a "HIGH-VALUE AREA" tag per match), and
+cached separately from a plain search for the same category (`category::hv`),
+since it's genuinely a different query.
 
 **Reply capture** (optional, on top of both): normally a reply just lands in
 whatever `RESEND_FROM_EMAIL` is, invisible to Eagle I. With `RESEND_INBOUND_DOMAIN`

@@ -7,6 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --bg:#04070e;--bg2:#07101f;--bg3:#0a1626;--bg4:#0f1f35;--bg5:#152845;
@@ -65,6 +66,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .vp-chips{display:flex;flex-wrap:wrap;gap:4px;padding:0 11px 9px}
 .chip{font-family:var(--fm);font-size:8px;padding:3px 8px;border-radius:8px;border:1px solid var(--bdr2);background:transparent;color:var(--ink3);cursor:pointer;transition:all .15s;letter-spacing:.5px}
 .chip:hover{background:var(--glow);color:var(--blue2);border-color:var(--bdr3)}
+.chip.active{background:rgba(30,140,255,.16);border-color:var(--blue2);color:var(--blue2)}
 .vp-bar{display:flex;gap:6px;padding:9px 11px;border-top:1px solid var(--bdr);background:var(--bg4)}
 .vp-input{flex:1;background:var(--bg5);border:1px solid var(--bdr2);border-radius:16px;padding:7px 12px;font-family:var(--fb);font-size:12px;color:var(--ink);outline:none}
 .vp-input:focus{border-color:var(--bdr3)}
@@ -985,11 +987,48 @@ tbody tr:last-child td{border-bottom:none}
 <div class="wrap">
   <div class="sh"><div><div class="st">High-Value Area Permits</div><div class="ss">Real, current Houston building permits · sourced weekly from the city's own published reports</div></div>
   <button class="btn btn-blue" id="perm-btn" onclick="loadPerms(false)"><span class="spin" id="perm-spin"></span><svg id="perm-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Load Permits</button></div>
-  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 Real data — with one honest limit</div><div class="ibb">Pulled directly from the Houston Permitting Center's weekly published permit reports (real addresses, real permit types, updated weekly — not real-time). No owner name is included in this data, only the property address — which is exactly what's needed for postal mail (addressed to "Property Owner" or "Current Resident" is standard and doesn't require a name). Home values marked <b>🏛️ REAL HCAD DATA</b> come directly from Harris Central Appraisal District's own public records (real average/median appraised value, real parcel counts) — see the badge on each zip. A small number of zips outside HCAD's imported set fall back to a curated reference list of well-known neighborhoods with approximate values from public real-estate reporting, clearly unlabeled as "HIGH VALUE" instead; zips with neither still show real permits, just without a value label.</div></div>
+  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 Real data — with one honest limit</div><div class="ibb">Pulled directly from the Houston Permitting Center's weekly published permit reports (real addresses, real permit types, updated weekly — not real-time). No owner name is included in this data, only the property address — which is exactly what's needed for postal mail (addressed to "Property Owner" or "Current Resident" is standard and doesn't require a name). Home values marked <b>🏛️ REAL HCAD DATA</b> come directly from Harris Central Appraisal District's own public records (real average/median appraised value, real parcel counts) — see the badge on each zip. A small number of zips outside HCAD's imported set fall back to a curated reference list of well-known neighborhoods with approximate values from public real-estate reporting, clearly unlabeled as "HIGH VALUE" instead; zips with neither still show real permits, just without a value label. Area names (River Oaks, The Heights, etc.) below are directional groupings compiled from public reporting, not exact legal boundaries.</div></div>
   <div id="perm-s" style="margin-bottom:10px"></div>
+
+  <div id="perm-filter-wrap" style="display:none;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div class="ce">Filter by Area</div>
+      <div style="display:flex;gap:5px">
+        <button class="btn-xs" onclick="setAllPermRegionFilter(true)">Select All</button>
+        <button class="btn-xs" onclick="setAllPermRegionFilter(false)">Clear</button>
+      </div>
+    </div>
+    <div id="perm-filter-chips" class="vp-chips" style="padding:0"></div>
+  </div>
+
+  <div id="perm-select-bar" class="card" style="display:none;margin-bottom:12px;background:var(--bg4)">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>
+        <span id="perm-sel-count" style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--blue2)">0 permits selected</span>
+        <div style="font-size:10px;color:var(--ink3);margin-top:2px">Check individual permits below, or select the top N by best-available home value — within your area filter if one's active, otherwise across everything loaded.</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="btn-xs" onclick="selectAllVisiblePermits()">Select Visible</button>
+        <button class="btn-xs" onclick="clearPermSelection()">Clear Selection</button>
+        <select id="perm-topn" class="btn-xs" style="padding:3px 6px" onchange="if(this.value){selectTopPermits(this.value);this.value=''}">
+          <option value="">Select Top N by Value…</option>
+          <option value="10">Top 10</option>
+          <option value="25">Top 25</option>
+          <option value="50">Top 50</option>
+          <option value="75">Top 75</option>
+          <option value="100">Top 100</option>
+          <option value="150">Top 150</option>
+          <option value="200">Top 200</option>
+        </select>
+        <button class="btn-xs p" id="perm-gen-btn" disabled onclick="generateMailerPdf('download')">📄 Generate Mailer PDF</button>
+        <button class="btn-xs" id="perm-print-btn" disabled onclick="generateMailerPdf('print')">🖨️ Print Mailer</button>
+      </div>
+    </div>
+  </div>
+
   <div id="perm-areas"><div style="text-align:center;padding:24px;color:var(--ink3)">Click "Load Permits" to pull this week's real Houston permit data</div></div>
   <div class="g2" style="margin-top:16px">
-    <div class="card"><div class="ce" style="margin-bottom:6px">Direct Mail Letter Template</div><div id="hcad-letter" style="font-size:12px;color:var(--ink);line-height:1.85;font-style:italic;background:var(--bg4);border-radius:var(--r);padding:10px 12px;border-left:3px solid var(--blue)">Property Owner<br>[Mailing Address]<br><br>Hello,<br><br>My name is [FOUNDER_NAME]. I'm reaching out from [COMPANY_NAME], serving [SERVICE_AREA].<br><br>You can reach me directly at [PHONE] or [EMAIL]. We'd be glad to answer any questions about your property — no obligation, no pitch.<br><br>[FOUNDER_NAME] · [COMPANY_NAME]</div><button class="btn-xs p" style="margin-top:7px" onclick="copyPermitLetter()">📋 Copy Letter (fills in your info)</button></div>
+    <div class="card"><div class="ce" style="margin-bottom:6px">Generic Letter Template (fallback)</div><div style="font-size:11px;color:var(--ink3);margin-bottom:6px">The "Generate Mailer PDF" button above writes a personalized letter — referencing each property's actual permit type, date, and area — for every permit you select. This generic version is just a quick manual copy-paste fallback if you'd rather write your own.</div><div id="hcad-letter" style="font-size:12px;color:var(--ink);line-height:1.85;font-style:italic;background:var(--bg4);border-radius:var(--r);padding:10px 12px;border-left:3px solid var(--blue)">Property Owner<br>[Mailing Address]<br><br>Hello,<br><br>My name is [FOUNDER_NAME]. I'm reaching out from [COMPANY_NAME], serving [SERVICE_AREA].<br><br>You can reach me directly at [PHONE] or [EMAIL]. We'd be glad to answer any questions about your property — no obligation, no pitch.<br><br>[FOUNDER_NAME] · [COMPANY_NAME]</div><button class="btn-xs p" style="margin-top:7px" onclick="copyPermitLetter()">📋 Copy Letter (fills in your info)</button></div>
     <div class="card"><div class="ce" style="margin-bottom:6px">Why mail, not phone/email</div>
       <div style="font-size:12px;color:var(--ink2);line-height:1.75">Cold-calling or texting people from public permit records without consent risks TCPA/Do-Not-Call violations. Postal mail to a permit address isn't subject to that law, which is why this tool surfaces addresses, not phone numbers or emails.</div>
       <div style="margin-top:8px;display:flex;gap:5px"><button class="btn-xs" onclick="exportPermitAddresses()">📥 Export Addresses (CSV)</button><button class="btn-xs" onclick="window.open('https://www.houstonpermittingcenter.org/sold-permits-search','_blank')">Source ↗</button></div>
@@ -1869,9 +1908,10 @@ async function loadRealVendors(category,idx,idPrefix){
       return;
     }
     el.innerHTML=`<div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">🌐 Real businesses · ${d.source==='cache'?'cached':'live'}</div>`+
+      (d.highValueFocus?`<div style="font-size:11px;color:var(--ink2);background:var(--bg4);border-left:2px solid var(--amber);border-radius:var(--r);padding:6px 9px;margin-bottom:7px">🏛️ Your profile reads as a luxury/high-end focus — prioritizing vendors in or near Houston's known high-value neighborhoods (River Oaks, Memorial, West University Place, and similar).</div>`:'')+
       vendors.map(v=>`
         <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-          <div style="color:var(--ink);font-weight:600">${v.name}</div>
+          <div style="color:var(--ink);font-weight:600">${v.name}${v.inHighValueZip?' <span style="font-family:var(--fm);font-size:8px;color:var(--amber);border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🏛️ HIGH-VALUE AREA</span>':''}</div>
           <div style="color:var(--ink2)">${v.rating?('★ '+v.rating+' ('+(v.reviewCount||0)+' reviews)'):'No rating yet'}${v.address?' · '+v.address:''}</div>
           ${v.website?`<a href="${v.website}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
           <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
@@ -2023,6 +2063,12 @@ Return ONLY valid JSON: {"messages":[{"variant":"Community","subject":"Subject i
 
 /* PERMITS — real, from lib/houstonPermits.js via /api/permits/high-value-areas */
 let permAreas=[];
+let permRegionFilter=new Set(); // empty = no filter, show every area
+let permSelected=new Map();     // permitKey -> {zip, region, estValue, permit}
+let permFlatIndex=new Map();    // permitKey -> same shape, rebuilt on every render so checkboxes can look themselves up
+
+function permitKey(zip,p){return zip+'||'+(p.projectNo||p.address||'');}
+
 async function loadPerms(force){
   const btn=document.getElementById('perm-btn'),spin=document.getElementById('perm-spin'),ico=document.getElementById('perm-ico');
   const s=document.getElementById('perm-s');
@@ -2033,40 +2079,190 @@ async function loadPerms(force){
     const d=await r.json();
     if(!r.ok)throw new Error(d.error?.message||'Failed to load');
     permAreas=d.areas||[];
+    permRegionFilter=new Set();
+    permSelected=new Map();
     document.getElementById('perm-badge').textContent=d.totalPermits;
-    renderPermAreas(permAreas);
+    renderPermFilters();
+    renderPermAreas();
+    updatePermSelectBar();
     s.textContent=`${d.totalPermits} real permits across ${permAreas.length} zip codes · as of ${new Date(d.fetchedAt).toLocaleString()}`;
     showNotif('Permits loaded',`${d.totalPermits} real permits from this week's Houston reports`);
   }catch(e){s.textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';ico.style.display='';
 }
-function renderPermAreas(areas){
+
+// Areas whose region passes the current filter — the single source of
+// truth for both what's rendered and what "Select Visible" / "Select Top N"
+// operate over, so filtering and selection always agree on what's in scope.
+function visiblePermAreas(){
+  if(!permRegionFilter.size)return permAreas;
+  return permAreas.filter(a=>permRegionFilter.has(a.region||a.zip));
+}
+
+function renderPermFilters(){
+  const wrap=document.getElementById('perm-filter-wrap'),el=document.getElementById('perm-filter-chips');
+  if(!wrap||!el)return;
+  if(!permAreas.length){wrap.style.display='none';return;}
+  wrap.style.display='';
+  const byRegion=new Map();
+  permAreas.forEach(a=>{const key=a.region||a.zip;byRegion.set(key,(byRegion.get(key)||0)+a.permitCount);});
+  const regions=[...byRegion.entries()].sort((a,b)=>b[1]-a[1]);
+  el.innerHTML=regions.map(([r,c])=>`<button class="chip${permRegionFilter.has(r)?' active':''}" onclick="togglePermRegion('${r.replace(/'/g,"\\'")}')">${r} (${c})</button>`).join('');
+}
+function togglePermRegion(r){
+  if(permRegionFilter.has(r))permRegionFilter.delete(r);else permRegionFilter.add(r);
+  renderPermFilters();renderPermAreas();updatePermSelectBar();
+}
+function setAllPermRegionFilter(all){
+  if(all){permRegionFilter=new Set(permAreas.map(a=>a.region||a.zip));}
+  else{permRegionFilter=new Set();}
+  renderPermFilters();renderPermAreas();updatePermSelectBar();
+}
+
+function renderPermAreas(){
+  const areas=visiblePermAreas();
   const el=document.getElementById('perm-areas');if(!el)return;
-  if(!areas.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--ink3)">No permits found</div>';return;}
+  permFlatIndex=new Map();
+  if(!areas.length){el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--ink3)">${permAreas.length?'No permits match this area filter':'No permits found'}</div>`;return;}
   el.innerHTML=areas.map(a=>`
     <div class="card" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
-          <span class="ce">${a.zip}${a.neighborhood?' — '+a.neighborhood:''}</span>
+          <span class="ce">${a.zip}${a.region?' — '+a.region:''}</span>
           ${a.hcad?'<span class="badge b-new" style="margin-left:7px">🏛️ REAL HCAD DATA</span>':a.highValue?'<span class="badge b-new" style="margin-left:7px">HIGH VALUE</span>':''}
         </div>
         <span style="font-size:11px;color:var(--ink3)">${a.permitCount} permit${a.permitCount===1?'':'s'}${a.hcad?' · $'+a.hcad.avgMarketValue.toLocaleString()+' avg ('+a.hcad.parcelCount.toLocaleString()+' parcels, HCAD '+a.hcad.taxYear+')':a.approxMedianValue?' · ~$'+a.approxMedianValue.toLocaleString()+' median':''}</span>
       </div>
       <div class="g3">
-        ${a.permits.slice(0,6).map(p=>`
-          <div class="pc">
-            <div class="pc-a">${p.address}</div>
-            <div class="pc-t">${p.permitType||''} · ${p.permitDate||''}</div>
-            <div style="font-size:11px;color:var(--ink2);margin:5px 0">${p.comments||''}</div>
-            <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);margin-bottom:6px">Project #${p.projectNo||'—'}</div>
+        ${a.permits.map(p=>{
+          const key=permitKey(a.zip,p);
+          permFlatIndex.set(key,{zip:a.zip,region:a.region,estValue:a.estValue||0,permit:p});
+          const checked=permSelected.has(key)?'checked':'';
+          return `<div class="pc">
+            <label style="display:flex;align-items:flex-start;gap:7px;cursor:pointer">
+              <input type="checkbox" ${checked} onchange="togglePermSelect('${key.replace(/'/g,"\\'")}',this.checked)" style="margin-top:3px;flex-shrink:0">
+              <div style="flex:1;min-width:0">
+                <div class="pc-a">${p.address}</div>
+                <div class="pc-t">${p.permitType||''} · ${p.permitDate||''}</div>
+                <div style="font-size:11px;color:var(--ink2);margin:5px 0">${p.comments||''}</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);margin-bottom:6px">Project #${p.projectNo||'—'}</div>
+              </div>
+            </label>
             <div style="display:flex;gap:5px;flex-wrap:wrap">
               <button class="btn-xs p" onclick="openOfficialPermitRecord('${(p.projectNo||'').replace(/'/g,"\\'")}')">📋 See Permit</button>
               <button class="btn-xs" onclick="openPermitLocation('${(p.address||'').replace(/'/g,"\\'")}','${a.zip}')">🗺️ Map</button>
               <button class="btn-xs" onclick="copyText('${(p.address||'').replace(/'/g,"\\'")}')">Copy Address</button>
             </div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>`).join('');
+}
+
+function togglePermSelect(key,checked){
+  if(checked){const info=permFlatIndex.get(key);if(info)permSelected.set(key,info);}
+  else permSelected.delete(key);
+  updatePermSelectBar();
+}
+function selectAllVisiblePermits(){
+  visiblePermAreas().forEach(a=>a.permits.forEach(p=>{
+    const key=permitKey(a.zip,p);
+    permSelected.set(key,{zip:a.zip,region:a.region,estValue:a.estValue||0,permit:p});
+  }));
+  renderPermAreas();updatePermSelectBar();
+}
+function clearPermSelection(){
+  permSelected=new Map();
+  renderPermAreas();updatePermSelectBar();
+}
+// "Top N by value" ranks within visiblePermAreas() — which is already every
+// area if no filter is active, or just the filtered ones if one is — so
+// this naturally never reaches outside an active filter, per how it's meant
+// to work: rank within what's filtered, or everything when nothing's filtered.
+function selectTopPermits(n){
+  n=parseInt(n,10);if(!n)return;
+  const flat=[];
+  visiblePermAreas().forEach(a=>a.permits.forEach(p=>flat.push({zip:a.zip,region:a.region,estValue:a.estValue||0,permit:p})));
+  flat.sort((x,y)=>y.estValue-x.estValue);
+  const top=flat.slice(0,n);
+  permSelected=new Map();
+  top.forEach(t=>permSelected.set(permitKey(t.zip,t.permit),t));
+  renderPermAreas();updatePermSelectBar();
+  showNotif('Selected top '+top.length,permRegionFilter.size?'Ranked by best-available home value within your filtered areas':'Ranked by best-available home value across all loaded areas');
+}
+function updatePermSelectBar(){
+  const bar=document.getElementById('perm-select-bar');if(!bar)return;
+  bar.style.display=permAreas.length?'':'none';
+  const n=permSelected.size;
+  document.getElementById('perm-sel-count').textContent=n+' permit'+(n===1?'':'s')+' selected';
+  document.getElementById('perm-gen-btn').disabled=n===0;
+  document.getElementById('perm-print-btn').disabled=n===0;
+}
+
+// Builds a real, personalized-per-permit PDF mailer from the current
+// selection — see POST /api/permits/mailer-letters (lib/permitMailer.js)
+// for how each letter's text is generated. PDF assembly happens here,
+// client-side, via jsPDF (loaded from cdnjs, same pattern as Chart.js
+// above) — no server-side PDF dependency needed.
+async function generateMailerPdf(action){
+  if(!permSelected.size){showNotif('Nothing selected','Select at least one permit first');return;}
+  const btnId=action==='print'?'perm-print-btn':'perm-gen-btn';
+  const btn=document.getElementById(btnId);
+  const orig=btn.textContent;btn.disabled=true;btn.textContent='Generating…';
+  try{
+    const permits=[...permSelected.values()].map(v=>({zip:v.zip,address:v.permit.address,permitType:v.permit.permitType,permitDate:v.permit.permitDate,projectNo:v.permit.projectNo}));
+    const r=await fetch('/api/permits/mailer-letters',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({permits})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed to build letters');
+
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({unit:'pt',format:'letter'});
+    const marginX=64,pageW=612,pageH=792,maxWidth=pageW-marginX*2;
+    const tenant=d.tenant||{};
+
+    d.letters.forEach((L,i)=>{
+      if(i>0)doc.addPage();
+      let y=60;
+      doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(tenant.name||'',marginX,y);
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120);
+      const contactLine=[tenant.phone,tenant.email].filter(Boolean).join(' · ');
+      if(contactLine)doc.text(contactLine,pageW-marginX,y,{align:'right'});
+      doc.setTextColor(0);
+      y+=6;doc.setDrawColor(210);doc.line(marginX,y,pageW-marginX,y);
+      y+=28;
+
+      doc.setFontSize(10);
+      doc.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),marginX,y);y+=26;
+      doc.text('Property Owner',marginX,y);y+=14;
+      doc.text(L.recipientAddress||'',marginX,y);y+=14;
+      doc.text('Houston, TX'+(L.zip?' '+L.zip:''),marginX,y);y+=32;
+
+      doc.text('Dear Property Owner,',marginX,y);y+=22;
+
+      doc.setFontSize(11);
+      const lines=doc.splitTextToSize(L.bodyText||'',maxWidth);
+      const lh=16;
+      lines.forEach(line=>{
+        if(y>pageH-90){doc.addPage();y=60;}
+        doc.text(line,marginX,y);y+=lh;
+      });
+
+      doc.setFontSize(8);doc.setTextColor(150);
+      doc.text(`Ref: Permit #${L.projectNo||'—'} · ${L.permitType||''} · filed ${L.permitDate||'—'}`,marginX,pageH-40);
+      doc.setTextColor(0);
+    });
+
+    const filename='mailer_letters_'+new Date().toISOString().slice(0,10)+'.pdf';
+    if(action==='print'){
+      doc.autoPrint();
+      window.open(doc.output('bloburl'));
+      showNotif('Mailer ready',d.letters.length+' letter'+(d.letters.length===1?'':'s')+' opened for printing');
+    }else{
+      doc.save(filename);
+      showNotif('Mailer downloaded',d.letters.length+' personalized letter'+(d.letters.length===1?'':'s')+' saved as '+filename);
+    }
+  }catch(e){showNotif('Error',e.message);}
+  btn.disabled=false;btn.textContent=orig;
 }
 function openOfficialPermitRecord(projectNo){
   // No reliable direct-link exists to a specific permit's official record —
@@ -2087,8 +2283,8 @@ function openPermitLocation(address,zip){
 }
 function exportPermitAddresses(){
   if(!permAreas.length){showNotif('No data','Load permits first');return;}
-  const rows=[['Zip','Neighborhood','Address','Permit Type','Permit Date','Comments']];
-  permAreas.forEach(a=>a.permits.forEach(p=>rows.push([a.zip,a.neighborhood||'',p.address||'',p.permitType||'',p.permitDate||'',`"${(p.comments||'').replace(/"/g,'""')}"`])));
+  const rows=[['Zip','Area','Address','Permit Type','Permit Date','Comments']];
+  permAreas.forEach(a=>a.permits.forEach(p=>rows.push([a.zip,a.region||a.neighborhood||'',p.address||'',p.permitType||'',p.permitDate||'',`"${(p.comments||'').replace(/"/g,'""')}"`])));
   const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});
   const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='houston_permits_'+new Date().toISOString().slice(0,10)+'.csv';link.click();
 }

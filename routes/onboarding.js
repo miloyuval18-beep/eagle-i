@@ -9,6 +9,7 @@ const { requireAuth } = require('../auth');
 const { checkAndIncrementUsage, checkAndIncrementPlacesUsage, currentMonth } = require('../lib/usage');
 const { generateJSON } = require('../lib/anthropic');
 const { searchNearbyCompetitors } = require('../lib/googlePlaces');
+const { detectsHighValueFocus } = require('../lib/vendorTargeting');
 const { findContactEmail } = require('../lib/vendorContactFinder');
 const { sendEmail, buildReplyToAddress } = require('../lib/email');
 const { escapeHtml } = require('../lib/landingPageTemplate');
@@ -358,12 +359,19 @@ router.get('/api/vendors/places', requireAuth, async (req, res) => {
 
   try {
     const profileRes = await query(
-      `SELECT service_area, places_vendors FROM business_profile WHERE tenant_id = $1`,
+      `SELECT service_area, services, differentiators, places_vendors FROM business_profile WHERE tenant_id = $1`,
       [req.tenantId]
     );
     if (!profileRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
     const profile = profileRes.rows[0];
-    const cached = (profile.places_vendors || {})[category];
+    // A tenant whose own bio reads as luxury/high-end (see
+    // lib/vendorTargeting.js) gets vendor results biased toward Houston's
+    // known high-value neighborhoods instead of a plain service-area
+    // search — cached separately from the plain search under the same
+    // category, since it's genuinely a different query.
+    const highValueFocus = detectsHighValueFocus(profile.services, profile.differentiators);
+    const cacheKey = highValueFocus ? `${category}::hv` : category;
+    const cached = (profile.places_vendors || {})[cacheKey];
 
     const fetchedAt = cached?.fetchedAt ? new Date(cached.fetchedAt) : null;
     const isFresh = fetchedAt && (Date.now() - fetchedAt.getTime()) < PLACES_CACHE_MAX_AGE_MS;
@@ -373,7 +381,8 @@ router.get('/api/vendors/places', requireAuth, async (req, res) => {
         vendors: cached.results || [],
         source: 'cache',
         fetchedAt: cached.fetchedAt,
-        sparse: (cached.results || []).length === 0
+        sparse: (cached.results || []).length === 0,
+        highValueFocus
       });
     }
 
@@ -388,16 +397,17 @@ router.get('/api/vendors/places', requireAuth, async (req, res) => {
 
     const vendors = await searchNearbyCompetitors({
       services: category,
-      serviceArea: profile.service_area
+      serviceArea: profile.service_area,
+      highValueFocus
     });
 
-    const updatedVendors = { ...(profile.places_vendors || {}), [category]: { results: vendors, fetchedAt: new Date().toISOString() } };
+    const updatedVendors = { ...(profile.places_vendors || {}), [cacheKey]: { results: vendors, fetchedAt: new Date().toISOString() } };
     await query(
       `UPDATE business_profile SET places_vendors = $1 WHERE tenant_id = $2`,
       [JSON.stringify(updatedVendors), req.tenantId]
     );
 
-    res.json({ vendors, source: 'live', fetchedAt: new Date().toISOString(), sparse: vendors.length === 0 });
+    res.json({ vendors, source: 'live', fetchedAt: new Date().toISOString(), sparse: vendors.length === 0, highValueFocus });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to load real vendor data: ' + err.message } });
   }

@@ -14,6 +14,9 @@ const { parseImageDataUrl } = require('../routes/images');
 const { isPrivateOrReservedIp, extractEmails, findContactPageUrl } = require('../lib/vendorContactFinder');
 const { buildReplyToAddress } = require('../lib/email');
 const { REPLY_ADDRESS_RE } = require('../routes/inboundEmail');
+const { detectsHighValueFocus, topHighValueNeighborhoods, addressInHighValueZip } = require('../lib/vendorTargeting');
+const { getZipRegion, HOUSTON_ZIP_REGIONS } = require('../lib/houstonZipRegions');
+const { describeWorkType, buildPermitLetter } = require('../lib/permitMailer');
 
 describe('parseClaudeJson (lib/anthropic.js)', () => {
   test('parses well-formed JSON embedded in surrounding text', () => {
@@ -343,5 +346,158 @@ describe('REPLY_ADDRESS_RE (routes/inboundEmail.js)', () => {
     assert.equal(REPLY_ADDRESS_RE.exec('someone@example.com'), null);
     assert.equal(REPLY_ADDRESS_RE.exec('reply+unknown-550e8400-e29b-41d4-a716-446655440000@abc.resend.app'), null);
     assert.equal(REPLY_ADDRESS_RE.exec('reply+vendor-not-a-uuid@abc.resend.app'), null);
+  });
+});
+
+describe('detectsHighValueFocus (lib/vendorTargeting.js)', () => {
+  test('detects an explicit luxury-market bio, matching the Levi Homes example', () => {
+    assert.equal(detectsHighValueFocus('We build luxury custom homes for discerning clients.', ''), true);
+  });
+
+  test('detects across multiple text fields (services + differentiators) combined', () => {
+    assert.equal(detectsHighValueFocus('General contracting', 'We specialize in high-end estate renovations'), true);
+  });
+
+  test('is case-insensitive', () => {
+    assert.equal(detectsHighValueFocus('LUXURY home builder', ''), true);
+  });
+
+  test('returns false for an ordinary bio with no high-value language', () => {
+    assert.equal(detectsHighValueFocus('We repair roofs and gutters for local homeowners.', 'Fast, honest, affordable.'), false);
+  });
+
+  test('handles null/undefined/empty fields without throwing', () => {
+    assert.equal(detectsHighValueFocus(null, undefined, ''), false);
+  });
+});
+
+describe('topHighValueNeighborhoods (lib/vendorTargeting.js)', () => {
+  test('returns the requested count, highest approxMedianValue first', () => {
+    const top3 = topHighValueNeighborhoods(3);
+    assert.equal(top3.length, 3);
+    assert.equal(top3[0], 'River Oaks'); // highest approxMedianValue in the curated list
+  });
+
+  test('defaults to 5 when no count is given', () => {
+    assert.equal(topHighValueNeighborhoods().length, 5);
+  });
+});
+
+describe('addressInHighValueZip (lib/vendorTargeting.js)', () => {
+  test('matches a real Places-shaped address in a known high-value zip', () => {
+    assert.equal(addressInHighValueZip('2100 River Oaks Blvd, Houston, TX 77019, USA'), true);
+  });
+
+  test('does not match an address in an untracked zip', () => {
+    assert.equal(addressInHighValueZip('123 Main St, Houston, TX 77002, USA'), false);
+  });
+
+  test('does not mistake a street number for a zip code', () => {
+    // 77019 appears as a street number here, not after a state code — must not match.
+    assert.equal(addressInHighValueZip('77019 Nowhere Rd, Beaumont, TX 77701, USA'), false);
+  });
+
+  test('handles a missing/empty address without throwing', () => {
+    assert.equal(addressInHighValueZip(null), false);
+    assert.equal(addressInHighValueZip(''), false);
+  });
+});
+
+describe('getZipRegion (lib/houstonZipRegions.js)', () => {
+  test('returns a named region for a known Houston zip', () => {
+    assert.equal(getZipRegion('77019'), 'River Oaks');
+  });
+
+  test('matches the curated high-value neighborhood name where both files cover the same zip', () => {
+    // These two reference lists are maintained separately (this one is far
+    // broader) but must never show two different names for the same zip.
+    for (const { zip, neighborhood } of HOUSTON_HIGH_VALUE_ZIPS) {
+      assert.equal(getZipRegion(zip), neighborhood, `region for ${zip} should match houstonZipValues.js`);
+    }
+  });
+
+  test('returns null for a zip with no entry', () => {
+    assert.equal(getZipRegion('00000'), null);
+  });
+
+  test('every mapped zip is a real 5-digit zip code string', () => {
+    for (const zip of Object.keys(HOUSTON_ZIP_REGIONS)) {
+      assert.match(zip, /^\d{5}$/);
+    }
+  });
+});
+
+describe('describeWorkType (lib/permitMailer.js)', () => {
+  test('recognizes a roof permit', () => {
+    assert.equal(describeWorkType('Roof Replacement').label, 'roof work');
+  });
+
+  test('recognizes a pool permit', () => {
+    assert.equal(describeWorkType('Residential Pool/Spa').label, 'a pool or spa project');
+  });
+
+  test('falls back honestly for an unrecognized permit type', () => {
+    const d = describeWorkType('Some Unusual Permit Category');
+    assert.equal(d.label, 'a recent building permit');
+  });
+
+  test('handles a missing permit type without throwing', () => {
+    assert.equal(describeWorkType(null).label, 'a recent building permit');
+    assert.equal(describeWorkType(undefined).label, 'a recent building permit');
+  });
+});
+
+describe('buildPermitLetter (lib/permitMailer.js)', () => {
+  const tenant = { name: 'Levi Homes', founder: 'Alex Levi', phone: '(713) 555-0100', email: 'alex@levihomes.com', services: 'custom home building and remodeling', unique: 'We handle every project personally.' };
+
+  test('includes the real permit address as the recipient address', () => {
+    const letter = buildPermitLetter({
+      permit: { address: '123 Main St', permitType: 'Roof', permitDate: '2026-08-01', projectNo: 'P-1' },
+      area: { zip: '77019', region: 'River Oaks' },
+      tenant
+    });
+    assert.equal(letter.recipientAddress, '123 Main St');
+    assert.equal(letter.zip, '77019');
+  });
+
+  test('mentions the tenant\'s own contact info, not a placeholder', () => {
+    const letter = buildPermitLetter({
+      permit: { address: '456 Oak Dr', permitType: 'Remodel', permitDate: '2026-08-05', projectNo: 'P-2' },
+      area: { zip: '77024', region: 'Memorial / Tanglewood' },
+      tenant
+    });
+    assert.match(letter.bodyText, /\(713\) 555-0100/);
+    assert.match(letter.bodyText, /Levi Homes/);
+  });
+
+  test('two different permits of the same type produce different letter text (not copy-pasted)', () => {
+    const a = buildPermitLetter({
+      permit: { address: '1 First St', permitType: 'Roof', permitDate: '2026-08-01', projectNo: 'P-A' },
+      area: { zip: '77019', region: 'River Oaks' },
+      tenant
+    });
+    const b = buildPermitLetter({
+      permit: { address: '2 Second St', permitType: 'Roof', permitDate: '2026-08-02', projectNo: 'P-B' },
+      area: { zip: '77019', region: 'River Oaks' },
+      tenant
+    });
+    assert.notEqual(a.bodyText, b.bodyText);
+  });
+
+  test('the same permit always produces the same letter text (stable, not random)', () => {
+    const permit = { address: '9 Ninth St', permitType: 'Fence', permitDate: '2026-08-09', projectNo: 'P-9' };
+    const area = { zip: '77005', region: 'West University Place' };
+    const first = buildPermitLetter({ permit, area, tenant });
+    const second = buildPermitLetter({ permit, area, tenant });
+    assert.equal(first.bodyText, second.bodyText);
+  });
+
+  test('handles a missing tenant profile without throwing', () => {
+    const letter = buildPermitLetter({
+      permit: { address: '10 Tenth St', permitType: 'Roof', permitDate: '2026-08-10', projectNo: 'P-10' },
+      area: { zip: '77019', region: 'River Oaks' },
+      tenant: {}
+    });
+    assert.match(letter.bodyText, /the number below/);
   });
 });

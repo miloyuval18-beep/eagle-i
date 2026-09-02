@@ -5,10 +5,40 @@
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
+const { Webhook } = require('svix');
+
 const {
-  startServer, stopServer, makeClient, trackTenant, cleanupTenants, uniqueEmail, getTestPool
+  startServer, stopServer, makeClient, trackTenant, cleanupTenants, uniqueEmail, getTestPool, TEST_WEBHOOK_SECRET
 } = require('./helpers');
 const { checkAndIncrementCounter } = require('../lib/usage');
+
+// Signs a real payload with the real svix library against the test
+// server's actual RESEND_WEBHOOK_SECRET (see helpers.js) — the same
+// mechanism used to hand-verify this end-to-end earlier, now permanent.
+function signWebhookPayload(payload) {
+  const wh = new Webhook(TEST_WEBHOOK_SECRET);
+  const msgId = 'msg_' + Math.random().toString(36).slice(2);
+  const timestamp = new Date();
+  const signature = wh.sign(msgId, timestamp, payload);
+  return {
+    'svix-id': msgId,
+    'svix-timestamp': String(Math.floor(timestamp.getTime() / 1000)),
+    'svix-signature': signature
+  };
+}
+
+async function postInboundWebhook(client, dataOverrides) {
+  const payload = JSON.stringify({
+    type: 'email.received',
+    created_at: new Date().toISOString(),
+    data: { email_id: 'test-email-id', from: 'someone@example.com', to: [], subject: 'Test', ...dataOverrides }
+  });
+  return client.raw('/api/webhooks/resend-inbound', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...signWebhookPayload(payload) },
+    body: payload
+  });
+}
 
 before(async () => {
   await startServer();
@@ -235,6 +265,66 @@ describe('permits: industry gating + real data', () => {
   }, { timeout: 30000 });
 });
 
+describe('permits: mailer letters (POST /api/permits/mailer-letters)', () => {
+  test('403s for an industry outside real estate / home services', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('mailerwrongind'), password: 'TestPass1234!', companyName: 'Not Real Estate', industry: 'restaurant', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.post('/api/permits/mailer-letters', { permits: [{ address: '1 Main St', zip: '77019', permitType: 'Roof', permitDate: '2026-08-01' }] });
+    assert.equal(r.status, 403);
+  });
+
+  test('400s when no permits are selected', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('mailerempty'), password: 'TestPass1234!', companyName: 'Empty Mailer Co', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.post('/api/permits/mailer-letters', { permits: [] });
+    assert.equal(r.status, 400);
+  });
+
+  test('400s when more than 200 permits are selected', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('mailertoomany'), password: 'TestPass1234!', companyName: 'Too Many Co', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const permits = Array.from({ length: 201 }, (_, i) => ({ address: `${i} Main St`, zip: '77019', permitType: 'Roof', permitDate: '2026-08-01' }));
+    const r = await client.post('/api/permits/mailer-letters', { permits });
+    assert.equal(r.status, 400);
+  });
+
+  test('returns one personalized letter per selected permit, addressed to the real permit address', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('mailerok'), password: 'TestPass1234!', companyName: 'Acme Roofing', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const permits = [
+      { address: '123 Main St', zip: '77019', permitType: 'Roof Replacement', permitDate: '2026-08-01', projectNo: 'P-1' },
+      { address: '456 Oak Dr', zip: '77024', permitType: 'Pool/Spa', permitDate: '2026-08-05', projectNo: 'P-2' }
+    ];
+    const r = await client.post('/api/permits/mailer-letters', { permits });
+    assert.equal(r.status, 200);
+    const body = await r.json();
+    assert.equal(body.letters.length, 2);
+    assert.equal(body.letters[0].recipientAddress, '123 Main St');
+    assert.equal(body.letters[0].region, 'River Oaks');
+    assert.equal(body.letters[1].recipientAddress, '456 Oak Dr');
+    // Personalized: mentions the real signed-up company name, not a
+    // generic/copy-pasted placeholder.
+    assert.match(body.letters[0].bodyText, /Acme Roofing/);
+    assert.notEqual(body.letters[0].bodyText, body.letters[1].bodyText);
+  });
+});
+
 describe('"not configured" fallbacks (external keys unset in this test run)', () => {
   test('Stripe checkout returns a clean 500 with a clear message, not a crash', async () => {
     const client = makeClient();
@@ -360,18 +450,186 @@ describe('"not configured" fallbacks (external keys unset in this test run)', ()
     assert.equal(r.status, 503);
   });
 
-  test('Resend inbound-email webhook returns a clean 503 rather than attempting signature verification', async () => {
-    // No session needed — this is a public webhook endpoint (Resend, not a
-    // logged-in tenant, calls it), so it should 503 on the missing
-    // RESEND_WEBHOOK_SECRET before ever looking at the (absent, and here
-    // deliberately not svix-signed) body/headers.
+});
+
+describe('review requests (routes/reviews.js)', () => {
+  test('validates customer name and email are required', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('rrvalidate'), password: 'TestPass1234!', companyName: 'RR Validate Co', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    assert.equal((await client.post('/api/review-requests', { customerEmail: 'a@example.com' })).status, 400);
+    assert.equal((await client.post('/api/review-requests', { customerName: 'Jane' })).status, 400);
+  });
+
+  test('returns a clean 503, not a crash, when RESEND_API_KEY is unset', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('rr503'), password: 'TestPass1234!', companyName: 'RR 503 Co', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.post('/api/review-requests', { customerName: 'Jane', customerEmail: 'jane@example.com' });
+    assert.equal(r.status, 503);
+  });
+
+  test('a fresh tenant has zero review requests, sees only their own, and replies show up', async () => {
+    const clientA = makeClient();
+    const signupA = await clientA.post('/api/auth/signup', {
+      email: uniqueEmail('rrA'), password: 'TestPass1234!', companyName: 'RR Tenant A', industry: 'home_services', acceptedTerms: true
+    });
+    const tenantA = (await signupA.json()).tenantId;
+    trackTenant(tenantA);
+
+    const clientB = makeClient();
+    const signupB = await clientB.post('/api/auth/signup', {
+      email: uniqueEmail('rrB'), password: 'TestPass1234!', companyName: 'RR Tenant B', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signupB.json()).tenantId);
+
+    const empty = await (await clientA.get('/api/review-requests')).json();
+    assert.deepEqual(empty.reviewRequests, []);
+
+    const pool = getTestPool();
+    try {
+      await pool.query(
+        `INSERT INTO review_requests (id, tenant_id, customer_name, customer_email, included_platforms, status, reply_text, replied_at)
+         VALUES (gen_random_uuid(), $1, 'Jane Customer', 'jane@example.com', '["google"]', 'sent', 'Left you a review!', now())`,
+        [tenantA]
+      );
+    } finally {
+      await pool.end();
+    }
+
+    const aList = await (await clientA.get('/api/review-requests')).json();
+    assert.equal(aList.reviewRequests.length, 1);
+    assert.equal(aList.reviewRequests[0].reply_text, 'Left you a review!');
+    assert.ok(aList.reviewRequests[0].replied_at);
+
+    const bList = await (await clientB.get('/api/review-requests')).json();
+    assert.deepEqual(bList.reviewRequests, []);
+  });
+});
+
+describe('inbound email webhook (routes/inboundEmail.js) — real svix signature verification', () => {
+  test('rejects a request with no signature headers at all', async () => {
     const client = makeClient();
     const r = await client.raw('/api/webhooks/resend-inbound', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'email.received', data: {} })
     });
-    assert.equal(r.status, 503);
+    assert.equal(r.status, 400);
+  });
+
+  test('rejects a real signature computed with the wrong secret', async () => {
+    const client = makeClient();
+    const payload = JSON.stringify({ type: 'email.received', data: { email_id: 'x', to: [] } });
+    const wrongWh = new Webhook('whsec_dGhpc2lzYWRpZmZlcmVudHNlY3JldA==');
+    const msgId = 'msg_wrong';
+    const timestamp = new Date();
+    const signature = wrongWh.sign(msgId, timestamp, payload);
+    const r = await client.raw('/api/webhooks/resend-inbound', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'svix-id': msgId,
+        'svix-timestamp': String(Math.floor(timestamp.getTime() / 1000)),
+        'svix-signature': signature
+      },
+      body: payload
+    });
+    assert.equal(r.status, 400);
+  });
+
+  test('accepts a validly-signed payload addressed to nothing of ours, and leaves an unrelated row untouched', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('webhooknomatch'), password: 'TestPass1234!', companyName: 'Webhook No Match Co', industry: 'home_services', acceptedTerms: true
+    });
+    const tenantId = (await signup.json()).tenantId;
+    trackTenant(tenantId);
+
+    const pool = getTestPool();
+    let outreachId;
+    try {
+      const ins = await pool.query(
+        `INSERT INTO vendor_outreach (id, tenant_id, vendor_name, to_email, message, status)
+         VALUES (gen_random_uuid(), $1, 'Untouched Vendor', 'vendor@example.com', 'Hi', 'sent') RETURNING id`,
+        [tenantId]
+      );
+      outreachId = ins.rows[0].id;
+    } finally {
+      await pool.end();
+    }
+
+    const r = await postInboundWebhook(client, { to: ['someone-unrelated@mail.example.com'] });
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { received: true });
+
+    const pool2 = getTestPool();
+    try {
+      const check = await pool2.query('SELECT reply_text, replied_at FROM vendor_outreach WHERE id = $1', [outreachId]);
+      assert.equal(check.rows[0].reply_text, null);
+      assert.equal(check.rows[0].replied_at, null);
+    } finally {
+      await pool2.end();
+    }
+  });
+
+  test('accepts a validly-signed payload matching a real vendor_outreach row (processing then safely no-ops without RESEND_API_KEY)', async () => {
+    // Full success (saving the real reply body + forwarding it) needs a
+    // real RESEND_API_KEY to fetch the full email from Resend's API — not
+    // available in this test run, same boundary as every other external-
+    // key-gated route in this suite. What IS verified here for real:
+    // signature verification passes, the reply+vendor-<id>@ address is
+    // correctly matched back to its row, and the request completes
+    // cleanly (200, no crash, no unhandled rejection) even though the
+    // downstream Resend call fails — matching what actually happened in
+    // production before RESEND_API_KEY there was corrected to a
+    // full-access key.
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('webhookmatch'), password: 'TestPass1234!', companyName: 'Webhook Match Co', industry: 'home_services', acceptedTerms: true
+    });
+    const tenantId = (await signup.json()).tenantId;
+    trackTenant(tenantId);
+
+    const pool = getTestPool();
+    let outreachId;
+    try {
+      const ins = await pool.query(
+        `INSERT INTO vendor_outreach (id, tenant_id, vendor_name, to_email, message, status)
+         VALUES (gen_random_uuid(), $1, 'Reply Test Vendor', 'vendor@example.com', 'Hi', 'sent') RETURNING id`,
+        [tenantId]
+      );
+      outreachId = ins.rows[0].id;
+    } finally {
+      await pool.end();
+    }
+
+    const r = await postInboundWebhook(client, { to: [`reply+vendor-${outreachId}@mail.example.com`] });
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { received: true });
+
+    // Give the fire-and-continue processing (which happens after the
+    // response is already sent) a moment to run and fail safely.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const pool2 = getTestPool();
+    try {
+      const check = await pool2.query('SELECT reply_text, replied_at FROM vendor_outreach WHERE id = $1', [outreachId]);
+      // Not populated — RESEND_API_KEY is unset, so getReceivedEmail()
+      // threw before ever reaching the DB write. This asserts the failure
+      // was contained (still null, not some corrupted partial state),
+      // not that the happy path ran.
+      assert.equal(check.rows[0].reply_text, null);
+      assert.equal(check.rows[0].replied_at, null);
+    } finally {
+      await pool2.end();
+    }
   });
 });
 
@@ -514,6 +772,63 @@ describe('landing pages: multi-page support', () => {
     const aListsIt = await (await clientA.get('/api/landing-pages')).json();
     assert.equal(aListsIt.pages.length, 1);
     assert.equal(aListsIt.pages[0].target_label, 'Test Page');
+  });
+});
+
+describe('real vendor lookup: high-value-focus targeting (routes/onboarding.js + lib/vendorTargeting.js)', () => {
+  // The live Places API call itself needs GOOGLE_PLACES_API_KEY (unset in
+  // this test run, same boundary as every other external-key-gated route
+  // here), but the cache-hit path doesn't — so this exercises the real
+  // detectsHighValueFocus() read from the real profile and the real
+  // cache-key branching (category vs category::hv), seeding both cache
+  // entries directly and confirming each tenant gets the one that matches
+  // their own bio.
+  test('a luxury-market bio gets the ::hv cache entry; an ordinary bio gets the plain one', async () => {
+    const luxuryClient = makeClient();
+    const luxurySignup = await luxuryClient.post('/api/auth/signup', {
+      email: uniqueEmail('hvfocus'), password: 'TestPass1234!', companyName: 'Luxury Homes Co', industry: 'home_services', acceptedTerms: true
+    });
+    const luxuryTenantId = (await luxurySignup.json()).tenantId;
+    trackTenant(luxuryTenantId);
+    const luxuryPatch = await luxuryClient.patch('/api/onboarding/profile', {
+      companyName: 'Luxury Homes Co', industry: 'home_services',
+      services: 'We build luxury custom homes for discerning clients.'
+    });
+    assert.equal(luxuryPatch.status, 200);
+
+    const plainClient = makeClient();
+    const plainSignup = await plainClient.post('/api/auth/signup', {
+      email: uniqueEmail('plainfocus'), password: 'TestPass1234!', companyName: 'Ordinary Roofing Co', industry: 'home_services', acceptedTerms: true
+    });
+    const plainTenantId = (await plainSignup.json()).tenantId;
+    trackTenant(plainTenantId);
+    const plainPatch = await plainClient.patch('/api/onboarding/profile', {
+      companyName: 'Ordinary Roofing Co', industry: 'home_services',
+      services: 'We repair roofs and gutters for local homeowners.'
+    });
+    assert.equal(plainPatch.status, 200);
+
+    const pool = getTestPool();
+    try {
+      await pool.query(
+        `UPDATE business_profile SET places_vendors = $1 WHERE tenant_id = $2`,
+        [JSON.stringify({ 'roofer::hv': { results: [{ name: 'High-Value Roofer' }], fetchedAt: new Date().toISOString() } }), luxuryTenantId]
+      );
+      await pool.query(
+        `UPDATE business_profile SET places_vendors = $1 WHERE tenant_id = $2`,
+        [JSON.stringify({ roofer: { results: [{ name: 'Plain Roofer' }], fetchedAt: new Date().toISOString() } }), plainTenantId]
+      );
+    } finally {
+      await pool.end();
+    }
+
+    const luxuryResult = await (await luxuryClient.get('/api/vendors/places?category=roofer')).json();
+    assert.equal(luxuryResult.highValueFocus, true);
+    assert.equal(luxuryResult.vendors[0].name, 'High-Value Roofer');
+
+    const plainResult = await (await plainClient.get('/api/vendors/places?category=roofer')).json();
+    assert.equal(plainResult.highValueFocus, false);
+    assert.equal(plainResult.vendors[0].name, 'Plain Roofer');
   });
 });
 
