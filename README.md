@@ -92,6 +92,12 @@ list above, covering every zip the weekly reports touch) so results can be
 filtered down to just the areas a tenant cares about, with a running count
 per area.
 
+Any permit whose own filing date falls in the current Mon-Sun week gets a real
+**🆕 NEW** tag (`isCurrentWeek()` in `lib/houstonPermits.js`, same ISO-week logic
+`detectPermitSpikes` already used) — computed from the permit's own date, not
+from when it happened to be fetched, so it stays accurate across the 12-hour
+cache. Each area's header also shows a "N new this week" count.
+
 From the filtered (or full) list, individual permits can be checked
 directly, or picked automatically with **Select Top N by Value** (10 through
 200) — ranked by each zip's best-available real value (HCAD average, falling

@@ -7,7 +7,7 @@ const { parseClaudeJson } = require('../lib/anthropic');
 const { getHighValueZipInfo, HOUSTON_HIGH_VALUE_ZIPS } = require('../lib/houstonZipValues');
 const { escapeHtml } = require('../lib/landingPageTemplate');
 const { readXlsxFirstSheet } = require('../lib/xlsxReader');
-const { detectPermitSpikes } = require('../lib/houstonPermits');
+const { detectPermitSpikes, isCurrentWeek } = require('../lib/houstonPermits');
 const { buildRealAcctHeaderIndex, parseRealAcctLine, parseRealAcctOwnerLine, aggregateZipValues } = require('../lib/hcadZipValues');
 const { looksLikeBusinessOrPlaceholder, parseOwnerPersonName, normalizeAddress } = require('../lib/hcadOwnerNames');
 const { budgetError } = require('../routes/ads');
@@ -230,6 +230,35 @@ describe('detectPermitSpikes (lib/houstonPermits.js)', () => {
       { zip: '77004', permitDate: '2026-08-11' }
     ];
     assert.deepEqual(detectPermitSpikes(records, { minRecentCount: 3 }), []);
+  });
+});
+
+describe('isCurrentWeek (lib/houstonPermits.js)', () => {
+  // A fixed Wednesday, so its Mon-Sun week is unambiguous (2026-08-24 to
+  // 2026-08-30) — every case below is judged against this fixed "now"
+  // rather than the real clock, so the test can't be flaky depending on
+  // which day it happens to run.
+  const NOW = new Date('2026-08-26T12:00:00Z');
+
+  test('true for a date in the same Mon-Sun week as now', () => {
+    assert.equal(isCurrentWeek('2026-08-24', NOW), true); // the Monday
+    assert.equal(isCurrentWeek('2026-08-26', NOW), true); // now itself
+    assert.equal(isCurrentWeek('2026-08-30', NOW), true); // the Sunday
+  });
+
+  test('false for a date in the prior or next week', () => {
+    assert.equal(isCurrentWeek('2026-08-23', NOW), false); // prior Sunday
+    assert.equal(isCurrentWeek('2026-08-31', NOW), false); // next Monday
+  });
+
+  test('false for a missing/unparseable date', () => {
+    assert.equal(isCurrentWeek(null, NOW), false);
+    assert.equal(isCurrentWeek('', NOW), false);
+    assert.equal(isCurrentWeek('not a date', NOW), false);
+  });
+
+  test('defaults to the real current time when now is omitted', () => {
+    assert.equal(isCurrentWeek(new Date().toISOString()), true);
   });
 });
 

@@ -4,7 +4,7 @@
 const express = require('express');
 const { query } = require('../db');
 const { requireAuth } = require('../auth');
-const { getRecentPermits } = require('../lib/houstonPermits');
+const { getRecentPermits, isCurrentWeek } = require('../lib/houstonPermits');
 const { HOUSTON_HIGH_VALUE_ZIPS, getHighValueZipInfo } = require('../lib/houstonZipValues');
 const { getRealHcadZipStatsForZips, findConfidentOwners } = require('../lib/hcadZipValues');
 const { getZipRegion } = require('../lib/houstonZipRegions');
@@ -52,9 +52,11 @@ router.get('/api/permits/high-value-areas', requireAuth, async (req, res) => {
         estValue: hcad ? hcad.avgMarketValue : (zipInfo ? zipInfo.approxMedianValue : 0),
         hcad, // real HCAD appraisal-district data, when the import has covered this zip — see lib/hcadZipValues.js
         permitCount: permits.length,
+        newThisWeekCount: permits.filter(p => isCurrentWeek(p.permitDate)).length,
         permits: permits
           .sort((a, b) => (b.permitDate || '').localeCompare(a.permitDate || ''))
           .slice(0, 25) // cap per zip so one busy zip doesn't dwarf the response
+          .map(p => ({ ...p, isNew: isCurrentWeek(p.permitDate) }))
       };
     });
 
