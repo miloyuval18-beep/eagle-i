@@ -9,16 +9,16 @@ const { HOUSTON_HIGH_VALUE_ZIPS, getHighValueZipInfo } = require('../lib/houston
 const { getRealHcadZipStatsForZips, findConfidentOwners } = require('../lib/hcadZipValues');
 const { getZipRegion } = require('../lib/houstonZipRegions');
 const { buildPermitLetter } = require('../lib/permitMailer');
+const { qualifiesForPermits } = require('../lib/realEstateAccess');
 
 const router = express.Router();
-const REAL_ESTATE_INDUSTRIES = new Set(['home_services', 'real_estate']);
 
 router.get('/api/permits/high-value-areas', requireAuth, async (req, res) => {
   try {
-    const tenantRes = await query('SELECT industry FROM tenants WHERE id = $1', [req.tenantId]);
+    const tenantRes = await query('SELECT industry, company_name FROM tenants WHERE id = $1', [req.tenantId]);
     if (!tenantRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
-    if (!REAL_ESTATE_INDUSTRIES.has(tenantRes.rows[0].industry)) {
-      return res.status(403).json({ error: { message: 'This feature is only available for real estate / home services accounts.' } });
+    if (!qualifiesForPermits({ industry: tenantRes.rows[0].industry, companyName: tenantRes.rows[0].company_name })) {
+      return res.status(403).json({ error: { message: 'This feature is only available for real estate, home services, or construction accounts.' } });
     }
 
     const forceRefresh = req.query.refresh === 'true';
@@ -104,8 +104,8 @@ router.post('/api/permits/mailer-letters', requireAuth, async (req, res) => {
   try {
     const tenantRes = await query('SELECT company_name, industry FROM tenants WHERE id = $1', [req.tenantId]);
     if (!tenantRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
-    if (!REAL_ESTATE_INDUSTRIES.has(tenantRes.rows[0].industry)) {
-      return res.status(403).json({ error: { message: 'This feature is only available for real estate / home services accounts.' } });
+    if (!qualifiesForPermits({ industry: tenantRes.rows[0].industry, companyName: tenantRes.rows[0].company_name })) {
+      return res.status(403).json({ error: { message: 'This feature is only available for real estate, home services, or construction accounts.' } });
     }
 
     const permits = Array.isArray(req.body.permits) ? req.body.permits : [];

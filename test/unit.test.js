@@ -18,6 +18,7 @@ const { REPLY_ADDRESS_RE } = require('../routes/inboundEmail');
 const { detectsHighValueFocus, topHighValueNeighborhoods, addressInHighValueZip } = require('../lib/vendorTargeting');
 const { getZipRegion, HOUSTON_ZIP_REGIONS } = require('../lib/houstonZipRegions');
 const { describeWorkType, humanizeComments, buildPermitLetter } = require('../lib/permitMailer');
+const { qualifiesForPermits } = require('../lib/realEstateAccess');
 
 describe('parseClaudeJson (lib/anthropic.js)', () => {
   test('parses well-formed JSON embedded in surrounding text', () => {
@@ -401,6 +402,35 @@ describe('addressInHighValueZip (lib/vendorTargeting.js)', () => {
   test('handles a missing/empty address without throwing', () => {
     assert.equal(addressInHighValueZip(null), false);
     assert.equal(addressInHighValueZip(''), false);
+  });
+});
+
+describe('qualifiesForPermits (lib/realEstateAccess.js)', () => {
+  test('qualifies by industry alone, regardless of company name', () => {
+    assert.equal(qualifiesForPermits({ industry: 'home_services', companyName: 'Anything Inc' }), true);
+    assert.equal(qualifiesForPermits({ industry: 'real_estate', companyName: 'Anything Inc' }), true);
+  });
+
+  test('qualifies a construction-named company under a non-real-estate industry', () => {
+    assert.equal(qualifiesForPermits({ industry: 'other', companyName: 'ABC Construction LLC' }), true);
+    assert.equal(qualifiesForPermits({ industry: 'professional_services', companyName: 'Smith General Contracting' }), true);
+    assert.equal(qualifiesForPermits({ industry: 'other', companyName: 'Gulf Coast Roofing' }), true);
+    assert.equal(qualifiesForPermits({ industry: 'retail', companyName: 'Houston Remodelers' }), true);
+  });
+
+  test('is case-insensitive', () => {
+    assert.equal(qualifiesForPermits({ industry: 'other', companyName: 'lone star CONSTRUCTION co' }), true);
+  });
+
+  test('does not qualify an unrelated business under a non-real-estate industry', () => {
+    assert.equal(qualifiesForPermits({ industry: 'retail', companyName: 'Downtown Coffee Shop' }), false);
+    assert.equal(qualifiesForPermits({ industry: 'other', companyName: 'Acme Consulting' }), false);
+  });
+
+  test('handles missing fields without throwing', () => {
+    assert.equal(qualifiesForPermits({}), false);
+    assert.equal(qualifiesForPermits(), false);
+    assert.equal(qualifiesForPermits({ industry: 'other', companyName: null }), false);
   });
 });
 

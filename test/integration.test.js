@@ -263,6 +263,31 @@ describe('permits: industry gating + real data', () => {
     // environment, but the key must always be present, never missing.
     if (body.areas.length) assert.ok('hcad' in body.areas[0]);
   }, { timeout: 30000 });
+
+  test('200s for a construction-named company even under a non-real-estate industry', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('constructionname'), password: 'TestPass1234!', companyName: 'Bayou City Construction LLC', industry: 'other', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.get('/api/permits/high-value-areas');
+    assert.equal(r.status, 200);
+  }, { timeout: 30000 });
+
+  test('/api/me reports showPermitsTab true for that same construction-named company', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('constructionme'), password: 'TestPass1234!', companyName: 'Lone Star Roofing Co', industry: 'retail', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const me = await (await client.get('/api/me')).json();
+    assert.equal(me.showPermitsTab, true);
+    // showRealEstateFeatures stays industry-only — a construction name alone
+    // shouldn't also unlock the broader real-estate-only feature bundle.
+    assert.equal(me.showRealEstateFeatures, false);
+  });
 });
 
 describe('permits: mailer letters (POST /api/permits/mailer-letters)', () => {

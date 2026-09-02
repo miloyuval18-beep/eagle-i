@@ -2521,10 +2521,13 @@ async function bootstrap(){
     const kpiQuota=document.getElementById('kpi-quota');if(kpiQuota)kpiQuota.textContent=`${ME.generationsUsed}/${ME.monthlyGenerationCap}`;
     const kpiIndustry=document.getElementById('kpi-industry');if(kpiIndustry)kpiIndustry.textContent=(ME.industry||'').replace('_',' ');
 
-    // Real-estate/home-services-only features (Permits tab, HCAD-style targeting,
-    // and any element marked .real-estate-only — e.g. Houzz/Angi award cards)
+    // Real-estate/home-services-only features (HCAD-style targeting, and any
+    // element marked .real-estate-only — e.g. Houzz/Angi award cards) — gated
+    // by industry alone. The Permits tab has its own, slightly wider gate
+    // (showPermitsTab) that also opens up for a construction company that
+    // signed up under some other industry — see lib/realEstateAccess.js.
     const permitsTab=document.getElementById('t-permits');
-    if(permitsTab)permitsTab.style.display=ME.showRealEstateFeatures?'':'none';
+    if(permitsTab)permitsTab.style.display=ME.showPermitsTab?'':'none';
     document.querySelectorAll('.real-estate-only').forEach(el=>{el.style.display=ME.showRealEstateFeatures?'':'none';});
 
     // Render cached content — generated once at onboarding, free to display now
@@ -3045,6 +3048,13 @@ async function saveCompanyProfile(){
     const nameEl=document.getElementById('topbar-company-name');if(nameEl)nameEl.textContent=companyName;
     ME.showRealEstateFeatures=(ME.industry==='home_services'||ME.industry==='real_estate');
     document.querySelectorAll('.real-estate-only').forEach(el=>{el.style.display=ME.showRealEstateFeatures?'':'none';});
+    // Permits tab uses a slightly wider gate than showRealEstateFeatures —
+    // also opens up for a construction company under some other industry.
+    // Keep this word list in sync with CONSTRUCTION_KEYWORDS in
+    // lib/realEstateAccess.js (client-side JS can't require() that file).
+    const CONSTRUCTION_KEYWORDS_RE=/\b(construction|contractor|contracting|builders?|remodel(?:ing|ers?)?|renovat(?:ion|ors?)|roofing|roofers?|masonry|concrete|excavat(?:ion|ors?)|demolition|framing|drywall|paving|home\s*builders?|custom\s*homes?|general\s*contract(?:or|ing))\b/i;
+    ME.showPermitsTab=ME.showRealEstateFeatures||CONSTRUCTION_KEYWORDS_RE.test(ME.companyName||'');
+    const permitsTab=document.getElementById('t-permits');if(permitsTab)permitsTab.style.display=ME.showPermitsTab?'':'none';
   }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
   if(btn)btn.disabled=false;if(spin)spin.style.display='none';
 }

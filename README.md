@@ -77,8 +77,16 @@ built rather than just shipped quietly.
 
 ## Permits: area filtering + personalized mailer PDFs
 
-The Permits tab (real estate / home services tenants only, `routes/permits.js`)
-groups every loaded permit's zip into a named Houston-area region
+The Permits tab is visible to real estate / home services tenants, and to any
+other tenant whose own company name reads as construction-related (`lib/realEstateAccess.js`
+— "ABC Construction LLC" or "Gulf Coast Roofing" qualifies regardless of which
+industry they picked at signup). `routes/permits.js` enforces the same rule
+server-side, not just in the UI. This is deliberately narrower than the
+`showRealEstateFeatures` flag that gates the rest of the real-estate-only
+bundle (Signals, Professional Partner Network, Houzz/Angi awards) — those
+stay industry-only.
+
+The tab groups every loaded permit's zip into a named Houston-area region
 (`lib/houstonZipRegions.js` — a broader companion to the curated high-value
 list above, covering every zip the weekly reports touch) so results can be
 filtered down to just the areas a tenant cares about, with a running count

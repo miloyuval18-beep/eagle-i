@@ -10,6 +10,7 @@ const { checkAndIncrementUsage, checkAndIncrementPlacesUsage, currentMonth } = r
 const { generateJSON } = require('../lib/anthropic');
 const { searchNearbyCompetitors } = require('../lib/googlePlaces');
 const { detectsHighValueFocus } = require('../lib/vendorTargeting');
+const { qualifiesForPermits } = require('../lib/realEstateAccess');
 const { findContactEmail } = require('../lib/vendorContactFinder');
 const { sendEmail, buildReplyToAddress } = require('../lib/email');
 const { escapeHtml } = require('../lib/landingPageTemplate');
@@ -83,6 +84,13 @@ router.get('/api/me', requireAuth, async (req, res) => {
       emailVerified: user.email_verified,
       isAdmin: user.is_admin,
       showRealEstateFeatures: REAL_ESTATE_INDUSTRIES.has(tenant.industry),
+      // The Permits tab specifically also opens up for a construction
+      // company that signed up under some other industry — see
+      // lib/realEstateAccess.js. Deliberately separate from
+      // showRealEstateFeatures above, which still gates the broader
+      // real-estate-only feature bundle (Signals, Professional Partner
+      // Network, etc.) by industry alone.
+      showPermitsTab: qualifiesForPermits({ industry: tenant.industry, companyName: tenant.company_name }),
       onboarded: Object.keys(profile.generated_content || {}).length > 0,
       profile: {
         founderName: profile.founder_name,
