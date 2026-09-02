@@ -254,6 +254,43 @@ async function publishToMeta(tenantId, { message, imageUrl, targets }) {
   return results;
 }
 
+// Real, current follower counts — straight from the Graph API, no stored
+// history and no fabricated numbers. There's deliberately no "+N this
+// week" delta here: that would need a stored time series this app doesn't
+// keep, and a made-up delta next to a real count is exactly the kind of
+// half-real UI this app avoids elsewhere. A status/read endpoint, not an
+// action one, so it always 200s — connected:false covers both "nothing
+// connected yet" and any transient Graph API error on one platform.
+router.get('/api/social/analytics', requireAuth, async (req, res) => {
+  try {
+    const connRes = await query(
+      `SELECT page_id, ig_business_id, access_token_encrypted, access_token_iv, access_token_tag
+       FROM social_connections WHERE tenant_id = $1 AND platform = 'meta'`,
+      [req.tenantId]
+    );
+    if (!connRes.rows.length) return res.json({ connected: false });
+    const conn = connRes.rows[0];
+    const pageToken = decrypt({
+      ciphertext: conn.access_token_encrypted, iv: conn.access_token_iv, tag: conn.access_token_tag
+    });
+
+    const facebook = await graphGet(`/${conn.page_id}?fields=followers_count,fan_count&access_token=${pageToken}`)
+      .then(d => ({ followers: d.followers_count ?? d.fan_count ?? null }))
+      .catch(err => ({ error: err.message }));
+
+    let instagram = null;
+    if (conn.ig_business_id) {
+      instagram = await graphGet(`/${conn.ig_business_id}?fields=followers_count&access_token=${pageToken}`)
+        .then(d => ({ followers: d.followers_count ?? null }))
+        .catch(err => ({ error: err.message }));
+    }
+
+    res.json({ connected: true, facebook, instagram, fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to load analytics: ' + err.message } });
+  }
+});
+
 router.post('/api/social/meta/post', requireAuth, async (req, res) => {
   const { message, imageUrl, targets } = req.body || {};
   try {

@@ -235,6 +235,34 @@ router.post('/api/gbp/post', requireAuth, requireGbpConfig, async (req, res) => 
   }
 });
 
+// Real average rating + review count, straight from the Reviews API — no
+// fabricated numbers. Same status/read shape as /api/gbp/status: always
+// 200s, connected:false covers "not configured" and "not connected" alike,
+// since the UI tile that calls this only needs to know whether to show a
+// real number or "Not connected."
+router.get('/api/gbp/analytics', requireAuth, async (req, res) => {
+  try {
+    const configured = !['GOOGLE_GBP_CLIENT_ID', 'GOOGLE_GBP_CLIENT_SECRET', 'GOOGLE_GBP_REDIRECT_URI'].some(k => !process.env[k]);
+    if (!configured) return res.json({ connected: false });
+    const conn = await getConnection(req.tenantId);
+    if (!conn) return res.json({ connected: false });
+
+    const accessToken = await refreshAccessToken(conn.refreshToken);
+    const result = await googleFetch(
+      `${LOCAL_POSTS_BASE}/${conn.accountId}/${conn.locationId}/reviews?pageSize=1`,
+      { accessToken }
+    );
+    res.json({
+      connected: true,
+      averageRating: result.averageRating ?? null,
+      totalReviewCount: result.totalReviewCount ?? null,
+      fetchedAt: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(502).json({ error: { message: 'Failed to load Google Business Profile analytics: ' + err.message } });
+  }
+});
+
 router.get('/api/gbp/posts', requireAuth, requireGbpConfig, async (req, res) => {
   try {
     const conn = await getConnection(req.tenantId);

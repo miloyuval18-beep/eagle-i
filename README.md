@@ -259,6 +259,26 @@ reachable image URL, which Eagle I previously had no way to provide. Wired into 
 composer's existing drop-zone in `index.html` — dropping/selecting an image uploads it
 immediately and the resulting URL is used automatically when publishing to Instagram.
 
+## Real platform analytics (no fabricated numbers)
+
+Social HQ's analytics tiles (Instagram followers, Facebook followers, Google
+reviews) used to fabricate all of these — a seeded pseudo-random generator
+keyed off today's date, styled to look exactly like a real Insights dashboard,
+for every platform including the two that are actually connected via real
+OAuth. `GET /api/social/analytics` (`routes/social.js`) and
+`GET /api/gbp/analytics` (`routes/gbp.js`) replace that with the real thing:
+current follower/fan counts straight from the Graph API for Instagram/Facebook,
+and real average rating + review count from the Business Profile Reviews API
+for Google — using the same connection + decrypted token each route already
+holds for posting, no new OAuth scope needed. Deliberately no "+N this week"
+delta: that would need a stored time series this app doesn't keep, and a made
+-up delta next to a real count would be exactly the kind of half-real UI this
+project avoids elsewhere. Both are status/read endpoints (always 200,
+`connected:false` when nothing's linked yet) rather than 503-on-unconfigured,
+matching `/api/gbp/status`'s existing shape. Yelp/Houzz/LinkedIn/Website
+analytics tiles were removed outright rather than left fabricated — same
+platforms as the "In Progress" tab below, for the same reason.
+
 ## The "In Progress" tab
 
 The composer only ever offers Facebook, Instagram, and Google Business Profile —

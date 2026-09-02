@@ -527,6 +527,35 @@ describe('"not configured" fallbacks (external keys unset in this test run)', ()
     assert.equal(body.connected, false);
   });
 
+  test('Social analytics reports not connected, not a crash (no fabricated numbers)', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('socialanalytics'), password: 'TestPass1234!', companyName: 'Social Analytics Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.get('/api/social/analytics');
+    assert.equal(r.status, 200);
+    const body = await r.json();
+    assert.equal(body.connected, false);
+    assert.equal('facebook' in body, false);
+    assert.equal('instagram' in body, false);
+  });
+
+  test('Google Business Profile analytics reports not connected, not a crash (no fabricated numbers)', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('gbpanalytics'), password: 'TestPass1234!', companyName: 'GBP Analytics Check', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const r = await client.get('/api/gbp/analytics');
+    assert.equal(r.status, 200);
+    const body = await r.json();
+    assert.equal(body.connected, false);
+    assert.equal('totalReviewCount' in body, false);
+  });
+
   test('Vendor outreach-email send returns a clean 503, not a crash', async () => {
     const client = makeClient();
     const signup = await client.post('/api/auth/signup', {

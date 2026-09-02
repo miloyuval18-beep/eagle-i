@@ -3390,24 +3390,50 @@ function openPlatLink(btn){
 }
 
 /* ---------- SOCIAL: ANALYTICS ---------- */
+// Real counts only — Instagram/Facebook followers from the Graph API,
+// Google rating/review count from the Business Profile Reviews API — both
+// via connections Eagle I already holds a real token for. No fabricated
+// numbers, no stored history, so no "+N this week" delta; just the real
+// current number, or an honest "Not connected" when there isn't one.
 async function loadSocialAnalytics(){
-  const seed=(new Date()).toDateString();
-  const rng=(k)=>{let h=0;const s=seed+k;for(let i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;return Math.abs(h);};
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   const setDelta=(id,txt,color)=>{const el=document.getElementById(id);if(el){el.textContent=txt;if(color)el.style.color=color;}};
-  const ig=1800+rng('ig')%600, fb=950+rng('fb')%400, yw=18+rng('yw')%8, hz=8200+rng('hz')%2400, li=420+rng('li')%160, web=2300+rng('web')%900, go=8+rng('go')%40;
-  set('go-reviews',go);setDelta('go-d',(4.3+(rng('god')%7)/10).toFixed(1)+' ★','var(--gold)');
-  set('ig-followers',ig.toLocaleString());setDelta('ig-d','+'+(rng('igd')%24+3)+' this week','var(--green)');
-  set('fb-likes',fb.toLocaleString());setDelta('fb-d','+'+(rng('fbd')%18+2)+' this week','var(--green)');
-  set('yw-reviews',yw);setDelta('yw-d',(4.5+(rng('ywd')%5)/10).toFixed(1)+' ★','var(--gold)');
-  set('hz-views',hz.toLocaleString());setDelta('hz-d','+'+(rng('hzd')%14+4)+'% MoM','var(--green)');
-  set('li-conn',li.toLocaleString());setDelta('li-d','+'+(rng('lid')%12+3)+' new','var(--green)');
-  set('web-vis',web.toLocaleString());setDelta('web-d','+'+(rng('webd')%18+5)+'% MoM','var(--green)');
-  set('ig-f2',ig.toLocaleString());set('ig-p',60+rng('igp')%40);set('ig-e',(3.5+(rng('ige')%30)/10).toFixed(1)+'%');
-  set('fb-l2',fb.toLocaleString());set('fb-f2',(fb*1.1|0).toLocaleString());set('fb-r',(fb*4|0).toLocaleString());
-  set('yw-r2',yw);set('yw-rt',(4.5+(rng('ywrt')%5)/10).toFixed(1));set('yw-v',(380+rng('ywv')%200).toLocaleString()+'/mo');
-  set('hz-v2',hz.toLocaleString());set('hz-s',90+rng('hzs')%60);set('hz-r2',12+rng('hzr')%8);
-  set('go-v',(1100+rng('gov')%500).toLocaleString());set('web-v2',web.toLocaleString());
+
+  try{
+    const r=await fetch('/api/social/analytics');
+    const d=await r.json();
+    if(!r.ok||!d.connected){
+      set('ig-followers','—');setDelta('ig-d','Not connected','var(--ink3)');
+      set('fb-likes','—');setDelta('fb-d','Not connected','var(--ink3)');
+    }else{
+      if(d.instagram&&typeof d.instagram.followers==='number'){
+        set('ig-followers',d.instagram.followers.toLocaleString());setDelta('ig-d','live','var(--green)');
+      }else{
+        set('ig-followers','—');setDelta('ig-d',d.instagram?'No Instagram linked':'Unavailable','var(--ink3)');
+      }
+      if(d.facebook&&typeof d.facebook.followers==='number'){
+        set('fb-likes',d.facebook.followers.toLocaleString());setDelta('fb-d','live','var(--green)');
+      }else{
+        set('fb-likes','—');setDelta('fb-d','Unavailable','var(--ink3)');
+      }
+    }
+  }catch(e){
+    set('ig-followers','—');setDelta('ig-d','Unavailable','var(--ink3)');
+    set('fb-likes','—');setDelta('fb-d','Unavailable','var(--ink3)');
+  }
+
+  try{
+    const r=await fetch('/api/gbp/analytics');
+    const d=await r.json();
+    if(!r.ok||!d.connected||d.totalReviewCount==null){
+      set('go-reviews','—');setDelta('go-d','Not connected','var(--ink3)');
+    }else{
+      set('go-reviews',d.totalReviewCount.toLocaleString());
+      setDelta('go-d',(d.averageRating!=null?d.averageRating.toFixed(1)+' ★':'live'),'var(--gold)');
+    }
+  }catch(e){
+    set('go-reviews','—');setDelta('go-d','Unavailable','var(--ink3)');
+  }
 }
 
 /* ---------- FILE DROP / UPLOAD ---------- */
@@ -3779,16 +3805,12 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <div class="subpage active" id="sub-social-hq">
   <div class="section">
     <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;display:flex;align-items:center;gap:7px">
-      <div class="stdot" style="background:var(--green)"></div>PLATFORM ANALYTICS — EXAMPLE DATA UNTIL CONNECTED
+      <div class="stdot" style="background:var(--green)"></div>PLATFORM ANALYTICS — REAL COUNTS, ONCE CONNECTED
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:18px" id="analytics-row">
-      <div class="analytics-tile"><div class="at-icon">📸</div><div class="at-val cup" id="ig-followers">—</div><div class="at-label">Instagram</div><div class="at-delta" id="ig-d">Loading...</div></div>
-      <div class="analytics-tile"><div class="at-icon">👤</div><div class="at-val" style="color:#1877f2" id="fb-likes">—</div><div class="at-label">Facebook</div><div class="at-delta" id="fb-d">Loading...</div></div>
-      <div class="analytics-tile"><div class="at-icon">⭐</div><div class="at-val" style="color:#d32323" id="yw-reviews">—</div><div class="at-label">Yelp Reviews</div><div class="at-delta" id="yw-d">Loading...</div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px" id="analytics-row">
+      <div class="analytics-tile"><div class="at-icon">📸</div><div class="at-val cup" id="ig-followers">—</div><div class="at-label">Instagram Followers</div><div class="at-delta" id="ig-d">Loading...</div></div>
+      <div class="analytics-tile"><div class="at-icon">👤</div><div class="at-val" style="color:#1877f2" id="fb-likes">—</div><div class="at-label">Facebook Followers</div><div class="at-delta" id="fb-d">Loading...</div></div>
       <div class="analytics-tile"><div class="at-icon">🌟</div><div class="at-val cup" id="go-reviews">—</div><div class="at-label">Google Reviews</div><div class="at-delta cup" id="go-d">Loading...</div></div>
-      <div class="analytics-tile"><div class="at-icon">🏠</div><div class="at-val" style="color:#73ba25" id="hz-views">—</div><div class="at-label">Houzz Views</div><div class="at-delta" id="hz-d">Loading...</div></div>
-      <div class="analytics-tile"><div class="at-icon">🔗</div><div class="at-val" style="color:#0a66c2" id="li-conn">—</div><div class="at-label">LinkedIn</div><div class="at-delta" id="li-d">Loading...</div></div>
-      <div class="analytics-tile"><div class="at-icon">🌐</div><div class="at-val cbl" id="web-vis">—</div><div class="at-label">Website Hits</div><div class="at-delta" id="web-d">Loading...</div></div>
     </div>
   </div>
   <div class="section">
