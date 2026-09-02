@@ -318,10 +318,73 @@ describe('permits: mailer letters (POST /api/permits/mailer-letters)', () => {
     assert.equal(body.letters[0].recipientAddress, '123 Main St');
     assert.equal(body.letters[0].region, 'River Oaks');
     assert.equal(body.letters[1].recipientAddress, '456 Oak Dr');
+    // No confident owner match exists for these made-up test addresses —
+    // must fall back to "Property Owner", never a guess.
+    assert.equal(body.letters[0].recipientName, 'Property Owner');
+    assert.equal(body.letters[0].greeting, 'Dear Property Owner,');
     // Personalized: mentions the real signed-up company name, not a
     // generic/copy-pasted placeholder.
-    assert.match(body.letters[0].bodyText, /Acme Roofing/);
-    assert.notEqual(body.letters[0].bodyText, body.letters[1].bodyText);
+    const fullText = body.letters[0].bodyParagraphs.join(' ');
+    assert.match(fullText, /Acme Roofing/);
+    assert.notEqual(body.letters[0].bodyParagraphs.join(' '), body.letters[1].bodyParagraphs.join(' '));
+  });
+
+  test('addresses a real confident owner name pulled from hcad_owner_parcels', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('mailerowner'), password: 'TestPass1234!', companyName: 'Acme Roofing', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const pool = getTestPool();
+    try {
+      await pool.query(
+        `INSERT INTO hcad_owner_parcels (zip, normalized_address, owner_first_name, owner_last_name, raw_site_address, tax_year)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['77019', '789 CONFIDENT LN', 'Taylor', 'Nguyen', '789 CONFIDENT LN', '2026']
+      );
+
+      const r = await client.post('/api/permits/mailer-letters', {
+        permits: [{ address: '789 Confident Ln', zip: '77019', permitType: 'Roof Replacement', permitDate: '2026-08-01', projectNo: 'P-OWNER' }]
+      });
+      assert.equal(r.status, 200);
+      const body = await r.json();
+      assert.equal(body.letters[0].recipientName, 'Taylor Nguyen');
+      assert.equal(body.letters[0].greeting, 'Dear Taylor,');
+    } finally {
+      // This table holds real, shared HCAD data (not tenant-scoped) — clean
+      // up this test's synthetic row rather than leaving it mixed in.
+      await pool.query(`DELETE FROM hcad_owner_parcels WHERE normalized_address = '789 CONFIDENT LN'`);
+      await pool.end();
+    }
+  });
+
+  test('falls back to "Property Owner" when two different owners share the same (zip, address) — ambiguous, not confident', async () => {
+    const client = makeClient();
+    const signup = await client.post('/api/auth/signup', {
+      email: uniqueEmail('mailerambiguous'), password: 'TestPass1234!', companyName: 'Acme Roofing', industry: 'home_services', acceptedTerms: true
+    });
+    trackTenant((await signup.json()).tenantId);
+
+    const pool = getTestPool();
+    try {
+      await pool.query(
+        `INSERT INTO hcad_owner_parcels (zip, normalized_address, owner_first_name, owner_last_name, raw_site_address, tax_year)
+         VALUES ($1, $2, $3, $4, $5, $6), ($1, $2, $7, $8, $5, $6)`,
+        ['77019', '0 AMBIGUOUS ST', 'Taylor', 'Nguyen', '0 AMBIGUOUS ST', '2026', 'Jordan', 'Lee']
+      );
+
+      const r = await client.post('/api/permits/mailer-letters', {
+        permits: [{ address: '0 Ambiguous St', zip: '77019', permitType: 'Roof Replacement', permitDate: '2026-08-01', projectNo: 'P-AMBIG' }]
+      });
+      assert.equal(r.status, 200);
+      const body = await r.json();
+      assert.equal(body.letters[0].recipientName, 'Property Owner');
+      assert.equal(body.letters[0].greeting, 'Dear Property Owner,');
+    } finally {
+      await pool.query(`DELETE FROM hcad_owner_parcels WHERE normalized_address = '0 AMBIGUOUS ST'`);
+      await pool.end();
+    }
   });
 });
 

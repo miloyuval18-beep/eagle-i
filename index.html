@@ -67,6 +67,11 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .chip{font-family:var(--fm);font-size:8px;padding:3px 8px;border-radius:8px;border:1px solid var(--bdr2);background:transparent;color:var(--ink3);cursor:pointer;transition:all .15s;letter-spacing:.5px}
 .chip:hover{background:var(--glow);color:var(--blue2);border-color:var(--bdr3)}
 .chip.active{background:rgba(30,140,255,.16);border-color:var(--blue2);color:var(--blue2)}
+.pf-row{display:flex;align-items:center;gap:8px;padding:6px 7px;border-radius:6px;cursor:pointer;font-family:var(--fh);font-size:12px;color:var(--ink2);user-select:none}
+.pf-row:hover{background:var(--bg4)}
+.pf-row.on{color:var(--blue2)}
+.pf-row-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-row-count{font-family:var(--fm);font-size:9px;color:var(--ink3);flex-shrink:0}
 .vp-bar{display:flex;gap:6px;padding:9px 11px;border-top:1px solid var(--bdr);background:var(--bg4)}
 .vp-input{flex:1;background:var(--bg5);border:1px solid var(--bdr2);border-radius:16px;padding:7px 12px;font-family:var(--fb);font-size:12px;color:var(--ink);outline:none}
 .vp-input:focus{border-color:var(--bdr3)}
@@ -142,6 +147,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .btn-xs{font-family:var(--fm);font-size:8px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:4px;border:1px solid var(--bdr2);background:transparent;color:var(--ink2);cursor:pointer;transition:all .15s}
 .btn-xs:hover{background:var(--glow);color:var(--blue2);border-color:var(--bdr3)}
 .btn-xs.p{background:rgba(30,140,255,.12);color:var(--blue2)}
+.btn-xs.active{border-color:var(--blue2);box-shadow:0 0 0 1px var(--blue2) inset}
 .spin{width:11px;height:11px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;display:none}
 @keyframes sp{to{transform:rotate(360deg)}}
 .sm{font-family:var(--fm);font-size:9px;color:var(--ink3);margin-top:6px;letter-spacing:.5px}
@@ -987,18 +993,25 @@ tbody tr:last-child td{border-bottom:none}
 <div class="wrap">
   <div class="sh"><div><div class="st">High-Value Area Permits</div><div class="ss">Real, current Houston building permits · sourced weekly from the city's own published reports</div></div>
   <button class="btn btn-blue" id="perm-btn" onclick="loadPerms(false)"><span class="spin" id="perm-spin"></span><svg id="perm-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Load Permits</button></div>
-  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 Real data — with one honest limit</div><div class="ibb">Pulled directly from the Houston Permitting Center's weekly published permit reports (real addresses, real permit types, updated weekly — not real-time). No owner name is included in this data, only the property address — which is exactly what's needed for postal mail (addressed to "Property Owner" or "Current Resident" is standard and doesn't require a name). Home values marked <b>🏛️ REAL HCAD DATA</b> come directly from Harris Central Appraisal District's own public records (real average/median appraised value, real parcel counts) — see the badge on each zip. A small number of zips outside HCAD's imported set fall back to a curated reference list of well-known neighborhoods with approximate values from public real-estate reporting, clearly unlabeled as "HIGH VALUE" instead; zips with neither still show real permits, just without a value label. Area names (River Oaks, The Heights, etc.) below are directional groupings compiled from public reporting, not exact legal boundaries.</div></div>
+  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 Real data — with one honest limit</div><div class="ibb">Pulled directly from the Houston Permitting Center's weekly published permit reports (real addresses, real permit types, updated weekly — not real-time). The permit data itself carries no owner name, only the property address — which is exactly what's needed for postal mail (addressed to "Property Owner" is standard and doesn't require one). Mailer letters address a real name instead only when Harris County's own public tax records confidently identify one real, individual owner for that exact address — never a guess; every other letter stays addressed to "Property Owner." Home values marked <b>🏛️ REAL HCAD DATA</b> come directly from Harris Central Appraisal District's own public records (real average/median appraised value, real parcel counts) — see the badge on each zip. A small number of zips outside HCAD's imported set fall back to a curated reference list of well-known neighborhoods with approximate values from public real-estate reporting, clearly unlabeled as "HIGH VALUE" instead; zips with neither still show real permits, just without a value label. Area names (River Oaks, The Heights, etc.) below are directional groupings compiled from public reporting, not exact legal boundaries.</div></div>
   <div id="perm-s" style="margin-bottom:10px"></div>
 
-  <div id="perm-filter-wrap" style="display:none;margin-bottom:12px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="ce">Filter by Area</div>
-      <div style="display:flex;gap:5px">
+  <div id="perm-filter-wrap" style="display:none;margin-bottom:12px;position:relative">
+    <button class="btn-xs p" id="perm-filter-btn" onclick="togglePermFilterPanel(event)" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;font-size:9px">
+      <span>📍</span><span id="perm-filter-label">Filter by Area</span>
+      <svg id="perm-filter-caret" width="8" height="8" viewBox="0 0 10 10" style="opacity:.65;transition:transform .15s"><path d="M1 3l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="btn-xs" id="perm-filter-clear-inline" onclick="setAllPermRegionFilter(false)" style="display:none;margin-left:6px;color:var(--red)">Clear filter ×</button>
+
+    <div id="perm-filter-panel" class="card" style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:320px;max-width:90vw;padding:11px">
+      <input type="text" id="perm-filter-search" placeholder="Search areas…" oninput="renderPermFilterList()" style="width:100%;box-sizing:border-box;background:var(--bg4);border:1px solid var(--bdr2);border-radius:6px;padding:6px 9px;margin-bottom:9px;font-family:var(--fh);font-size:12px;color:var(--ink)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
         <button class="btn-xs" onclick="setAllPermRegionFilter(true)">Select All</button>
+        <span style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;align-self:center" id="perm-filter-count"></span>
         <button class="btn-xs" onclick="setAllPermRegionFilter(false)">Clear</button>
       </div>
+      <div id="perm-filter-list" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:1px"></div>
     </div>
-    <div id="perm-filter-chips" class="vp-chips" style="padding:0"></div>
   </div>
 
   <div id="perm-select-bar" class="card" style="display:none;margin-bottom:12px;background:var(--bg4)">
@@ -2099,24 +2112,82 @@ function visiblePermAreas(){
   return permAreas.filter(a=>permRegionFilter.has(a.region||a.zip));
 }
 
+// A real Houston permit pull spans ~90 distinct areas — a wall of always-
+// visible chips for that many options reads as clutter, not a filter. This
+// collapses into one button ("Filter by Area" / "N Areas Selected") that
+// opens a small searchable checklist, closed by default and closing again
+// on an outside click.
+let permRegionCounts=new Map(); // region -> permit count, refreshed on load
+
 function renderPermFilters(){
-  const wrap=document.getElementById('perm-filter-wrap'),el=document.getElementById('perm-filter-chips');
-  if(!wrap||!el)return;
-  if(!permAreas.length){wrap.style.display='none';return;}
+  const wrap=document.getElementById('perm-filter-wrap');
+  if(!wrap)return;
+  if(!permAreas.length){wrap.style.display='none';closePermFilterPanel();return;}
   wrap.style.display='';
-  const byRegion=new Map();
-  permAreas.forEach(a=>{const key=a.region||a.zip;byRegion.set(key,(byRegion.get(key)||0)+a.permitCount);});
-  const regions=[...byRegion.entries()].sort((a,b)=>b[1]-a[1]);
-  el.innerHTML=regions.map(([r,c])=>`<button class="chip${permRegionFilter.has(r)?' active':''}" onclick="togglePermRegion('${r.replace(/'/g,"\\'")}')">${r} (${c})</button>`).join('');
+  permRegionCounts=new Map();
+  permAreas.forEach(a=>{const key=a.region||a.zip;permRegionCounts.set(key,(permRegionCounts.get(key)||0)+a.permitCount);});
+  updatePermFilterButton();
+  renderPermFilterList();
+}
+function updatePermFilterButton(){
+  const label=document.getElementById('perm-filter-label'),clearBtn=document.getElementById('perm-filter-clear-inline');
+  if(!label)return;
+  const n=permRegionFilter.size;
+  label.textContent=n?`${n} Area${n===1?'':'s'} Selected`:'Filter by Area';
+  document.getElementById('perm-filter-btn').classList.toggle('active',n>0);
+  if(clearBtn)clearBtn.style.display=n?'':'none';
+}
+function renderPermFilterList(){
+  const listEl=document.getElementById('perm-filter-list');
+  if(!listEl)return;
+  const q=(document.getElementById('perm-filter-search')?.value||'').trim().toLowerCase();
+  const countEl=document.getElementById('perm-filter-count');
+  let regions=[...permRegionCounts.entries()].sort((a,b)=>b[1]-a[1]);
+  if(q)regions=regions.filter(([r])=>r.toLowerCase().includes(q));
+  if(countEl)countEl.textContent=permRegionFilter.size+' selected';
+  listEl.innerHTML=regions.length?regions.map(([r,c])=>{
+    const on=permRegionFilter.has(r);
+    return `<label class="pf-row${on?' on':''}" title="${r.replace(/"/g,'&quot;')}">
+      <input type="checkbox" ${on?'checked':''} onchange="togglePermRegion('${r.replace(/'/g,"\\'")}')" style="flex-shrink:0">
+      <span class="pf-row-name">${r}</span>
+      <span class="pf-row-count">${c}</span>
+    </label>`;
+  }).join(''):'<div style="text-align:center;padding:14px;color:var(--ink3);font-size:11px">No areas match</div>';
 }
 function togglePermRegion(r){
   if(permRegionFilter.has(r))permRegionFilter.delete(r);else permRegionFilter.add(r);
-  renderPermFilters();renderPermAreas();updatePermSelectBar();
+  updatePermFilterButton();renderPermFilterList();renderPermAreas();updatePermSelectBar();
 }
 function setAllPermRegionFilter(all){
   if(all){permRegionFilter=new Set(permAreas.map(a=>a.region||a.zip));}
   else{permRegionFilter=new Set();}
-  renderPermFilters();renderPermAreas();updatePermSelectBar();
+  updatePermFilterButton();renderPermFilterList();renderPermAreas();updatePermSelectBar();
+}
+function togglePermFilterPanel(e){
+  if(e)e.stopPropagation();
+  const panel=document.getElementById('perm-filter-panel');
+  if(!panel)return;
+  if(panel.style.display==='none')openPermFilterPanel();else closePermFilterPanel();
+}
+function openPermFilterPanel(){
+  const panel=document.getElementById('perm-filter-panel');
+  if(!panel)return;
+  panel.style.display='block';
+  document.getElementById('perm-filter-caret').style.transform='rotate(180deg)';
+  renderPermFilterList();
+  document.getElementById('perm-filter-search')?.focus();
+  document.addEventListener('click',permFilterOutsideClick);
+}
+function closePermFilterPanel(){
+  const panel=document.getElementById('perm-filter-panel');
+  if(!panel)return;
+  panel.style.display='none';
+  const caret=document.getElementById('perm-filter-caret');
+  if(caret)caret.style.transform='';
+  document.removeEventListener('click',permFilterOutsideClick);
+}
+function permFilterOutsideClick(e){
+  if(!e.target.closest('#perm-filter-wrap'))closePermFilterPanel();
 }
 
 function renderPermAreas(){
@@ -2210,7 +2281,7 @@ async function generateMailerPdf(action){
   const btn=document.getElementById(btnId);
   const orig=btn.textContent;btn.disabled=true;btn.textContent='Generating…';
   try{
-    const permits=[...permSelected.values()].map(v=>({zip:v.zip,address:v.permit.address,permitType:v.permit.permitType,permitDate:v.permit.permitDate,projectNo:v.permit.projectNo}));
+    const permits=[...permSelected.values()].map(v=>({zip:v.zip,address:v.permit.address,permitType:v.permit.permitType,permitDate:v.permit.permitDate,projectNo:v.permit.projectNo,comments:v.permit.comments}));
     const r=await fetch('/api/permits/mailer-letters',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({permits})});
     const d=await r.json();
     if(!r.ok)throw new Error(d.error?.message||'Failed to build letters');
@@ -2219,9 +2290,11 @@ async function generateMailerPdf(action){
     const doc=new jsPDF({unit:'pt',format:'letter'});
     const marginX=64,pageW=612,pageH=792,maxWidth=pageW-marginX*2;
     const tenant=d.tenant||{};
+    let realNameCount=0;
 
     d.letters.forEach((L,i)=>{
       if(i>0)doc.addPage();
+      if(L.recipientName&&L.recipientName!=='Property Owner')realNameCount++;
       let y=60;
       doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(tenant.name||'',marginX,y);
       doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120);
@@ -2233,33 +2306,41 @@ async function generateMailerPdf(action){
 
       doc.setFontSize(10);
       doc.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),marginX,y);y+=26;
-      doc.text('Property Owner',marginX,y);y+=14;
+      doc.text(L.recipientName||'Property Owner',marginX,y);y+=14;
       doc.text(L.recipientAddress||'',marginX,y);y+=14;
       doc.text('Houston, TX'+(L.zip?' '+L.zip:''),marginX,y);y+=32;
 
-      doc.text('Dear Property Owner,',marginX,y);y+=22;
+      doc.text(L.greeting||'Dear Property Owner,',marginX,y);y+=22;
 
       doc.setFontSize(11);
-      const lines=doc.splitTextToSize(L.bodyText||'',maxWidth);
       const lh=16;
-      lines.forEach(line=>{
-        if(y>pageH-90){doc.addPage();y=60;}
-        doc.text(line,marginX,y);y+=lh;
+      (L.bodyParagraphs||[]).forEach((para,pi)=>{
+        if(pi>0)y+=8; // paragraph gap
+        const lines=doc.splitTextToSize(para||'',maxWidth);
+        lines.forEach(line=>{
+          if(y>pageH-130){doc.addPage();y=60;}
+          doc.text(line,marginX,y);y+=lh;
+        });
       });
 
+      y+=14;
+      doc.text(L.signOff||'Sincerely,',marginX,y);y+=28;
+      (L.signatureLines||[]).forEach(line=>{doc.text(line,marginX,y);y+=14;});
+
       doc.setFontSize(8);doc.setTextColor(150);
-      doc.text(`Ref: Permit #${L.projectNo||'—'} · ${L.permitType||''} · filed ${L.permitDate||'—'}`,marginX,pageH-40);
+      doc.text(`Ref: Permit #${L.projectNo||'—'} · ${L.workLabel||L.permitType||''} · filed ${L.permitDate||'—'}`,marginX,pageH-40);
       doc.setTextColor(0);
     });
 
     const filename='mailer_letters_'+new Date().toISOString().slice(0,10)+'.pdf';
+    const nameNote=realNameCount?` · ${realNameCount} addressed to a real confirmed owner name`:'';
     if(action==='print'){
       doc.autoPrint();
       window.open(doc.output('bloburl'));
-      showNotif('Mailer ready',d.letters.length+' letter'+(d.letters.length===1?'':'s')+' opened for printing');
+      showNotif('Mailer ready',d.letters.length+' letter'+(d.letters.length===1?'':'s')+' opened for printing'+nameNote);
     }else{
       doc.save(filename);
-      showNotif('Mailer downloaded',d.letters.length+' personalized letter'+(d.letters.length===1?'':'s')+' saved as '+filename);
+      showNotif('Mailer downloaded',d.letters.length+' personalized letter'+(d.letters.length===1?'':'s')+' saved as '+filename+nameNote);
     }
   }catch(e){showNotif('Error',e.message);}
   btn.disabled=false;btn.textContent=orig;

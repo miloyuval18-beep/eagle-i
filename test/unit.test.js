@@ -8,7 +8,8 @@ const { getHighValueZipInfo, HOUSTON_HIGH_VALUE_ZIPS } = require('../lib/houston
 const { escapeHtml } = require('../lib/landingPageTemplate');
 const { readXlsxFirstSheet } = require('../lib/xlsxReader');
 const { detectPermitSpikes } = require('../lib/houstonPermits');
-const { buildRealAcctHeaderIndex, parseRealAcctLine, aggregateZipValues } = require('../lib/hcadZipValues');
+const { buildRealAcctHeaderIndex, parseRealAcctLine, parseRealAcctOwnerLine, aggregateZipValues } = require('../lib/hcadZipValues');
+const { looksLikeBusinessOrPlaceholder, parseOwnerPersonName, normalizeAddress } = require('../lib/hcadOwnerNames');
 const { budgetError } = require('../routes/ads');
 const { parseImageDataUrl } = require('../routes/images');
 const { isPrivateOrReservedIp, extractEmails, findContactPageUrl } = require('../lib/vendorContactFinder');
@@ -16,7 +17,7 @@ const { buildReplyToAddress } = require('../lib/email');
 const { REPLY_ADDRESS_RE } = require('../routes/inboundEmail');
 const { detectsHighValueFocus, topHighValueNeighborhoods, addressInHighValueZip } = require('../lib/vendorTargeting');
 const { getZipRegion, HOUSTON_ZIP_REGIONS } = require('../lib/houstonZipRegions');
-const { describeWorkType, buildPermitLetter } = require('../lib/permitMailer');
+const { describeWorkType, humanizeComments, buildPermitLetter } = require('../lib/permitMailer');
 
 describe('parseClaudeJson (lib/anthropic.js)', () => {
   test('parses well-formed JSON embedded in surrounding text', () => {
@@ -429,21 +430,150 @@ describe('getZipRegion (lib/houstonZipRegions.js)', () => {
 
 describe('describeWorkType (lib/permitMailer.js)', () => {
   test('recognizes a roof permit', () => {
-    assert.equal(describeWorkType('Roof Replacement').label, 'roof work');
+    assert.equal(describeWorkType('Roof Replacement').label, 'the roof work');
   });
 
   test('recognizes a pool permit', () => {
-    assert.equal(describeWorkType('Residential Pool/Spa').label, 'a pool or spa project');
+    assert.equal(describeWorkType('Residential Pool/Spa').label, 'the pool or spa project');
   });
 
   test('falls back honestly for an unrecognized permit type', () => {
     const d = describeWorkType('Some Unusual Permit Category');
-    assert.equal(d.label, 'a recent building permit');
+    assert.equal(d.label, 'the recent work at your property');
   });
 
   test('handles a missing permit type without throwing', () => {
-    assert.equal(describeWorkType(null).label, 'a recent building permit');
-    assert.equal(describeWorkType(undefined).label, 'a recent building permit');
+    assert.equal(describeWorkType(null).label, 'the recent work at your property');
+    assert.equal(describeWorkType(undefined).label, 'the recent work at your property');
+  });
+});
+
+describe('humanizeComments (lib/permitMailer.js)', () => {
+  test('strips building-code citations and classification codes into a clean phrase', () => {
+    assert.equal(humanizeComments('PARKING GARAGE REMODEL 1-14-1-S2-A 2021 IBC'), 'parking garage remodel');
+  });
+
+  test('strips sprinkler/fire-alarm shorthand, M# references, and IRC/IECC citations', () => {
+    const out = humanizeComments("DUPLEX RES.W/ATT. GARAGE (1-2-5-R3-B) 21 IRC/21 IECC (M#26027119)");
+    assert.ok(out && !/\d/.test(out), 'should have no leftover digits: ' + out);
+    assert.match(out, /residential/);
+    assert.match(out, /attached/);
+  });
+
+  test('strips a leading PPR report-type prefix and expands common abbreviations', () => {
+    const out = humanizeComments('PPR RESIDENTIAL DETACHED GARAGE WITH LIVING SPACE ABOVE ADDITION');
+    assert.doesNotMatch(out, /^ppr/i);
+    assert.match(out, /residential detached garage/);
+  });
+
+  test('returns null for empty/missing comments', () => {
+    assert.equal(humanizeComments(''), null);
+    assert.equal(humanizeComments(null), null);
+    assert.equal(humanizeComments(undefined), null);
+  });
+
+  test('returns null rather than a garbled fragment for comments that are mostly codes', () => {
+    assert.equal(humanizeComments('1-1-1-A5-B 2021 IBC (M#12345)'), null);
+  });
+
+  test('never leaves a stray digit in the returned phrase', () => {
+    const out = humanizeComments('896 SF CVT SINGLE FAMILY RESIDENCE TO RETAIL 1-1-5-M-B \'21 IBC');
+    assert.ok(out === null || !/\d/.test(out));
+  });
+});
+
+describe('looksLikeBusinessOrPlaceholder (lib/hcadOwnerNames.js)', () => {
+  test('flags HCAD\'s "CURRENT OWNER" placeholder', () => {
+    assert.equal(looksLikeBusinessOrPlaceholder('CURRENT OWNER'), true);
+  });
+
+  test('flags an empty/missing name', () => {
+    assert.equal(looksLikeBusinessOrPlaceholder(''), true);
+    assert.equal(looksLikeBusinessOrPlaceholder(null), true);
+  });
+
+  test('flags real-world business/trust/government owner names', () => {
+    ['CITY OF HOUSTON', 'MICHAEL RYAN FEAGIN TRUST', 'MILBY CHARLES FAMILY PTNSH',
+      'B & W C1 LLC', 'DKGA / WUC LP', 'PORT OF HOUSTON AUTHORITY',
+      'HARRIS COUNTY FLOOD CONTROL DISTRICT', 'JEHOVAHS WITNESS BELLAIRE CONGREGATION',
+      'PROSPERITY BANK % PROSPERITY BANK'
+    ].forEach(name => assert.equal(looksLikeBusinessOrPlaceholder(name), true, name));
+  });
+
+  test('does not flag a plain individual name', () => {
+    assert.equal(looksLikeBusinessOrPlaceholder('STEPHENSON MELINDA'), false);
+    assert.equal(looksLikeBusinessOrPlaceholder('BRANDT SCOTT M'), false);
+  });
+});
+
+describe('parseOwnerPersonName (lib/hcadOwnerNames.js)', () => {
+  test('parses a simple two-token individual name', () => {
+    assert.deepEqual(parseOwnerPersonName('STEPHENSON MELINDA'), { firstName: 'Melinda', lastName: 'Stephenson' });
+  });
+
+  test('parses a three-token name with a middle initial', () => {
+    assert.deepEqual(parseOwnerPersonName('BRANDT SCOTT M'), { firstName: 'Scott', lastName: 'Brandt' });
+  });
+
+  test('parses only the first-listed owner out of a joint-owner name', () => {
+    assert.deepEqual(parseOwnerPersonName('MILSTEIN JEFFREY J & LAUREN K'), { firstName: 'Jeffrey', lastName: 'Milstein' });
+    assert.deepEqual(parseOwnerPersonName('FREDERICK KEVIN & DANIELLE'), { firstName: 'Kevin', lastName: 'Frederick' });
+  });
+
+  test('returns null for a business/trust/government/placeholder name', () => {
+    assert.equal(parseOwnerPersonName('CURRENT OWNER'), null);
+    assert.equal(parseOwnerPersonName('MICHAEL RYAN FEAGIN TRUST'), null);
+    assert.equal(parseOwnerPersonName('CITY OF HOUSTON'), null);
+  });
+
+  test('returns null for a 4-token name that dodges the keyword list (token-shape safety net)', () => {
+    // A real HCAD example: no BUSINESS_KEYWORDS hit, but 4 tokens is not a
+    // "LAST FIRST [MI]" shape — must not be treated as a confident person.
+    assert.equal(parseOwnerPersonName('HOME SAVING OF AMERICA'), null);
+  });
+
+  test('returns null for a single-token or empty name', () => {
+    assert.equal(parseOwnerPersonName('MADONNA'), null);
+    assert.equal(parseOwnerPersonName(''), null);
+    assert.equal(parseOwnerPersonName(null), null);
+  });
+});
+
+describe('normalizeAddress (lib/hcadOwnerNames.js)', () => {
+  test('uppercases, strips periods/commas, and collapses whitespace', () => {
+    assert.equal(normalizeAddress('123  Main   St.'), '123 MAIN ST');
+  });
+
+  test('handles a missing address without throwing', () => {
+    assert.equal(normalizeAddress(null), '');
+    assert.equal(normalizeAddress(undefined), '');
+  });
+});
+
+describe('parseRealAcctOwnerLine (lib/hcadZipValues.js)', () => {
+  const header = 'acct\tmailto\tsite_addr_1\tsite_addr_3\ttot_mkt_val';
+  const headerIndex = buildRealAcctHeaderIndex(header);
+
+  test('extracts a confident owner row for a real-shaped individual-owner line', () => {
+    const line = '0011870000002\tSTEPHENSON MELINDA\t4815 PALMETTO ST\t77401\t500000';
+    const row = parseRealAcctOwnerLine(headerIndex, line);
+    assert.deepEqual(row, {
+      zip: '77401',
+      rawSiteAddress: '4815 PALMETTO ST',
+      normalizedAddress: '4815 PALMETTO ST',
+      ownerFirstName: 'Melinda',
+      ownerLastName: 'Stephenson'
+    });
+  });
+
+  test('returns null for a business-owned parcel', () => {
+    const line = '0011870000002\tCITY OF HOUSTON\t0 FRANKLIN\t77002\t319200';
+    assert.equal(parseRealAcctOwnerLine(headerIndex, line), null);
+  });
+
+  test('returns null for a missing zip or address', () => {
+    assert.equal(parseRealAcctOwnerLine(headerIndex, '0011870000002\tSTEPHENSON MELINDA\t\t77401\t500000'), null);
+    assert.equal(parseRealAcctOwnerLine(headerIndex, '0011870000002\tSTEPHENSON MELINDA\t4815 PALMETTO ST\t\t500000'), null);
   });
 });
 
@@ -460,14 +590,56 @@ describe('buildPermitLetter (lib/permitMailer.js)', () => {
     assert.equal(letter.zip, '77019');
   });
 
-  test('mentions the tenant\'s own contact info, not a placeholder', () => {
+  test('addresses "Property Owner" and uses a generic greeting when no owner is resolved', () => {
     const letter = buildPermitLetter({
       permit: { address: '456 Oak Dr', permitType: 'Remodel', permitDate: '2026-08-05', projectNo: 'P-2' },
       area: { zip: '77024', region: 'Memorial / Tanglewood' },
       tenant
     });
-    assert.match(letter.bodyText, /\(713\) 555-0100/);
-    assert.match(letter.bodyText, /Levi Homes/);
+    assert.equal(letter.recipientName, 'Property Owner');
+    assert.equal(letter.greeting, 'Dear Property Owner,');
+  });
+
+  test('addresses a real name and uses a first-name greeting only when an owner is passed in', () => {
+    const letter = buildPermitLetter({
+      permit: { address: '456 Oak Dr', permitType: 'Remodel', permitDate: '2026-08-05', projectNo: 'P-2' },
+      area: { zip: '77024', region: 'Memorial / Tanglewood' },
+      tenant,
+      owner: { firstName: 'Jeffrey', lastName: 'Milstein' }
+    });
+    assert.equal(letter.recipientName, 'Jeffrey Milstein');
+    assert.equal(letter.greeting, 'Dear Jeffrey,');
+  });
+
+  test('mentions the tenant\'s own contact info and company name, not a placeholder', () => {
+    const letter = buildPermitLetter({
+      permit: { address: '456 Oak Dr', permitType: 'Remodel', permitDate: '2026-08-05', projectNo: 'P-2' },
+      area: { zip: '77024', region: 'Memorial / Tanglewood' },
+      tenant
+    });
+    const full = letter.bodyParagraphs.join(' ');
+    assert.match(full, /\(713\) 555-0100/);
+    assert.match(full, /Levi Homes/);
+    assert.deepEqual(letter.signatureLines, ['Alex Levi', 'Levi Homes', '(713) 555-0100 · alex@levihomes.com']);
+  });
+
+  test('uses the permit\'s own comments for specificity when they clean up well', () => {
+    const letter = buildPermitLetter({
+      permit: { address: '1600 Smith St', permitType: 'Building Pmt', permitDate: '2026-08-05', projectNo: 'P-3', comments: 'PARKING GARAGE REMODEL 1-14-1-S2-A 2021 IBC' },
+      area: { zip: '77002', region: 'Downtown' },
+      tenant
+    });
+    assert.equal(letter.workLabel, 'the parking garage remodel');
+    assert.match(letter.bodyParagraphs[0], /parking garage remodel/);
+  });
+
+  test('falls back to a generic-but-honest work label when comments don\'t clean up', () => {
+    const letter = buildPermitLetter({
+      permit: { address: '1600 Smith St', permitType: 'Some Unusual Type', permitDate: '2026-08-05', projectNo: 'P-4', comments: '1-1-1-A5-B 2021 IBC' },
+      area: { zip: '77002', region: 'Downtown' },
+      tenant
+    });
+    assert.equal(letter.workLabel, 'the recent work at your property');
   });
 
   test('two different permits of the same type produce different letter text (not copy-pasted)', () => {
@@ -481,7 +653,7 @@ describe('buildPermitLetter (lib/permitMailer.js)', () => {
       area: { zip: '77019', region: 'River Oaks' },
       tenant
     });
-    assert.notEqual(a.bodyText, b.bodyText);
+    assert.notEqual(a.bodyParagraphs.join(' '), b.bodyParagraphs.join(' '));
   });
 
   test('the same permit always produces the same letter text (stable, not random)', () => {
@@ -489,7 +661,7 @@ describe('buildPermitLetter (lib/permitMailer.js)', () => {
     const area = { zip: '77005', region: 'West University Place' };
     const first = buildPermitLetter({ permit, area, tenant });
     const second = buildPermitLetter({ permit, area, tenant });
-    assert.equal(first.bodyText, second.bodyText);
+    assert.deepEqual(first.bodyParagraphs, second.bodyParagraphs);
   });
 
   test('handles a missing tenant profile without throwing', () => {
@@ -498,6 +670,6 @@ describe('buildPermitLetter (lib/permitMailer.js)', () => {
       area: { zip: '77019', region: 'River Oaks' },
       tenant: {}
     });
-    assert.match(letter.bodyText, /the number below/);
+    assert.match(letter.bodyParagraphs.join(' '), /the number below/);
   });
 });

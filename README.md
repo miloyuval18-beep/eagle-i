@@ -60,9 +60,20 @@ runs — HCAD's export is a single ~200MB county-wide file (no per-address or pe
 API), refreshed by HCAD roughly annually, so re-running this a few times a year is
 plenty. Run it from a machine with `DATABASE_URL` set to the real database (same as
 `npm test` and `node-pg-migrate`) — it writes real rows into production. See
-`lib/hcadZipValues.js` and `scripts/importHcadZipValues.js` for what it does and does
-not do (it does not store parcel-level owner names or addresses — only per-zip
-aggregates).
+`lib/hcadZipValues.js` and `scripts/importHcadZipValues.js` for what it does.
+
+The same pass also populates `hcad_owner_parcels` — a per-parcel table of just the
+site address and the owner-of-record's name, for every parcel where that name
+confidently parses as one real individual (`lib/hcadOwnerNames.js`: businesses,
+trusts, government owners, and HCAD's own "CURRENT OWNER" placeholder are all
+filtered out — a real run of this keeps about 63% of Houston-area parcels). This is
+what lets the Permits mailer (below) address a letter to a real name instead of
+"Property Owner" — but only on an exact, unambiguous zip+address match; see
+`findConfidentOwners()` in `lib/hcadZipValues.js` for the "only if fully confident"
+rule. It's genuinely public county tax-roll data, so this is legal to use, but real
+names on outbound mail carry a different weight than an anonymized value estimate —
+worth being deliberate about, which is why this got a real conversation before being
+built rather than just shipped quietly.
 
 ## Permits: area filtering + personalized mailer PDFs
 
@@ -80,18 +91,30 @@ back to the curated estimate). That ranking always runs over whatever's
 currently filtered, and only reaches across every loaded zip when no area
 filter is active.
 
-**Generate Mailer PDF** turns the selection into one real letter per permit —
-`POST /api/permits/mailer-letters` builds each letter's text server-side
-(`lib/permitMailer.js`), referencing that permit's own address, work type
-(roof, remodel, pool, etc. — detected from the permit type text), and date,
-plus the tenant's own saved business profile; several opening/body/closing
-phrasings rotate in by a hash of the permit so a batch doesn't read as one
-paragraph pasted at every address. Deliberately not AI-generated — a batch
-can be up to 200 letters, which would blow through `/api/claude`'s per-IP
-rate limit and cost real money for something a template handles well. The
-browser then lays out one page per letter with jsPDF (loaded from cdnjs,
-same pattern as Chart.js above — no server-side PDF dependency) and either
-downloads the file or opens it print-ready.
+**Generate Mailer PDF** turns the selection into one real, professionally formatted
+letter per permit — `POST /api/permits/mailer-letters` builds each letter's text
+server-side (`lib/permitMailer.js`). Each letter references that specific permit's
+own address, filing date, and the actual work involved: the city's `permitType`
+field is almost always a generic bucket ("Building Pmt"), so `humanizeComments()`
+does best-effort cleanup of the city's real free-text project description (e.g.
+"PARKING GARAGE REMODEL 1-14-1-S2-A 2021 IBC" → "the parking garage remodel") —
+stripping building-code citations, occupancy-classification codes, and permit-report
+jargon, verified against a full week of real live permit comments (93% clean, the
+rest fall back safely rather than risk printing something garbled). A keyword-based
+`describeWorkType()` is the fallback when comments don't clean up well. Several
+opening/body phrasings rotate in by a hash of the permit so a batch doesn't read as
+one paragraph pasted at every address. Deliberately not AI-generated — a batch can
+be up to 200 letters, which would blow through `/api/claude`'s per-IP rate limit and
+cost real money for something a template handles well.
+
+Each letter is addressed to a real property-owner name — resolved via the
+`hcad_owner_parcels` table above — whenever the match is confident, and to
+"Property Owner" otherwise; see the HCAD section above for what "confident" means
+and why that bar exists. The browser lays out a real business-letter format with
+jsPDF (loaded from cdnjs, same pattern as Chart.js above — no server-side PDF
+dependency): letterhead, date, full recipient block, a personalized greeting, the
+body, and a proper "Sincerely," signature block — then either downloads the file or
+opens it print-ready.
 
 ## Real ad campaigns (Meta Ads + Google Ads)
 

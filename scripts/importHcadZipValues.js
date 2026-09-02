@@ -16,13 +16,15 @@
 // publishes updated values — a few times a year is plenty; home values
 // don't move week to week the way permits or weather do.
 //
-// What this does NOT do: it does not store parcel-level data (owner name,
-// exact address) — only per-zip aggregates (avg/median market value,
-// parcel count). Parcel-level owner-name matching against specific permit
-// addresses would need either the full ~1.8M-row county file kept in
-// Postgres indefinitely, or a live per-address HCAD API that doesn't
-// exist — both bigger asks than this pass takes on. See README.md's
-// "HCAD real home-value data" section.
+// This also populates hcad_owner_parcels — a per-parcel table of just the
+// address + owner name for accounts where the owner-of-record parses as a
+// confident individual (lib/hcadOwnerNames.js filters out businesses,
+// trusts, government owners, and HCAD's own "CURRENT OWNER" placeholder).
+// That's the "bigger ask" this file's comment used to say wasn't taken on
+// — it now is, specifically to let the Permits mailer address a letter to
+// a real name instead of "Property Owner" when — and only when — the match
+// is unambiguous. See README.md's "HCAD real home-value data" section and
+// lib/hcadZipValues.js's findConfidentOwners().
 //
 // Usage:
 //   node scripts/importHcadZipValues.js            # downloads, imports, writes to DB
@@ -97,7 +99,10 @@ async function main() {
   // Buffer.indexOf/subarray on the raw bytes, never the whole buffer.
   const NEWLINE = 0x0a;
 
-  const { buildRealAcctHeaderIndex, parseRealAcctLine, aggregateZipValues, upsertZipStats } = require('../lib/hcadZipValues');
+  const {
+    buildRealAcctHeaderIndex, parseRealAcctLine, parseRealAcctOwnerLine,
+    aggregateZipValues, upsertZipStats, replaceOwnerParcels
+  } = require('../lib/hcadZipValues');
 
   const firstNewline = buf.indexOf(NEWLINE);
   const headerLine = buf.subarray(0, firstNewline).toString('utf8');
@@ -105,9 +110,13 @@ async function main() {
   if (headerIndex.site_addr_3 === undefined || headerIndex.tot_mkt_val === undefined) {
     throw new Error('real_acct.txt header did not contain expected columns (site_addr_3, tot_mkt_val) — HCAD may have changed their file layout. See README.md\'s "HCAD real home-value data" section.');
   }
+  if (headerIndex.site_addr_1 === undefined || headerIndex.mailto === undefined) {
+    throw new Error('real_acct.txt header did not contain expected columns (site_addr_1, mailto) — HCAD may have changed their file layout. See README.md\'s "HCAD real home-value data" section.');
+  }
 
-  console.log('Parsing and aggregating by zip (Houston-area zips only)...');
+  console.log('Parsing zip/value aggregates and confident owner names (Houston-area zips only)...');
   const parsed = [];
+  const ownerRows = [];
   let lineStart = firstNewline + 1;
   let totalLines = 0;
   while (lineStart < buf.length) {
@@ -118,8 +127,11 @@ async function main() {
     totalLines++;
     const row = parseRealAcctLine(headerIndex, line);
     if (row && row.zip.startsWith(HOUSTON_ZIP_PREFIX)) parsed.push(row);
+    const ownerRow = parseRealAcctOwnerLine(headerIndex, line);
+    if (ownerRow && ownerRow.zip.startsWith(HOUSTON_ZIP_PREFIX)) ownerRows.push(ownerRow);
   }
   console.log(`Scanned ${totalLines.toLocaleString()} accounts, kept ${parsed.length.toLocaleString()} with a usable Houston-area zip + market value.`);
+  console.log(`Of those, ${ownerRows.length.toLocaleString()} parsed as a confident individual owner name (businesses, trusts, government owners, and HCAD's "CURRENT OWNER" placeholder are excluded).`);
 
   const stats = aggregateZipValues(parsed);
   console.log(`Aggregated into ${stats.length} zip codes.`);
@@ -135,6 +147,8 @@ async function main() {
 
   console.log(`\nWriting ${stats.length} rows to hcad_zip_stats...`);
   await upsertZipStats(stats, taxYear);
+  console.log(`Writing ${ownerRows.length.toLocaleString()} rows to hcad_owner_parcels (replacing the previous import)...`);
+  await replaceOwnerParcels(ownerRows, taxYear);
   console.log('Done.');
 }
 

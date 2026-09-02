@@ -6,7 +6,7 @@ const { query } = require('../db');
 const { requireAuth } = require('../auth');
 const { getRecentPermits } = require('../lib/houstonPermits');
 const { HOUSTON_HIGH_VALUE_ZIPS, getHighValueZipInfo } = require('../lib/houstonZipValues');
-const { getRealHcadZipStatsForZips } = require('../lib/hcadZipValues');
+const { getRealHcadZipStatsForZips, findConfidentOwners } = require('../lib/hcadZipValues');
 const { getZipRegion } = require('../lib/houstonZipRegions');
 const { buildPermitLetter } = require('../lib/permitMailer');
 
@@ -126,17 +126,32 @@ router.post('/api/permits/mailer-letters', requireAuth, async (req, res) => {
       unique: profile.differentiators
     };
 
-    const letters = permits.map(p => {
+    const cleanedPermits = permits.map((p, i) => {
       const zip = cleanField(p && p.zip).replace(/[^0-9]/g, '').slice(0, 5);
-      const zipInfo = getHighValueZipInfo(zip);
-      const region = getZipRegion(zip) || (zipInfo ? zipInfo.neighborhood : null) || (zip ? `Zip ${zip}` : '');
-      const permit = {
+      return {
+        id: i,
+        zip,
         address: cleanField(p && p.address),
         permitType: cleanField(p && p.permitType),
         permitDate: cleanField(p && p.permitDate),
-        projectNo: cleanField(p && p.projectNo)
+        projectNo: cleanField(p && p.projectNo),
+        comments: cleanField(p && p.comments)
       };
-      const letter = buildPermitLetter({ permit, area: { zip, region }, tenant });
+    });
+
+    // Real property-owner names, only where lib/hcadZipValues.js's
+    // findConfidentOwners() considers the (zip, address) match unambiguous
+    // — see lib/hcadOwnerNames.js for the "only if fully confident" rules.
+    // One query for the whole batch, not one per permit.
+    const owners = await findConfidentOwners(
+      cleanedPermits.map(p => ({ id: p.id, zip: p.zip, address: p.address }))
+    );
+
+    const letters = cleanedPermits.map(permit => {
+      const zipInfo = getHighValueZipInfo(permit.zip);
+      const region = getZipRegion(permit.zip) || (zipInfo ? zipInfo.neighborhood : null) || (permit.zip ? `Zip ${permit.zip}` : '');
+      const owner = owners.get(permit.id) || null;
+      const letter = buildPermitLetter({ permit, area: { zip: permit.zip, region }, tenant, owner });
       return { ...letter, permitType: permit.permitType, permitDate: permit.permitDate, projectNo: permit.projectNo, region };
     });
 
