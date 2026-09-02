@@ -479,6 +479,7 @@ tbody tr:last-child td{border-bottom:none}
     <div class="tab" id="t-budgetads" onclick="goTo('budgetads',this)">💰 Budget &amp; Ads</div>
     <div class="tab" id="t-growth" onclick="goTo('growth',this)">🤝 Growth &amp; Partners</div>
     <div class="tab" id="t-social"  onclick="goTo('social',this)">📱 Social HQ<span class="tbadge on" id="social-badge">!</span></div>
+    <div class="tab" id="t-inprogress" onclick="goTo('inprogress',this)">🚧 In Progress</div>
   </nav>
   <div class="topbar-r">
     <div class="client-badge">
@@ -2663,8 +2664,10 @@ const TAB_CONTEXTS = {
                chips:['Which vendor is best for referrals?','Which award should I apply for first?']},
   social:     {icon:'📱', title:'Social Media HQ', ctx:'All platforms · posts · engagement · analytics · keyword research',
                chips:['What should I post today?','Which keyword should I target first?']},
-  credentials:{icon:'⚙️', title:'Credentials', ctx:'API tokens & platform access',
-               chips:['How do I get an Instagram API token?','Why is my LinkedIn token failing?']}
+  credentials:{icon:'⚙️', title:'Credentials', ctx:'Connecting real platform accounts',
+               chips:['How do I connect Facebook?','How do I connect Google Business Profile?']},
+  inprogress: {icon:'🚧', title:'In Progress', ctx:'Platforms Eagle I can\'t post to yet, and why',
+               chips:['Why can\'t Eagle I post to Yelp?','Could LinkedIn posting get built later?']}
 };
 
 /* ---------- TAB CHAT (general assistant) ---------- */
@@ -2755,32 +2758,6 @@ function toggleTcMic(){
   tcRecog.start();tcListening=true;if(micEl)micEl.classList.add('on');
 }
 
-/* ---------- CREDENTIALS (localStorage) ---------- */
-const CRED_FIELDS=['cred-ig-token','cred-ig-id','cred-fb-token','cred-fb-id','cred-li-token','cred-li-urn','cred-li-company','cred-yw-email','cred-yw-key','cred-hz-email','cred-hz-pass','cred-wp-url','cred-wp-pass','cred-wp-user','cred-nd-email','cred-nd-pass'];
-function saveAllCreds(){
-  try{
-    const data={};CRED_FIELDS.forEach(id=>{const el=document.getElementById(id);if(el)data[id]=el.value;});
-    localStorage.setItem('eagle_creds',JSON.stringify(data));
-    const s=document.getElementById('cred-save-s');
-    if(s){s.textContent='✓ Credentials saved locally on this device · '+new Date().toLocaleTimeString();s.style.color='var(--green)';}
-    showNotif('Credentials saved','Stored in your browser only');
-  }catch(e){showNotif('Save failed',e.message);}
-}
-function loadSavedCreds(){
-  try{
-    const raw=localStorage.getItem('eagle_creds');if(!raw)return;
-    const data=JSON.parse(raw);
-    CRED_FIELDS.forEach(id=>{const el=document.getElementById(id);if(el&&data[id]!=null)el.value=data[id];});
-  }catch(e){}
-}
-function clearAllCreds(){
-  if(!confirm('Clear all platform credentials from this browser?'))return;
-  try{localStorage.removeItem('eagle_creds');}catch(e){}
-  CRED_FIELDS.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['ig','fb','li','go','yw','hz','wp','nd'].forEach(p=>{const s=document.getElementById('cred-'+p+'-s');if(s)s.textContent='';});
-  const s=document.getElementById('cred-save-s');if(s){s.textContent='Cleared.';s.style.color='var(--ink3)';}
-  showNotif('Credentials cleared','All fields wiped');
-}
 async function loadSocialConnections(){
   const sub=document.getElementById('meta-connect-sub');
   const actions=document.getElementById('meta-connect-actions');
@@ -3099,26 +3076,6 @@ async function deleteAccount(){
     window.location.href='/login.html';
   }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
 }
-function testCred(platform){
-  const map={
-    instagram:{need:['cred-ig-token','cred-ig-id'],statusEl:'cred-ig-s'},
-    facebook:{need:['cred-fb-token','cred-fb-id'],statusEl:'cred-fb-s'},
-    linkedin:{need:['cred-li-token','cred-li-urn'],statusEl:'cred-li-s'},
-    yelp:{need:['cred-yw-email','cred-yw-key'],statusEl:'cred-yw-s'},
-    houzz:{need:['cred-hz-email','cred-hz-pass'],statusEl:'cred-hz-s'},
-    website:{need:['cred-wp-url','cred-wp-pass','cred-wp-user'],statusEl:'cred-wp-s'},
-    nextdoor:{need:['cred-nd-email','cred-nd-pass'],statusEl:'cred-nd-s'}
-  };
-  const cfg=map[platform];if(!cfg)return;
-  const s=document.getElementById(cfg.statusEl);
-  const missing=cfg.need.filter(id=>{const el=document.getElementById(id);return !el||!el.value.trim();});
-  if(missing.length){if(s){s.textContent='⚠ Missing required fields';s.style.color='var(--amber)';}return;}
-  if(s){s.textContent='⏳ Testing connection (DEMO)...';s.style.color='var(--ink2)';}
-  setTimeout(()=>{
-    if(s){s.innerHTML='✓ <span style="color:var(--green)">DEMO OK</span> · credentials look well-formed · real validation requires backend (CORS blocks direct browser test)';s.style.color='var(--ink2)';}
-  },900+Math.random()*600);
-}
-
 /* ---------- SOCIAL: AI POST GENERATOR ---------- */
 async function genAIPost(){
   const btn=document.getElementById('ai-post-btn'),spin=document.getElementById('ai-post-spin'),ta=document.getElementById('post-content');
@@ -3252,7 +3209,6 @@ async function runPublish(platforms,text){
 
   const metaTargets=platforms.filter(p=>p==='facebook'||p==='instagram');
   const gbpTargets=platforms.filter(p=>p==='google');
-  const demoTargets=platforms.filter(p=>p!=='facebook'&&p!=='instagram'&&p!=='google');
 
   if(metaTargets.includes('instagram')&&!firstHostedImageUrl()){
     showNotif('No image attached','Instagram requires an image — attach one below or the Instagram post will fail');
@@ -3264,7 +3220,7 @@ async function runPublish(platforms,text){
     wrap.innerHTML=`<span style="font-size:16px">${platIcon(plat)}</span><strong style="color:var(--ink)">${plat}</strong><span style="color:var(--ink3);margin-left:auto" id="pr-${plat}">⏳ Publishing...</span>`;
     if(results)results.appendChild(wrap);
   }
-  [...metaTargets,...gbpTargets,...demoTargets].forEach(addRow);
+  [...metaTargets,...gbpTargets].forEach(addRow);
 
   if(metaTargets.length){
     if(!metaConnection){
@@ -3308,36 +3264,15 @@ async function runPublish(platforms,text){
     }
   }
 
-  for(const plat of demoTargets){
-    await new Promise(r=>setTimeout(r,600+Math.random()*900));
-    const ok=checkCred(plat);
-    const cell=document.getElementById('pr-'+plat);
-    if(cell){
-      if(ok){
-        cell.innerHTML='<span style="color:var(--green)">✓ Published (DEMO)</span> · would post via API with saved credentials';
-      }else{
-        cell.innerHTML='<span style="color:var(--amber)">⚠ No credentials saved</span> · go to ⚙ Credentials';
-      }
-    }
-  }
   if(btn)btn.disabled=false;if(spin)spin.style.display='none';
   addPostHistory(text,platforms);
 }
-function platIcon(p){return ({instagram:'📸',facebook:'👤',linkedin:'🔗',google:'🌟',yelp:'⭐',houzz:'🏠',website:'🌐',nextdoor:'🏘️'})[p]||'📱';}
-function checkCred(platform){
-  try{
-    const raw=localStorage.getItem('eagle_creds');if(!raw)return false;
-    const d=JSON.parse(raw);
-    const map={instagram:['cred-ig-token','cred-ig-id'],facebook:['cred-fb-token','cred-fb-id'],linkedin:['cred-li-token','cred-li-urn'],yelp:['cred-yw-email','cred-yw-key'],houzz:['cred-hz-email','cred-hz-pass'],website:['cred-wp-url','cred-wp-pass','cred-wp-user'],nextdoor:['cred-nd-email','cred-nd-pass']};
-    const need=map[platform]||[];
-    return need.every(k=>d[k]&&d[k].trim());
-  }catch(e){return false;}
-}
+function platIcon(p){return ({instagram:'📸',facebook:'👤',google:'🌟'})[p]||'📱';}
 let postHistory=[];
 function addPostHistory(text,platforms){
-  const metaCount=platforms.filter(p=>p==='facebook'||p==='instagram').length;
-  const tag=metaCount===0?'DEMO':(metaCount===platforms.length?'LIVE':'MIXED');
-  postHistory.unshift({text,platforms,at:new Date(),tag});
+  // Every platform reaching this point is real — the composer's platform
+  // selector only ever offers Facebook/Instagram (Meta) and Google (GBP).
+  postHistory.unshift({text,platforms,at:new Date(),tag:'LIVE'});
   renderPostHistory();
 }
 function renderPostHistory(){
@@ -3857,8 +3792,8 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
     </div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Platforms</div><div class="ss">Facebook, Instagram &amp; Google Business post for real once connected in the Credentials tab · Yelp/Houzz/Nextdoor/Website have no public posting API for any app to use — see the readiness report</div></div></div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+    <div class="sh"><div><div class="st" style="font-size:18px">Platforms</div><div class="ss">Facebook, Instagram &amp; Google Business post for real once connected in the Credentials tab · see <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button> for everything else</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
       <div class="platform-card">
         <div class="platform-icon pi-ig">📸</div>
         <div class="platform-name">Instagram</div>
@@ -3876,35 +3811,11 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
         </div>
       </div>
       <div class="platform-card">
-        <div class="platform-icon pi-yw">⭐</div>
-        <div class="platform-name">Yelp</div>
-        <div class="platform-url" id="sh-yw-status">Not connected</div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn-xs" onclick="openPostComposer('yelp')">+ Post</button>
-        </div>
-      </div>
-      <div class="platform-card">
-        <div class="platform-icon pi-hz">🏠</div>
-        <div class="platform-name">Houzz</div>
-        <div class="platform-url" id="sh-hz-status">Not connected</div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn-xs" onclick="openPostComposer('houzz')">+ Post</button>
-        </div>
-      </div>
-      <div class="platform-card">
         <div class="platform-icon pi-go">🌟</div>
         <div class="platform-name">Google Business</div>
         <div class="platform-url" id="sh-go-status">Not connected</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn-xs" onclick="openPostComposer('google')">+ Post</button>
-        </div>
-      </div>
-      <div class="platform-card">
-        <div class="platform-icon pi-web">🌐</div>
-        <div class="platform-name" id="sh-website-name">Your Website</div>
-        <div class="platform-url" id="sh-website-status">Not set</div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn-xs" onclick="openPostComposer('website')">+ Add Page</button>
         </div>
       </div>
     </div>
@@ -3946,13 +3857,9 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       <div class="platform-selector" id="plat-selector">
         <div class="plat-toggle sel" data-plat="instagram" onclick="togglePlat(this)"><div class="pt-dot"></div><span>📸 Instagram</span></div>
         <div class="plat-toggle sel" data-plat="facebook" onclick="togglePlat(this)"><div class="pt-dot"></div><span>👤 Facebook</span></div>
-        <div class="plat-toggle" data-plat="linkedin" onclick="togglePlat(this)"><div class="pt-dot"></div><span>🔗 LinkedIn</span></div>
         <div class="plat-toggle" data-plat="google" onclick="togglePlat(this)"><div class="pt-dot"></div><span>🌟 Google</span></div>
-        <div class="plat-toggle" data-plat="yelp" onclick="togglePlat(this)"><div class="pt-dot"></div><span>⭐ Yelp</span></div>
-        <div class="plat-toggle" data-plat="houzz" onclick="togglePlat(this)"><div class="pt-dot"></div><span>🏠 Houzz</span></div>
-        <div class="plat-toggle" data-plat="website" onclick="togglePlat(this)"><div class="pt-dot"></div><span>🌐 Website</span></div>
-        <div class="plat-toggle" data-plat="nextdoor" onclick="togglePlat(this)"><div class="pt-dot"></div><span>🏘️ Nextdoor</span></div>
       </div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:6px">LinkedIn, Yelp, Houzz, Website &amp; Nextdoor aren't connectable yet — see <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button></div>
       <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleFileDrop(event)">
         <input type="file" id="file-input" multiple accept="image/*,video/*" style="display:none" onchange="handleFiles(this.files)">
         <div class="fd-icon">📎</div>
@@ -4135,15 +4042,11 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
 <div id="page-credentials" class="page">
 <div class="wrap">
   <div class="sh">
-    <div><div class="st">Platform Credentials</div><div class="ss">Eagle I access to post · analyze · and monitor all platforms · stored locally · never shared</div></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-blue" onclick="saveAllCreds()">💾 Save All</button>
-      <button class="btn-ghost" onclick="clearAllCreds()">Clear All</button>
-    </div>
+    <div><div class="st">Platform Credentials</div><div class="ss">Real accounts Eagle I can post to</div></div>
   </div>
   <div class="ib" style="margin-bottom:16px">
-    <div class="ibt">🔒 Your credentials are stored only in your browser — never sent anywhere except the platforms themselves</div>
-    <div class="ibb">Eagle I uses these credentials to post on your behalf via each platform's official API or browser automation. Credentials are saved in localStorage on your device.</div>
+    <div class="ibt">🔒 Real OAuth only — never a pasted password or token</div>
+    <div class="ibb">Both platforms below connect the same way: click Connect, log in on the platform's own site, and Eagle I receives a scoped access token directly from them — nothing is typed into a form here or stored by Eagle I outside that token exchange. See <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button> for the platforms that aren't connectable yet, and why.</div>
   </div>
   <div class="g2">
     <div class="platform-card" id="meta-connect-card">
@@ -4157,20 +4060,6 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       </div>
       <div class="sm" id="meta-connect-s"></div>
     </div>
-    <div class="platform-card">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
-        <div class="platform-icon" style="width:36px;height:36px;font-size:18px;margin:0;background:linear-gradient(135deg,#0a66c2,#004182);border-radius:11px;display:flex;align-items:center;justify-content:center">🔗</div>
-        <div><div class="platform-name">LinkedIn</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2)">Personal + company page</div></div>
-      </div>
-      <div class="cred-row"><div class="cred-label">LinkedIn Access Token</div><input class="cred-input" id="cred-li-token" type="password" placeholder="Your LinkedIn OAuth access token" autocomplete="off"></div>
-      <div class="cred-row"><div class="cred-label">LinkedIn Person URN</div><input class="cred-input" id="cred-li-urn" placeholder="urn:li:person:XXXXXXXX" autocomplete="off"></div>
-      <div class="cred-row"><div class="cred-label">Company URN (your company page)</div><input class="cred-input" id="cred-li-company" placeholder="urn:li:organization:XXXXXXXX" autocomplete="off"></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-        <button class="btn-xs p" onclick="testCred('linkedin')">Test Connection</button>
-        <button class="btn-xs" onclick="window.open('https://www.linkedin.com/developers/apps','_blank')">Get Token ↗</button>
-      </div>
-      <div class="sm" id="cred-li-s"></div>
-    </div>
     <div class="platform-card" id="gbp-connect-card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
         <div class="platform-icon pi-go" style="width:36px;height:36px;font-size:18px;margin:0">🌟</div>
@@ -4180,70 +4069,77 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       <div style="display:flex;gap:6px;flex-wrap:wrap" class="gbp-actions"></div>
       <div class="sm" id="gbp-connect-s"></div>
     </div>
-    <div class="platform-card">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
-        <div class="platform-icon pi-yw" style="width:36px;height:36px;font-size:18px;margin:0">⭐</div>
-        <div><div class="platform-name">Yelp</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2)">yelp.com/biz/levi-homes-bellaire-8</div></div>
-      </div>
-      <div class="cred-row"><div class="cred-label">Yelp Business Owner Email</div><input class="cred-input" id="cred-yw-email" placeholder="you@yourbusiness.com" autocomplete="off"></div>
-      <div class="cred-row"><div class="cred-label">Yelp Fusion API Key</div><input class="cred-input" id="cred-yw-key" type="password" placeholder="Your Yelp Fusion API key" autocomplete="off"></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-        <button class="btn-xs p" onclick="testCred('yelp')">Test Connection</button>
-        <button class="btn-xs" onclick="window.open('https://www.yelp.com/developers','_blank')">Get API Key ↗</button>
-      </div>
-      <div class="sm" id="cred-yw-s"></div>
-    </div>
-    <div class="platform-card">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
-        <div class="platform-icon pi-hz" style="width:36px;height:36px;font-size:18px;margin:0">🏠</div>
-        <div><div class="platform-name">Houzz</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2)">houzz.com/levi-homes-llc</div></div>
-      </div>
-      <div class="cred-row"><div class="cred-label">Houzz Email</div><input class="cred-input" id="cred-hz-email" placeholder="you@yourbusiness.com" autocomplete="off"></div>
-      <div class="cred-row"><div class="cred-label">Houzz Password</div><input class="cred-input" id="cred-hz-pass" type="password" placeholder="Your Houzz account password" autocomplete="off"></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-        <button class="btn-xs p" onclick="testCred('houzz')">Test Connection</button>
-        <button class="btn-xs" onclick="window.open('https://www.houzz.com/user-login','_blank')">Login ↗</button>
-      </div>
-      <div class="sm" id="cred-hz-s"></div>
-    </div>
-    <div class="platform-card">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
-        <div class="platform-icon pi-web" style="width:36px;height:36px;font-size:18px;margin:0">🌐</div>
-        <div><div class="platform-name">Your Website</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2)">WordPress / CMS integration</div></div>
-      </div>
-      <div class="cred-row"><div class="cred-label">WordPress Site URL</div><input class="cred-input" id="cred-wp-url" placeholder="https://yourbusiness.com" autocomplete="off"></div>
-      <div class="cred-row"><div class="cred-label">WordPress Application Password</div><input class="cred-input" id="cred-wp-pass" type="password" placeholder="WordPress App Password" autocomplete="off"></div>
-      <div class="cred-row"><div class="cred-label">WordPress Username</div><input class="cred-input" id="cred-wp-user" placeholder="admin username" autocomplete="off"></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-        <button class="btn-xs p" onclick="testCred('website')">Test Connection</button>
-        <button class="btn-xs" onclick="window.open((C.site?('https://'+C.site.replace(/^https?:\/\//,'')):'about:blank')+'/wp-admin','_blank')">WP Admin ↗</button>
-      </div>
-      <div class="sm" id="cred-wp-s"></div>
-    </div>
-    <div class="platform-card">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
-        <div class="platform-icon" style="background:linear-gradient(135deg,#00b551,#008a3d);width:36px;height:36px;font-size:18px;margin:0;border-radius:12px;display:flex;align-items:center;justify-content:center">🏘️</div>
-        <div><div class="platform-name">Nextdoor</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2)">Neighbor account for your service area</div></div>
-      </div>
-      <div class="cred-row"><div class="cred-label">Nextdoor Email</div><input class="cred-input" id="cred-nd-email" placeholder="you@yourbusiness.com or personal email" autocomplete="off"></div>
-      <div class="cred-row"><div class="cred-label">Nextdoor Password</div><input class="cred-input" id="cred-nd-pass" type="password" placeholder="Your Nextdoor password" autocomplete="off"></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-        <button class="btn-xs p" onclick="testCred('nextdoor')">Test Connection</button>
-        <button class="btn-xs" onclick="window.open('https://nextdoor.com','_blank')">Nextdoor ↗</button>
-      </div>
-      <div class="sm" id="cred-nd-s"></div>
-    </div>
   </div>
-  <div style="margin-top:18px;display:flex;gap:9px">
-    <button class="btn btn-blue" onclick="saveAllCreds()">💾 Save All Credentials</button>
+  <div style="margin-top:18px">
     <button class="btn-ghost" onclick="goTo('social',document.getElementById('t-social'))">← Back to Social HQ</button>
   </div>
-  <div class="sm" id="cred-save-s"></div>
+</div>
+</div>
+
+<!-- ==================== IN PROGRESS (platforms Eagle I can't post to yet) ==================== -->
+<div id="page-inprogress" class="page">
+<div class="wrap">
+  <div class="sh"><div><div class="st">🚧 In Progress</div><div class="ss">Platforms Eagle I can't post to for real yet — and the honest reason why</div></div></div>
+  <div class="ib" style="margin-bottom:16px">
+    <div class="ibt">Why these aren't in the composer</div>
+    <div class="ibb">Facebook, Instagram, and Google Business Profile post for real — connect them in <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('credentials',document.getElementById('t-social'))">⚙ Credentials</button>. The platforms below used to sit in the composer as look-alike options that quietly did nothing when picked, and the old Credentials page asked for real passwords and API keys it never actually used — both removed. This is the honest list instead: what's blocked because no public API exists at all, versus what's technically possible but hasn't been built.</div>
+  </div>
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:16px">No public API exists — not buildable by any app</div></div></div>
+    <div class="g2" style="margin-bottom:20px">
+      <div class="platform-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+          <div class="platform-icon pi-yw" style="width:36px;height:36px;font-size:18px;margin:0">⭐</div>
+          <div><div class="platform-name">Yelp</div><span class="badge b-hot" style="margin-top:3px;display:inline-block">NO PUBLIC API</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Yelp's public Fusion API is read-only — searching businesses and reading reviews. There's no endpoint for posting updates, responding as the owner, or anything else write-side, for Eagle I or any third-party tool.</div>
+      </div>
+      <div class="platform-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+          <div class="platform-icon pi-hz" style="width:36px;height:36px;font-size:18px;margin:0">🏠</div>
+          <div><div class="platform-name">Houzz</div><span class="badge b-hot" style="margin-top:3px;display:inline-block">NO PUBLIC API</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Houzz has no public developer API at all — not even a read-only one. A Houzz profile has to be maintained by hand, directly on houzz.com.</div>
+      </div>
+      <div class="platform-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+          <div class="platform-icon" style="background:linear-gradient(135deg,#00b551,#008a3d);width:36px;height:36px;font-size:18px;margin:0;border-radius:12px;display:flex;align-items:center;justify-content:center">🏘️</div>
+          <div><div class="platform-name">Nextdoor</div><span class="badge b-hot" style="margin-top:3px;display:inline-block">NO PUBLIC API</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Nextdoor has no public developer API. Posting there means logging in as a real neighbor/business account by hand, directly on nextdoor.com.</div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:16px">A real API exists — just not built here yet</div></div></div>
+    <div class="g2">
+      <div class="platform-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+          <div class="platform-icon" style="width:36px;height:36px;font-size:18px;margin:0;background:linear-gradient(135deg,#0a66c2,#004182);border-radius:11px;display:flex;align-items:center;justify-content:center">🔗</div>
+          <div><div class="platform-name">LinkedIn</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NOT YET BUILT</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">LinkedIn does have a real API for posting company updates — but using it requires approval through LinkedIn's own Marketing Developer Platform program, the same kind of manual review Meta and Google Business Profile already required. That review hasn't been started for LinkedIn. Real, buildable, just not begun.</div>
+      </div>
+      <div class="platform-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+          <div class="platform-icon pi-web" style="width:36px;height:36px;font-size:18px;margin:0">🌐</div>
+          <div><div class="platform-name">Your Website</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NOT YET BUILT</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">There's no universal "post to a website" API — every business's site is built differently. A WordPress site specifically could connect for real via WordPress's own REST API (an Application Password, entered by you, used only for that site) — that's the most common case and the one most worth building first, but it isn't wired up yet.</div>
+      </div>
+      <div class="platform-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+          <div class="platform-icon" style="width:36px;height:36px;font-size:18px;margin:0;background:var(--bg5);border-radius:11px;display:flex;align-items:center;justify-content:center">📡</div>
+          <div><div class="platform-name">Real Social Mention Scanning</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NEEDS A PAID KEY</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">The "Social Mention Ideas" examples on Market Intel are AI-simulated, not a live feed — there's no free API for scanning organic social chatter (Nextdoor and Facebook both lock this down; X's API is paid). Real mention-scanning would need a paid third-party social-listening service (e.g. Mention.com, Brandwatch) with your own account and API key — a real recurring cost, so it's not something to wire up without asking first.</div>
+      </div>
+    </div>
+  </div>
 </div>
 </div>
 
 <script>
-loadSavedCreds();
 loadSocialAnalytics();
 </script>
 </body>

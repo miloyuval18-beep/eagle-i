@@ -259,6 +259,25 @@ reachable image URL, which Eagle I previously had no way to provide. Wired into 
 composer's existing drop-zone in `index.html` — dropping/selecting an image uploads it
 immediately and the resulting URL is used automatically when publishing to Instagram.
 
+## The "In Progress" tab
+
+The composer only ever offers Facebook, Instagram, and Google Business Profile —
+the only three platforms Eagle I actually posts to for real. LinkedIn, Yelp, Houzz,
+Nextdoor, and posting to a tenant's own website used to sit in the composer as
+look-alike options that quietly did nothing when picked, and the old Credentials
+page asked for real Yelp/Houzz/Nextdoor/WordPress passwords and API keys that were
+never actually used for anything (only checked client-side for "not empty," then
+stored in `localStorage`) — both removed. The **🚧 In Progress** tab is the honest
+replacement: a plain status list distinguishing "no public API exists at all"
+(Yelp, Houzz, Nextdoor — true for any third-party app, not just Eagle I) from
+"a real API exists, just hasn't been built here yet" (LinkedIn, needs their own
+Marketing Developer Platform approval like Meta/GBP already went through; a
+tenant's own website, needs per-CMS integration). It also carries the honest
+explanation for why the "Social Mention Ideas" examples on Market Intel are
+AI-simulated rather than a live feed — no free API exists for scanning organic
+social chatter; a real version would need a paid third-party social-listening
+API (e.g. Mention.com, Brandwatch) with the tenant's own account and key.
+
 ## Notes
 
 - `ANTHROPIC_API_KEY`, `SITE_USER`, `SITE_PASSWORD` must never be committed. `.env` is gitignored; only `.env.example` (no real values) is tracked.
