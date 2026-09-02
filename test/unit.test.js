@@ -7,7 +7,7 @@ const { parseClaudeJson } = require('../lib/anthropic');
 const { getHighValueZipInfo, HOUSTON_HIGH_VALUE_ZIPS } = require('../lib/houstonZipValues');
 const { escapeHtml } = require('../lib/landingPageTemplate');
 const { readXlsxFirstSheet } = require('../lib/xlsxReader');
-const { detectPermitSpikes, isCurrentWeek } = require('../lib/houstonPermits');
+const { detectPermitSpikes, mostRecentWeekKey, isNewestWeek } = require('../lib/houstonPermits');
 const { buildRealAcctHeaderIndex, parseRealAcctLine, parseRealAcctOwnerLine, aggregateZipValues } = require('../lib/hcadZipValues');
 const { looksLikeBusinessOrPlaceholder, parseOwnerPersonName, normalizeAddress } = require('../lib/hcadOwnerNames');
 const { budgetError } = require('../routes/ads');
@@ -233,32 +233,61 @@ describe('detectPermitSpikes (lib/houstonPermits.js)', () => {
   });
 });
 
-describe('isCurrentWeek (lib/houstonPermits.js)', () => {
-  // A fixed Wednesday, so its Mon-Sun week is unambiguous (2026-08-24 to
-  // 2026-08-30) — every case below is judged against this fixed "now"
-  // rather than the real clock, so the test can't be flaky depending on
-  // which day it happens to run.
-  const NOW = new Date('2026-08-26T12:00:00Z');
-
-  test('true for a date in the same Mon-Sun week as now', () => {
-    assert.equal(isCurrentWeek('2026-08-24', NOW), true); // the Monday
-    assert.equal(isCurrentWeek('2026-08-26', NOW), true); // now itself
-    assert.equal(isCurrentWeek('2026-08-30', NOW), true); // the Sunday
+describe('mostRecentWeekKey (lib/houstonPermits.js)', () => {
+  test('returns the Monday of the latest week present in the records', () => {
+    const records = [
+      { permitDate: '2026-08-03' }, // week of 2026-08-03 (Mon)
+      { permitDate: '2026-08-17' }, // week of 2026-08-17 (Mon) — latest
+      { permitDate: '2026-08-10' }
+    ];
+    assert.equal(mostRecentWeekKey(records), '2026-08-17');
   });
 
-  test('false for a date in the prior or next week', () => {
-    assert.equal(isCurrentWeek('2026-08-23', NOW), false); // prior Sunday
-    assert.equal(isCurrentWeek('2026-08-31', NOW), false); // next Monday
+  test('ignores records with a missing/unparseable date', () => {
+    const records = [{ permitDate: '2026-08-03' }, { permitDate: null }, { permitDate: 'not a date' }];
+    assert.equal(mostRecentWeekKey(records), '2026-08-03');
+  });
+
+  test('returns null for an empty list or one with no usable dates', () => {
+    assert.equal(mostRecentWeekKey([]), null);
+    assert.equal(mostRecentWeekKey([{ permitDate: null }]), null);
+  });
+});
+
+describe('isNewestWeek (lib/houstonPermits.js)', () => {
+  // Deliberately NOT tied to the real current date — this is the whole
+  // point of the redesign (see lib/houstonPermits.js's comment):
+  // Houston Permitting Center's own publish lag means "the real current
+  // calendar week" essentially never has data yet, so "new" means "in the
+  // most recent week the data itself actually has" instead.
+  const records = [
+    { permitDate: '2026-08-03' },
+    { permitDate: '2026-08-17' }, // latest week: 2026-08-17
+    { permitDate: '2026-08-19' }
+  ];
+
+  test('true for a date in the most recent week present in the records', () => {
+    assert.equal(isNewestWeek('2026-08-17', records), true);
+    assert.equal(isNewestWeek('2026-08-19', records), true); // same week as the Monday above
+  });
+
+  test('false for a date in an older week', () => {
+    assert.equal(isNewestWeek('2026-08-03', records), false);
+  });
+
+  test('false when the records list has no usable latest week', () => {
+    assert.equal(isNewestWeek('2026-08-17', []), false);
+  });
+
+  test('accepts a precomputed latestWeekKey instead of the full records array, for reuse across many permits', () => {
+    const latest = mostRecentWeekKey(records);
+    assert.equal(isNewestWeek('2026-08-19', latest), true);
+    assert.equal(isNewestWeek('2026-08-03', latest), false);
   });
 
   test('false for a missing/unparseable date', () => {
-    assert.equal(isCurrentWeek(null, NOW), false);
-    assert.equal(isCurrentWeek('', NOW), false);
-    assert.equal(isCurrentWeek('not a date', NOW), false);
-  });
-
-  test('defaults to the real current time when now is omitted', () => {
-    assert.equal(isCurrentWeek(new Date().toISOString()), true);
+    assert.equal(isNewestWeek(null, records), false);
+    assert.equal(isNewestWeek('not a date', records), false);
   });
 });
 

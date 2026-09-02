@@ -92,11 +92,18 @@ list above, covering every zip the weekly reports touch) so results can be
 filtered down to just the areas a tenant cares about, with a running count
 per area.
 
-Any permit whose own filing date falls in the current Mon-Sun week gets a real
-**🆕 NEW** tag (`isCurrentWeek()` in `lib/houstonPermits.js`, same ISO-week logic
-`detectPermitSpikes` already used) — computed from the permit's own date, not
-from when it happened to be fetched, so it stays accurate across the 12-hour
-cache. Each area's header also shows a "N new this week" count.
+Any permit whose date falls in the **most recently published** weekly report
+gets a real **🆕 NEW** tag (`mostRecentWeekKey`/`isNewestWeek` in
+`lib/houstonPermits.js`) — deliberately relative to the data itself, not to
+today's real calendar week: Houston Permitting Center's own publish lag runs
+well over a week (confirmed directly against the live source — the newest
+report was still only "Aug 17-23" as of Sept 2), so a permit dated in the
+literal current week essentially never exists yet. Tagging against whatever
+week the data itself is freshest for instead guarantees something is flagged
+the moment a new report actually lands. Each area's header also shows a "N
+NEW" count, and a **New Only** toggle next to the area filter narrows the
+whole page down to just the newest batch (areas with nothing new drop out
+entirely, same as the area filter).
 
 From the filtered (or full) list, individual permits can be checked
 directly, or picked automatically with **Select Top N by Value** (10 through

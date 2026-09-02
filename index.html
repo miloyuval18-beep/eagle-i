@@ -1002,6 +1002,7 @@ tbody tr:last-child td{border-bottom:none}
       <svg id="perm-filter-caret" width="8" height="8" viewBox="0 0 10 10" style="opacity:.65;transition:transform .15s"><path d="M1 3l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
     <button class="btn-xs" id="perm-filter-clear-inline" onclick="setAllPermRegionFilter(false)" style="display:none;margin-left:6px;color:var(--red)">Clear filter ×</button>
+    <button class="btn-xs" id="perm-newonly-btn" onclick="togglePermNewOnly()" style="margin-left:6px" title="Show only permits from the most recently published report">🆕 New Only</button>
 
     <div id="perm-filter-panel" class="card" style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:320px;max-width:90vw;padding:11px">
       <input type="text" id="perm-filter-search" placeholder="Search areas…" oninput="renderPermFilterList()" style="width:100%;box-sizing:border-box;background:var(--bg4);border:1px solid var(--bdr2);border-radius:6px;padding:6px 9px;margin-bottom:9px;font-family:var(--fh);font-size:12px;color:var(--ink)">
@@ -2077,6 +2078,7 @@ Return ONLY valid JSON: {"messages":[{"variant":"Community","subject":"Subject i
 /* PERMITS — real, from lib/houstonPermits.js via /api/permits/high-value-areas */
 let permAreas=[];
 let permRegionFilter=new Set(); // empty = no filter, show every area
+let permNewOnly=false;          // true = only show permits from the most recently published report
 let permSelected=new Map();     // permitKey -> {zip, region, estValue, permit}
 let permFlatIndex=new Map();    // permitKey -> same shape, rebuilt on every render so checkboxes can look themselves up
 
@@ -2093,6 +2095,8 @@ async function loadPerms(force){
     if(!r.ok)throw new Error(d.error?.message||'Failed to load');
     permAreas=d.areas||[];
     permRegionFilter=new Set();
+    permNewOnly=false;
+    document.getElementById('perm-newonly-btn')?.classList.remove('active');
     permSelected=new Map();
     document.getElementById('perm-badge').textContent=d.totalPermits;
     renderPermFilters();
@@ -2104,12 +2108,23 @@ async function loadPerms(force){
   btn.disabled=false;spin.style.display='none';ico.style.display='';
 }
 
-// Areas whose region passes the current filter — the single source of
-// truth for both what's rendered and what "Select Visible" / "Select Top N"
-// operate over, so filtering and selection always agree on what's in scope.
+// Areas (and, when "New Only" is on, the permits within them) that pass the
+// current filters — the single source of truth for both what's rendered
+// and what "Select Visible" / "Select Top N" operate over, so filtering and
+// selection always agree on what's in scope.
 function visiblePermAreas(){
-  if(!permRegionFilter.size)return permAreas;
-  return permAreas.filter(a=>permRegionFilter.has(a.region||a.zip));
+  let areas=permRegionFilter.size?permAreas.filter(a=>permRegionFilter.has(a.region||a.zip)):permAreas;
+  if(permNewOnly){
+    areas=areas
+      .map(a=>{const permits=a.permits.filter(p=>p.isNew);return {...a,permits,permitCount:permits.length};})
+      .filter(a=>a.permits.length>0);
+  }
+  return areas;
+}
+function togglePermNewOnly(){
+  permNewOnly=!permNewOnly;
+  document.getElementById('perm-newonly-btn').classList.toggle('active',permNewOnly);
+  renderPermAreas();updatePermSelectBar();
 }
 
 // A real Houston permit pull spans ~90 distinct areas — a wall of always-
@@ -2201,7 +2216,7 @@ function renderPermAreas(){
         <div>
           <span class="ce">${a.zip}${a.region?' — '+a.region:''}</span>
           ${a.hcad?'<span class="badge b-new" style="margin-left:7px">🏛️ REAL HCAD DATA</span>':a.highValue?'<span class="badge b-new" style="margin-left:7px">HIGH VALUE</span>':''}
-          ${a.newThisWeekCount?`<span class="badge b-blue" style="margin-left:7px">🆕 ${a.newThisWeekCount} NEW THIS WEEK</span>`:''}
+          ${a.newCount?`<span class="badge b-blue" style="margin-left:7px">🆕 ${a.newCount} NEW</span>`:''}
         </div>
         <span style="font-size:11px;color:var(--ink3)">${a.permitCount} permit${a.permitCount===1?'':'s'}${a.hcad?' · $'+a.hcad.avgMarketValue.toLocaleString()+' avg ('+a.hcad.parcelCount.toLocaleString()+' parcels, HCAD '+a.hcad.taxYear+')':a.approxMedianValue?' · ~$'+a.approxMedianValue.toLocaleString()+' median':''}</span>
       </div>

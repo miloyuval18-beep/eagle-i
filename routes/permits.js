@@ -4,7 +4,7 @@
 const express = require('express');
 const { query } = require('../db');
 const { requireAuth } = require('../auth');
-const { getRecentPermits, isCurrentWeek } = require('../lib/houstonPermits');
+const { getRecentPermits, mostRecentWeekKey, isNewestWeek } = require('../lib/houstonPermits');
 const { HOUSTON_HIGH_VALUE_ZIPS, getHighValueZipInfo } = require('../lib/houstonZipValues');
 const { getRealHcadZipStatsForZips, findConfidentOwners } = require('../lib/hcadZipValues');
 const { getZipRegion } = require('../lib/houstonZipRegions');
@@ -32,6 +32,15 @@ router.get('/api/permits/high-value-areas', requireAuth, async (req, res) => {
 
     const hcadByZip = await getRealHcadZipStatsForZips([...byZip.keys()]);
 
+    // "New" means the most recent week Houston Permitting Center has
+    // actually published data for — not today's real calendar week. Their
+    // own publish lag runs well over a week (observed directly: the newest
+    // report was still only "Aug 17-23" as of Sept 2), so a permit dated in
+    // the literal current week essentially never exists yet; see
+    // lib/houstonPermits.js's mostRecentWeekKey for the full reasoning.
+    // Computed once across all records, not per zip/permit.
+    const latestWeekKey = mostRecentWeekKey(records);
+
     const areas = [...byZip.entries()].map(([zip, permits]) => {
       const zipInfo = getHighValueZipInfo(zip);
       const hcad = hcadByZip.get(zip) || null;
@@ -52,11 +61,11 @@ router.get('/api/permits/high-value-areas', requireAuth, async (req, res) => {
         estValue: hcad ? hcad.avgMarketValue : (zipInfo ? zipInfo.approxMedianValue : 0),
         hcad, // real HCAD appraisal-district data, when the import has covered this zip — see lib/hcadZipValues.js
         permitCount: permits.length,
-        newThisWeekCount: permits.filter(p => isCurrentWeek(p.permitDate)).length,
+        newCount: permits.filter(p => isNewestWeek(p.permitDate, latestWeekKey)).length,
         permits: permits
           .sort((a, b) => (b.permitDate || '').localeCompare(a.permitDate || ''))
           .slice(0, 25) // cap per zip so one busy zip doesn't dwarf the response
-          .map(p => ({ ...p, isNew: isCurrentWeek(p.permitDate) }))
+          .map(p => ({ ...p, isNew: isNewestWeek(p.permitDate, latestWeekKey) }))
       };
     });
 
