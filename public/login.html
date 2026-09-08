@@ -52,7 +52,10 @@ button.primary:disabled{opacity:.5;cursor:not-allowed}
     <label>Email</label>
     <input type="email" id="login-email" required autocomplete="email">
     <label>Password</label>
-    <input type="password" id="login-password" required autocomplete="current-password">
+    <div class="pw-wrap">
+      <input type="password" id="login-password" required autocomplete="current-password">
+      <button type="button" class="pw-toggle" onclick="togglePw('login-password',this)">Show</button>
+    </div>
     <a class="forgot" href="/forgot-password.html">Forgot password?</a>
     <button class="primary" type="submit">Sign In</button>
   </form>
