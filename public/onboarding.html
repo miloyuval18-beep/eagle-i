@@ -24,10 +24,16 @@ button.primary:disabled{opacity:.5;cursor:not-allowed}
 .err{color:var(--red);font-size:12px;margin-top:12px;text-align:center;display:none}
 .status{font-family:var(--fm);font-size:11px;color:var(--ink2);margin-top:14px;text-align:center;display:none}
 .hint{font-size:11px;color:var(--ink3);margin-top:4px}
+button.secondary{width:100%;margin-top:10px;background:transparent;color:var(--ink2);border:1px solid var(--bdr2);border-radius:7px;padding:13px;font-family:var(--fh);font-size:15px;font-weight:600;letter-spacing:1px;cursor:pointer;text-transform:uppercase}
+button.secondary:hover{border-color:var(--blue2);color:var(--ink)}
+.disclaimer{font-size:14px;line-height:1.65;color:var(--ink2)}
+.disclaimer p{margin-bottom:14px}
+.disclaimer strong{color:var(--ink)}
+.note-box{background:var(--bg4);border:1px solid var(--bdr2);border-left:3px solid var(--blue2);border-radius:7px;padding:12px 14px;margin-top:6px;font-size:13px;color:var(--ink2);line-height:1.6}
 </style>
 </head>
 <body>
-<div class="card">
+<div class="card" id="step1">
   <h1>Set up your business</h1>
   <div class="sub">This builds your dashboard — takes about a minute</div>
   <form id="form">
@@ -59,8 +65,19 @@ button.primary:disabled{opacity:.5;cursor:not-allowed}
       <img id="logoPreview" style="max-width:120px;max-height:120px;border-radius:8px;background:#152845;padding:8px">
     </div>
     <div class="hint" id="logoErr" style="color:var(--red);display:none"></div>
-    <button class="primary" type="submit" id="submitBtn">Generate My Dashboard</button>
+    <button class="primary" type="submit" id="continueBtn">Continue</button>
   </form>
+</div>
+
+<div class="card" id="step2" style="display:none">
+  <h1>Before we generate your dashboard</h1>
+  <div class="sub">One thing worth knowing first</div>
+  <div class="disclaimer">
+    <p>Everything you just entered — services, service area, differentiators, brand voice — is what Eagle I's AI uses to write your strategy, keywords, competitor analysis, and marketing content. <strong>Vague or incomplete details produce generic, less useful results.</strong> The more specific you were, the better your dashboard will be.</p>
+    <div class="note-box">Don't worry about getting it perfect — every field here can be <strong>edited anytime</strong> after setup from Account Settings, no matter what you choose now.</div>
+  </div>
+  <button class="primary" type="button" id="proceedBtn">Looks Good — Generate My Dashboard</button>
+  <button class="secondary" type="button" id="backBtn">← Go Back and Edit</button>
   <div class="status" id="status"></div>
   <div class="err" id="err"></div>
 </div>
@@ -96,13 +113,27 @@ document.getElementById('logo').addEventListener('change', (e)=>{
   reader.readAsDataURL(file);
 });
 
-document.getElementById('form').addEventListener('submit', async (e)=>{
+document.getElementById('form').addEventListener('submit', (e)=>{
   e.preventDefault();
-  const btn=document.getElementById('submitBtn');
+  document.getElementById('step1').style.display='none';
+  document.getElementById('step2').style.display='block';
+  window.scrollTo(0,0);
+});
+
+document.getElementById('backBtn').addEventListener('click', ()=>{
+  document.getElementById('step2').style.display='none';
+  document.getElementById('step1').style.display='block';
+  window.scrollTo(0,0);
+});
+
+document.getElementById('proceedBtn').addEventListener('click', async ()=>{
+  const btn=document.getElementById('proceedBtn');
+  const backBtn=document.getElementById('backBtn');
   const status=document.getElementById('status');
   const err=document.getElementById('err');
   err.style.display='none';
   btn.disabled=true;
+  backBtn.disabled=true;
   status.style.display='block';
   status.textContent='Generating your strategy, keywords, competitors, and opportunities... this takes a moment.';
 
@@ -129,6 +160,7 @@ document.getElementById('form').addEventListener('submit', async (e)=>{
       err.style.display='block';
       status.style.display='none';
       btn.disabled=false;
+      backBtn.disabled=false;
       return;
     }
     if (d.partial) {
@@ -144,6 +176,7 @@ document.getElementById('form').addEventListener('submit', async (e)=>{
     err.style.display='block';
     status.style.display='none';
     btn.disabled=false;
+    backBtn.disabled=false;
   }
 });
 </script>
