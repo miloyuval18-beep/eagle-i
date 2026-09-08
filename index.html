@@ -34,6 +34,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .tab.active{color:var(--blue2);border-bottom-color:var(--blue);background:rgba(30,140,255,.05)}
 .tbadge{background:var(--red);color:#fff;font-family:var(--fm);font-size:7px;padding:1px 4px;border-radius:5px;font-weight:700;display:none;letter-spacing:.5px}
 .tbadge.on{display:inline}
+.nav-toggle{display:none;font-size:16px;color:var(--ink)}
+.nav-backdrop{display:none}
 .topbar-r{display:flex;align-items:center;gap:10px;padding-left:12px;border-left:1px solid var(--bdr);flex-shrink:0}
 .client-badge{display:flex;align-items:center;gap:7px;background:var(--glow);border:1px solid var(--bdr2);border-radius:var(--r);padding:5px 10px}
 .cl-logo{width:24px;height:24px;border-radius:4px;object-fit:contain;background:#111;flex-shrink:0}
@@ -437,6 +439,51 @@ tbody tr:last-child td{border-bottom:none}
 .tc-mic.on{background:rgba(0,217,122,.15);border-color:var(--green);}
 .tab-chat-btn{position:fixed;bottom:18px;left:18px;z-index:540;background:linear-gradient(135deg,#00d97a,#1a7ee8);border:none;border-radius:50px;cursor:pointer;display:flex;align-items:center;gap:7px;padding:10px 16px;font-family:var(--fh);font-size:13px;font-weight:600;color:#fff;letter-spacing:1px;box-shadow:0 5px 0 #006a30,0 8px 22px rgba(0,217,122,.3);border-bottom:2px solid #006a30;transition:all .14s;}
 .tab-chat-btn:hover{transform:translateY(-2px);}
+
+/* ---- Mobile (phones) ----
+   Placed last on purpose: every rule here overrides an earlier base rule
+   of equal specificity (.ei-stat, .nav-tabs, .vp, etc.), and CSS resolves
+   ties by source order, not by which @media block looks more "specific". */
+@media(max-width:760px){
+  /* Topbar: the 11-tab nav plus every badge/pill never fits a phone width
+     at once — nav-tabs was silently getting squeezed to ~0px and vanishing
+     rather than wrapping or scrolling. Trim the topbar to essentials and
+     move the full nav into a hamburger-triggered dropdown instead. */
+  .topbar{padding:0 12px}
+  .brand{padding-right:10px;gap:8px}
+  .brand-tag{display:none}
+  .eagle-logo{width:30px;height:30px}
+  .brand-name{font-size:17px}
+  .topbar-r{gap:7px;padding-left:8px}
+  .topbar-r .spill{display:none}
+  .client-badge{padding:4px 8px;max-width:110px;overflow:hidden}
+  .cl-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px}
+  .nav-toggle{display:flex}
+  .nav-tabs{position:absolute;top:60px;left:0;right:0;flex-direction:column;align-items:stretch;background:var(--bg2);border-bottom:1px solid var(--bdr2);box-shadow:0 24px 50px rgba(0,0,0,.55);max-height:0;overflow:hidden;transition:max-height .25s ease;z-index:401;padding:0}
+  body.nav-open .nav-tabs{max-height:600px;overflow-y:auto}
+  .nav-tabs .tab{height:auto;width:100%;padding:15px 18px;border-bottom:1px solid var(--bdr);border-left:3px solid transparent;justify-content:flex-start;font-size:13px}
+  .nav-tabs .tab.active{background:rgba(30,140,255,.08);border-left-color:var(--blue)}
+  body.nav-open .nav-backdrop{display:block;position:fixed;inset:60px 0 0 0;background:rgba(0,0,0,.55);z-index:399}
+
+  /* Hero: was 130px logo art + 54px display type + ring animations before
+     any real dashboard content — several screens of scroll on a phone.
+     Compact it into a single readable block. */
+  .ei-hero{padding:16px 14px 14px;gap:12px}
+  .ei-logo-w{display:none}
+  .ei-name{font-size:30px;letter-spacing:3px}
+  .ei-sub{font-size:9px;letter-spacing:1.5px;margin-bottom:9px}
+  .ei-eyebrow{font-size:8px;letter-spacing:3px}
+  .ei-tags{gap:5px}
+  .ei-tag{font-size:7px;padding:2px 7px}
+  .ei-stats-col{flex-direction:row;flex-wrap:wrap;width:100%;gap:6px}
+  .ei-stat{flex:1 1 40%;min-width:0;text-align:left;padding:7px 11px}
+  .ei-sv{font-size:16px}
+
+  /* Floating voice/chat panels were fixed at 340-350px — wider than most
+     phones once the 18px edge offset is counted. Let them fill the
+     viewport width with a margin instead of a fixed px width. */
+  .vp,.tab-chat{left:10px;right:10px;bottom:10px;width:auto}
+}
 </style>
 </head>
 <body>
@@ -468,7 +515,7 @@ tbody tr:last-child td{border-bottom:none}
     <img id="eagle-logo" src="" alt="Eagle I" class="eagle-logo">
     <div><div class="brand-name">Eagle I</div><div class="brand-tag">AI Marketing Command Center</div></div>
   </div>
-  <nav class="nav-tabs">
+  <nav class="nav-tabs" id="nav-tabs">
     <div class="tab active" id="t-dash" onclick="goTo('dash',this)">⚡ Command</div>
     <div class="tab" id="t-strategy" onclick="goTo('strategy',this)">🎯 Strategy<span class="tbadge on" id="strat-badge">NOW</span></div>
     <div class="tab" id="t-market" onclick="goTo('market',this)">📊 Market Intel</div>
@@ -481,7 +528,9 @@ tbody tr:last-child td{border-bottom:none}
     <div class="tab" id="t-social"  onclick="goTo('social',this)">📱 Social HQ<span class="tbadge on" id="social-badge">!</span></div>
     <div class="tab" id="t-inprogress" onclick="goTo('inprogress',this)">🚧 In Progress</div>
   </nav>
+  <div class="nav-backdrop" onclick="toggleMobileNav()"></div>
   <div class="topbar-r">
+    <button class="vorb nav-toggle" id="nav-toggle-btn" onclick="toggleMobileNav()" title="Menu" aria-expanded="false" aria-controls="nav-tabs" style="background:var(--bg5)">☰</button>
     <div class="client-badge">
       <img id="topbar-logo" src="" alt="" class="cl-logo" style="display:none">
       <div><div class="cl-name" id="topbar-company-name">Loading...</div><div class="cl-status" id="topbar-plan-tier">●</div></div>
@@ -1118,7 +1167,13 @@ var tcTab='dash';
 
 /* NAVIGATION */
 var _pgLoaded={};
+function toggleMobileNav(){
+  var open=document.body.classList.toggle('nav-open');
+  var btn=document.getElementById('nav-toggle-btn');
+  if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
+}
 function goTo(id,btn){
+  document.body.classList.remove('nav-open');
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active');});
   var pg=document.getElementById('page-'+id); if(pg)pg.classList.add('active');
