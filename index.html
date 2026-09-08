@@ -329,7 +329,7 @@ tbody tr:last-child td{border-bottom:none}
 ::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:2px}
 @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.dash-grid{grid-template-columns:1fr 1fr}.span2,.span3{grid-column:span 2}}
 @media(max-width:900px){.topbar,.wrap,.cmd-hero{padding-left:14px;padding-right:14px}.g2,.g3,.g4,.g23{grid-template-columns:1fr 1fr}.lp-layout{grid-template-columns:1fr}.lp-sb{position:static}.ei-h1{font-size:26px}.ei-header{gap:12px}.client-proof{width:100%}}
-@media(max-width:600px){.g2,.g3,.g4,.g23,.kpi-grid,.dash-grid{grid-template-columns:1fr}.span2,.span3{grid-column:auto}}
+@media(max-width:600px){.g2,.g3,.g4,.g23,.kpi-grid,.dash-grid{grid-template-columns:1fr}.span2,.span3{grid-column:auto}.dash-charts-2col{grid-template-columns:1fr!important}}
 .ei-hero{position:relative;background:var(--bg4);border-bottom:1px solid var(--bdr2);overflow:hidden;padding:26px 28px 22px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;}
 .ei-hero::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 65% 85% at 16% 50%,rgba(60,57,52,.12) 0%,transparent 60%),radial-gradient(ellipse 40% 60% at 80% 20%,rgba(38,36,33,.08) 0%,transparent 55%);}
 .ei-hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(38,36,33,.45) 30%,rgba(91,87,80,.45) 70%,transparent);}
@@ -682,8 +682,17 @@ tbody tr:last-child td{border-bottom:none}
         <div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">Loading...</div>
       </div>
     </div>
+    <div class="card" style="--acc:var(--blue2)">
+      <div class="ch">
+        <div><div class="ct">📧 Email Activity</div><div class="cs" id="dash-email-count">Review requests &amp; vendor outreach</div></div>
+        <button class="btn-ghost" onclick="goTo('social',document.getElementById('t-social'))">Social HQ →</button>
+      </div>
+      <div id="dash-email-snapshot" style="display:flex;flex-direction:column;gap:7px">
+        <div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">Loading...</div>
+      </div>
+    </div>
     <div class="card span3" style="padding:14px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+      <div class="dash-charts-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
         <div>
           <div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Monthly opportunity index — all 6 revenue lines</div>
           <div style="position:relative;height:150px"><canvas id="c-season" role="img" aria-label="Seasonality">Seasonality</canvas></div>
@@ -2646,6 +2655,7 @@ async function bootstrap(){
   loadReviewRequests();
   loadScheduledPosts();
   loadVendorOutreach();
+  loadDashEmailSnapshot();
   const rrGoogle=document.getElementById('rr-google-url');if(rrGoogle)rrGoogle.value=ME.profile.googleReviewUrl||'';
   const rrYelp=document.getElementById('rr-yelp-url');if(rrYelp)rrYelp.value=ME.profile.yelpReviewUrl||'';
   fillCompanyProfileForm();
@@ -2930,6 +2940,43 @@ async function saveReviewLinks(){
     await fetch('/api/onboarding/review-links',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({googleReviewUrl,yelpReviewUrl})});
     showNotif('Saved','Review links updated');
   }catch(e){showNotif('Network error',e.message);}
+}
+// Command Center snapshot combining the two real-email flows in the app —
+// review requests (Social HQ) and vendor outreach (Growth & Partners) —
+// into one "sent + received" feed. "Received" here means a reply on one of
+// those two threads (routes/inboundEmail.js), not a general inbox; there is
+// no other source of inbound email in this app.
+async function loadDashEmailSnapshot(){
+  const el=document.getElementById('dash-email-snapshot');
+  if(!el)return;
+  try{
+    const [rrRes,voRes]=await Promise.all([
+      fetch('/api/review-requests').then(r=>r.json()),
+      fetch('/api/vendors/outreach').then(r=>r.json())
+    ]);
+    const reviews=(rrRes.reviewRequests||[]).map(rr=>({
+      kind:'Review',name:rr.customer_name,email:rr.customer_email,
+      status:rr.status,replyText:rr.reply_text||null,
+      ts:rr.replied_at||rr.created_at
+    }));
+    const vendors=(voRes.outreach||[]).map(o=>({
+      kind:'Vendor',name:o.vendor_name,email:o.to_email,
+      status:o.status,replyText:o.reply_text||null,
+      ts:o.replied_at||o.created_at
+    }));
+    const all=reviews.concat(vendors).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    const countEl=document.getElementById('dash-email-count');
+    if(countEl)countEl.textContent=all.length?`${all.length} sent · ${all.filter(x=>x.replyText).length} replied`:'Review requests & vendor outreach';
+    if(!all.length){
+      el.innerHTML='<div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">No emails sent yet — request a review from Social HQ or reach out to a vendor from Growth &amp; Partners</div>';
+      return;
+    }
+    el.innerHTML=all.slice(0,5).map(x=>`
+      <div style="padding:7px 10px;background:var(--bg4);border-radius:var(--r);display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><strong>${x.kind}</strong> · ${escapeHtmlClient(x.name)} · ${escapeHtmlClient(x.email)}</span>
+        <span style="flex-shrink:0;font-family:var(--fm);font-size:9px;color:${x.replyText?'var(--green)':(x.status==='sent'?'var(--ink2)':'var(--red)')}">${x.replyText?'↩ RECEIVED':(x.status==='sent'?'✓ SENT':'✗ FAILED')}</span>
+      </div>`).join('');
+  }catch(e){/* leave existing content on transient failure */}
 }
 async function loadReviewRequests(){
   const el=document.getElementById('review-requests-list');if(!el)return;
