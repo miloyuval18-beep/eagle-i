@@ -5,38 +5,43 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Eagle I — Sign In</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Exo+2:wght@400;500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#04070e;--bg3:#0a1626;--bg4:#0f1f35;--bg5:#152845;--bdr2:rgba(30,140,255,.20);--bdr3:rgba(30,140,255,.40);
---ink:#e0eaf8;--ink2:#6e96c0;--ink3:#2e5070;--blue:#1a7ee8;--blue2:#3aa0ff;--red:#ff2d4a;
---fh:'Rajdhani',sans-serif;--fb:'Exo 2',sans-serif;--fm:'Share Tech Mono',monospace;}
+:root{
+  --bg:#faf9f6;--bg-card:#ffffff;--bg-soft:#f1efea;
+  --ink:#262421;--ink2:#5b5750;--ink3:#726d63;
+  --bdr:#e3e0da;--bdr2:#cfcbc3;--bdr-strong:#262421;
+  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--fb);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.card{width:100%;max-width:380px;background:var(--bg3);border:1px solid var(--bdr2);border-radius:14px;padding:28px 26px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.brand{font-family:var(--fh);font-size:26px;font-weight:700;letter-spacing:3px;text-align:center;margin-bottom:4px;
-background:linear-gradient(90deg,#fff,#72c4ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.tag{font-family:var(--fm);font-size:9px;color:var(--blue2);letter-spacing:2px;text-align:center;text-transform:uppercase;margin-bottom:22px}
-.tabs{display:flex;gap:6px;margin-bottom:18px;background:var(--bg4);border-radius:8px;padding:3px}
-.tab{flex:1;text-align:center;padding:8px;border-radius:6px;cursor:pointer;font-family:var(--fh);font-size:13px;font-weight:600;letter-spacing:.5px;color:var(--ink3);transition:all .15s}
-.tab.active{background:var(--blue);color:#fff}
-label{display:block;font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin:12px 0 5px}
-input,select{width:100%;background:var(--bg5);border:1px solid var(--bdr2);border-radius:7px;padding:10px 12px;font-family:var(--fb);font-size:14px;color:var(--ink);outline:none}
-input:focus,select:focus{border-color:var(--blue2)}
-button.primary{width:100%;margin-top:20px;background:var(--blue);color:#fff;border:none;border-radius:7px;padding:12px;font-family:var(--fh);font-size:14px;font-weight:600;letter-spacing:1px;cursor:pointer;text-transform:uppercase}
-button.primary:hover{background:var(--blue2)}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;-webkit-font-smoothing:antialiased}
+.card{width:100%;max-width:400px;background:var(--bg-card);border:1px solid var(--bdr);border-radius:14px;padding:32px 28px;box-shadow:0 2px 4px rgba(38,36,33,.04),0 8px 24px rgba(38,36,33,.07)}
+.brand{font-size:26px;font-weight:800;letter-spacing:.5px;text-align:center;margin-bottom:4px;color:var(--ink)}
+.tag{font-size:14px;color:var(--ink3);text-align:center;margin-bottom:24px}
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg-soft);border-radius:9px;padding:4px}
+.tab{flex:1;text-align:center;padding:10px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700;color:var(--ink3);transition:background .15s,color .15s}
+.tab.active{background:var(--ink);color:#fff}
+label{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin:14px 0 6px}
+input,select{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:16px;color:var(--ink);outline:none}
+input:focus,select:focus{border-color:var(--bdr-strong);box-shadow:0 0 0 3px rgba(38,36,33,.08)}
+button.primary{width:100%;margin-top:22px;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:14px;font-family:var(--f);font-size:16px;font-weight:700;cursor:pointer}
+button.primary:hover{background:#000}
 button.primary:disabled{opacity:.5;cursor:not-allowed}
-.err{color:var(--red);font-size:12px;margin-top:12px;text-align:center;display:none}
+.err{color:var(--ink);background:var(--bg-soft);border:1px solid var(--bdr2);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;margin-top:14px;text-align:center;display:none}
+.err::before{content:'⚠ '}
 .hidden{display:none}
-.forgot{display:block;text-align:right;font-size:11px;color:var(--blue2);margin-top:8px}
-.terms-row{display:flex;align-items:flex-start;gap:8px;margin-top:16px}
-.terms-row input{width:auto;margin-top:2px}
-.terms-row label{font-size:11px;color:var(--ink2);text-transform:none;letter-spacing:0;font-family:var(--fb);margin:0}
-.terms-row a{color:var(--blue2)}
+.forgot{display:block;text-align:right;font-size:14px;color:var(--ink2);text-decoration:underline;margin-top:10px}
+.terms-row{display:flex;align-items:flex-start;gap:9px;margin-top:18px}
+.terms-row input{width:auto;margin-top:3px;accent-color:var(--ink)}
+.terms-row label{font-size:14px;font-weight:400;color:var(--ink2);margin:0}
+.terms-row a{color:var(--ink);font-weight:600}
 .pw-wrap{position:relative}
-.pw-wrap input{padding-right:56px}
-.pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;font-family:var(--fm);font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--blue2)}
+.pw-wrap input{padding-right:62px}
+.pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;font-family:var(--f);font-size:13px;font-weight:700;color:var(--ink2);text-decoration:underline}
 .pw-toggle:hover{color:var(--ink)}
-.pw-mismatch{color:var(--red);font-size:11px;margin-top:5px;display:none}
+.pw-mismatch{color:var(--ink);font-size:13px;font-weight:600;margin-top:6px;display:none}
+.pw-mismatch::before{content:'⚠ '}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,.tab:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 </style>
 </head>
 <body>
