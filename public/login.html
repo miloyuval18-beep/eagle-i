@@ -32,6 +32,11 @@ button.primary:disabled{opacity:.5;cursor:not-allowed}
 .terms-row input{width:auto;margin-top:2px}
 .terms-row label{font-size:11px;color:var(--ink2);text-transform:none;letter-spacing:0;font-family:var(--fb);margin:0}
 .terms-row a{color:var(--blue2)}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:56px}
+.pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;font-family:var(--fm);font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--blue2)}
+.pw-toggle:hover{color:var(--ink)}
+.pw-mismatch{color:var(--red);font-size:11px;margin-top:5px;display:none}
 </style>
 </head>
 <body>
@@ -66,7 +71,16 @@ button.primary:disabled{opacity:.5;cursor:not-allowed}
     <label>Email</label>
     <input type="email" id="signup-email" required autocomplete="email">
     <label>Password (min 8 characters)</label>
-    <input type="password" id="signup-password" required minlength="8" autocomplete="new-password">
+    <div class="pw-wrap">
+      <input type="password" id="signup-password" required minlength="8" autocomplete="new-password">
+      <button type="button" class="pw-toggle" onclick="togglePw('signup-password',this)">Show</button>
+    </div>
+    <label>Confirm Password</label>
+    <div class="pw-wrap">
+      <input type="password" id="signup-password-confirm" required minlength="8" autocomplete="new-password">
+      <button type="button" class="pw-toggle" onclick="togglePw('signup-password-confirm',this)">Show</button>
+    </div>
+    <div class="pw-mismatch" id="pw-mismatch">Passwords don't match.</div>
     <div class="terms-row">
       <input type="checkbox" id="signup-terms" required>
       <label for="signup-terms">I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></label>
@@ -90,6 +104,21 @@ function showErr(msg){
   el.textContent=msg;
   el.style.display='block';
 }
+function togglePw(id,btn){
+  const el=document.getElementById(id);
+  const show=el.type==='password';
+  el.type=show?'text':'password';
+  btn.textContent=show?'Hide':'Show';
+}
+function checkPwMatch(){
+  const password=document.getElementById('signup-password').value;
+  const confirm=document.getElementById('signup-password-confirm').value;
+  const mismatch=confirm.length>0 && password!==confirm;
+  document.getElementById('pw-mismatch').style.display=mismatch?'block':'none';
+  return !mismatch;
+}
+document.getElementById('signup-password').addEventListener('input', checkPwMatch);
+document.getElementById('signup-password-confirm').addEventListener('input', checkPwMatch);
 document.getElementById('form-login').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const email=document.getElementById('login-email').value;
@@ -107,7 +136,9 @@ document.getElementById('form-signup').addEventListener('submit', async (e)=>{
   const industry=document.getElementById('signup-industry').value;
   const email=document.getElementById('signup-email').value;
   const password=document.getElementById('signup-password').value;
+  const passwordConfirm=document.getElementById('signup-password-confirm').value;
   const acceptedTerms=document.getElementById('signup-terms').checked;
+  if(password!==passwordConfirm){ checkPwMatch(); return showErr("Passwords don't match."); }
   if(!acceptedTerms) return showErr('You must accept the Terms of Service and Privacy Policy.');
   try{
     const r=await fetch('/api/auth/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companyName,industry,email,password,acceptedTerms})});
