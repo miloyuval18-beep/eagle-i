@@ -536,7 +536,6 @@ tbody tr:last-child td{border-bottom:none}
     <button class="vorb" id="admin-btn" onclick="goTo('admin',document.getElementById('t-admin'));loadAdminTenants()" title="Admin — All Tenants" style="background:var(--red);display:none">👁</button>
     <button class="vorb" id="account-btn" onclick="goTo('account',document.getElementById('t-account'))" title="Account Settings" style="background:var(--bg5)">⚙</button>
     <button class="vorb" id="vorb-btn" onclick="toggleVP()" title="Eagle I Voice"><svg viewBox="0 0 24 24" fill="none" width="15" height="15"><rect x="9" y="2" width="6" height="12" rx="3" stroke="white" stroke-width="2"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></button>
-    <div class="spill"><div class="sl">S&amp;P</div><div class="sv cup" id="hdr-sp">—</div></div>
     <div class="spill"><div class="sl">Mode</div><div class="sv cam" id="hdr-mode">LIVE</div></div>
   </div>
 </header>
@@ -560,7 +559,6 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
   <div class="ei-stats-col">
-    <div class="ei-stat"><div class="ei-sv cup" id="hero-sp">—</div><div class="ei-sl">S&amp;P 500</div></div>
     <div class="ei-stat"><div class="ei-sv" style="color:var(--amber)" id="hero-plan">—</div><div class="ei-sl">Plan</div></div>
     <div class="ei-stat"><div class="ei-sv cup" id="hero-usage">—</div><div class="ei-sl">Generations Used</div></div>
     <div class="ei-stat"><div class="ei-sv" style="color:var(--purple)" id="hero-industry">—</div><div class="ei-sl">Industry</div></div>
@@ -637,14 +635,9 @@ tbody tr:last-child td{border-bottom:none}
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <div class="stile">
-        <div class="stl"><div class="stdot"></div>S&amp;P 500 · Market Mode</div>
-        <div class="stv cup" id="sp-tile">—</div>
-        <div class="std" id="sp-tile-d">Loading...</div>
-      </div>
-      <div class="stile">
         <div class="stl"><div class="stdot" style="background:var(--blue2)"></div>Weather Signal</div>
         <div class="stv cbl" id="wx-tile">—</div>
-        <div class="std" id="wx-tile-d">Click Refresh Signals</div>
+        <div class="std" id="wx-tile-d">Click Refresh Weather Signal</div>
       </div>
       <div class="stile">
         <div class="stl"><div class="stdot" style="background:var(--amber)"></div>Top Keyword</div>
@@ -653,9 +646,9 @@ tbody tr:last-child td{border-bottom:none}
       </div>
       <div class="stile">
         <div class="stl"><div class="stdot" style="background:var(--purple)"></div>Market Notes</div>
-        <div class="std" style="font-size:12px;line-height:1.6;margin-top:2px" id="news-tile">Click Refresh Signals for AI-generated market notes.</div>
+        <div class="std" style="font-size:12px;line-height:1.6;margin-top:2px" id="news-tile">Click Refresh Weather Signal for AI-generated market notes.</div>
       </div>
-      <button class="btn btn-blue" id="sp-btn" onclick="fetchSP()" style="width:100%;justify-content:center"><span class="spin" id="sp-spin"></span><span id="sp-lbl">Refresh Signals</span></button>
+      <button class="btn btn-blue" id="sp-btn" onclick="loadWx()" style="width:100%;justify-content:center"><span class="spin" id="sp-spin"></span><span id="sp-lbl">Refresh Weather Signal</span></button>
     </div>
     <div class="card span2" style="--acc:var(--amber)">
       <div class="ch">
@@ -730,33 +723,12 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== MARKET INTEL ==================== -->
 <div id="page-market" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Market Intelligence</div><div class="ss">S&amp;P · weather · market notes · social leads · competitor gaps</div></div><button class="btn btn-blue" id="mkt-btn" onclick="loadMarket()"><span class="spin" id="mkt-spin"></span><span id="mkt-lbl">Analyze Market</span></button></div>
+  <div class="sh"><div><div class="st">Market Intelligence</div><div class="ss">Weather · market notes · social leads · competitor gaps</div></div><button class="btn btn-blue" id="mkt-btn" onclick="loadMarket()"><span class="spin" id="mkt-spin"></span><span id="mkt-lbl">Analyze Market</span></button></div>
   <div class="section">
-    <div class="sh"><div><div class="st">S&amp;P 500 Automated Ad Rules</div></div></div>
-    <div class="g23">
-      <div class="card">
-        <div style="display:flex;flex-direction:column;gap:0">
-          <div style="display:flex;gap:9px;padding:10px 0;border-bottom:1px solid var(--bdr)"><div style="font-size:15px;flex-shrink:0">📈</div><div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:1px">Up 1–2% — Growth Mode</div><div style="font-size:12px;color:var(--ink2)">Increase ad budgets 40%. Activate higher-value service keywords. Customers approve larger scopes in strong markets.</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2);margin-top:1px">THRESHOLD: ≥ +1.0%</div></div></div>
-          <div style="display:flex;gap:9px;padding:10px 0;border-bottom:1px solid var(--bdr)"><div style="font-size:15px;flex-shrink:0">🚀</div><div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:1px">Up 2%+ — Maximum Deploy</div><div style="font-size:12px;color:var(--ink2)">Full surge on paid social to your best-performing audience segment. Highest conversion window.</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2);margin-top:1px">THRESHOLD: ≥ +2.0%</div></div></div>
-          <div style="display:flex;gap:9px;padding:10px 0;border-bottom:1px solid var(--bdr)"><div style="font-size:15px;flex-shrink:0">📉</div><div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:1px">Down — Protection Pivot</div><div style="font-size:12px;color:var(--ink2)">Shift messaging toward value/necessity-driven services. Push free consultations. "Protect what matters most."</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2);margin-top:1px">THRESHOLD: ≤ -1.0%</div></div></div>
-          <div style="display:flex;gap:9px;padding:10px 0"><div style="font-size:15px;flex-shrink:0">📊</div><div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:1px">Flat — Authority Building</div><div style="font-size:12px;color:var(--ink2)">Normal budget. Publish an expert tip or post to build trust for the next window.</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2);margin-top:1px">FLAT: ±0.5%</div></div></div>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:9px">
-        <div class="card" id="sp-full">
-          <div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px">Today's Signal</div>
-          <div style="font-family:var(--fh);font-size:44px;font-weight:700;letter-spacing:2px;line-height:1;margin:6px 0 4px" id="sp-val" class="cbl">—</div>
-          <div style="font-family:var(--fm);font-size:8px;color:var(--ink3)" id="sp-date"></div>
-          <div id="sp-rec" style="display:none;font-size:12px;color:var(--ink2);line-height:1.7;background:var(--bg4);border-radius:var(--r);padding:8px 10px;margin:8px 0;border-left:2px solid var(--blue2)"></div>
-          <button class="btn btn-blue" id="sp-btn2" onclick="fetchSP()" style="width:100%;justify-content:center;margin-top:6px"><span class="spin" id="sp-spin2"></span><span id="sp-lbl2">Get Signal</span></button>
-          <div class="sm" id="sp-s"></div>
-        </div>
-        <div class="card">
-          <div class="ce" style="margin-bottom:6px">Weather Signal</div>
-          <div id="wx-mini" style="font-size:12px;color:var(--ink2)">Loading weather...</div>
-          <button class="btn-ghost" style="width:100%;justify-content:center;margin-top:7px" onclick="loadWx()">Load Full Weather Protocols</button>
-        </div>
-      </div>
+    <div class="card" style="max-width:360px">
+      <div class="ce" style="margin-bottom:6px">Weather Signal</div>
+      <div id="wx-mini" style="font-size:12px;color:var(--ink2)">Loading weather...</div>
+      <button class="btn-ghost" style="width:100%;justify-content:center;margin-top:7px" onclick="loadWx()">Load Full Weather Protocols</button>
     </div>
   </div>
   <div class="section real-estate-only" id="signals-section" style="display:none">
@@ -812,7 +784,7 @@ tbody tr:last-child td{border-bottom:none}
   <div id="news-out" class="g3" style="margin-bottom:20px"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">Loading...</div></div>
   <div class="sh"><div><div class="st">Ad Copy Generator</div></div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-    <select id="ad-trig"><option value="primary">Primary Service</option><option value="offer">Special Offer</option><option value="differentiator">Key Differentiator</option><option value="advisory">Free Consultation</option><option value="seasonal">Seasonal/Timely Angle</option><option value="mkt_up">S&amp;P Up — Growth Mode</option></select>
+    <select id="ad-trig"><option value="primary">Primary Service</option><option value="offer">Special Offer</option><option value="differentiator">Key Differentiator</option><option value="advisory">Free Consultation</option><option value="seasonal">Seasonal/Timely Angle</option><option value="mkt_up">Growth &amp; Momentum Angle</option></select>
     <select id="ad-plat"><option value="google">Google Search</option><option value="meta">Facebook/Instagram</option><option value="nextdoor">Nextdoor</option><option value="linkedin">LinkedIn</option><option value="newsletter">Email Newsletter</option><option value="directmail">Direct Mail</option></select>
     <button class="btn btn-blue" id="ad-btn" onclick="genAds('ad-btn','ad-spin','ad-ico','ad-out','ad-s','ad-trig','ad-plat')"><span class="spin" id="ad-spin"></span><svg id="ad-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Generate Ads</button>
   </div>
@@ -915,6 +887,10 @@ tbody tr:last-child td{border-bottom:none}
     </div>
     <div id="out-msgs"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Select partner type and channel, then generate</div></div>
     <div class="sm" id="out-s"></div>
+    <div style="font-family:var(--fm);font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin:16px 0 8px">Sent Outreach &amp; Replies</div>
+    <div id="partner-outreach-list" style="display:flex;flex-direction:column;gap:8px">
+      <div style="text-align:center;padding:14px;color:var(--ink3);font-size:12px">No outreach sent yet</div>
+    </div>
   </div>
   <div class="section" style="margin-top:20px">
     <div class="sh"><div><div class="st">Sent Outreach &amp; Replies</div><div class="ss">Every real "Find &amp; Send" you've sent, and any reply that's come back</div></div></div>
@@ -1142,7 +1118,7 @@ tbody tr:last-child td{border-bottom:none}
   <div class="subpage" id="sub-budgetads-ads">
   <div class="sh"><div><div class="st">Ad Generator</div><div class="ss">Google · Meta · Nextdoor · LinkedIn · Direct Mail · Email Newsletter</div></div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:13px">
-    <select id="ads-trig"><option value="primary">Primary Service</option><option value="offer">Special Offer</option><option value="differentiator">Key Differentiator</option><option value="advisory">Free Consultation</option><option value="seasonal">Seasonal/Timely Angle</option><option value="mkt_up">S&amp;P Up — Growth Mode</option></select>
+    <select id="ads-trig"><option value="primary">Primary Service</option><option value="offer">Special Offer</option><option value="differentiator">Key Differentiator</option><option value="advisory">Free Consultation</option><option value="seasonal">Seasonal/Timely Angle</option><option value="mkt_up">Growth &amp; Momentum Angle</option></select>
     <select id="ads-plat"><option value="google">Google Search</option><option value="meta">Facebook/Instagram</option><option value="nextdoor">Nextdoor</option><option value="linkedin">LinkedIn</option><option value="newsletter">Email Newsletter</option><option value="directmail">Direct Mail</option></select>
     <button class="btn btn-blue" id="ads-btn" onclick="genAds('ads-btn','ads-spin','ads-ico','ads-out','ads-s','ads-trig','ads-plat')"><span class="spin" id="ads-spin"></span><svg id="ads-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Generate Ads</button>
     <button class="btn-ghost" onclick="genAds('ads-btn','ads-spin','ads-ico','ads-out','ads-s','ads-trig','ads-plat')">New Variants</button>
@@ -1390,29 +1366,11 @@ function initCharts(){
   });
 }
 
-/* S&P */
-async function fetchSP(){
-  ['sp-btn','sp-btn2'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=true;});
-  ['sp-spin','sp-spin2'].forEach(id=>{const s=document.getElementById(id);if(s)s.style.display='block';});
-  try{
-    const p=await claude(`S&P 500 signal for ${C.name} (industry: ${ME?.industry||'general'}, services: ${C.services}). Today: ${TODAY.toDateString()}.
-Return ONLY valid JSON: {"change":"+1.42%","direction":"up","sentiment":"Bullish","rec":"Specific marketing recommendation for this business today.","keywords":["relevant keyword 1","relevant keyword 2"]}`,400);
-    const col=p.direction==='up'?'var(--green)':p.direction==='down'?'var(--red)':'var(--amber)';
-    ['sp-tile','sp-val'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=p.change||'—';el.style.color=col;}});
-    const spd=document.getElementById('sp-tile-d');if(spd)spd.textContent=(p.sentiment||'')+' — '+(p.rec||'').substring(0,55)+'...';
-    const spr=document.getElementById('sp-rec');if(spr){spr.textContent=p.rec||'';spr.style.display='block';}
-    const hdr=document.getElementById('hdr-sp');if(hdr){hdr.textContent=p.change||'—';hdr.style.color=col;}
-    const hsp=document.getElementById('hero-sp');if(hsp){hsp.textContent=p.change||'—';hsp.style.color=col;}
-    const ss=document.getElementById('sp-s');if(ss)ss.textContent='Updated '+new Date().toLocaleTimeString();
-  }catch(e){}
-  ['sp-btn','sp-btn2'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false;});
-  ['sp-spin','sp-spin2'].forEach(id=>{const s=document.getElementById(id);if(s)s.style.display='none';});
-  ['sp-lbl','sp-lbl2'].forEach((id,i)=>{const l=document.getElementById(id);if(l)l.textContent=i===0?'Refresh Signals':'Refresh Signal';});
-}
-
 /* WEATHER */
 async function loadWx(){
   document.getElementById('wx-grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:16px;font-family:var(--fm);font-size:9px;color:var(--ink3)">Loading...</div>';
+  const spBtn=document.getElementById('sp-btn'),spSpin=document.getElementById('sp-spin'),spLbl=document.getElementById('sp-lbl');
+  if(spBtn)spBtn.disabled=true;if(spSpin)spSpin.style.display='block';if(spLbl)spLbl.textContent='Refreshing...';
   try{
     const p=await claude(`Weather-driven marketing opportunities for ${C.name} (industry: ${ME?.industry||'general'}, services: ${C.services}, area: ${C.community||'their service area'}). Today: ${TODAY.toDateString()}, ${MONTH}.
 If weather isn't relevant to this industry, return low-relevance generic seasonal events instead.
@@ -1436,7 +1394,9 @@ Return ONLY valid JSON: {"events":[{"event":"Event name","threat":"alert","desc"
     const wxd=document.getElementById('wx-tile-d');if(wxd)wxd.textContent=p.summary||'';
     const wxot=document.getElementById('wx-opp-t');if(wxot)wxot.textContent=(p.events?.[0]?.event||'Weather event')+' — Action Required';
     const wxob=document.getElementById('wx-opp-b');if(wxob)wxob.textContent=p.events?.[0]?.desc||'';
+    const nt=document.getElementById('news-tile');if(nt)nt.textContent=p.summary||(p.events&&p.events[0]?(p.events[0].event+' — '+p.events[0].desc):'No notable weather-driven angles right now.');
   }catch(e){}
+  if(spBtn)spBtn.disabled=false;if(spSpin)spSpin.style.display='none';if(spLbl)spLbl.textContent='Refresh Weather Signal';
 }
 
 /* REAL SIGNALS — live NWS storm alerts + real permit-spike detection */
@@ -1469,7 +1429,7 @@ function renderSignals(d){
       <span class="badge" style="background:${lc}20;color:${lc};font-size:8px">🌩️ LIVE · ${(a.severity||'').toUpperCase()}</span>
       <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 3px">${a.event||''}</div>
       <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">${(a.headline||'').slice(0,200)}</div>
-      <button class="btn-xs p" onclick='draftSignalOutreach("weather",${JSON.stringify({event:a.event,headline:a.headline}).replace(/'/g,"&#39;")})'>✍️ Draft outreach</button>
+      <button class="btn-xs p" onclick='draftSignalOutreach("weather",${JSON.stringify({event:a.event,headline:a.headline}).replace(/'/g,"&#39;")},"sig-draft-w${i}")'>✍️ Draft outreach</button>
       <div id="sig-draft-w${i}" style="margin-top:8px"></div>
     </div>`;
   });
@@ -1479,25 +1439,72 @@ function renderSignals(d){
       <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 3px">ZIP ${sp.zip}${sp.neighborhood?' — '+sp.neighborhood:''}</div>
       <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">${sp.recentCount} permits filed this week vs a ${sp.priorAvgCount}/week average — real permit-volume data, not estimated.</div>
       ${sp.hcad?`<div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">🏛️ Real Harris County appraisal data: avg home value <b>$${sp.hcad.avgMarketValue.toLocaleString()}</b> · median $${sp.hcad.medianMarketValue.toLocaleString()} across ${sp.hcad.parcelCount.toLocaleString()} parcels (HCAD ${sp.hcad.taxYear})</div>`:''}
-      <button class="btn-xs p" onclick='draftSignalOutreach("permit_spike",${JSON.stringify({zip:sp.zip,recentCount:sp.recentCount,neighborhood:sp.neighborhood,hcadAvgValue:sp.hcad?sp.hcad.avgMarketValue:null}).replace(/'/g,"&#39;")})'>✍️ Draft outreach</button>
+      <button class="btn-xs p" onclick='draftSignalOutreach("permit_spike",${JSON.stringify({zip:sp.zip,recentCount:sp.recentCount,neighborhood:sp.neighborhood,hcadAvgValue:sp.hcad?sp.hcad.avgMarketValue:null}).replace(/'/g,"&#39;")},"sig-draft-p${i}")'>✍️ Draft outreach</button>
       <div id="sig-draft-p${i}" style="margin-top:8px"></div>
     </div>`;
   });
   html+='</div>';
   out.innerHTML=html;
 }
-async function draftSignalOutreach(type,context){
+// Drafts still come from /api/signals/draft-outreach (routes/signals.js) —
+// that endpoint's own comment is explicit that it "deliberately does NOT
+// auto-send anything." This keeps that: the draft still lands in front of
+// a human first. What changes is what happens after — instead of a
+// copy-paste popup, the post draft opens the real inline composer
+// (post now / schedule, same as everywhere else) and the email draft gets
+// a real Send button, both landing here for review, neither firing on
+// its own when the alert first comes in.
+async function draftSignalOutreach(type,context,elId){
+  const el=document.getElementById(elId);
+  if(el)el.innerHTML='<div style="font-size:11px;color:var(--ink3)">Drafting...</div>';
   try{
     const r=await fetch('/api/signals/draft-outreach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,context})});
     const d=await r.json();
-    if(!r.ok){showNotif('Could not draft',d.error?.message||'');return;}
-    const draft=d.draft||{};
-    const text=draft.email_body?`Subject: ${draft.email_subject}\n\n${draft.email_body}`:'';
-    const combined=(draft.post?('POST:\n'+draft.post+'\n\n'):'')+(text?'EMAIL:\n'+text:'');
-    const win=window.open('','_blank','width=520,height=520');
-    if(win){win.document.write('<pre style="font-family:sans-serif;white-space:pre-wrap;padding:20px;font-size:14px">'+combined.replace(/</g,'&lt;')+'</pre>');}
-    else{copyText(combined);showNotif('Draft copied','Popup blocked — copied to clipboard instead');}
-  }catch(e){showNotif('Network error',e.message);}
+    if(!r.ok){showNotif('Could not draft',d.error?.message||'');if(el)el.innerHTML='';return;}
+    renderSignalDraft(elId,type,d.draft||{});
+  }catch(e){showNotif('Network error',e.message);if(el)el.innerHTML='';}
+}
+function renderSignalDraft(elId,type,draft){
+  const el=document.getElementById(elId);if(!el)return;
+  let html='';
+  if(draft.post)html+=`<div style="font-family:var(--fm);font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Social post draft</div><div id="${elId}-post"></div>`;
+  if(draft.email_body){
+    const uid=elId+'-email';
+    html+=`<div style="font-family:var(--fm);font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin:${draft.post?'10px':'0'} 0 4px">Email draft</div>
+    <div style="background:var(--bg4);border-radius:var(--r);padding:9px">
+      <input id="${uid}-subject" value="${escAttr(draft.email_subject||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box" placeholder="Subject">
+      <textarea id="${uid}-body" style="width:100%;min-height:70px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient(draft.email_body||'')}</textarea>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <input id="${uid}-name" placeholder="Recipient name" style="flex:1;min-width:110px">
+        <input id="${uid}-to" type="email" placeholder="Recipient email" style="flex:1;min-width:140px">
+      </div>
+      <button class="btn-xs p" onclick="sendSignalEmail('${uid}','${type==='weather'?'signal_weather':'signal_permit'}')">✉️ Send Email</button>
+      <div class="sm" id="${uid}-s" style="margin-top:4px"></div>
+    </div>`;
+  }
+  el.innerHTML=html||'<div style="font-size:11px;color:var(--ink3)">No draft returned.</div>';
+  if(draft.post){
+    const postContainer=document.getElementById(elId+'-post');
+    if(postContainer)openInlineComposer(postContainer,draft.post);
+  }
+}
+async function sendSignalEmail(uid,channel){
+  const subject=(document.getElementById(uid+'-subject')?.value||'').trim();
+  const body=(document.getElementById(uid+'-body')?.value||'').trim();
+  const name=(document.getElementById(uid+'-name')?.value||'').trim();
+  const to=(document.getElementById(uid+'-to')?.value||'').trim();
+  const s=document.getElementById(uid+'-s');
+  if(!to||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){if(s){s.textContent='Enter a valid recipient email';s.style.color='var(--red)';}return;}
+  if(!body){if(s){s.textContent='Message is empty';s.style.color='var(--red)';}return;}
+  if(!confirm(`Send this email to ${name||to} <${to}>?\n\n${subject}\n\n${body}`))return;
+  if(s){s.textContent='Sending...';s.style.color='var(--ink2)';}
+  try{
+    const r=await fetch('/api/partners/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:to,recipientName:name||to,subject,message:body,channel})});
+    const d=await r.json();
+    if(!r.ok){if(s){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}return;}
+    if(s){s.textContent='✓ Sent to '+to;s.style.color='var(--green)';}
+    loadPartnerOutreach();
+  }catch(e){if(s){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}}
 }
 
 /* TODAY BAR */
@@ -1506,14 +1513,34 @@ function renderStrategyCards(strategies){
   const el=document.getElementById('strat-cards');
   if(!el)return;
   if(!strategies||!strategies.length){el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">No strategy generated yet — click "Generate Full Strategy" above.</div>';return;}
-  el.innerHTML=strategies.map(s=>`
+  el.innerHTML=strategies.map((s,i)=>`
     <div class="card" style="border-left:3px solid ${s.priority==='high'?'var(--red)':'var(--amber)'}">
       <div class="ce" style="color:${s.priority==='high'?'var(--red)':'var(--amber)'}">${(s.priority||'').toUpperCase()} · ${(s.timeline||'').toUpperCase()}</div>
       <div class="ct">${s.title||''}</div>
       <div style="font-size:13px;color:var(--ink2);margin:8px 0 9px;line-height:1.7">${s.problem||''}</div>
       <div style="background:var(--bg4);border-radius:var(--r);padding:9px 11px;border-left:2px solid var(--blue2);font-size:12px;color:var(--ink);line-height:1.65;margin-bottom:7px"><strong style="color:var(--blue2)">Fix:</strong> ${s.fix||''}</div>
-      <div style="font-family:var(--fm);font-size:8px;color:var(--green)">📈 ${s.impact||''}</div>
+      <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:8px">📈 ${s.impact||''}</div>
+      <button class="btn-xs p" id="strat-act-btn-${i}" onclick="actOnStrategy(${i},${JSON.stringify(s.title||'').replace(/'/g,'&#39;')},${JSON.stringify(s.fix||'').replace(/'/g,'&#39;')})">🚀 Act On This</button>
+      <div id="strat-ic-${i}"></div>
     </div>`).join('');
+}
+// Turns one strategy recommendation into a real, ready-to-send post draft
+// — the one action that's always available no matter what the
+// recommendation actually is (unlike e.g. "hire more staff," which has no
+// sensible API to call). Drafts via Claude, then hands off to the same
+// inline composer used everywhere else — nothing sends until the owner
+// reviews the text and clicks Send.
+async function actOnStrategy(i,title,fix){
+  const btn=document.getElementById('strat-act-btn-'+i);
+  const container=document.getElementById('strat-ic-'+i);
+  if(btn){btn.disabled=true;btn.textContent='Drafting...';}
+  try{
+    const p=await claude(`Turn this one marketing recommendation into a single ready-to-post social update for ${C.name} (industry: ${ME?.industry||'general'}, area: ${C.community||'their service area'}, phone ${C.phone}).
+Recommendation: "${title}" — ${fix}
+Return ONLY valid JSON: {"post":"the post text, 2-4 sentences, in ${C.voice||'a friendly, professional'} voice, mentioning ${C.phone} where natural"}`,500);
+    if(container)openInlineComposer(container,p.post||fix||title);
+  }catch(e){showNotif('Could not draft',e.message);}
+  if(btn){btn.disabled=false;btn.textContent='🚀 Act On This';}
 }
 function renderStrategyFromCache(){
   renderStrategyCards(ME?.generatedContent?.strategy?.strategies);
@@ -2050,6 +2077,24 @@ async function findAndSendVendorOutreach(btn,vendorName,website){
   }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
   btn.disabled=false;btn.textContent=orig;
 }
+async function loadPartnerOutreach(){
+  const el=document.getElementById('partner-outreach-list');if(!el)return;
+  try{
+    const r=await fetch('/api/partners/outreach');
+    const d=await r.json();
+    const list=d.outreach||[];
+    if(!list.length){el.innerHTML='<div style="text-align:center;padding:14px;color:var(--ink3);font-size:12px">No outreach sent yet</div>';return;}
+    const chLabel={email:'Outreach',event:'Event Follow-up',signal_weather:'Weather Signal',signal_permit:'Permit Signal'};
+    el.innerHTML=list.slice(0,10).map(o=>`
+      <div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="badge b-blue" style="margin-right:5px">${chLabel[o.channel]||o.channel}</span>${escapeHtmlClient(o.recipient_name)} · ${escapeHtmlClient(o.to_email)}</span>
+          <span style="flex-shrink:0;color:${o.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${o.status==='sent'?'✓ SENT':'✗ FAILED'}</span>
+        </div>
+        ${o.reply_text?`<div style="margin-top:6px;padding:7px 9px;background:var(--bg3);border-left:2px solid var(--green);border-radius:var(--r);font-size:11px;color:var(--ink2)"><div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">↩ Replied</div>${escapeHtmlClient(o.reply_text).replace(/\n/g,'<br>')}</div>`:''}
+      </div>`).join('');
+  }catch(e){/* leave existing content on transient failure */}
+}
 async function loadVendorOutreach(){
   const el=document.getElementById('vendor-outreach-list');if(!el)return;
   try{
@@ -2122,7 +2167,9 @@ Business: ${C.name}, industry: ${ME?.industry||'general'}, services: ${C.service
 Contact: ${C.phone}, ${C.email}. Area: ${C.community}.
 Return ONLY valid JSON: {"messages":[{"variant":"Community","subject":"Subject if email","body":"Message","note":"When to use"}]}
 4 variants: Community/Local connection, Authority (credentials/differentiators), Reciprocal (offer them value), Urgency (timing angle). Keep under 280 chars for LinkedIn.`,800);
-    document.getElementById('out-msgs').innerHTML=(p.messages||[]).map(m=>`
+    window._outreachMsgs=p.messages||[];
+    const canSend=(pc==='email'||pc==='event');
+    document.getElementById('out-msgs').innerHTML=(p.messages||[]).map((m,i)=>`
       <div class="card" style="border-left:2px solid var(--blue2)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;flex-wrap:wrap;gap:4px">
           <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink)">${m.variant}</div>
@@ -2131,11 +2178,48 @@ Return ONLY valid JSON: {"messages":[{"variant":"Community","subject":"Subject i
         ${m.subject?`<div style="font-family:var(--fm);font-size:8px;color:var(--blue2);margin-bottom:5px">SUBJECT: ${m.subject}</div>`:''}
         <div style="font-size:12px;color:var(--ink2);line-height:1.8;margin-bottom:7px;border-left:2px solid var(--bdr);padding-left:9px;font-style:italic">${m.body}</div>
         <div style="font-family:var(--fm);font-size:8px;color:var(--ink3);margin-bottom:5px">📌 ${m.note||''}</div>
-        <button class="btn-xs p" onclick="copyText(${JSON.stringify(m.body||'').replace(/'/g,'&#39;')})">📋 Copy</button>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn-xs p" onclick="copyText(${JSON.stringify(m.body||'').replace(/'/g,'&#39;')})">📋 Copy</button>
+          ${canSend?`<button class="btn-xs" onclick="toggleOutreachSend(${i},this)">✉️ Send</button>`:''}
+        </div>
+        ${canSend?`<div id="out-send-${i}" style="display:none;margin-top:8px;background:var(--bg4);border-radius:var(--r);padding:9px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+            <input id="out-send-${i}-name" placeholder="Recipient name" style="flex:1;min-width:110px">
+            <input id="out-send-${i}-to" type="email" placeholder="Recipient email" style="flex:1;min-width:140px">
+          </div>
+          <button class="btn-xs p" onclick="sendOutreachMsg(${i},'${pc}')">Send Now</button>
+          <div class="sm" id="out-send-${i}-s" style="margin-top:4px"></div>
+        </div>`:''}
       </div>`).join('');
     document.getElementById('out-s').textContent=`4 variants · ${new Date().toLocaleTimeString()}`;
   }catch(e){document.getElementById('out-s').textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';
+}
+function toggleOutreachSend(i,btn){
+  const el=document.getElementById('out-send-'+i);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
+// LinkedIn DM stays copy-only on purpose — there's no public API for
+// sending a personal LinkedIn DM on a user's behalf, and automating one
+// through anything else would violate LinkedIn's own terms of service.
+// Email and post-event-follow-up are both plain email, so they reuse the
+// exact same send-and-log endpoint the Real Signals card and Vendor
+// outreach already use.
+async function sendOutreachMsg(i,channel){
+  const m=(window._outreachMsgs||[])[i]||{};
+  const name=(document.getElementById('out-send-'+i+'-name')?.value||'').trim();
+  const to=(document.getElementById('out-send-'+i+'-to')?.value||'').trim();
+  const s=document.getElementById('out-send-'+i+'-s');
+  if(!to||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){if(s){s.textContent='Enter a valid recipient email';s.style.color='var(--red)';}return;}
+  if(!confirm(`Send this message to ${name||to} <${to}>?\n\n${m.body||''}`))return;
+  if(s){s.textContent='Sending...';s.style.color='var(--ink2)';}
+  try{
+    const r=await fetch('/api/partners/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:to,recipientName:name||to,subject:m.subject||'',message:m.body||'',channel})});
+    const d=await r.json();
+    if(!r.ok){if(s){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}return;}
+    if(s){s.textContent='✓ Sent to '+to;s.style.color='var(--green)';}
+    loadPartnerOutreach();
+  }catch(e){if(s){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}}
 }
 
 /* PERMITS — real, from lib/houstonPermits.js via /api/permits/high-value-areas */
@@ -2478,7 +2562,9 @@ Angle: ${tmap[trig]}. Platform: ${pmap[plat]}. Month: ${MONTH}.
 Relevant keywords: ${hotKws.join(', ')||C.services}.
 Return ONLY valid JSON: {"ads":[{"variant":"A — Community","hl":"Headline","copy":"2-3 sentences. Include ${C.phone}.","cta":"CTA text","keywords":["kw1","kw2"],"note":"Platform tip"}]}
 4 variants: Community/local, Authority (their differentiators), Urgency, Service-specific. Always include ${C.phone}. Embed relevant keywords.`,1100);
-    document.getElementById(outId).innerHTML=(p.ads||[]).map(ad=>`
+    window._adsData=window._adsData||{};
+    window._adsData[outId]=p.ads||[];
+    document.getElementById(outId).innerHTML=(p.ads||[]).map((ad,i)=>`
       <div class="card" style="border-left:2px solid var(--blue2)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;flex-wrap:wrap;gap:4px">
           <div style="font-family:var(--fh);font-size:15px;font-weight:600;color:var(--ink)">${ad.variant}</div>
@@ -2489,11 +2575,77 @@ Return ONLY valid JSON: {"ads":[{"variant":"A — Community","hl":"Headline","co
         <div style="font-family:var(--fm);font-size:9px;color:var(--blue2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">→ ${ad.cta}</div>
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px">${(ad.keywords||[]).map(k=>`<span class="badge b-cold">${k}</span>`).join('')}</div>
         ${ad.note?`<div style="font-family:var(--fm);font-size:8px;color:var(--ink3)">📌 ${ad.note}</div>`:''}
-        <div style="margin-top:7px"><button class="btn-xs p" onclick="copyText(${JSON.stringify(ad.hl+'\\n\\n'+ad.copy+'\\n\\n→ '+ad.cta).replace(/'/g,'&#39;')})">📋 Copy Ad</button></div>
+        <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-xs p" onclick="copyText(${JSON.stringify(ad.hl+'\\n\\n'+ad.copy+'\\n\\n→ '+ad.cta).replace(/'/g,'&#39;')})">📋 Copy Ad</button>
+          ${(plat==='meta'||plat==='google')?`<button class="btn-xs" onclick="openAdCampaignForm('${plat}','${outId}',${i},this)">🎯 Create Real ${plat==='meta'?'Facebook/Instagram':'Google'} Campaign</button>`:''}
+        </div>
+        <div id="${outId}-aci-${i}"></div>
       </div>`).join('');
     document.getElementById(statId).textContent=`${p.ads?.length||0} variants · ${new Date().toLocaleTimeString()}`;
   }catch(e){document.getElementById(statId).textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';ico.style.display='';
+}
+// Feeds a generated ad variant straight into the real Meta Ads / Google Ads
+// campaign-creation endpoints (routes/ads.js) — same paused-on-creation
+// safety line already established there (Eagle I never activates spend;
+// budget/link/headline are still editable here before Create is clicked).
+function openAdCampaignForm(kind,outId,i,btn){
+  const ad=(window._adsData&&window._adsData[outId]&&window._adsData[outId][i])||{};
+  const uid=outId+'-'+i;
+  const container=document.getElementById(outId+'-aci-'+i);
+  if(!container)return;
+  btn.style.display='none';
+  if(kind==='meta'){
+    container.innerHTML=`<div style="background:var(--bg4);border-radius:var(--r);padding:9px;margin-top:7px">
+      <input id="aci-${uid}-name" placeholder="Campaign name" value="${escAttr((ad.variant||'Campaign')+' — '+C.name)}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <input id="aci-${uid}-budget" type="number" min="1" step="1" placeholder="Daily budget ($)" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <input id="aci-${uid}-link" placeholder="Destination link (https://...)" value="${escAttr(C.site||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <textarea id="aci-${uid}-message" style="width:100%;min-height:56px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient((ad.hl||'')+'\n\n'+(ad.copy||''))}</textarea>
+      <button class="btn-xs p" onclick="submitAdCampaign('meta','${uid}')">Create Campaign (Paused)</button>
+      <div class="sm" id="aci-${uid}-s" style="margin-top:4px"></div>
+    </div>`;
+  }else{
+    container.innerHTML=`<div style="background:var(--bg4);border-radius:var(--r);padding:9px;margin-top:7px">
+      <input id="aci-${uid}-name" placeholder="Campaign name" value="${escAttr((ad.variant||'Campaign')+' — '+C.name)}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <input id="aci-${uid}-budget" type="number" min="1" step="1" placeholder="Daily budget ($)" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <input id="aci-${uid}-url" placeholder="Landing page URL (https://...)" value="${escAttr(C.site||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <textarea id="aci-${uid}-headlines" placeholder="Headlines, one per line (3-15, max 30 chars)" style="width:100%;min-height:50px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient([ad.hl,...(ad.keywords||[])].filter(Boolean).slice(0,3).join('\n'))}</textarea>
+      <textarea id="aci-${uid}-descriptions" placeholder="Descriptions, one per line (2-4, max 90 chars)" style="width:100%;min-height:44px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient([ad.copy,ad.cta].filter(Boolean).join('\n'))}</textarea>
+      <input id="aci-${uid}-keywords" placeholder="Keywords, comma-separated" value="${escAttr((ad.keywords||[]).join(', '))}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <button class="btn-xs p" onclick="submitAdCampaign('google','${uid}')">Create Campaign (Paused)</button>
+      <div class="sm" id="aci-${uid}-s" style="margin-top:4px"></div>
+    </div>`;
+  }
+}
+async function submitAdCampaign(kind,uid){
+  const s=document.getElementById('aci-'+uid+'-s');
+  const name=(document.getElementById('aci-'+uid+'-name')?.value||'').trim();
+  const budget=Number(document.getElementById('aci-'+uid+'-budget')?.value);
+  if(!name||!budget){if(s){s.textContent='Fill in name and daily budget';s.style.color='var(--red)';}return;}
+  if(s){s.textContent='Creating (paused)...';s.style.color='var(--ink2)';}
+  try{
+    let d,r;
+    if(kind==='meta'){
+      const link=(document.getElementById('aci-'+uid+'-link')?.value||'').trim();
+      const message=(document.getElementById('aci-'+uid+'-message')?.value||'').trim();
+      if(!link||!message){if(s){s.textContent='Fill in link and ad text';s.style.color='var(--red)';}return;}
+      r=await fetch('/api/ads/meta/campaign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,dailyBudgetCents:Math.round(budget*100),message,link})});
+      d=await r.json();
+    }else{
+      const finalUrl=(document.getElementById('aci-'+uid+'-url')?.value||'').trim();
+      const headlines=(document.getElementById('aci-'+uid+'-headlines')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+      const descriptions=(document.getElementById('aci-'+uid+'-descriptions')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+      const keywords=(document.getElementById('aci-'+uid+'-keywords')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+      if(!finalUrl){if(s){s.textContent='Fill in landing page URL';s.style.color='var(--red)';}return;}
+      if(headlines.length<3){if(s){s.textContent='Need at least 3 headlines';s.style.color='var(--red)';}return;}
+      if(descriptions.length<2){if(s){s.textContent='Need at least 2 descriptions';s.style.color='var(--red)';}return;}
+      r=await fetch('/api/ads/google/campaign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,dailyBudgetCents:Math.round(budget*100),finalUrl,headlines,descriptions,keywords})});
+      d=await r.json();
+    }
+    if(!r.ok)throw new Error(d.error?.message||'Failed');
+    if(s){s.innerHTML=`✓ Created — PAUSED. <a href="${d.manageUrl}" target="_blank" rel="noopener">Open in Ads Manager ↗</a>`;s.style.color='var(--green)';}
+    showNotif('Campaign created','Paused — review and activate it yourself');
+  }catch(e){if(s){s.textContent='✗ '+e.message;s.style.color='var(--red)';}}
 }
 
 /* BUDGET */
@@ -2521,17 +2673,35 @@ async function genPlaybook(){
 Focus on: more prospect clients and more referral-partner awareness for this specific business.
 Return ONLY valid JSON: {"phases":[{"phase":"Week 1–2","title":"Title","focus":"Focus","actions":["Action with ${C.phone}","Action 2","Action 3"],"kpi":"Measurable outcome","budget":"$X","note":"Key note"}]}
 8 phases: W1-2, W3-4, W5-6, W7-8, W9-10, W11-12, M4-5, M6+.`,3000);
-    document.getElementById('tl-out').innerHTML=(p.phases||[]).map(ph=>`
+    document.getElementById('tl-out').innerHTML=(p.phases||[]).map((ph,i)=>`
       <div class="tl-item">
         <div class="tl-ph">${ph.phase} · ${ph.focus}</div>
         <div class="tl-h">${ph.title}</div>
         <div class="tl-b">${(ph.actions||[]).map(a=>'· '+a).join('<br>')}</div>
         ${ph.note?`<div style="font-family:var(--fm);font-size:8px;color:var(--blue2);margin-top:2px">📌 ${ph.note}</div>`:''}
         <div class="tl-m"><span class="tl-k">KPI: ${ph.kpi}</span><span class="tl-bud">${ph.budget}</span></div>
+        <button class="btn-xs p" id="tl-act-btn-${i}" style="margin-top:8px" onclick="actOnPlaybookPhase(${i},${JSON.stringify(ph.title||'').replace(/'/g,'&#39;')},${JSON.stringify((ph.actions||[]).join('; ')).replace(/'/g,'&#39;')})">📅 Draft &amp; Schedule a Post</button>
+        <div id="tl-ic-${i}"></div>
       </div>`).join('');
     document.getElementById('tl-s').textContent=`${p.phases?.length||0} phases · 90 days to dominance`;
   }catch(e){document.getElementById('tl-s').textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';document.getElementById('tl-lbl').textContent='Regenerate Playbook';
+}
+// Same "draft with Claude, hand off to the shared inline composer" pattern
+// as actOnStrategy() — one phase's actions become one real post the owner
+// can review, then post now or schedule for later via the exact same
+// /api/scheduled-posts the manual composer uses.
+async function actOnPlaybookPhase(i,title,actions){
+  const btn=document.getElementById('tl-act-btn-'+i);
+  const container=document.getElementById('tl-ic-'+i);
+  if(btn){btn.disabled=true;btn.textContent='Drafting...';}
+  try{
+    const p=await claude(`Turn this one phase of a 90-day marketing playbook into a single ready-to-post social update for ${C.name} (industry: ${ME?.industry||'general'}, area: ${C.community||'their service area'}, phone ${C.phone}).
+Phase: "${title}" — planned actions: ${actions}
+Return ONLY valid JSON: {"post":"the post text, 2-4 sentences, in ${C.voice||'a friendly, professional'} voice, mentioning ${C.phone} where natural"}`,500);
+    if(container)openInlineComposer(container,p.post||title);
+  }catch(e){showNotif('Could not draft',e.message);}
+  if(btn){btn.disabled=false;btn.textContent='📅 Draft & Schedule a Post';}
 }
 
 /* INIT — fetch the real tenant profile once, populate C, render everything
@@ -2655,6 +2825,7 @@ async function bootstrap(){
   loadReviewRequests();
   loadScheduledPosts();
   loadVendorOutreach();
+  loadPartnerOutreach();
   loadDashEmailSnapshot();
   const rrGoogle=document.getElementById('rr-google-url');if(rrGoogle)rrGoogle.value=ME.profile.googleReviewUrl||'';
   const rrYelp=document.getElementById('rr-yelp-url');if(rrYelp)rrYelp.value=ME.profile.yelpReviewUrl||'';
@@ -3402,6 +3573,100 @@ function renderPostHistory(){
 }
 
 
+/* ---------- INLINE COMPOSER ----------
+   A small self-contained publish/schedule control that drops into a
+   container element passed by the caller — used by the Strategy tab's
+   "Act On This", the 90-Day Playbook's per-phase scheduling, and the Real
+   Signals card's weather-post draft. All three now end in a REAL post via
+   the exact same /api/social/meta/post, /api/gbp/post, and
+   /api/scheduled-posts endpoints the main Social HQ composer uses — never
+   a second copy of the posting logic — while keeping the text visible and
+   editable, and a confirm() before an immediate post actually goes out,
+   same human-in-the-loop shape as findAndSendVendorOutreach(). */
+let _icSeq=0;
+function connectedPostTargets(){
+  const t=[];
+  if(metaConnection){t.push('facebook');if(metaConnection.ig_username)t.push('instagram');}
+  if(gbpConnection)t.push('google');
+  return t;
+}
+function openInlineComposer(container,text){
+  const uid='ic'+(++_icSeq);
+  const connected=connectedPostTargets();
+  const platforms=['facebook','instagram','google'];
+  container.innerHTML=`
+    <div style="margin-top:8px;background:var(--bg4);border-radius:var(--r);padding:11px">
+      <textarea id="ic-text-${uid}" style="width:100%;min-height:70px;margin-bottom:8px;box-sizing:border-box">${escapeHtmlClient(text||'')}</textarea>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        ${platforms.map(p=>`<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink2)"><input type="checkbox" class="ic-plat-${uid}" value="${p}" ${connected.includes(p)?'checked':''}>${platIcon(p)} ${p}</label>`).join('')}
+      </div>
+      ${connected.length?'':'<div style="font-size:11px;color:var(--ink3);margin-bottom:8px">No platforms connected yet — connect one in Social HQ → Credentials, then check it above.</div>'}
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:9px">
+        <label style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px">When:</label>
+        <select id="ic-when-${uid}" onchange="document.getElementById('ic-at-${uid}').style.display=this.value==='later'?'inline-block':'none'"><option value="now">Post now</option><option value="later">Schedule for later</option></select>
+        <input type="datetime-local" id="ic-at-${uid}" style="display:none">
+      </div>
+      <button class="btn btn-blue" id="ic-btn-${uid}" onclick="submitInlineComposer('${uid}')" style="width:100%;justify-content:center">🚀 Send</button>
+      <div class="sm" id="ic-s-${uid}"></div>
+    </div>`;
+  return uid;
+}
+async function submitInlineComposer(uid){
+  const text=(document.getElementById('ic-text-'+uid)?.value||'').trim();
+  const s=document.getElementById('ic-s-'+uid),btn=document.getElementById('ic-btn-'+uid);
+  if(!text){if(s){s.textContent='Write something first';s.style.color='var(--red)';}return;}
+  const platforms=Array.from(document.querySelectorAll('.ic-plat-'+uid+':checked')).map(c=>c.value);
+  if(!platforms.length){if(s){s.textContent='Select at least one platform';s.style.color='var(--red)';}return;}
+  const when=document.getElementById('ic-when-'+uid)?.value;
+
+  if(when==='later'){
+    const atVal=document.getElementById('ic-at-'+uid)?.value;
+    if(!atVal){if(s){s.textContent='Pick a time';s.style.color='var(--red)';}return;}
+    const scheduledAt=new Date(atVal);
+    if(isNaN(scheduledAt.getTime())||scheduledAt.getTime()<=Date.now()){if(s){s.textContent='Pick a future time';s.style.color='var(--red)';}return;}
+    const schedulable=platforms.filter(p=>SCHEDULABLE_PLATFORMS.includes(p));
+    if(!schedulable.length){if(s){s.textContent='Scheduling supports Facebook, Instagram, and Google only';s.style.color='var(--red)';}return;}
+    if(btn)btn.disabled=true;if(s){s.textContent='Scheduling...';s.style.color='var(--ink2)';}
+    try{
+      const r=await fetch('/api/scheduled-posts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,targets:schedulable,scheduledAt:scheduledAt.toISOString()})});
+      const d=await r.json();
+      if(!r.ok){if(s){s.textContent=d.error?.message||'Could not schedule';s.style.color='var(--red)';}if(btn)btn.disabled=false;return;}
+      if(s){s.textContent='✓ Scheduled for '+scheduledAt.toLocaleString();s.style.color='var(--green)';}
+      showNotif('Post scheduled',scheduledAt.toLocaleString());
+      loadScheduledPosts();
+    }catch(e){if(s){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}}
+    if(btn)btn.disabled=false;
+    return;
+  }
+
+  if(!confirm(`Post this now to ${platforms.join(', ')}?\n\n${text}`))return;
+  if(btn)btn.disabled=true;if(s){s.textContent='Publishing...';s.style.color='var(--ink2)';}
+  const metaTargets=platforms.filter(p=>p==='facebook'||p==='instagram');
+  const gbpTargets=platforms.filter(p=>p==='google');
+  const ok=[],failed=[];
+  try{
+    if(metaTargets.length){
+      const r=await fetch('/api/social/meta/post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,targets:metaTargets,imageUrl:firstHostedImageUrl()})});
+      const d=await r.json();
+      if(!r.ok){metaTargets.forEach(p=>failed.push(p+': '+(d.error?.message||'failed')));}
+      else{Object.keys(d.results||{}).forEach(p=>{if(d.results[p].ok)ok.push(p);else failed.push(p+': '+(d.results[p].error||'failed'));});}
+    }
+    if(gbpTargets.length){
+      const r=await fetch('/api/gbp/post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({summary:text,imageUrl:firstHostedImageUrl()})});
+      const d=await r.json();
+      if(r.ok)ok.push('google');else failed.push('google: '+(d.error?.message||'failed'));
+    }
+  }catch(e){failed.push('Network error: '+e.message);}
+  if(btn)btn.disabled=false;
+  if(ok.length){
+    if(s){s.textContent='✓ Posted to '+ok.join(', ')+(failed.length?' · ✗ '+failed.join(' · '):'');s.style.color=failed.length?'var(--amber)':'var(--green)';}
+    showNotif('Posted!',ok.join(', '));
+    addPostHistory(text,ok);
+  }else{
+    if(s){s.textContent='✗ '+(failed.join(' · ')||'Failed');s.style.color='var(--red)';}
+  }
+}
+
 /* ---------- LEADS INBOX (real, from the published landing page) ---------- */
 let inboxLeads=[];
 async function loadInbox(){
@@ -3747,17 +4012,24 @@ async function loadTargetGroups(){
   try{
     const p=await claude(`Identify 6 categories of referral-partner professionals or organizations for ${C.name} (industry: ${ME?.industry||'general'}, services: ${C.services}, area: ${C.community||'their service area'}) — people who could refer clients to them. Do not invent specific real organization names; use general category descriptions.
 Founder: ${C.founder}. Phone: ${C.phone}.
-Return ONLY valid JSON: {"groups":[{"category":"Short category name","org_type":"Type of association/community for this category","need":"What this group typically needs from a partner like this business","delivers":"How this business can deliver that value","opener":"A natural opening line ${C.founder||'the founder'} could use when meeting someone from this group at an event"}]}`,1600);
+Return ONLY valid JSON: {"groups":[{"category":"Short category name, e.g. 'Real Estate Agent' — must work as a Google Places search term for that profession","org_type":"Type of association/community for this category","need":"What this group typically needs from a partner like this business","delivers":"How this business can deliver that value","opener":"A natural opening line ${C.founder||'the founder'} could use when meeting someone from this group at an event","first_msg":"Personalized 2-sentence outreach message from ${C.founder} at ${C.phone} mentioning ${C.name} and specific value to this category, suitable to email a real contact"}]}`,1800);
     if(el){
       const colors=['var(--gold)','var(--green)','var(--purple)','var(--amber)','var(--red)','var(--blue2)'];
-      el.innerHTML=(p.groups||[]).map((g,i)=>`
-        <div class="card" style="border-top:2px solid ${colors[i%colors.length]}">
+      el.innerHTML=(p.groups||[]).map((g,i)=>{
+        const safeCat=(g.category||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+        return `
+        <div class="vc" style="border-top:2px solid ${colors[i%colors.length]}">
           <div class="ce" style="color:${colors[i%colors.length]}">${g.category||''}</div>
           <div class="ct">${g.org_type||''}</div>
           <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 9px">Need: ${g.need||''}<br><br><strong style="color:var(--ink)">How you deliver:</strong> ${g.delivers||''}</div>
           <div style="font-size:11px;color:var(--ink);background:var(--glow);border-radius:4px;padding:6px 8px;margin-bottom:8px;font-style:italic">"${g.opener||''}"</div>
-          <button class="btn-xs p" onclick="copyText(${JSON.stringify(g.opener||'').replace(/'/g,'&#39;')})">📋 Copy Opener</button>
-        </div>`).join('');
+          <div class="vc-msg"><div class="vml">First Message</div><div class="vmt">${g.first_msg||''}</div></div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">
+            <button class="btn-xs p" onclick="copyText(${JSON.stringify(g.opener||'').replace(/'/g,'&#39;')})">📋 Copy Opener</button>
+            <button class="btn-xs" onclick="loadRealVendors('${safeCat}',${i},'net-real-')">🌐 Find Real Businesses</button>
+          </div>
+          <div id="net-real-${i}" style="margin-top:8px"></div>
+        </div>`;}).join('');
     }
   }catch(e){
     if(el)el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--red);font-size:12px">Error: '+e.message+'</div>';
@@ -4258,6 +4530,13 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
           <div><div class="platform-name">Real Social Mention Scanning</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NEEDS A PAID KEY</span></div>
         </div>
         <div style="font-size:12px;color:var(--ink2);line-height:1.7">The "Social Mention Ideas" examples on Market Intel are AI-simulated, not a live feed — there's no free API for scanning organic social chatter (Nextdoor and Facebook both lock this down; X's API is paid). Real mention-scanning would need a paid third-party social-listening service (e.g. Mention.com, Brandwatch) with your own account and API key — a real recurring cost, so it's not something to wire up without asking first.</div>
+      </div>
+      <div class="platform-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+          <div class="platform-icon" style="width:36px;height:36px;font-size:18px;margin:0;background:var(--bg5);border-radius:11px;display:flex;align-items:center;justify-content:center">📈</div>
+          <div><div class="platform-name">S&amp;P 500 Market Signal</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NOT YET BUILT</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">This used to live on the dashboard and Market Intel as an "Automated Ad Rules" card — but the daily change figure it showed was AI-guessed, not a real quote, so despite the name nothing was actually automated. A real index value is easy to get for free (Stooq, Alpha Vantage's free tier), but wiring that up and building real threshold-triggered budget/post actions on top of it is a separate project — parked here rather than left live and mislabeled.</div>
       </div>
     </div>
   </div>

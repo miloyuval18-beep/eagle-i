@@ -21,7 +21,7 @@ const { getReceivedEmail, sendEmail } = require('../lib/email');
 // Matches only the reply+<kind>-<uuid>@... local-part this app generates
 // itself (lib/email.js's buildReplyToAddress) — an inbound address in any
 // other shape is ignored rather than trusted.
-const REPLY_ADDRESS_RE = /^reply\+(vendor|review)-([0-9a-f-]{36})@/i;
+const REPLY_ADDRESS_RE = /^reply\+(vendor|review|partner)-([0-9a-f-]{36})@/i;
 
 async function forwardToTenant(tenantId, subjectPrefix, full) {
   try {
@@ -68,6 +68,15 @@ async function processInboundEmail(data) {
     );
     if (result.rows.length) {
       await forwardToTenant(result.rows[0].tenant_id, `${result.rows[0].customer_name} replied`, full);
+    }
+  } else if (kind === 'partner') {
+    const result = await query(
+      `UPDATE partner_outreach SET reply_text = $1, reply_html = $2, replied_at = now()
+       WHERE id = $3 RETURNING tenant_id, recipient_name`,
+      [full.text || null, full.html || null, id]
+    );
+    if (result.rows.length) {
+      await forwardToTenant(result.rows[0].tenant_id, `${result.rows[0].recipient_name} replied`, full);
     }
   }
 }
