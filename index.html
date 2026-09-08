@@ -1509,9 +1509,19 @@ async function sendSignalEmail(uid,channel){
 
 /* TODAY BAR */
 /* STRATEGY */
+// Strategy cards currently being shown, indexed the same as the rendered
+// buttons — actOnStrategy(i) reads title/fix from here instead of having
+// them embedded in the onclick attribute. Embedding meant interpolating
+// JSON.stringify(...) — which always wraps its output in literal double
+// quotes — straight into a double-quoted onclick="..." attribute; the
+// first quote in the JSON terminated the attribute early, silently
+// truncating the handler, so the button did nothing when clicked. Indexing
+// into a plain array sidesteps HTML-attribute escaping entirely.
+let _strategyCards=[];
 function renderStrategyCards(strategies){
   const el=document.getElementById('strat-cards');
   if(!el)return;
+  _strategyCards=strategies||[];
   if(!strategies||!strategies.length){el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">No strategy generated yet — click "Generate Full Strategy" above.</div>';return;}
   el.innerHTML=strategies.map((s,i)=>`
     <div class="card" style="border-left:3px solid ${s.priority==='high'?'var(--red)':'var(--amber)'}">
@@ -1520,7 +1530,7 @@ function renderStrategyCards(strategies){
       <div style="font-size:13px;color:var(--ink2);margin:8px 0 9px;line-height:1.7">${s.problem||''}</div>
       <div style="background:var(--bg4);border-radius:var(--r);padding:9px 11px;border-left:2px solid var(--blue2);font-size:12px;color:var(--ink);line-height:1.65;margin-bottom:7px"><strong style="color:var(--blue2)">Fix:</strong> ${s.fix||''}</div>
       <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:8px">📈 ${s.impact||''}</div>
-      <button class="btn-xs p" id="strat-act-btn-${i}" onclick="actOnStrategy(${i},${JSON.stringify(s.title||'').replace(/'/g,'&#39;')},${JSON.stringify(s.fix||'').replace(/'/g,'&#39;')})">🚀 Act On This</button>
+      <button class="btn-xs p" id="strat-act-btn-${i}" onclick="actOnStrategy(${i})">🚀 Act On This</button>
       <div id="strat-ic-${i}"></div>
     </div>`).join('');
 }
@@ -1530,7 +1540,9 @@ function renderStrategyCards(strategies){
 // sensible API to call). Drafts via Claude, then hands off to the same
 // inline composer used everywhere else — nothing sends until the owner
 // reviews the text and clicks Send.
-async function actOnStrategy(i,title,fix){
+async function actOnStrategy(i){
+  const s=_strategyCards[i]||{};
+  const title=s.title||'',fix=s.fix||'';
   const btn=document.getElementById('strat-act-btn-'+i);
   const container=document.getElementById('strat-ic-'+i);
   if(btn){btn.disabled=true;btn.textContent='Drafting...';}
@@ -2179,7 +2191,7 @@ Return ONLY valid JSON: {"messages":[{"variant":"Community","subject":"Subject i
         <div style="font-size:12px;color:var(--ink2);line-height:1.8;margin-bottom:7px;border-left:2px solid var(--bdr);padding-left:9px;font-style:italic">${m.body}</div>
         <div style="font-family:var(--fm);font-size:8px;color:var(--ink3);margin-bottom:5px">📌 ${m.note||''}</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn-xs p" onclick="copyText(${JSON.stringify(m.body||'').replace(/'/g,'&#39;')})">📋 Copy</button>
+          <button class="btn-xs p" onclick="copyText(${escAttr(JSON.stringify(m.body||''))})">📋 Copy</button>
           ${canSend?`<button class="btn-xs" onclick="toggleOutreachSend(${i},this)">✉️ Send</button>`:''}
         </div>
         ${canSend?`<div id="out-send-${i}" style="display:none;margin-top:8px;background:var(--bg4);border-radius:var(--r);padding:9px">
@@ -2576,7 +2588,7 @@ Return ONLY valid JSON: {"ads":[{"variant":"A — Community","hl":"Headline","co
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px">${(ad.keywords||[]).map(k=>`<span class="badge b-cold">${k}</span>`).join('')}</div>
         ${ad.note?`<div style="font-family:var(--fm);font-size:8px;color:var(--ink3)">📌 ${ad.note}</div>`:''}
         <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn-xs p" onclick="copyText(${JSON.stringify(ad.hl+'\\n\\n'+ad.copy+'\\n\\n→ '+ad.cta).replace(/'/g,'&#39;')})">📋 Copy Ad</button>
+          <button class="btn-xs p" onclick="copyText(${escAttr(JSON.stringify(ad.hl+'\n\n'+ad.copy+'\n\n→ '+ad.cta))})">📋 Copy Ad</button>
           ${(plat==='meta'||plat==='google')?`<button class="btn-xs" onclick="openAdCampaignForm('${plat}','${outId}',${i},this)">🎯 Create Real ${plat==='meta'?'Facebook/Instagram':'Google'} Campaign</button>`:''}
         </div>
         <div id="${outId}-aci-${i}"></div>
@@ -2665,6 +2677,11 @@ function renderBudget(total){
 }
 
 /* PLAYBOOK */
+// Same reasoning as _strategyCards above: phase title/actions are looked
+// up from here by index rather than embedded in the onclick attribute, so
+// a JSON.stringify(...) full of double quotes can't truncate a
+// double-quoted onclick="..." attribute and silently break the button.
+let _playbookPhases=[];
 async function genPlaybook(){
   const btn=document.getElementById('tl-btn'),spin=document.getElementById('tl-spin');
   btn.disabled=true;spin.style.display='block';document.getElementById('tl-lbl').textContent='Building...';
@@ -2673,6 +2690,7 @@ async function genPlaybook(){
 Focus on: more prospect clients and more referral-partner awareness for this specific business.
 Return ONLY valid JSON: {"phases":[{"phase":"Week 1–2","title":"Title","focus":"Focus","actions":["Action with ${C.phone}","Action 2","Action 3"],"kpi":"Measurable outcome","budget":"$X","note":"Key note"}]}
 8 phases: W1-2, W3-4, W5-6, W7-8, W9-10, W11-12, M4-5, M6+.`,3000);
+    _playbookPhases=p.phases||[];
     document.getElementById('tl-out').innerHTML=(p.phases||[]).map((ph,i)=>`
       <div class="tl-item">
         <div class="tl-ph">${ph.phase} · ${ph.focus}</div>
@@ -2680,7 +2698,7 @@ Return ONLY valid JSON: {"phases":[{"phase":"Week 1–2","title":"Title","focus"
         <div class="tl-b">${(ph.actions||[]).map(a=>'· '+a).join('<br>')}</div>
         ${ph.note?`<div style="font-family:var(--fm);font-size:8px;color:var(--blue2);margin-top:2px">📌 ${ph.note}</div>`:''}
         <div class="tl-m"><span class="tl-k">KPI: ${ph.kpi}</span><span class="tl-bud">${ph.budget}</span></div>
-        <button class="btn-xs p" id="tl-act-btn-${i}" style="margin-top:8px" onclick="actOnPlaybookPhase(${i},${JSON.stringify(ph.title||'').replace(/'/g,'&#39;')},${JSON.stringify((ph.actions||[]).join('; ')).replace(/'/g,'&#39;')})">📅 Draft &amp; Schedule a Post</button>
+        <button class="btn-xs p" id="tl-act-btn-${i}" style="margin-top:8px" onclick="actOnPlaybookPhase(${i})">📅 Draft &amp; Schedule a Post</button>
         <div id="tl-ic-${i}"></div>
       </div>`).join('');
     document.getElementById('tl-s').textContent=`${p.phases?.length||0} phases · 90 days to dominance`;
@@ -2691,7 +2709,9 @@ Return ONLY valid JSON: {"phases":[{"phase":"Week 1–2","title":"Title","focus"
 // as actOnStrategy() — one phase's actions become one real post the owner
 // can review, then post now or schedule for later via the exact same
 // /api/scheduled-posts the manual composer uses.
-async function actOnPlaybookPhase(i,title,actions){
+async function actOnPlaybookPhase(i){
+  const ph=_playbookPhases[i]||{};
+  const title=ph.title||'',actions=(ph.actions||[]).join('; ');
   const btn=document.getElementById('tl-act-btn-'+i);
   const container=document.getElementById('tl-ic-'+i);
   if(btn){btn.disabled=true;btn.textContent='Drafting...';}
@@ -4025,7 +4045,7 @@ Return ONLY valid JSON: {"groups":[{"category":"Short category name, e.g. 'Real 
           <div style="font-size:11px;color:var(--ink);background:var(--glow);border-radius:4px;padding:6px 8px;margin-bottom:8px;font-style:italic">"${g.opener||''}"</div>
           <div class="vc-msg"><div class="vml">First Message</div><div class="vmt">${g.first_msg||''}</div></div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">
-            <button class="btn-xs p" onclick="copyText(${JSON.stringify(g.opener||'').replace(/'/g,'&#39;')})">📋 Copy Opener</button>
+            <button class="btn-xs p" onclick="copyText(${escAttr(JSON.stringify(g.opener||''))})">📋 Copy Opener</button>
             <button class="btn-xs" onclick="loadRealVendors('${safeCat}',${i},'net-real-')">🌐 Find Real Businesses</button>
           </div>
           <div id="net-real-${i}" style="margin-top:8px"></div>
