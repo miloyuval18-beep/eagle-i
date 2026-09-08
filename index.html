@@ -2964,14 +2964,22 @@ async function loadDashEmailSnapshot(){
       status:o.status,replyText:o.reply_text||null,
       ts:o.replied_at||o.created_at
     }));
-    const all=reviews.concat(vendors).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    const byRecent=(a,b)=>new Date(b.ts)-new Date(a.ts);
+    reviews.sort(byRecent);
+    vendors.sort(byRecent);
+    const all=reviews.concat(vendors).sort(byRecent);
     const countEl=document.getElementById('dash-email-count');
     if(countEl)countEl.textContent=all.length?`${all.length} sent · ${all.filter(x=>x.replyText).length} replied`:'Review requests & vendor outreach';
     if(!all.length){
       el.innerHTML='<div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">No emails sent yet — request a review from Social HQ or reach out to a vendor from Growth &amp; Partners</div>';
       return;
     }
-    el.innerHTML=all.slice(0,5).map(x=>`
+    // A plain top-N by recency can starve one category entirely (e.g. ten
+    // recent review requests would push every vendor email off the list
+    // even though vendor rows exist) — guarantee up to 3 of each are
+    // eligible before capping the combined snapshot at 6.
+    const shortlist=reviews.slice(0,3).concat(vendors.slice(0,3)).sort(byRecent).slice(0,6);
+    el.innerHTML=shortlist.map(x=>`
       <div style="padding:7px 10px;background:var(--bg4);border-radius:var(--r);display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><strong>${x.kind}</strong> · ${escapeHtmlClient(x.name)} · ${escapeHtmlClient(x.email)}</span>
         <span style="flex-shrink:0;font-family:var(--fm);font-size:9px;color:${x.replyText?'var(--green)':(x.status==='sent'?'var(--ink2)':'var(--red)')}">${x.replyText?'↩ RECEIVED':(x.status==='sent'?'✓ SENT':'✗ FAILED')}</span>
