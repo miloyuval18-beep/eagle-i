@@ -1534,12 +1534,16 @@ function renderStrategyCards(strategies){
       <div id="strat-ic-${i}"></div>
     </div>`).join('');
 }
-// Turns one strategy recommendation into a real, ready-to-send post draft
-// — the one action that's always available no matter what the
-// recommendation actually is (unlike e.g. "hire more staff," which has no
-// sensible API to call). Drafts via Claude, then hands off to the same
-// inline composer used everywhere else — nothing sends until the owner
-// reviews the text and clicks Send.
+// Turns one strategy recommendation into whatever real action the "Fix:"
+// text is actually asking for — not always a post. One Claude call both
+// picks the best-fitting action type from the app's real, already-built
+// actions (post, review request, partner/vendor outreach, real paid ad
+// campaign) and drafts the content for it; renderStrategyAction() then
+// shows the matching real widget. "post" is the fallback for
+// recommendations with no concrete action to route to (e.g. "hire more
+// staff") — sharing something is always available even then. Nothing
+// sends until the owner reviews the drafted content and clicks its own
+// Send/Publish button.
 async function actOnStrategy(i){
   const s=_strategyCards[i]||{};
   const title=s.title||'',fix=s.fix||'';
@@ -1547,12 +1551,101 @@ async function actOnStrategy(i){
   const container=document.getElementById('strat-ic-'+i);
   if(btn){btn.disabled=true;btn.textContent='Drafting...';}
   try{
-    const p=await claude(`Turn this one marketing recommendation into a single ready-to-post social update for ${C.name} (industry: ${ME?.industry||'general'}, area: ${C.community||'their service area'}, phone ${C.phone}).
+    const p=await claude(`A marketing recommendation for ${C.name} (industry: ${ME?.industry||'general'}, area: ${C.community||'their service area'}, phone ${C.phone}) needs to become one real action inside this app.
 Recommendation: "${title}" — ${fix}
-Return ONLY valid JSON: {"post":"the post text, 2-4 sentences, in ${C.voice||'a friendly, professional'} voice, mentioning ${C.phone} where natural"}`,500);
-    if(container)openInlineComposer(container,p.post||fix||title);
+Pick exactly ONE actionType from this list, whichever the recommendation is actually asking for:
+- "post": share something publicly on social media — use this if nothing more specific fits
+- "review_request": ask a specific past customer to leave a review
+- "vendor_outreach": reach out to a referral partner, vendor, or other business contact by email
+- "ad_campaign": run a paid ad on Meta (Facebook/Instagram) or Google
+Return ONLY valid JSON in the exact shape for the type you picked:
+{"actionType":"post","post":"2-4 sentence post in ${C.voice||'a friendly, professional'} voice, mentioning ${C.phone} where natural"}
+{"actionType":"review_request","note":"one short sentence on who to ask and why"}
+{"actionType":"vendor_outreach","recipientType":"e.g. Real Estate Agent","subject":"email subject line","message":"2-3 sentence outreach email from ${C.founder||'the owner'} at ${C.name}, phone ${C.phone}, in ${C.voice||'a friendly, professional'} voice"}
+{"actionType":"ad_campaign","platform":"meta or google","headline":"short ad headline","body":"2-3 sentence ad copy mentioning ${C.phone}"}`,600);
+    renderStrategyAction(i,container,p||{});
   }catch(e){showNotif('Could not draft',e.message);}
   if(btn){btn.disabled=false;btn.textContent='🚀 Act On This';}
+}
+function renderStrategyAction(i,container,p){
+  if(!container)return;
+  const s=_strategyCards[i]||{};
+  if(p.actionType==='review_request'){
+    container.innerHTML=`<div style="margin-top:8px;background:var(--bg4);border-radius:var(--r);padding:11px">
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">${escapeHtmlClient(p.note||'Ask a recent customer for a review.')}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <input id="strat-rr-${i}-name" placeholder="Customer name" style="flex:1;min-width:120px">
+        <input id="strat-rr-${i}-email" type="email" placeholder="Customer email" style="flex:1;min-width:160px">
+      </div>
+      <button class="btn-xs p" onclick="sendStrategyReviewRequest(${i})">✉️ Send Review Request</button>
+      <div class="sm" id="strat-rr-${i}-s" style="margin-top:4px"></div>
+    </div>`;
+    return;
+  }
+  if(p.actionType==='vendor_outreach'){
+    container.innerHTML=`<div style="margin-top:8px;background:var(--bg4);border-radius:var(--r);padding:11px">
+      ${p.recipientType?`<div style="font-size:11px;color:var(--ink3);margin-bottom:6px">Suggested contact: ${escapeHtmlClient(p.recipientType)}</div>`:''}
+      <input id="strat-vo-${i}-subject" value="${escAttr(p.subject||'')}" placeholder="Subject" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <textarea id="strat-vo-${i}-body" style="width:100%;min-height:70px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient(p.message||'')}</textarea>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <input id="strat-vo-${i}-name" placeholder="Recipient name" style="flex:1;min-width:120px">
+        <input id="strat-vo-${i}-to" type="email" placeholder="Recipient email" style="flex:1;min-width:160px">
+      </div>
+      <button class="btn-xs p" onclick="sendStrategyOutreach(${i})">✉️ Send</button>
+      <div class="sm" id="strat-vo-${i}-s" style="margin-top:4px"></div>
+    </div>`;
+    return;
+  }
+  if(p.actionType==='ad_campaign'){
+    const plat=p.platform==='google'?'google':'meta';
+    const uid='strat-'+i;
+    const defaults=plat==='google'
+      ? {name:(s.title||'Campaign')+' — '+C.name,headlines:(p.headline||''),descriptions:(p.body||'')}
+      : {name:(s.title||'Campaign')+' — '+C.name,message:(p.headline?p.headline+'\n\n':'')+(p.body||'')};
+    const wrap=document.createElement('div');
+    wrap.innerHTML=`<div style="font-size:11px;color:var(--ink3);margin-top:8px">Drafted for ${plat==='google'?'Google Ads':'Meta Ads (Facebook/Instagram)'}</div>`;
+    container.innerHTML='';
+    container.appendChild(wrap);
+    const formWrap=document.createElement('div');
+    formWrap.innerHTML=adCampaignFormHtml(plat,uid,defaults);
+    container.appendChild(formWrap);
+    return;
+  }
+  // Fallback — including actionType 'post' — turns it into the shared
+  // publish/schedule composer used everywhere else in the app.
+  openInlineComposer(container,p.post||s.fix||s.title||'');
+}
+async function sendStrategyReviewRequest(i){
+  const name=(document.getElementById('strat-rr-'+i+'-name')?.value||'').trim();
+  const email=(document.getElementById('strat-rr-'+i+'-email')?.value||'').trim();
+  const s=document.getElementById('strat-rr-'+i+'-s');
+  if(!name||!email){if(s){s.textContent='Name and email are required.';s.style.color='var(--red)';}return;}
+  if(s){s.textContent='Sending...';s.style.color='var(--ink2)';}
+  try{
+    const r=await fetch('/api/review-requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customerName:name,customerEmail:email})});
+    const d=await r.json();
+    if(!r.ok){if(s){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}return;}
+    if(s){s.textContent='✓ Sent to '+email;s.style.color='var(--green)';}
+    loadReviewRequests();loadDashEmailSnapshot();
+  }catch(e){if(s){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}}
+}
+async function sendStrategyOutreach(i){
+  const subject=(document.getElementById('strat-vo-'+i+'-subject')?.value||'').trim();
+  const body=(document.getElementById('strat-vo-'+i+'-body')?.value||'').trim();
+  const name=(document.getElementById('strat-vo-'+i+'-name')?.value||'').trim();
+  const to=(document.getElementById('strat-vo-'+i+'-to')?.value||'').trim();
+  const s=document.getElementById('strat-vo-'+i+'-s');
+  if(!to||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){if(s){s.textContent='Enter a valid recipient email';s.style.color='var(--red)';}return;}
+  if(!body){if(s){s.textContent='Message is empty';s.style.color='var(--red)';}return;}
+  if(!confirm(`Send this email to ${name||to} <${to}>?\n\n${subject}\n\n${body}`))return;
+  if(s){s.textContent='Sending...';s.style.color='var(--ink2)';}
+  try{
+    const r=await fetch('/api/partners/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:to,recipientName:name||to,subject,message:body,channel:'strategy'})});
+    const d=await r.json();
+    if(!r.ok){if(s){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}return;}
+    if(s){s.textContent='✓ Sent to '+to;s.style.color='var(--green)';}
+    loadPartnerOutreach();
+  }catch(e){if(s){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}}
 }
 function renderStrategyFromCache(){
   renderStrategyCards(ME?.generatedContent?.strategy?.strategies);
@@ -2096,7 +2189,7 @@ async function loadPartnerOutreach(){
     const d=await r.json();
     const list=d.outreach||[];
     if(!list.length){el.innerHTML='<div style="text-align:center;padding:14px;color:var(--ink3);font-size:12px">No outreach sent yet</div>';return;}
-    const chLabel={email:'Outreach',event:'Event Follow-up',signal_weather:'Weather Signal',signal_permit:'Permit Signal'};
+    const chLabel={email:'Outreach',event:'Event Follow-up',signal_weather:'Weather Signal',signal_permit:'Permit Signal',strategy:'Strategy'};
     el.innerHTML=list.slice(0,10).map(o=>`
       <div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -2601,33 +2694,43 @@ Return ONLY valid JSON: {"ads":[{"variant":"A — Community","hl":"Headline","co
 // campaign-creation endpoints (routes/ads.js) — same paused-on-creation
 // safety line already established there (Eagle I never activates spend;
 // budget/link/headline are still editable here before Create is clicked).
+// Shared by the Ad Copy Generator's "Create Real Campaign" button and the
+// Strategy tab's ad_campaign action (actOnStrategy) — same paused-on-
+// creation Meta/Google campaign form either way, just seeded from a
+// different source of ad copy. submitAdCampaign(kind,uid) reads back
+// whatever ids this renders, so callers only need a unique uid.
+function adCampaignFormHtml(kind,uid,defaults){
+  if(kind==='meta'){
+    return `<div style="background:var(--bg4);border-radius:var(--r);padding:9px;margin-top:7px">
+      <input id="aci-${uid}-name" placeholder="Campaign name" value="${escAttr(defaults.name||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <input id="aci-${uid}-budget" type="number" min="1" step="1" placeholder="Daily budget ($)" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <input id="aci-${uid}-link" placeholder="Destination link (https://...)" value="${escAttr(defaults.link||C.site||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <textarea id="aci-${uid}-message" style="width:100%;min-height:56px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient(defaults.message||'')}</textarea>
+      <button class="btn-xs p" onclick="submitAdCampaign('meta','${uid}')">Create Campaign (Paused)</button>
+      <div class="sm" id="aci-${uid}-s" style="margin-top:4px"></div>
+    </div>`;
+  }
+  return `<div style="background:var(--bg4);border-radius:var(--r);padding:9px;margin-top:7px">
+      <input id="aci-${uid}-name" placeholder="Campaign name" value="${escAttr(defaults.name||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <input id="aci-${uid}-budget" type="number" min="1" step="1" placeholder="Daily budget ($)" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <input id="aci-${uid}-url" placeholder="Landing page URL (https://...)" value="${escAttr(defaults.url||C.site||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <textarea id="aci-${uid}-headlines" placeholder="Headlines, one per line (3-15, max 30 chars)" style="width:100%;min-height:50px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient(defaults.headlines||'')}</textarea>
+      <textarea id="aci-${uid}-descriptions" placeholder="Descriptions, one per line (2-4, max 90 chars)" style="width:100%;min-height:44px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient(defaults.descriptions||'')}</textarea>
+      <input id="aci-${uid}-keywords" placeholder="Keywords, comma-separated" value="${escAttr(defaults.keywords||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <button class="btn-xs p" onclick="submitAdCampaign('google','${uid}')">Create Campaign (Paused)</button>
+      <div class="sm" id="aci-${uid}-s" style="margin-top:4px"></div>
+    </div>`;
+}
 function openAdCampaignForm(kind,outId,i,btn){
   const ad=(window._adsData&&window._adsData[outId]&&window._adsData[outId][i])||{};
   const uid=outId+'-'+i;
   const container=document.getElementById(outId+'-aci-'+i);
   if(!container)return;
   btn.style.display='none';
-  if(kind==='meta'){
-    container.innerHTML=`<div style="background:var(--bg4);border-radius:var(--r);padding:9px;margin-top:7px">
-      <input id="aci-${uid}-name" placeholder="Campaign name" value="${escAttr((ad.variant||'Campaign')+' — '+C.name)}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
-      <input id="aci-${uid}-budget" type="number" min="1" step="1" placeholder="Daily budget ($)" style="width:100%;margin-bottom:6px;box-sizing:border-box">
-      <input id="aci-${uid}-link" placeholder="Destination link (https://...)" value="${escAttr(C.site||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
-      <textarea id="aci-${uid}-message" style="width:100%;min-height:56px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient((ad.hl||'')+'\n\n'+(ad.copy||''))}</textarea>
-      <button class="btn-xs p" onclick="submitAdCampaign('meta','${uid}')">Create Campaign (Paused)</button>
-      <div class="sm" id="aci-${uid}-s" style="margin-top:4px"></div>
-    </div>`;
-  }else{
-    container.innerHTML=`<div style="background:var(--bg4);border-radius:var(--r);padding:9px;margin-top:7px">
-      <input id="aci-${uid}-name" placeholder="Campaign name" value="${escAttr((ad.variant||'Campaign')+' — '+C.name)}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
-      <input id="aci-${uid}-budget" type="number" min="1" step="1" placeholder="Daily budget ($)" style="width:100%;margin-bottom:6px;box-sizing:border-box">
-      <input id="aci-${uid}-url" placeholder="Landing page URL (https://...)" value="${escAttr(C.site||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
-      <textarea id="aci-${uid}-headlines" placeholder="Headlines, one per line (3-15, max 30 chars)" style="width:100%;min-height:50px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient([ad.hl,...(ad.keywords||[])].filter(Boolean).slice(0,3).join('\n'))}</textarea>
-      <textarea id="aci-${uid}-descriptions" placeholder="Descriptions, one per line (2-4, max 90 chars)" style="width:100%;min-height:44px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient([ad.copy,ad.cta].filter(Boolean).join('\n'))}</textarea>
-      <input id="aci-${uid}-keywords" placeholder="Keywords, comma-separated" value="${escAttr((ad.keywords||[]).join(', '))}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
-      <button class="btn-xs p" onclick="submitAdCampaign('google','${uid}')">Create Campaign (Paused)</button>
-      <div class="sm" id="aci-${uid}-s" style="margin-top:4px"></div>
-    </div>`;
-  }
+  const defaults=kind==='meta'
+    ? {name:(ad.variant||'Campaign')+' — '+C.name,message:(ad.hl||'')+'\n\n'+(ad.copy||'')}
+    : {name:(ad.variant||'Campaign')+' — '+C.name,headlines:[ad.hl,...(ad.keywords||[])].filter(Boolean).slice(0,3).join('\n'),descriptions:[ad.copy,ad.cta].filter(Boolean).join('\n'),keywords:(ad.keywords||[]).join(', ')};
+  container.innerHTML=adCampaignFormHtml(kind,uid,defaults);
 }
 async function submitAdCampaign(kind,uid){
   const s=document.getElementById('aci-'+uid+'-s');

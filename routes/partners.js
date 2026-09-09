@@ -16,7 +16,7 @@ const { sendEmail, buildReplyToAddress } = require('../lib/email');
 const { escapeHtml } = require('../lib/landingPageTemplate');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const VALID_CHANNELS = new Set(['email', 'event', 'signal_weather', 'signal_permit']);
+const VALID_CHANNELS = new Set(['email', 'event', 'signal_weather', 'signal_permit', 'strategy']);
 
 const router = express.Router();
 
