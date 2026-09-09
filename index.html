@@ -1949,16 +1949,25 @@ function renderPlacesCompetitors(list,sparse){
     </div>`;
   }).join('')+'</div>';
 }
+// The button's own onclick attribute is static HTML (loadPlacesCompetitors(false))
+// and only ever relabels itself to "Refresh" after a first successful load —
+// it can't flip its own argument to true. Without this flag, every click
+// after the first silently re-served the same 30-day cache no matter how
+// many times someone clicked "Refresh," which is why it could look like
+// nothing had changed even after a real fix shipped.
+let placesCompetitorsLoadedOnce=false;
 async function loadPlacesCompetitors(force){
+  const effectiveForce=force||placesCompetitorsLoadedOnce;
   const btn=document.getElementById('places-comp-btn'),spin=document.getElementById('places-comp-spin'),lbl=document.getElementById('places-comp-lbl'),s=document.getElementById('places-comp-s');
   if(btn)btn.disabled=true;if(spin)spin.style.display='block';if(lbl)lbl.textContent='Searching...';
   if(s)s.textContent='Querying Google Places...';
   try{
-    const r=await fetch('/api/competitors/places'+(force?'?refresh=true':''));
+    const r=await fetch('/api/competitors/places'+(effectiveForce?'?refresh=true':''));
     const d=await r.json();
     if(!r.ok)throw new Error(d.error?.message||'Lookup failed');
     renderPlacesCompetitors(d.competitors,d.sparse);
     if(s)s.textContent=`${d.competitors?.length||0} businesses · ${d.source==='cache'?'cached':'live'} · ${new Date(d.fetchedAt).toLocaleString()}`;
+    placesCompetitorsLoadedOnce=true;
   }catch(e){if(s)s.textContent='Error: '+e.message;}
   if(btn)btn.disabled=false;if(spin)spin.style.display='none';if(lbl)lbl.textContent='Refresh';
 }
