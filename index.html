@@ -1544,6 +1544,29 @@ function renderStrategyCards(strategies){
 // staff") — sharing something is always available even then. Nothing
 // sends until the owner reviews the drafted content and clicks its own
 // Send/Publish button.
+// Every real place a strategy recommendation could actually point to,
+// beyond the four "do it right here" actions — a fixed, closed set so
+// actOnStrategy's classification only ever has to name one of these keys,
+// never invent a destination. Each maps to a real goTo()/goSub() call.
+const STRATEGY_NAV_TARGETS={
+  landing_page:{tab:'leads',sub:['leads','pages'],label:'Landing Pages'},
+  keywords:{tab:'social',sub:['social','keywords'],label:'Keywords'},
+  competitors:{tab:'competitors',label:'Competitors'},
+  permits:{tab:'permits',label:'Permits'},
+  pr_awards:{tab:'growth',sub:['growth','pr'],label:'PR & Awards'},
+  networking:{tab:'growth',sub:['growth','network'],label:'Networking'},
+  budget:{tab:'budgetads',sub:['budgetads','budget'],label:'Budget & Playbook'},
+  market:{tab:'market',label:'Market Intel'}
+};
+function goSubtab(page,sub){
+  goSub(page,sub,document.querySelector(`[onclick*="goSub('${page}','${sub}'"]`));
+}
+function goStrategyNavTarget(target){
+  const t=STRATEGY_NAV_TARGETS[target];
+  if(!t)return;
+  goTo(t.tab,document.getElementById('t-'+t.tab));
+  if(t.sub)goSubtab(t.sub[0],t.sub[1]);
+}
 async function actOnStrategy(i){
   const s=_strategyCards[i]||{};
   const title=s.title||'',fix=s.fix||'';
@@ -1553,23 +1576,28 @@ async function actOnStrategy(i){
   // Visible immediately, in the card itself — a failure below replaces
   // this with a real error message in the same spot rather than only a
   // toast, which is easy to miss and reads as "the button did nothing."
-  if(container)container.innerHTML='<div style="margin-top:8px;font-size:12px;color:var(--ink3)">Drafting...</div>';
+  if(container)container.innerHTML='<div style="margin-top:8px;font-size:12px;color:var(--ink3)">Working...</div>';
   try{
-    // One flat schema with every field always present (empty string for
-    // whichever branch doesn't apply) — asking for four alternative full
-    // JSON shapes in one prompt was unreliable: the model sometimes
-    // blended shapes or added prose around the "wrong" example, which
-    // failed to parse and made the button look broken again. A single
-    // shape is a much more standard structured-output pattern.
-    const p=await claude(`A marketing recommendation for ${C.name} (industry: ${ME?.industry||'general'}, area: ${C.community||'their service area'}, phone ${C.phone}, voice: ${C.voice||'friendly and professional'}) needs to become one real action inside this app.
+    // One flat schema, every field always present (empty string for
+    // whichever branch doesn't apply) — a multi-shape prompt was
+    // unreliable (see git history). "post" is now a real category, not a
+    // catch-all — a recommendation that's about landing pages, keyword
+    // research, competitor research, permits, PR, networking, or budget
+    // routes to "navigate" (a real link to the tab that actually handles
+    // it) instead of forcing an unrelated social post. "none" is for
+    // recommendations Eagle I genuinely can't act on (internal
+    // operations, hiring, pricing).
+    const p=await claude(`A marketing recommendation for ${C.name} (industry: ${ME?.industry||'general'}, area: ${C.community||'their service area'}, phone ${C.phone}, voice: ${C.voice||'friendly and professional'}) needs to become one real action inside this app — never a generic or loosely-related substitute.
 Recommendation: "${title}" — ${fix}
-Decide which ONE of these four real actions the recommendation is actually asking for, then fill in only the fields that action needs (leave the rest as empty strings):
-- post: share something publicly on social media — the default if nothing more specific fits
+Decide which ONE of these actually matches what the recommendation is asking for, then fill in only the fields that type needs (leave every other field as an empty string):
+- post: the recommendation is literally about sharing/announcing something on social media
 - review_request: ask a specific past customer to leave a review
-- vendor_outreach: reach out to a referral partner, vendor, or other business contact by email
+- vendor_outreach: reach out to one specific referral partner, vendor, or business contact by email
 - ad_campaign: run a paid ad on Meta (Facebook/Instagram) or Google
+- navigate: the recommendation is about landing pages, keyword/SEO research, competitor research, permit-based mail targeting, PR/awards/press, networking/referral groups, or budget/ad-spend planning — set navigateTarget to exactly one of: landing_page, keywords, competitors, permits, pr_awards, networking, budget, market
+- none: the recommendation is about something Eagle I has no tool for at all (e.g. hiring, pricing, internal operations) — do not force it into any of the above
 Return ONLY this exact JSON shape, all keys present:
-{"actionType":"post|review_request|vendor_outreach|ad_campaign","post":"post text if actionType=post, else \"\"","reviewNote":"one short sentence on who to ask if actionType=review_request, else \"\"","vendorRecipientType":"e.g. Real Estate Agent, if actionType=vendor_outreach, else \"\"","vendorSubject":"email subject if actionType=vendor_outreach, else \"\"","vendorMessage":"2-3 sentence outreach email if actionType=vendor_outreach, else \"\"","adPlatform":"meta or google, if actionType=ad_campaign, else \"\"","adHeadline":"short ad headline if actionType=ad_campaign, else \"\"","adBody":"2-3 sentence ad copy if actionType=ad_campaign, else \"\""}`,700);
+{"actionType":"post|review_request|vendor_outreach|ad_campaign|navigate|none","post":"","reviewNote":"","vendorRecipientType":"","vendorSubject":"","vendorMessage":"","adPlatform":"","adHeadline":"","adBody":"","navigateTarget":"","navigateNote":"one short sentence on what to do once there, if actionType=navigate","noteForOwner":"one short sentence on why Eagle I can't act on this directly, if actionType=none"}`,800);
     if(!p||typeof p!=='object')throw new Error('Got an unreadable response — try again.');
     renderStrategyAction(i,container,p);
   }catch(e){
@@ -1581,6 +1609,22 @@ Return ONLY this exact JSON shape, all keys present:
 function renderStrategyAction(i,container,p){
   if(!container)return;
   const s=_strategyCards[i]||{};
+  if(p.actionType==='navigate'){
+    const t=STRATEGY_NAV_TARGETS[p.navigateTarget];
+    if(t){
+      container.innerHTML=`<div style="margin-top:8px;background:var(--bg4);border-radius:var(--r);padding:11px">
+        <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">${escapeHtmlClient(p.navigateNote||('This is handled in '+t.label+'.'))}</div>
+        <button class="btn-xs p" onclick="goStrategyNavTarget('${p.navigateTarget}')">🧭 Go to ${escapeHtmlClient(t.label)}</button>
+      </div>`;
+    }else{
+      container.innerHTML=`<div style="margin-top:8px;font-size:12px;color:var(--ink3)">${escapeHtmlClient(p.navigateNote||'This needs a different tab — see the recommendation above for where.')}</div>`;
+    }
+    return;
+  }
+  if(p.actionType==='none'){
+    container.innerHTML=`<div style="margin-top:8px;font-size:12px;color:var(--ink3)">${escapeHtmlClient(p.noteForOwner||"This one's about internal operations, not something Eagle I can execute directly.")}</div>`;
+    return;
+  }
   if(p.actionType==='review_request'){
     container.innerHTML=`<div style="margin-top:8px;background:var(--bg4);border-radius:var(--r);padding:11px">
       <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">${escapeHtmlClient(p.reviewNote||'Ask a recent customer for a review.')}</div>
