@@ -61,7 +61,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{
     <input type="text" id="serviceArea" placeholder="e.g. Austin metro, or nationwide">
     <label>Services Offered <span style="font-weight:800">*</span></label>
     <textarea id="services" placeholder="What does this business actually do?" required></textarea>
-    <label>Key Differentiators</label>
+    <label>What Makes You Different</label>
     <textarea id="differentiators" placeholder="What makes this business different from competitors?"></textarea>
     <label>Brand Voice</label>
     <input type="text" id="voice" placeholder="e.g. warm and community-focused, or sharp and authoritative">
@@ -145,7 +145,7 @@ document.getElementById('proceedBtn').addEventListener('click', async ()=>{
   btn.disabled=true;
   backBtn.disabled=true;
   status.style.display='block';
-  status.textContent='Generating your strategy, keywords, competitors, and opportunities... this takes a moment.';
+  status.textContent="Building your dashboard now — writing your strategy, keywords, competitor info, and marketing ideas. This usually takes about 30-60 seconds, please don't close this page.";
 
   const body={
     founderName: document.getElementById('founderName').value,
@@ -174,11 +174,10 @@ document.getElementById('proceedBtn').addEventListener('click', async ()=>{
       return;
     }
     if (d.partial) {
-      const failedSections = Object.keys(d.errors || {}).join(', ');
-      status.textContent = `Some sections generated, others failed (${failedSections}) — loading what we have...`;
-      setTimeout(() => { window.location.href = '/'; }, 1800);
+      status.textContent = "Most of your dashboard is ready. A couple of sections didn't finish — don't worry, you can just click each one's \"Refresh\" button once you're in. Taking you there now...";
+      setTimeout(() => { window.location.href = '/'; }, 2200);
     } else {
-      status.textContent = 'Done — loading your dashboard...';
+      status.textContent = 'All done! Taking you to your new dashboard...';
       window.location.href = '/';
     }
   }catch(e){

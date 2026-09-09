@@ -35,8 +35,8 @@ h1{font-size:24px;font-weight:800;letter-spacing:.2px;margin-bottom:6px}
 <body>
 <div class="card">
   <h1 id="title">Choose an account to connect</h1>
-  <div class="sub" id="sub">Loading...</div>
-  <div id="rows"><div class="status">Loading...</div></div>
+  <div class="sub" id="sub">Loading your options...</div>
+  <div id="rows"><div class="status">Loading your options...</div></div>
   <div class="err" id="err"></div>
 </div>
 
@@ -47,28 +47,28 @@ h1{font-size:24px;font-weight:800;letter-spacing:.2px;margin-bottom:6px}
 // Business Profile locations. Which one loaded is read from ?provider=.
 const PROVIDERS={
   meta:{
-    title:'Choose a Page to connect', sub:'Your Facebook account manages more than one Page',
+    title:'Which Facebook Page is yours?', sub:'Your Facebook login manages more than one Page — click the one that belongs to your business below.',
     listUrl:'/api/social/meta/pending-pages', listKey:'pages',
     rowLabel:p=>p.name, rowKey:p=>p.id,
     selectUrl:'/api/social/meta/select-page', selectBody:id=>({pageId:id}),
     redirectOnSuccess:'/?social_connected=facebook'
   },
   meta_ads:{
-    title:'Choose a Page to connect', sub:'Your Facebook account manages more than one Page',
+    title:'Which Facebook Page is yours?', sub:'Your Facebook login manages more than one Page — click the one that belongs to your business below.',
     listUrl:'/api/social/meta/pending-pages', listKey:'pages',
     rowLabel:p=>p.name, rowKey:p=>p.id,
     selectUrl:'/api/social/meta/select-page', selectBody:id=>({pageId:id}),
     redirectOnSuccess:'/?ads_connected=meta'
   },
   google_ads:{
-    title:'Choose a Google Ads account', sub:'Your Google login manages more than one Ads account',
+    title:'Which Google Ads account is yours?', sub:'Your Google login manages more than one ads account — click the one you want to use below.',
     listUrl:'/api/ads/google/pending-customers', listKey:'customerIds',
     rowLabel:id=>id, rowKey:id=>id,
     selectUrl:'/api/ads/google/select-customer', selectBody:id=>({customerId:id}),
     redirectOnSuccess:'/?ads_connected=google'
   },
   gbp:{
-    title:'Choose a Business Profile location', sub:'Your Google login manages more than one location',
+    title:'Which business listing is yours?', sub:'Your Google login manages more than one Google Business listing — click the one that belongs to your business below.',
     listUrl:'/api/gbp/pending-locations', listKey:'options',
     rowLabel:o=>o.locationName||o.locationId, rowKey:o=>o.locationId,
     selectUrl:'/api/gbp/select-location', selectBody:id=>({locationId:id}),
@@ -88,7 +88,7 @@ async function load(){
     const items=d[provider.listKey]||[];
     if(!items.length){
       wrap.innerHTML='';
-      err.textContent='No pending connection found — start again from the dashboard.';
+      err.textContent="We couldn't find anything to connect — please go back to your dashboard and try clicking \"Connect\" again.";
       err.style.display='block';
       return;
     }

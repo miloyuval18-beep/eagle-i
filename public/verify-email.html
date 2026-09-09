@@ -36,18 +36,18 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--ink);outline-offset
 <body>
 <div class="card">
   <h1>Verify your email</h1>
-  <div class="sub" id="sub">Confirm this is really you</div>
-  <button class="primary" id="confirmBtn" onclick="confirmEmail()">Confirm Email</button>
+  <div class="sub" id="sub">Click the button below to confirm this email address really belongs to you.</div>
+  <button class="primary" id="confirmBtn" onclick="confirmEmail()">Confirm This Is Me</button>
   <div class="status" id="status" style="display:none"></div>
   <div class="err" id="err" style="display:none"></div>
-  <a href="/">Go to dashboard</a>
+  <a href="/">Go to My Dashboard</a>
 </div>
 <script>
 const token=new URLSearchParams(window.location.search).get('token');
 if(!token){
   document.getElementById('confirmBtn').style.display='none';
   const err=document.getElementById('err');
-  err.textContent='Missing or invalid verification link.';
+  err.textContent="This verification link is missing or no longer works. Check your email for the most recent verification message, or go to Account Settings to send a new one.";
   err.style.display='block';
 }
 async function confirmEmail(){
@@ -65,7 +65,7 @@ async function confirmEmail(){
       btn.disabled=false;
       return;
     }
-    status.textContent='Email verified — thanks!';
+    status.textContent="Thanks — your email is now verified!";
     status.style.display='block';
     btn.style.display='none';
   }catch(e){

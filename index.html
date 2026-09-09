@@ -226,7 +226,7 @@ select:focus{border-color:var(--blue2)}
 .section{margin-bottom:28px}
 .sh{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:13px;padding-bottom:10px;border-bottom:1px solid var(--bdr2);flex-wrap:wrap;gap:7px}
 .st{font-family:var(--fh);font-size:21px;font-weight:600;color:var(--ink);letter-spacing:.4px}
-.ss{font-family:var(--fm);font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.ss{font-family:var(--fb);font-size:14px;color:var(--ink2);line-height:1.55;margin-top:4px;max-width:640px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
@@ -600,45 +600,45 @@ tbody tr:last-child td{border-bottom:none}
   <div class="ubar">
     <div class="ubar-dot"></div>
     <div class="ubar-label">⚡ Today</div>
-    <div class="ubar-msg" id="ubar-msg">Loading Eagle I intelligence...</div>
+    <div class="ubar-msg" id="ubar-msg">Loading your daily summary...</div>
     <button class="ubar-btn" onclick="goTo('strategy',document.getElementById('t-strategy'))">Full Strategy →</button>
   </div>
   <div class="kpi-grid">
     <div class="kpi" style="--kc:var(--red)" onclick="goTo('strategy',document.getElementById('t-strategy'))">
       <div class="kpi-l">Priority Actions</div>
       <div class="kpi-v" style="color:var(--red)" id="kpi-critical">—</div>
-      <div class="kpi-s">High-priority items<br>from your strategy</div>
+      <div class="kpi-s">The most important things to<br>do next — tap this box to see them</div>
       <div class="kpi-tr cdn">NOW</div>
     </div>
     <div class="kpi" style="--kc:var(--blue2)" onclick="goToKeywords()">
       <div class="kpi-l">Keywords Tracked</div>
       <div class="kpi-v cbl" id="kpi-vis">0</div>
-      <div class="kpi-s" id="kpi-vis-s">Click to scan keywords</div>
+      <div class="kpi-s" id="kpi-vis-s">Tap this box to see popular search terms for your business</div>
       <div class="kpi-tr cdn">Scan</div>
     </div>
     <div class="kpi" style="--kc:var(--amber)" onclick="goTo('opps',document.getElementById('t-opps'))">
       <div class="kpi-l">Live Opportunities</div>
       <div class="kpi-v cam" id="kpi-opps">0</div>
-      <div class="kpi-s">Marketing angles</div>
+      <div class="kpi-s">Marketing ideas ready<br>for you to use right now</div>
       <div class="kpi-tr cam" id="kpi-opps-t">View</div>
     </div>
     <div class="kpi" style="--kc:var(--green)">
       <div class="kpi-l">Monthly Quota</div>
       <div class="kpi-v cup" id="kpi-quota">—</div>
-      <div class="kpi-s">AI generations<br>used this month</div>
+      <div class="kpi-s">How many times you've asked<br>Eagle I to write something this month</div>
       <div class="kpi-tr cup">Ready</div>
     </div>
     <div class="kpi" style="--kc:var(--purple)">
       <div class="kpi-l">Industry</div>
       <div class="kpi-v" style="font-size:18px;margin-top:3px;color:var(--purple)" id="kpi-industry">—</div>
-      <div class="kpi-s">Your business category</div>
+      <div class="kpi-s">The type of business you told<br>Eagle I you run</div>
       <div class="kpi-tr cup">Set</div>
     </div>
   </div>
   <div class="dash-grid">
     <div class="card span2" style="--acc:var(--red)">
       <div class="ch">
-        <div><div class="ct">⚡ Priority Actions</div><div class="cs" id="dash-actions-sub">Ranked by impact</div></div>
+        <div><div class="ct">⚡ Priority Actions</div><div class="cs" id="dash-actions-sub">The things worth doing first, listed with the most important at the top</div></div>
         <button class="btn-ghost" onclick="goTo('strategy',document.getElementById('t-strategy'))">Full Roadmap →</button>
       </div>
       <div id="dash-actions">
@@ -649,57 +649,57 @@ tbody tr:last-child td{border-bottom:none}
       <div class="stile">
         <div class="stl"><div class="stdot" style="background:var(--blue2)"></div>Weather Signal</div>
         <div class="stv cbl" id="wx-tile">—</div>
-        <div class="std" id="wx-tile-d">Click Refresh Weather Signal</div>
+        <div class="std" id="wx-tile-d">Click the button below to check today's weather report</div>
       </div>
       <div class="stile">
         <div class="stl"><div class="stdot" style="background:var(--amber)"></div>Top Keyword</div>
-        <div class="stv" style="font-size:14px;margin-top:2px;color:var(--amber)" id="kw-tile">Visit Keywords tab</div>
-        <div class="std" id="kw-tile-d">AI-estimated, not live search data</div>
+        <div class="stv" style="font-size:14px;margin-top:2px;color:var(--amber)" id="kw-tile">Go to the Keywords tab to see this</div>
+        <div class="std" id="kw-tile-d">AI's best guess, not real live search data</div>
       </div>
       <div class="stile">
         <div class="stl"><div class="stdot" style="background:var(--purple)"></div>Market Notes</div>
-        <div class="std" style="font-size:12px;line-height:1.6;margin-top:2px" id="news-tile">Click Refresh Weather Signal for AI-generated market notes.</div>
+        <div class="std" style="font-size:12px;line-height:1.6;margin-top:2px" id="news-tile">Click the button below and Eagle I will write a short note about what's happening in your market today.</div>
       </div>
       <button class="btn btn-blue" id="sp-btn" onclick="loadWx()" style="width:100%;justify-content:center"><span class="spin" id="sp-spin"></span><span id="sp-lbl">Refresh Weather Signal</span></button>
     </div>
     <div class="card span2" style="--acc:var(--amber)">
       <div class="ch">
-        <div><div class="ct">🔥 Hottest Keywords</div><div class="cs">AI-estimated · click to scan</div></div>
+        <div><div class="ct">🔥 Hottest Keywords</div><div class="cs">AI's best guess at what people are searching for — click below to see the full list</div></div>
         <button class="btn-ghost" onclick="goToKeywords()">Full Analysis →</button>
       </div>
-      <div id="dash-kw-grid" class="g3"><div style="grid-column:1/-1;text-align:center;padding:18px;color:var(--ink3);font-size:12px">Visit the Keywords tab to scan</div></div>
+      <div id="dash-kw-grid" class="g3"><div style="grid-column:1/-1;text-align:center;padding:18px;color:var(--ink3);font-size:12px">Go to the Keywords tab and click "Refresh" to see this</div></div>
     </div>
     <div class="card" style="--acc:var(--red)">
       <div class="ch">
-        <div><div class="ct">🏆 Competitor Landscape</div><div class="cs">AI-estimated archetypes</div></div>
+        <div><div class="ct">🏆 Competitor Landscape</div><div class="cs">AI's best guess at what businesses like yours typically look like</div></div>
         <button class="btn-ghost" onclick="goTo('competitors',document.getElementById('t-competitors'))">Full →</button>
       </div>
       <div id="dash-comp-snapshot" style="display:flex;flex-direction:column;gap:7px">
-        <div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">Loading...</div>
+        <div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">Loading — this can take a few seconds...</div>
       </div>
     </div>
     <div class="card" style="--acc:var(--green)">
       <div class="ch">
-        <div><div class="ct">⚡ Opportunities</div><div class="cs">AI-generated marketing angles</div></div>
+        <div><div class="ct">⚡ Opportunities</div><div class="cs">Ideas Eagle I thinks are worth trying, written just for your business</div></div>
         <button class="btn-ghost" onclick="goTo('opps',document.getElementById('t-opps'))">See All →</button>
       </div>
       <div id="dash-opp-snapshot" style="display:flex;flex-direction:column;gap:6px">
-        <div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">Loading...</div>
+        <div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">Loading — this can take a few seconds...</div>
       </div>
     </div>
     <div class="card" style="--acc:var(--blue2)">
       <div class="ch">
-        <div><div class="ct">📧 Email Activity</div><div class="cs" id="dash-email-count">Review requests &amp; vendor outreach</div></div>
+        <div><div class="ct">📧 Email Activity</div><div class="cs" id="dash-email-count">Review requests you've sent and messages you've sent to vendors</div></div>
         <button class="btn-ghost" onclick="goTo('social',document.getElementById('t-social'))">Social HQ →</button>
       </div>
       <div id="dash-email-snapshot" style="display:flex;flex-direction:column;gap:7px">
-        <div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">Loading...</div>
+        <div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">Loading — this can take a few seconds...</div>
       </div>
     </div>
     <div class="card span3" style="padding:14px">
       <div class="dash-charts-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
         <div>
-          <div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Monthly opportunity index — all 6 revenue lines</div>
+          <div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Which months are typically best for each type of job</div>
           <div style="position:relative;height:150px"><canvas id="c-season" role="img" aria-label="Seasonality">Seasonality</canvas></div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:7px">
             <span style="display:flex;align-items:center;gap:4px;font-family:var(--fm);font-size:9px;color:var(--ink3)"><span style="width:8px;height:8px;border-radius:2px;background:#4a7fc4"></span>Roofing/Storm</span>
@@ -708,7 +708,7 @@ tbody tr:last-child td{border-bottom:none}
           </div>
         </div>
         <div>
-          <div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Projected monthly reach · $10k budget</div>
+          <div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Roughly how many people a $10,000 monthly budget could reach</div>
           <div style="position:relative;height:150px"><canvas id="c-reach" role="img" aria-label="Reach">Reach</canvas></div>
         </div>
       </div>
@@ -718,16 +718,16 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 <div id="page-strategy" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Growth Strategy</div><div class="ss">AI-generated · prioritized for your business</div></div><button class="btn btn-blue" id="strat-btn" onclick="loadStrategy()"><span class="spin" id="strat-spin"></span><span id="strat-lbl">Generate Full Strategy</span></button></div>
+  <div class="sh"><div><div class="st">Growth Strategy</div><div class="ss">Your personal to-do list, written by AI just for your business and ranked by what matters most. Click the button on the right to build (or rebuild) this list.</div></div><button class="btn btn-blue" id="strat-btn" onclick="loadStrategy()"><span class="spin" id="strat-spin"></span><span id="strat-lbl">Generate Full Strategy</span></button></div>
   <div class="section">
     <div style="font-family:var(--fm);font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;display:flex;align-items:center;gap:6px"><div class="ubar-dot"></div>Priority Actions</div>
-    <div id="strat-cards" class="g2" style="margin-bottom:14px"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">Loading your strategy...</div></div>
+    <div id="strat-cards" class="g2" style="margin-bottom:14px"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">Building your to-do list — this can take up to 30 seconds...</div></div>
   </div>
   <div id="strat-extra" style="display:none;margin-bottom:22px"></div>
   <div class="sm" id="strat-s"></div>
   <div class="section" id="strat-hcad-section" style="display:none">
-    <div class="sh"><div><div class="st">HCAD-Style Targeting</div><div class="ss">Real-estate/home-services only</div></div></div>
-    <div class="ib"><div class="ibt">Property-record outreach</div><div class="ibb">Available for real-estate and home-services businesses — see the Permits tab for HCAD-style targeting details specific to your service area.</div></div>
+    <div class="sh"><div><div class="st">Reaching Out to Property Owners</div><div class="ss">This section only shows up for home services and real estate businesses.</div></div></div>
+    <div class="ib"><div class="ibt">Want to mail nearby homeowners?</div><div class="ibb">This tool is only available for home services and real estate businesses. Go to the Permits tab (in the menu) to find nearby homeowners who recently filed a building permit — a good sign they may need your services soon.</div></div>
   </div>
 </div>
 </div>
@@ -735,30 +735,30 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== MARKET INTEL ==================== -->
 <div id="page-market" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Market Intelligence</div><div class="ss">Weather · market notes · social leads · competitor gaps</div></div><button class="btn btn-blue" id="mkt-btn" onclick="loadMarket()"><span class="spin" id="mkt-spin"></span><span id="mkt-lbl">Analyze Market</span></button></div>
+  <div class="sh"><div><div class="st">Market Intelligence</div><div class="ss">Everything happening around your business today — the weather, local news, and what your competitors might be missing. Click "Check the Market" to get today's report.</div></div><button class="btn btn-blue" id="mkt-btn" onclick="loadMarket()"><span class="spin" id="mkt-spin"></span><span id="mkt-lbl">Analyze Market</span></button></div>
   <div class="section">
     <div class="card" style="max-width:360px">
       <div class="ce" style="margin-bottom:6px">Weather Signal</div>
-      <div id="wx-mini" style="font-size:12px;color:var(--ink2)">Loading weather...</div>
-      <button class="btn-ghost" style="width:100%;justify-content:center;margin-top:7px" onclick="loadWx()">Load Full Weather Protocols</button>
+      <div id="wx-mini" style="font-size:12px;color:var(--ink2)">Checking today's weather...</div>
+      <button class="btn-ghost" style="width:100%;justify-content:center;margin-top:7px" onclick="loadWx()">See Full Weather Report</button>
     </div>
   </div>
   <div class="section real-estate-only" id="signals-section" style="display:none">
-    <div class="sh"><div><div class="st">🛰️ Real Signals — Live Data</div><div class="ss">National Weather Service alerts + real Houston permit-spike detection · not AI-generated</div></div><button class="btn-ghost" id="sig-btn" onclick="loadSignals(true)"><span class="spin" id="sig-spin"></span>Refresh</button></div>
+    <div class="sh"><div><div class="st">🛰️ Real Signals — Live Data</div><div class="ss">This section shows real information, not an AI guess: real weather alerts from the National Weather Service, and real building-permit activity happening in Houston right now.</div></div><button class="btn-ghost" id="sig-btn" onclick="loadSignals(true)"><span class="spin" id="sig-spin"></span>Refresh</button></div>
     <div id="signals-out"></div>
     <div class="sm" id="sig-s"></div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st">Weather Trigger Protocols</div><div class="ss">AI-generated response protocols for your service area</div></div></div>
-    <div class="g3" id="wx-grid"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3)">Click "Load Full Weather Protocols" above</div></div>
+    <div class="sh"><div><div class="st">Weather Trigger Protocols</div><div class="ss">AI-written suggestions for what to say and do when certain weather hits your service area — for example, what to post to social media right after a big storm.</div></div></div>
+    <div class="g3" id="wx-grid"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3)">Click the "See Full Weather Report" button above to see these suggestions</div></div>
   </div>
   <div class="section">
-    <div id="mkt-out"><div class="ib"><div class="ibt">Market Analysis</div><div class="ibb">Click "Analyze Market" for AI-generated opportunity scoring across your service segments, based on your business profile — not a live market data feed.</div></div></div>
+    <div id="mkt-out"><div class="ib"><div class="ibt">Market Analysis</div><div class="ibb">Click the black "Analyze Market" button near the top of this page. Eagle I will look at your business details and score how good an opportunity each of your services is right now. This is AI's best estimate, not a live feed of real market data.</div></div></div>
     <div class="sm" id="mkt-s"></div>
   </div>
   <div class="section">
     <div class="sh">
-      <div><div class="st">Social Mention Ideas <span style="font-family:var(--fm);font-size:8px;color:var(--amber);letter-spacing:1px;border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:2px 6px;margin-left:6px;vertical-align:middle">AI-SIMULATED EXAMPLES</span></div><div class="ss">Illustrative examples of the kind of posts you might find — not a live feed. For real captured leads, see the Leads tab.</div></div>
+      <div><div class="st">Social Mention Ideas <span style="font-family:var(--fm);font-size:8px;color:var(--amber);letter-spacing:1px;border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:2px 6px;margin-left:6px;vertical-align:middle">AI-SIMULATED EXAMPLES</span></div><div class="ss">These are made-up examples to show you the kind of thing someone nearby might post online when they need a business like yours. They are not real, live posts. For real leads who actually contacted you, go to the Leads tab instead.</div></div>
       <div style="display:flex;gap:7px"><select id="lead-filter" onchange="filterLeads()"><option value="all">All</option><option value="hot">Hot</option><option value="warm">Warm</option></select><button class="btn btn-blue" id="scan-btn" onclick="runScan()"><span class="spin" id="scan-spin"></span><svg id="scan-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="scan-lbl">Generate Examples</span></button></div>
     </div>
     <div class="g4" style="margin-bottom:13px">
@@ -767,8 +767,8 @@ tbody tr:last-child td{border-bottom:none}
       <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);padding:13px"><div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">Warm Leads</div><div style="font-family:var(--fh);font-size:26px;font-weight:700;color:var(--amber)" id="lead-warm">0</div></div>
       <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);padding:13px"><div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">Scans Run</div><div style="font-family:var(--fh);font-size:26px;font-weight:700;color:var(--blue2)" id="lead-scans">0</div></div>
     </div>
-    <div id="alert-feed" style="display:flex;flex-direction:column;gap:7px"><div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">Click Scan to find live opportunities in your service area</div></div>
-    <div style="margin-top:8px;display:flex;gap:6px"><button class="btn-ghost" onclick="exportLeads()">Export CSV</button><button class="btn-ghost" onclick="clearLeads()">Clear</button></div>
+    <div id="alert-feed" style="display:flex;flex-direction:column;gap:7px"><div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">Click the "Generate Examples" button above to see some examples</div></div>
+    <div style="margin-top:8px;display:flex;gap:6px"><button class="btn-ghost" onclick="exportLeads()">Download as a Spreadsheet</button><button class="btn-ghost" onclick="clearLeads()">Clear This List</button></div>
     <div class="sm" id="scan-s"></div>
   </div>
 </div>
@@ -777,14 +777,14 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== COMPETITORS ==================== -->
 <div id="page-competitors" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Competitor Analysis</div><div class="ss">AI-estimated competitive landscape for your industry and service area</div></div><button class="btn btn-blue" id="comp-btn" onclick="loadComp()"><span class="spin" id="comp-spin"></span><span id="comp-lbl">Analyze Competitors</span></button></div>
-  <div class="ib" style="margin-bottom:15px"><div class="ibt">How to read this</div><div class="ibb">These are AI-estimated competitor <em>archetypes</em> for your industry and market — general patterns of what typical competitors look like and how to differentiate against them, not verified real company names or live search results.</div></div>
-  <div id="comp-out"><div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click "Analyze Competitors"</div><div style="font-size:12px">Competitor archetypes + counter-strategy</div></div></div>
+  <div class="sh"><div><div class="st">Competitor Analysis</div><div class="ss">See what businesses like yours typically do well and where they usually fall short, so you know how to stand out. Click "Analyze Competitors" below to get started.</div></div><button class="btn btn-blue" id="comp-btn" onclick="loadComp()"><span class="spin" id="comp-spin"></span><span id="comp-lbl">Analyze Competitors</span></button></div>
+  <div class="ib" style="margin-bottom:15px"><div class="ibt">How to read this</div><div class="ibb">These are examples written by AI showing the common TYPES of competitors in your industry, and how you could stand out from each type. They are not the names of real companies near you, and they weren't pulled from a real search — think of them as useful patterns to think about, not a list of your actual competitors.</div></div>
+  <div id="comp-out"><div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click the black "Analyze Competitors" button above</div><div style="font-size:12px">You'll get common competitor types for your industry, and ideas for how to beat each one</div></div></div>
   <div class="sm" id="comp-s"></div>
 
-  <div class="sh" style="margin-top:28px"><div><div class="st">Real Nearby Competitors</div><div class="ss">Live Google Places data — actual nearby businesses, ratings, and review counts</div></div><button class="btn btn-blue" id="places-comp-btn" onclick="loadPlacesCompetitors(false)"><span class="spin" id="places-comp-spin"></span><span id="places-comp-lbl">Find Real Competitors</span></button></div>
-  <div class="ib" style="margin-bottom:15px"><div class="ibt">🌐 Live data, may be sparse</div><div class="ibb">Pulled from Google Places for your industry and service area. Coverage varies — some industries (especially B2B/professional services) return few or no results, in which case the AI-estimated archetypes above are the better guide.</div></div>
-  <div id="places-comp-out"><div style="text-align:center;padding:24px;color:var(--ink3);font-size:12px">Click "Find Real Competitors"</div></div>
+  <div class="sh" style="margin-top:28px"><div><div class="st">Real Nearby Competitors</div><div class="ss">This one is different — it shows real businesses actually located near you, pulled directly from Google, along with their real star ratings and review counts. Click "Find Real Competitors" below.</div></div><button class="btn btn-blue" id="places-comp-btn" onclick="loadPlacesCompetitors(false)"><span class="spin" id="places-comp-spin"></span><span id="places-comp-lbl">Find Real Competitors</span></button></div>
+  <div class="ib" style="margin-bottom:15px"><div class="ibt">🌐 Real data, but it may be incomplete</div><div class="ibb">This list comes straight from Google for your industry and area. Some industries (especially specialized professional services) may show only a few results or none at all — if that happens, use the AI-written examples above instead, since those always work no matter your industry.</div></div>
+  <div id="places-comp-out"><div style="text-align:center;padding:24px;color:var(--ink3);font-size:12px">Click the black "Find Real Competitors" button above</div></div>
   <div class="sm" id="places-comp-s"></div>
 </div>
 </div>
@@ -792,15 +792,15 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== OPPORTUNITIES ==================== -->
 <div id="page-opps" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Marketing Opportunities</div><div class="ss">AI-generated angles based on your business — not live news or market feeds</div></div><button class="btn btn-blue" id="news-btn" onclick="loadNews()"><span class="spin" id="news-spin"></span><span id="news-lbl">Scan Opportunities</span></button></div>
-  <div id="news-out" class="g3" style="margin-bottom:20px"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">Loading...</div></div>
-  <div class="sh"><div><div class="st">Ad Copy Generator</div></div></div>
+  <div class="sh"><div><div class="st">Marketing Opportunities</div><div class="ss">AI-written ideas for things you could promote or offer right now, based on your business details. These are suggestions to spark ideas, not real news headlines. Click "Scan Opportunities" to see today's ideas.</div></div><button class="btn btn-blue" id="news-btn" onclick="loadNews()"><span class="spin" id="news-spin"></span><span id="news-lbl">Scan Opportunities</span></button></div>
+  <div id="news-out" class="g3" style="margin-bottom:20px"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">Loading your ideas — this can take a few seconds...</div></div>
+  <div class="sh"><div><div class="st">Ad Copy Generator</div><div class="ss">Get ready-to-use ad text you can copy and paste into Google, Facebook, or wherever you want to advertise. Step 1: pick what you want to advertise below. Step 2: pick where you want to run the ad. Step 3: click "Generate Ads."</div></div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-    <select id="ad-trig"><option value="primary">Primary Service</option><option value="offer">Special Offer</option><option value="differentiator">Key Differentiator</option><option value="advisory">Free Consultation</option><option value="seasonal">Seasonal/Timely Angle</option><option value="mkt_up">Growth &amp; Momentum Angle</option></select>
-    <select id="ad-plat"><option value="google">Google Search</option><option value="meta">Facebook/Instagram</option><option value="nextdoor">Nextdoor</option><option value="linkedin">LinkedIn</option><option value="newsletter">Email Newsletter</option><option value="directmail">Direct Mail</option></select>
+    <select id="ad-trig"><option value="primary">Your Main Service</option><option value="offer">A Special Offer</option><option value="differentiator">What Makes You Different</option><option value="advisory">A Free Consultation</option><option value="seasonal">A Seasonal or Timely Angle</option><option value="mkt_up">Growth &amp; Momentum Angle</option></select>
+    <select id="ad-plat"><option value="google">Google Search</option><option value="meta">Facebook/Instagram</option><option value="nextdoor">Nextdoor</option><option value="linkedin">LinkedIn</option><option value="newsletter">Email Newsletter</option><option value="directmail">Direct Mail (a printed letter)</option></select>
     <button class="btn btn-blue" id="ad-btn" onclick="genAds('ad-btn','ad-spin','ad-ico','ad-out','ad-s','ad-trig','ad-plat')"><span class="spin" id="ad-spin"></span><svg id="ad-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Generate Ads</button>
   </div>
-  <div id="ad-out" style="display:flex;flex-direction:column;gap:9px"><div style="text-align:center;padding:18px;color:var(--ink3);font-size:12px">Select trigger + platform to generate 4 ad variants</div></div>
+  <div id="ad-out" style="display:flex;flex-direction:column;gap:9px"><div style="text-align:center;padding:18px;color:var(--ink3);font-size:12px">Pick an option from each dropdown above, then click "Generate Ads" — you'll get 4 different versions to choose from</div></div>
   <div class="sm" id="ad-s"></div>
 </div>
 </div>
@@ -808,7 +808,7 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== LEADS (landing pages that capture them + the inbox they land in) ==================== -->
 <div id="page-leads" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Leads</div><div class="ss">Real, published pages that capture leads · the leads they've caught</div></div></div>
+  <div class="sh"><div><div class="st">Leads</div><div class="ss">A "landing page" is a simple webpage with a contact form on it — people can find it and fill it out to reach you. This tab lets you create and publish one, and see everyone who has filled it out.</div></div></div>
   <div class="subtabs">
     <div class="subtab active" onclick="goSub('leads','pages',this)">🚀 Landing Pages</div>
     <div class="subtab" onclick="goSub('leads','inbox',this)">📥 Inbox</div>
@@ -816,45 +816,45 @@ tbody tr:last-child td{border-bottom:none}
   <div class="subpage active" id="sub-leads-pages">
   <div class="section" style="margin-bottom:16px">
     <div class="sh"><div><div class="st" style="font-size:15px">Your Pages</div></div><button class="btn-xs p" onclick="startNewLandingPage()">+ New Page</button></div>
-    <div id="lp-list"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Loading...</div></div>
+    <div id="lp-list"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Loading your pages...</div></div>
   </div>
   <div id="lp-editor-wrap" style="display:none">
   <div id="lp-publish-banner" style="display:none;margin-bottom:14px;padding:12px 16px;border-radius:var(--r2);border:1px solid rgba(0,217,122,.3);background:rgba(0,217,122,.08)">
-    <div style="font-size:13px;color:var(--ink)">🌐 Live at <a id="lp-public-link" href="#" target="_blank" style="color:var(--green);font-weight:600"></a></div>
+    <div style="font-size:13px;color:var(--ink)">🌐 This page is live on the internet right now, at <a id="lp-public-link" href="#" target="_blank" style="color:var(--green);font-weight:600"></a></div>
     <div style="display:flex;gap:6px;margin-top:8px">
-      <button class="btn-xs" onclick="copyLandingPageLink()">Copy Link</button>
-      <button class="btn-xs" onclick="unpublishLandingPage()">Unpublish</button>
+      <button class="btn-xs" onclick="copyLandingPageLink()">Copy the Web Address</button>
+      <button class="btn-xs" onclick="unpublishLandingPage()">Take This Page Down</button>
     </div>
   </div>
   <div class="lp-layout">
     <div class="lp-sb">
       <div id="lp-new-only">
-        <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Page target (optional)</label>
+        <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Give this page a name to help you remember it later (optional — customers never see this)</label>
         <input id="lp-target-label" placeholder="e.g. 77024 Kitchen Remodel" style="width:100%;margin-bottom:10px">
-        <div style="font-family:var(--fm);font-size:7px;color:var(--blue2);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Select Angle (for AI draft)</div>
+        <div style="font-family:var(--fm);font-size:7px;color:var(--blue2);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Step 1: Pick what this page should focus on</div>
         <div class="lp-gh">🔥 Core Pages</div>
-        <div class="lp-trig active" onclick="selLP(this,'primary')">⭐ Primary Service</div>
-        <div class="lp-trig" onclick="selLP(this,'consult')">📅 Free Consultation</div>
-        <div class="lp-trig" onclick="selLP(this,'offer')">🏷️ Special Offer</div>
+        <div class="lp-trig active" onclick="selLP(this,'primary')">⭐ Your Main Service</div>
+        <div class="lp-trig" onclick="selLP(this,'consult')">📅 A Free Consultation Offer</div>
+        <div class="lp-trig" onclick="selLP(this,'offer')">🏷️ A Special Offer or Discount</div>
         <div class="lp-gh">⚖️ Trust & Positioning</div>
-        <div class="lp-trig" onclick="selLP(this,'differentiator')">⭐ Your Differentiator</div>
-        <div class="lp-trig" onclick="selLP(this,'trust')">🛡️ Trust & Credentials</div>
+        <div class="lp-trig" onclick="selLP(this,'differentiator')">⭐ What Makes You Different</div>
+        <div class="lp-trig" onclick="selLP(this,'trust')">🛡️ Your Trust &amp; Credentials</div>
         <div class="lp-trig" onclick="selLP(this,'about')">💬 About Your Business</div>
-        <button class="btn btn-blue" id="lp-btn" onclick="genLP()" style="width:100%;justify-content:center;margin-top:10px"><span class="spin" id="lp-spin"></span><svg id="lp-ico" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Generate Draft</button>
+        <button class="btn btn-blue" id="lp-btn" onclick="genLP()" style="width:100%;justify-content:center;margin-top:10px"><span class="spin" id="lp-spin"></span><svg id="lp-ico" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Step 2: Write My Page</button>
       </div>
-      <button class="btn-ghost" id="lp-save-btn" onclick="saveLandingPageDraft()" style="width:100%;justify-content:center;margin-top:5px;display:none">💾 Save Edits</button>
-      <button class="btn btn-blue" id="lp-publish-btn" onclick="publishLandingPage()" style="width:100%;justify-content:center;margin-top:5px;display:none">🚀 Publish</button>
-      <button class="btn-ghost" onclick="copyLP()" style="width:100%;justify-content:center;margin-top:5px">📋 Copy HTML</button>
-      <button class="btn-ghost" onclick="closeLandingPageEditor()" style="width:100%;justify-content:center;margin-top:5px">← Back to list</button>
+      <button class="btn-ghost" id="lp-save-btn" onclick="saveLandingPageDraft()" style="width:100%;justify-content:center;margin-top:5px;display:none">💾 Save My Changes</button>
+      <button class="btn btn-blue" id="lp-publish-btn" onclick="publishLandingPage()" style="width:100%;justify-content:center;margin-top:5px;display:none">🚀 Step 3: Make This Page Live</button>
+      <button class="btn-ghost" onclick="copyLP()" style="width:100%;justify-content:center;margin-top:5px">📋 Copy the Page's Code (only needed if you have a web developer)</button>
+      <button class="btn-ghost" onclick="closeLandingPageEditor()" style="width:100%;justify-content:center;margin-top:5px">← Back to My List of Pages</button>
       <div class="sm" id="lp-s" style="text-align:center"></div>
     </div>
-    <div id="lp-area"><div style="text-align:center;padding:44px 18px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:20px;letter-spacing:2px;margin-bottom:7px;color:var(--ink2)">Select an angle and generate</div><div style="font-size:12px">AI-generated landing page copy built from your business profile — edit and publish to start collecting real leads</div></div></div>
+    <div id="lp-area"><div style="text-align:center;padding:44px 18px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:20px;letter-spacing:2px;margin-bottom:7px;color:var(--ink2)">Pick an option on the left, then click "Write My Page"</div><div style="font-size:12px">Eagle I will write the whole page for you based on your business details. You can then edit it before making it live — nothing goes public until you click "Make This Page Live."</div></div></div>
   </div>
   </div>
   </div>
   <div class="subpage" id="sub-leads-inbox">
   <div class="sh">
-    <div><div class="ss">Real submissions from your published landing page · not simulated</div></div>
+    <div><div class="ss">Everyone who has actually filled out the contact form on your published page — these are real people, not examples.</div></div>
     <select id="inbox-filter" onchange="loadInbox()" style="max-width:160px">
       <option value="">All statuses</option>
       <option value="new">New</option>
@@ -864,7 +864,7 @@ tbody tr:last-child td{border-bottom:none}
     </select>
   </div>
   <div id="inbox-list" style="display:flex;flex-direction:column;gap:8px">
-    <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">No leads yet — publish your landing page (Landing Pages sub-tab) to start collecting real submissions</div>
+    <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Nothing here yet. Go to the "🚀 Landing Pages" tab above, create a page, and click "Make This Page Live" — once someone fills out that page's form, they'll show up here.</div>
   </div>
   </div>
 </div>
@@ -873,7 +873,7 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== GROWTH & PARTNERS (Vendors + Networking + PR/Awards) ==================== -->
 <div id="page-growth" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Growth &amp; Partners</div><div class="ss">Referral partners · networking events · awards &amp; press — everything that grows the business through relationships, not ad spend</div></div></div>
+  <div class="sh"><div><div class="st">Growth &amp; Partners</div><div class="ss">Ways to grow your business by building relationships instead of spending money on ads — finding local businesses who'll refer you customers, discovering events worth attending, and getting your business noticed with awards and press.</div></div></div>
   <div class="subtabs">
     <div class="subtab active" onclick="goSub('growth','vendors',this)">🤝 Vendors</div>
     <div class="subtab" onclick="goSub('growth','network',this)">🧑‍🤝‍🧑 Networking</div>
@@ -881,66 +881,66 @@ tbody tr:last-child td{border-bottom:none}
   </div>
 
   <div class="subpage active" id="sub-growth-vendors">
-  <div class="sh"><div><div class="st">Strategic Vendors</div><div class="ss">AI-suggested referral categories · real nearby businesses via Google · ready-to-send messages</div></div>
+  <div class="sh"><div><div class="st">Strategic Vendors</div><div class="ss">AI suggests the types of local businesses likely to refer you customers (like real estate agents or insurance agents). Click below, then you can search for real ones nearby and email them an introduction with one click.</div></div>
   <div style="display:flex;gap:7px;flex-wrap:wrap">
     <button class="btn btn-blue" id="ven-btn" onclick="loadVendors()"><span class="spin" id="ven-spin"></span><span id="ven-lbl">Find Referral Partners</span></button>
     <button class="btn-ghost real-estate-only" id="ppn-btn" style="display:none" onclick="loadProfessionalPartners()"><span class="spin" id="ppn-spin"></span><span id="ppn-lbl">🏗️ Professional Partner Network</span></button>
   </div></div>
-  <div id="ven-out"><div style="text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click "Find Referral Partners"</div><div style="font-size:12px">AI-generated referral partner categories with ready-to-send outreach messages</div></div></div>
+  <div id="ven-out"><div style="text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click the black "Find Referral Partners" button above</div><div style="font-size:12px">You'll get a list of the types of businesses worth reaching out to, each with a ready-to-send message</div></div></div>
   <div class="sm" id="ven-s"></div>
   <div id="ppn-out"></div>
   <div class="sm" id="ppn-s"></div>
   <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">Outreach Generator</div><div class="ss">Personalized outreach in your brand voice</div></div></div>
+    <div class="sh"><div><div class="st">Outreach Generator</div><div class="ss">Write a message to one specific person you already know — pick who they are and how you want to reach them below, then click "Generate Messages."</div></div></div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:11px">
-      <select id="out-type"><option value="referral">Referral Partner</option><option value="complementary">Complementary Business</option><option value="association">Industry Association Contact</option><option value="past_customer">Past Customer</option><option value="influencer">Local Influencer</option></select>
-      <select id="out-ch"><option value="li">LinkedIn DM</option><option value="email">Email</option><option value="event">Post-Event Follow-up</option></select>
+      <select id="out-type"><option value="referral">A Referral Partner</option><option value="complementary">A Related (Non-Competing) Business</option><option value="association">An Industry Group Contact</option><option value="past_customer">A Past Customer</option><option value="influencer">A Local Influencer</option></select>
+      <select id="out-ch"><option value="li">LinkedIn Message</option><option value="email">Email</option><option value="event">Follow-Up After Meeting Them</option></select>
       <button class="btn btn-blue" id="out-btn" onclick="genOutreach()"><span class="spin" id="out-spin"></span>Generate Messages</button>
     </div>
-    <div id="out-msgs"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Select partner type and channel, then generate</div></div>
+    <div id="out-msgs"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Pick who you're contacting and how above, then click "Generate Messages"</div></div>
     <div class="sm" id="out-s"></div>
-    <div style="font-family:var(--fm);font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin:16px 0 8px">Sent Outreach &amp; Replies</div>
+    <div style="font-family:var(--fm);font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin:16px 0 8px">Messages You've Sent, and Any Replies</div>
     <div id="partner-outreach-list" style="display:flex;flex-direction:column;gap:8px">
-      <div style="text-align:center;padding:14px;color:var(--ink3);font-size:12px">No outreach sent yet</div>
+      <div style="text-align:center;padding:14px;color:var(--ink3);font-size:12px">You haven't sent any messages from this section yet</div>
     </div>
   </div>
   <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">Sent Outreach &amp; Replies</div><div class="ss">Every real "Find &amp; Send" you've sent, and any reply that's come back</div></div></div>
+    <div class="sh"><div><div class="st">Sent Outreach &amp; Replies</div><div class="ss">Every real "Find & Send" email you've sent from this page, and any reply you've gotten back.</div></div></div>
     <div id="vendor-outreach-list" style="display:flex;flex-direction:column;gap:8px">
-      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No outreach sent yet</div>
+      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">You haven't sent any outreach emails yet</div>
     </div>
   </div>
   </div>
 
   <div class="subpage" id="sub-growth-network">
-  <div class="sh"><div><div class="st">Networking &amp; Referral Partners</div><div class="ss">AI-generated referral partner categories and outreach for your industry</div></div>
+  <div class="sh"><div><div class="st">Networking &amp; Referral Partners</div><div class="ss">Find out which types of local professionals are most likely to send you new customers, plus a good opening line for talking to each one.</div></div>
   <button class="btn btn-blue" id="net-btn" onclick="loadTargetGroups()"><span class="spin" id="net-spin"></span><span id="net-lbl">Find Referral Groups</span></button></div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Target Groups — What They Need</div><div class="ss">Deliver value before asking for a referral</div></div></div>
-    <div class="g3" id="target-groups"><div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:5px">Click "Find Referral Groups"</div><div style="font-size:12px">AI-generated referral partner categories relevant to your industry, with an opening line for each</div></div></div>
+    <div class="sh"><div><div class="st" style="font-size:18px">Target Groups — What They Need</div><div class="ss">The trick to a good referral relationship: help them first, then ask. This section tells you what each group usually needs, so you can offer that before ever asking for a referral.</div></div></div>
+    <div class="g3" id="target-groups"><div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:5px">Click the black "Find Referral Groups" button above</div><div style="font-size:12px">You'll get a list of professional groups worth connecting with, plus a friendly opening line for each</div></div></div>
   </div>
   <div class="section">
     <div class="sh">
-      <div><div class="st" style="font-size:18px">Live Event Intelligence</div><div class="ss">AI-suggested event types for your industry — not a live calendar feed</div></div>
+      <div><div class="st" style="font-size:18px">Live Event Intelligence</div><div class="ss">AI-suggested TYPES of local networking events worth attending. This is not a real, live calendar — once you know what kind of event to look for, search online for the actual date and location.</div></div>
       <div style="display:flex;gap:7px;flex-wrap:wrap">
         <select id="net-time"><option value="30">Next 30 Days</option><option value="60">Next 60 Days</option><option value="90">Next 90 Days</option></select>
         <button class="btn btn-blue" id="net-btn2" onclick="loadNetworking()"><span class="spin" id="net-spin2"></span><span id="net-lbl2">Find Events</span></button>
       </div>
     </div>
-    <div id="net-events" class="g3"><div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:5px">Click "Find Events"</div><div style="font-size:12px">AI-suggested networking event types for your industry</div></div></div>
+    <div id="net-events" class="g3"><div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:5px">Click the black "Find Events" button above</div><div style="font-size:12px">You'll get a list of the kinds of local events worth attending, and why</div></div></div>
     <div class="sm" id="net-s"></div>
   </div>
   </div>
 
   <div class="subpage" id="sub-growth-pr">
-  <div class="sh"><div><div class="st">PR &amp; Awards Engine</div><div class="ss">Eagle I is your PR platform — awards · publications · authority building · media coverage</div></div>
+  <div class="sh"><div><div class="st">PR &amp; Awards Engine</div><div class="ss">Find real awards you could apply for and places you could get an article written about your business. Both help potential customers trust you before they've even met you.</div></div>
   <button class="btn btn-blue" id="pr-btn" onclick="loadPR()"><span class="spin" id="pr-spin"></span><span id="pr-lbl">Generate PR Strategy</span></button></div>
   <div class="ib" style="margin-bottom:18px">
-    <div class="ibt">Eagle I isn't just marketing — it's authority building</div>
-    <div class="ibb">Every award nomination, every published article, every media mention makes your business the obvious choice when someone needs to decide who to hire — or who to refer. Eagle I helps you find realistic opportunities and draft every submission.</div>
+    <div class="ibt">Why this matters</div>
+    <div class="ibb">Winning an award, being published in an article, or getting mentioned in the news all make your business look like the obvious, trustworthy choice. Eagle I helps you find realistic opportunities below and writes a first draft of every application for you — click "Generate Nomination" on any card.</div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Award Nominations</div><div class="ss">Broadly-applicable awards, plus AI-suggested ones below — with submission templates</div></div></div>
+    <div class="sh"><div><div class="st" style="font-size:18px">Award Nominations</div><div class="ss">A starter list of well-known awards almost any business can apply for. Click "Generate Nomination" on a card and Eagle I writes a first draft of the application for you.</div></div></div>
     <div id="pr-awards" class="g3">
       <div class="card" style="border-top:2px solid var(--green)">
         <div class="ce" style="color:var(--green)">🏆 Better Business Bureau Torch Award</div>
@@ -980,45 +980,45 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">AI Award Discovery</div><div class="ss">Eagle I finds additional awards relevant to your industry</div></div></div>
-    <div id="pr-awards-ai"><div style="text-align:center;padding:18px;color:var(--ink3);font-size:12px">Click "Generate PR Strategy" above to find additional awards</div></div>
+    <div class="sh"><div><div class="st" style="font-size:18px">AI Award Discovery</div><div class="ss">Click "Generate PR Strategy" above and Eagle I will search for more awards specific to your particular industry, beyond the general ones listed above.</div></div></div>
+    <div id="pr-awards-ai"><div style="text-align:center;padding:18px;color:var(--ink3);font-size:12px">Click the black "Generate PR Strategy" button above to see awards specific to your industry</div></div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Publication Opportunities</div><div class="ss">Where to publish articles — authority building for your industry</div></div></div>
+    <div class="sh"><div><div class="st" style="font-size:18px">Publication Opportunities</div><div class="ss">Places you could submit an article to get your name and expertise in front of more people. Click "Generate Article Draft" on any card below and Eagle I will write the article for you.</div></div></div>
     <div id="pr-pubs" class="g3">
       <div class="card" style="border-left:3px solid var(--blue2)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Local Business Journal</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Most metro areas have a local business journal (often part of the American City Business Journals network) that runs guest columns from local business owners.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Pitch to their relevant desk/editor for your industry</div>
+        <div class="ce">Where to Submit</div>
+        <div class="ct">Your Local Business Journal</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Most metro areas have a local business journal that publishes guest articles written by local business owners.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Search online for your city's business journal and find their editor's contact info</div>
         <button class="btn-xs p" onclick="genArticleGeneric('local_journal')">Generate Article Draft →</button>
       </div>
       <div class="card" style="border-left:3px solid var(--gold)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Local Newspaper</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">An op-ed or expert-perspective piece for your local paper's relevant section.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Pitch to the relevant desk at your local paper</div>
+        <div class="ce">Where to Submit</div>
+        <div class="ct">Your Local Newspaper</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">A short opinion piece or expert-advice article for the relevant section of your local paper.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Search online for your local paper's contact info and offer this article to the right section's editor</div>
         <button class="btn-xs p" onclick="genArticleGeneric('local_paper')">Generate Article Draft →</button>
       </div>
       <div class="card" style="border-left:3px solid var(--purple)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Industry Trade Publication</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">A trade magazine or publication specific to your industry, aimed at peers and referral partners.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Search for the leading trade publication in your industry</div>
+        <div class="ce">Where to Submit</div>
+        <div class="ct">A Trade Magazine for Your Industry</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">A magazine or publication written specifically for people in your industry — other business owners and potential referral partners read these.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Search online for "[your industry] trade magazine" to find the leading one</div>
         <button class="btn-xs p" onclick="genArticleGeneric('trade_pub')">Generate Article Draft →</button>
       </div>
       <div class="card" style="border-left:3px solid var(--amber)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Partner/Referral Network Resource</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Educational content aimed at the professionals most likely to refer you clients.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Pitch via your referral partners' association or newsletter</div>
+        <div class="ce">Where to Submit</div>
+        <div class="ct">A Referral Partner's Newsletter</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">A helpful, educational article aimed at the professionals most likely to send you clients.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Offer this to a referral partner's professional association or email newsletter</div>
         <button class="btn-xs p" onclick="genArticleGeneric('referral_resource')">Generate Article Draft →</button>
       </div>
       <div class="card" style="border-left:3px solid var(--green)">
-        <div class="ce">Publication Target</div>
-        <div class="ct">Community Platform (Nextdoor, local FB groups)</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">Regular helpful posts in your service area — seasonal tips, advice, or community engagement.</div>
-        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Free · Monthly cadence</div>
+        <div class="ce">Where to Submit</div>
+        <div class="ct">Nextdoor or Local Facebook Groups</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7;margin:8px 0 8px">A regular helpful post for your neighborhood — seasonal tips, advice, or something else useful to your neighbors.</div>
+        <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:7px">📝 Free to post — a good habit to do about once a month</div>
         <button class="btn-xs p" onclick="genArticleGeneric('community')">Generate Post Draft →</button>
       </div>
     </div>
@@ -1036,9 +1036,9 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== PERMITS ==================== -->
 <div id="page-permits" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">High-Value Area Permits</div><div class="ss">Real, current Houston building permits · sourced weekly from the city's own published reports</div></div>
+  <div class="sh"><div><div class="st">High-Value Area Permits</div><div class="ss">A list of real Houston homes where someone recently filed a building or renovation permit — a good sign they might need your services soon. Pulled fresh from the city's own records every week. Click "Load Permits" below to see this week's list.</div></div>
   <button class="btn btn-blue" id="perm-btn" onclick="loadPerms(false)"><span class="spin" id="perm-spin"></span><svg id="perm-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Load Permits</button></div>
-  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 Real data — with one honest limit</div><div class="ibb">Pulled directly from the Houston Permitting Center's weekly published permit reports (real addresses, real permit types, updated weekly — not real-time). The permit data itself carries no owner name, only the property address — which is exactly what's needed for postal mail (addressed to "Property Owner" is standard and doesn't require one). Mailer letters address a real name instead only when Harris County's own public tax records confidently identify one real, individual owner for that exact address — never a guess; every other letter stays addressed to "Property Owner." Home values marked <b>🏛️ REAL HCAD DATA</b> come directly from Harris Central Appraisal District's own public records (real average/median appraised value, real parcel counts) — see the badge on each zip. A small number of zips outside HCAD's imported set fall back to a curated reference list of well-known neighborhoods with approximate values from public real-estate reporting, clearly unlabeled as "HIGH VALUE" instead; zips with neither still show real permits, just without a value label. Area names (River Oaks, The Heights, etc.) below are directional groupings compiled from public reporting, not exact legal boundaries.</div></div>
+  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 What's real here, in plain terms</div><div class="ibb">This list is real — it comes straight from the City of Houston, updated once a week (not second-by-second). It only gives us the property's address, not the owner's name, which is completely fine: mail addressed simply to "Property Owner" reaches the right house and is standard practice for this kind of outreach. On the rare property where public county tax records clearly show a real owner's name, your mailer letter will use that name instead — otherwise it stays addressed to "Property Owner," never a guess. Where you see a <b>🏛️ REAL HCAD DATA</b> badge, the home value shown comes directly from Harris County's own official property records. Neighborhood names below (River Oaks, The Heights, etc.) are general area groupings, not exact legal boundaries.</div></div>
   <div id="perm-s" style="margin-bottom:10px"></div>
 
   <div id="perm-filter-wrap" style="display:none;margin-bottom:12px;position:relative">
@@ -1064,13 +1064,13 @@ tbody tr:last-child td{border-bottom:none}
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div>
         <span id="perm-sel-count" style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--blue2)">0 permits selected</span>
-        <div style="font-size:10px;color:var(--ink3);margin-top:2px">Check individual permits below, or select the top N by best-available home value — within your area filter if one's active, otherwise across everything loaded.</div>
+        <div style="font-size:10px;color:var(--ink3);margin-top:2px">Check the box next to any address below to pick it yourself, or use the dropdown on the right to automatically pick the most valuable homes.</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <button class="btn-xs" onclick="selectAllVisiblePermits()">Select Visible</button>
-        <button class="btn-xs" onclick="clearPermSelection()">Clear Selection</button>
+        <button class="btn-xs" onclick="selectAllVisiblePermits()">Select Everything Shown</button>
+        <button class="btn-xs" onclick="clearPermSelection()">Clear My Selections</button>
         <select id="perm-topn" class="btn-xs" style="padding:3px 6px" onchange="if(this.value){selectTopPermits(this.value);this.value=''}">
-          <option value="">Select Top N by Value…</option>
+          <option value="">Pick the Most Valuable Homes…</option>
           <option value="10">Top 10</option>
           <option value="25">Top 25</option>
           <option value="50">Top 50</option>
@@ -1079,18 +1079,18 @@ tbody tr:last-child td{border-bottom:none}
           <option value="150">Top 150</option>
           <option value="200">Top 200</option>
         </select>
-        <button class="btn-xs p" id="perm-gen-btn" disabled onclick="generateMailerPdf('download')">📄 Generate Mailer PDF</button>
-        <button class="btn-xs" id="perm-print-btn" disabled onclick="generateMailerPdf('print')">🖨️ Print Mailer</button>
+        <button class="btn-xs p" id="perm-gen-btn" disabled onclick="generateMailerPdf('download')">📄 Create Mailer Letters (PDF file)</button>
+        <button class="btn-xs" id="perm-print-btn" disabled onclick="generateMailerPdf('print')">🖨️ Print Letters Now</button>
       </div>
     </div>
   </div>
 
-  <div id="perm-areas"><div style="text-align:center;padding:24px;color:var(--ink3)">Click "Load Permits" to pull this week's real Houston permit data</div></div>
+  <div id="perm-areas"><div style="text-align:center;padding:24px;color:var(--ink3)">Click the black "Load Permits" button above to see this week's real Houston permit list</div></div>
   <div class="g2" style="margin-top:16px">
-    <div class="card"><div class="ce" style="margin-bottom:6px">Generic Letter Template (fallback)</div><div style="font-size:11px;color:var(--ink3);margin-bottom:6px">The "Generate Mailer PDF" button above writes a personalized letter — referencing each property's actual permit type, date, and area — for every permit you select. This generic version is just a quick manual copy-paste fallback if you'd rather write your own.</div><div id="hcad-letter" style="font-size:12px;color:var(--ink);line-height:1.85;font-style:italic;background:var(--bg4);border-radius:var(--r);padding:10px 12px;border-left:3px solid var(--blue)">Property Owner<br>[Mailing Address]<br><br>Hello,<br><br>My name is [FOUNDER_NAME]. I'm reaching out from [COMPANY_NAME], serving [SERVICE_AREA].<br><br>You can reach me directly at [PHONE] or [EMAIL]. We'd be glad to answer any questions about your property — no obligation, no pitch.<br><br>[FOUNDER_NAME] · [COMPANY_NAME]</div><button class="btn-xs p" style="margin-top:7px" onclick="copyPermitLetter()">📋 Copy Letter (fills in your info)</button></div>
-    <div class="card"><div class="ce" style="margin-bottom:6px">Why mail, not phone/email</div>
-      <div style="font-size:12px;color:var(--ink2);line-height:1.75">Cold-calling or texting people from public permit records without consent risks TCPA/Do-Not-Call violations. Postal mail to a permit address isn't subject to that law, which is why this tool surfaces addresses, not phone numbers or emails.</div>
-      <div style="margin-top:8px;display:flex;gap:5px"><button class="btn-xs" onclick="exportPermitAddresses()">📥 Export Addresses (CSV)</button><button class="btn-xs" onclick="window.open('https://www.houstonpermittingcenter.org/sold-permits-search','_blank')">Source ↗</button></div>
+    <div class="card"><div class="ce" style="margin-bottom:6px">A Simple Letter You Can Copy Yourself</div><div style="font-size:11px;color:var(--ink3);margin-bottom:6px">The "Create Mailer Letters" button above already writes a personal letter for every address you select, automatically. This box is just a backup — a simple letter you can copy and paste yourself if you'd rather handle it another way.</div><div id="hcad-letter" style="font-size:12px;color:var(--ink);line-height:1.85;font-style:italic;background:var(--bg4);border-radius:var(--r);padding:10px 12px;border-left:3px solid var(--blue)">Property Owner<br>[Mailing Address]<br><br>Hello,<br><br>My name is [FOUNDER_NAME]. I'm reaching out from [COMPANY_NAME], serving [SERVICE_AREA].<br><br>You can reach me directly at [PHONE] or [EMAIL]. We'd be glad to answer any questions about your property — no obligation, no pitch.<br><br>[FOUNDER_NAME] · [COMPANY_NAME]</div><button class="btn-xs p" style="margin-top:7px" onclick="copyPermitLetter()">📋 Copy This Letter (with your info already filled in)</button></div>
+    <div class="card"><div class="ce" style="margin-bottom:6px">Why We Suggest Mail Instead of Phone Calls or Texts</div>
+      <div style="font-size:12px;color:var(--ink2);line-height:1.75">Calling or texting people using public permit records, without their permission first, can break federal telemarketing law and lead to real fines. A printed letter sent to their address doesn't have that risk — which is exactly why this tool only gives you addresses, not phone numbers.</div>
+      <div style="margin-top:8px;display:flex;gap:5px"><button class="btn-xs" onclick="exportPermitAddresses()">📥 Download Addresses as a Spreadsheet</button><button class="btn-xs" onclick="window.open('https://www.houstonpermittingcenter.org/sold-permits-search','_blank')">See the City's Original Records ↗</button></div>
     </div>
   </div>
 </div>
@@ -1099,7 +1099,7 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== BUDGET & ADS ==================== -->
 <div id="page-budgetads" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Budget &amp; Ads</div><div class="ss">Plan the spend · generate the ad copy to spend it on</div></div></div>
+  <div class="sh"><div><div class="st">Budget &amp; Ads</div><div class="ss">Decide how to divide up your monthly marketing budget on the left, then get a step-by-step 90-day plan and ready-to-use ad text on the right.</div></div></div>
   <div class="subtabs">
     <div class="subtab active" onclick="goSub('budgetads','budget',this)">💰 Budget &amp; Playbook</div>
     <div class="subtab" onclick="goSub('budgetads','ads',this)">📢 Ad Generator</div>
@@ -1108,7 +1108,7 @@ tbody tr:last-child td{border-bottom:none}
   <div class="subpage active" id="sub-budgetads-budget">
   <div class="g2">
     <div>
-      <div class="sh"><div><div class="st" style="font-size:17px">Budget Planner</div></div></div>
+      <div class="sh"><div><div class="st" style="font-size:17px">Budget Planner</div><div class="ss">Drag the slider below to your monthly marketing budget, and see how Eagle I suggests splitting it up across different places.</div></div></div>
       <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;flex-wrap:wrap">
         <label style="font-family:var(--fm);font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px">Monthly:</label>
         <input type="range" min="5000" max="15000" step="500" value="10000" id="b-slider" oninput="renderBudget(this.value)" style="width:120px;accent-color:var(--blue2)">
@@ -1116,11 +1116,11 @@ tbody tr:last-child td{border-bottom:none}
       </div>
       <div id="b-seg" class="b-seg"></div>
       <div class="g2" id="b-cards" style="gap:6px"></div>
-      <div class="ib" style="margin-top:11px"><div class="ibt">The case for a real marketing budget</div><div class="ibb">A single new customer's lifetime value often justifies a full year of ad spend on its own. Referral and community channels are typically the lowest-cost acquisition sources — worth prioritizing alongside paid channels, not instead of them.</div></div>
+      <div class="ib" style="margin-top:11px"><div class="ibt">Why spending on marketing is worth it</div><div class="ibb">One new customer is often worth so much over time that it pays for a full year of advertising on its own. Referrals and community involvement are usually your cheapest way to get new customers — worth doing alongside paid ads, not instead of them.</div></div>
     </div>
     <div>
-      <div class="sh"><div><div class="st" style="font-size:17px">90-Day Playbook</div></div></div>
-      <div class="tl" id="tl-out"><div style="text-align:center;padding:14px;color:var(--ink3);font-size:12px">Generate playbook below</div></div>
+      <div class="sh"><div><div class="st" style="font-size:17px">90-Day Playbook</div><div class="ss">A step-by-step plan for your next 90 days, broken into phases. Click the button below to build yours.</div></div></div>
+      <div class="tl" id="tl-out"><div style="text-align:center;padding:14px;color:var(--ink3);font-size:12px">Click "Generate 90-Day Playbook" below to build your plan</div></div>
       <button class="btn btn-blue" id="tl-btn" onclick="genPlaybook()" style="margin-top:10px"><span class="spin" id="tl-spin"></span><span id="tl-lbl">Generate 90-Day Playbook</span></button>
       <div class="sm" id="tl-s"></div>
     </div>
@@ -1128,14 +1128,14 @@ tbody tr:last-child td{border-bottom:none}
   </div>
 
   <div class="subpage" id="sub-budgetads-ads">
-  <div class="sh"><div><div class="st">Ad Generator</div><div class="ss">Google · Meta · Nextdoor · LinkedIn · Direct Mail · Email Newsletter</div></div></div>
+  <div class="sh"><div><div class="st">Ad Generator</div><div class="ss">Get ready-to-use ad text for Google, Facebook/Instagram, Nextdoor, LinkedIn, direct mail, or email newsletters. Step 1: pick what you want to advertise below. Step 2: pick where. Step 3: click "Generate Ads."</div></div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:13px">
-    <select id="ads-trig"><option value="primary">Primary Service</option><option value="offer">Special Offer</option><option value="differentiator">Key Differentiator</option><option value="advisory">Free Consultation</option><option value="seasonal">Seasonal/Timely Angle</option><option value="mkt_up">Growth &amp; Momentum Angle</option></select>
-    <select id="ads-plat"><option value="google">Google Search</option><option value="meta">Facebook/Instagram</option><option value="nextdoor">Nextdoor</option><option value="linkedin">LinkedIn</option><option value="newsletter">Email Newsletter</option><option value="directmail">Direct Mail</option></select>
+    <select id="ads-trig"><option value="primary">Your Main Service</option><option value="offer">A Special Offer</option><option value="differentiator">What Makes You Different</option><option value="advisory">A Free Consultation</option><option value="seasonal">A Seasonal or Timely Angle</option><option value="mkt_up">Growth &amp; Momentum Angle</option></select>
+    <select id="ads-plat"><option value="google">Google Search</option><option value="meta">Facebook/Instagram</option><option value="nextdoor">Nextdoor</option><option value="linkedin">LinkedIn</option><option value="newsletter">Email Newsletter</option><option value="directmail">Direct Mail (a printed letter)</option></select>
     <button class="btn btn-blue" id="ads-btn" onclick="genAds('ads-btn','ads-spin','ads-ico','ads-out','ads-s','ads-trig','ads-plat')"><span class="spin" id="ads-spin"></span><svg id="ads-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Generate Ads</button>
-    <button class="btn-ghost" onclick="genAds('ads-btn','ads-spin','ads-ico','ads-out','ads-s','ads-trig','ads-plat')">New Variants</button>
+    <button class="btn-ghost" onclick="genAds('ads-btn','ads-spin','ads-ico','ads-out','ads-s','ads-trig','ads-plat')">Try 4 Different Ones</button>
   </div>
-  <div id="ads-out" style="display:flex;flex-direction:column;gap:9px"><div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">Select trigger + platform to generate 4 ad variants</div></div>
+  <div id="ads-out" style="display:flex;flex-direction:column;gap:9px"><div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">Pick an option from each dropdown above, then click "Generate Ads" — you'll get 4 different versions to choose from</div></div>
   <div class="sm" id="ads-s"></div>
   </div>
 </div>
@@ -1534,7 +1534,7 @@ function renderStrategyCards(strategies){
   const el=document.getElementById('strat-cards');
   if(!el)return;
   _strategyCards=strategies||[];
-  if(!strategies||!strategies.length){el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">No strategy generated yet — click "Generate Full Strategy" above.</div>';return;}
+  if(!strategies||!strategies.length){el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">You don\'t have a strategy list yet. Click the black "Generate Full Strategy" button near the top of this page to create one — it takes about 30 seconds.</div>';return;}
   el.innerHTML=strategies.map((s,i)=>`
     <div class="card" style="border-left:3px solid ${s.priority==='high'?'var(--red)':'var(--amber)'}">
       <div class="ce" style="color:${s.priority==='high'?'var(--red)':'var(--amber)'}">${(s.priority||'').toUpperCase()} · ${(s.timeline||'').toUpperCase()}</div>
@@ -1804,7 +1804,7 @@ function goLPKw(kw){
 function renderCompetitorCards(competitors){
   const el=document.getElementById('comp-out');
   if(!el)return;
-  if(!competitors||!competitors.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">No competitor analysis yet</div><div style="font-size:12px">Click "Analyze Competitors" to generate one</div></div>';return;}
+  if(!competitors||!competitors.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Nothing here yet</div><div style="font-size:12px">Click the black "Analyze Competitors" button above to create this list</div></div>';return;}
   el.innerHTML='<div class="g3">'+competitors.map(c=>`
     <div class="compc">
       <div class="comp-n">${c.archetype||''}</div>
@@ -1985,7 +1985,7 @@ async function loadLandingPageState(){
 function renderLpList(){
   const el=document.getElementById('lp-list');if(!el)return;
   if(!landingPages.length){
-    el.innerHTML='<div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">No pages yet — click "+ New Page" to generate your first one.</div>';
+    el.innerHTML='<div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">You haven\'t made a page yet. Click the "+ New Page" button above to create your first one — it only takes a minute.</div>';
     return;
   }
   el.innerHTML=landingPages.map(p=>`
@@ -2007,7 +2007,7 @@ function startNewLandingPage(){
   document.getElementById('lp-publish-btn').style.display='none';
   document.getElementById('lp-publish-banner').style.display='none';
   document.getElementById('lp-target-label').value='';
-  document.getElementById('lp-area').innerHTML='<div style="text-align:center;padding:44px 18px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:20px;letter-spacing:2px;margin-bottom:7px;color:var(--ink2)">Select an angle and generate</div><div style="font-size:12px">AI-generated landing page copy built from your business profile — edit and publish to start collecting real leads</div></div>';
+  document.getElementById('lp-area').innerHTML='<div style="text-align:center;padding:44px 18px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:20px;letter-spacing:2px;margin-bottom:7px;color:var(--ink2)">Pick an option on the left, then click "Write My Page"</div><div style="font-size:12px">Eagle I will write the whole page for you based on your business details. You can then edit it before making it live — nothing goes public until you click "Make This Page Live."</div></div>';
   document.getElementById('lp-editor-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function editLandingPage(id){
@@ -2044,7 +2044,7 @@ async function genLP(){
     currentLpPage=d.page;
     document.getElementById('lp-new-only').style.display='none';
     renderLpEditor(d.page);
-    document.getElementById('lp-s').textContent='Draft ready — edit below, then Publish';
+    document.getElementById('lp-s').textContent='Your draft is ready below. Read it over, make any changes you want, then click "Make This Page Live" when you\'re happy with it.';
     loadLandingPageState();
   }catch(e){document.getElementById('lp-s').textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';ico.style.display='';
@@ -2066,25 +2066,25 @@ function renderLpEditor(p){
       </div>
     </div>
     <div class="lp-edit" style="margin-top:16px;background:var(--bg4);border:1px solid var(--bdr2);border-radius:var(--r2);padding:16px">
-      <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px">Edit before publishing</div>
-      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Headline</label>
+      <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px">Feel free to change any of this before you make the page live</div>
+      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Main Headline (the big text at the top)</label>
       <input id="lp-f-headline" value="${(p.headline||'').replace(/"/g,'&quot;')}" style="width:100%;margin-bottom:8px">
-      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Subheadline</label>
+      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Smaller Text Under the Headline</label>
       <input id="lp-f-subheadline" value="${(p.subheadline||'').replace(/"/g,'&quot;')}" style="width:100%;margin-bottom:8px">
-      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Offer (optional)</label>
+      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Special Offer (optional — leave blank if you don't have one)</label>
       <input id="lp-f-offer" value="${(p.offer||'').replace(/"/g,'&quot;')}" style="width:100%;margin-bottom:8px">
-      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">About paragraph</label>
+      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">"About Us" Paragraph</label>
       <textarea id="lp-f-about_para" rows="2" style="width:100%;margin-bottom:8px">${p.about_para||''}</textarea>
-      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Service paragraph</label>
+      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">"Our Service" Paragraph</label>
       <textarea id="lp-f-service_para" rows="2" style="width:100%;margin-bottom:8px">${p.service_para||''}</textarea>
-      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Trust paragraph</label>
+      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">"Why Choose Us" Paragraph</label>
       <textarea id="lp-f-trust_para" rows="2" style="width:100%;margin-bottom:8px">${p.trust_para||''}</textarea>
-      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Primary CTA</label>
+      <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Main Button Text (what the big button says, e.g. "Call Now")</label>
       <input id="lp-f-cta_primary" value="${(p.cta_primary||'').replace(/"/g,'&quot;')}" style="width:100%">
     </div>`;
   document.getElementById('lp-save-btn').style.display='';
   document.getElementById('lp-publish-btn').style.display='';
-  document.getElementById('lp-publish-btn').textContent=p.status==='published'?'🔄 Update Live Page':'🚀 Publish';
+  document.getElementById('lp-publish-btn').textContent=p.status==='published'?'🔄 Update My Live Page':'🚀 Make This Page Live';
   lpHTML='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+(p.meta_title||C.name)+'</title></head><body><h1>'+(p.headline||C.name)+'</h1><p>'+(p.subheadline||'')+'</p></body></html>';
   const banner=document.getElementById('lp-publish-banner');
   if(p.status==='published'&&p.slug){
@@ -2137,8 +2137,8 @@ function copyLandingPageLink(){
   navigator.clipboard?.writeText(url).then(()=>showNotif('Link copied',url)).catch(()=>showNotif('Copy failed','Try manually'));
 }
 function copyLP(){
-  if(!lpHTML){showNotif('No page','Generate first');return;}
-  navigator.clipboard?.writeText(lpHTML).then(()=>showNotif('HTML Copied!',`Paste into ${C.site} CMS`)).catch(()=>showNotif('Copy failed','Try manually'));
+  if(!lpHTML){showNotif('Nothing to copy yet','Click "Write My Page" first');return;}
+  navigator.clipboard?.writeText(lpHTML).then(()=>showNotif('Code Copied!','If you have a web developer, they can use this code to add this page to your existing website')).catch(()=>showNotif('Copy failed','Try selecting and copying the text manually'));
 }
 
 /* VENDORS */
@@ -4363,7 +4363,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <div class="sh">
     <div>
       <div class="st">Social Media HQ</div>
-      <div class="ss">Post everywhere · Monitor engagement · Analyze impact · One command center</div>
+      <div class="ss">Everything for posting to your social media accounts, asking customers for reviews, and seeing how your posts did — all in one place.</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-blue" onclick="scanEngagement()"><span class="spin" id="eng-spin"></span>Generate Engagement Examples</button>
@@ -4377,7 +4377,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <div class="subpage active" id="sub-social-hq">
   <div class="section">
     <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;display:flex;align-items:center;gap:7px">
-      <div class="stdot" style="background:var(--green)"></div>PLATFORM ANALYTICS — REAL COUNTS, ONCE CONNECTED
+      <div class="stdot" style="background:var(--green)"></div>YOUR REAL FOLLOWER COUNTS — SHOWS UP ONCE YOU CONNECT AN ACCOUNT BELOW
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px" id="analytics-row">
       <div class="analytics-tile"><div class="at-icon">📸</div><div class="at-val cup" id="ig-followers">—</div><div class="at-label">Instagram Followers</div><div class="at-delta" id="ig-d">Loading...</div></div>
@@ -4386,7 +4386,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
     </div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Platforms</div><div class="ss">Facebook, Instagram &amp; Google Business post for real once connected in the Credentials tab · see <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button> for everything else</div></div></div>
+    <div class="sh"><div><div class="st" style="font-size:18px">Platforms</div><div class="ss">Connect your real Facebook, Instagram, and Google Business accounts in the ⚙ Credentials tab (button above), and Eagle I can post to them for you. Want to know about other platforms like LinkedIn or Yelp? Click <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button> to see what's available and why.</div></div></div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
       <div class="platform-card">
         <div class="platform-icon pi-ig">📸</div>
@@ -4415,19 +4415,19 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
     </div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Request a Review</div><div class="ss">Sends a real email to your customer with a link to leave a review — not simulated</div></div></div>
+    <div class="sh"><div><div class="st" style="font-size:18px">Request a Review</div><div class="ss">Type in a customer's name and email below, and Eagle I sends them a real email right now with a direct link to leave you a review. This really sends — it is not a simulation.</div></div></div>
     <div class="composer" style="margin-bottom:14px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <input id="rr-name" placeholder="Customer name" style="flex:1;min-width:140px">
-        <input id="rr-email" type="email" placeholder="Customer email" style="flex:1;min-width:160px">
+        <input id="rr-name" placeholder="Customer's name" style="flex:1;min-width:140px">
+        <input id="rr-email" type="email" placeholder="Customer's email address" style="flex:1;min-width:160px">
         <button class="btn btn-blue" id="rr-btn" onclick="sendReviewRequest()"><span class="spin" id="rr-spin"></span>✉️ Send Request</button>
       </div>
       <div class="sm" id="rr-s"></div>
       <details style="margin-top:6px">
-        <summary style="cursor:pointer;font-size:11px;color:var(--ink2)">Edit review links</summary>
+        <summary style="cursor:pointer;font-size:11px;color:var(--ink2)">Add or change your Google/Yelp review links (click to open)</summary>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-          <input id="rr-google-url" placeholder="Google review link" style="flex:1;min-width:160px">
-          <input id="rr-yelp-url" placeholder="Yelp review link" style="flex:1;min-width:160px">
+          <input id="rr-google-url" placeholder="Paste your Google review link here" style="flex:1;min-width:160px">
+          <input id="rr-yelp-url" placeholder="Paste your Yelp review link here" style="flex:1;min-width:160px">
           <button class="btn-xs p" onclick="saveReviewLinks()">Save</button>
         </div>
       </details>
@@ -4438,46 +4438,47 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
     <div class="composer" id="post-composer">
       <div class="composer-title">
         <span style="background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0">🚀</span>
-        One-Click Cross-Platform Publisher
-        <span style="font-family:var(--fm);font-size:9px;color:var(--green);background:rgba(0,217,122,.1);border:1px solid rgba(0,217,122,.25);border-radius:4px;padding:3px 8px;font-weight:400">EAGLE I AUTO</span>
+        Write and Publish a Post
+        <span style="font-family:var(--fm);font-size:9px;color:var(--green);background:rgba(0,217,122,.1);border:1px solid rgba(0,217,122,.25);border-radius:4px;padding:3px 8px;font-weight:400">POSTS FOR REAL</span>
       </div>
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:10px">Type your own post below, or pick a topic and tone and click "AI Generate" to have Eagle I write one for you. Nothing is posted until you click a "Publish" button further down.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <select id="post-type" style="flex:1;min-width:140px"><option value="promo">Promotional</option><option value="community">Community / Neighbor</option><option value="storm">Storm Alert</option><option value="education">Educational Tip</option><option value="project">Project Showcase</option><option value="trec">Certification/Training Announcement</option><option value="award">Award / PR</option><option value="advisory">Free Advisory</option><option value="before_after">Before & After</option></select>
-        <select id="post-tone" style="flex:1;min-width:120px"><option value="neighbor">Neighbor Voice</option><option value="authority">Authority / Expert</option><option value="urgent">Urgent / Timely</option><option value="warm">Warm & Personal</option></select>
+        <select id="post-type" style="flex:1;min-width:140px"><option value="promo">A Promotion</option><option value="community">Friendly Neighborhood Post</option><option value="storm">Storm Alert</option><option value="education">A Helpful Tip</option><option value="project">Show Off a Recent Project</option><option value="trec">Announce a Certification or Training</option><option value="award">An Award or Press Mention</option><option value="advisory">A Free Consultation Offer</option><option value="before_after">Before &amp; After</option></select>
+        <select id="post-tone" style="flex:1;min-width:120px"><option value="neighbor">Friendly Neighbor</option><option value="authority">Expert &amp; Knowledgeable</option><option value="urgent">Urgent / Time-Sensitive</option><option value="warm">Warm &amp; Personal</option></select>
         <button class="btn btn-blue" id="ai-post-btn" onclick="genAIPost()"><span class="spin" id="ai-post-spin"></span>✨ AI Generate</button>
       </div>
-      <textarea class="post-textarea" id="post-content" placeholder="Write your post or click AI Generate above...&#10;&#10;Eagle I will optimize the text for each platform automatically."></textarea>
-      <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px;margin-top:11px">Post to platforms:</div>
+      <textarea class="post-textarea" id="post-content" placeholder="Type your post here, or pick a topic and tone above and click AI Generate...&#10;&#10;Eagle I will automatically adjust the text to fit each platform you post to."></textarea>
+      <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px;margin-top:11px">Choose where to post this:</div>
       <div class="platform-selector" id="plat-selector">
         <div class="plat-toggle sel" data-plat="instagram" onclick="togglePlat(this)"><div class="pt-dot"></div><span>📸 Instagram</span></div>
         <div class="plat-toggle sel" data-plat="facebook" onclick="togglePlat(this)"><div class="pt-dot"></div><span>👤 Facebook</span></div>
         <div class="plat-toggle" data-plat="google" onclick="togglePlat(this)"><div class="pt-dot"></div><span>🌟 Google</span></div>
       </div>
-      <div style="font-size:10px;color:var(--ink3);margin-top:6px">LinkedIn, Yelp, Houzz, Website &amp; Nextdoor aren't connectable yet — see <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button></div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:6px">Eagle I can't yet post to LinkedIn, Yelp, Houzz, your own website, or Nextdoor — click <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button> to see why</div>
       <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleFileDrop(event)">
         <input type="file" id="file-input" multiple accept="image/*,video/*" style="display:none" onchange="handleFiles(this.files)">
         <div class="fd-icon">📎</div>
-        <div class="fd-text">Drop photos & videos here or click to browse</div>
-        <div class="fd-sub">JPG · PNG · MP4 · MOV · Up to 20 files</div>
+        <div class="fd-text">Drag a photo or video here, or click this box to pick one from your device</div>
+        <div class="fd-sub">JPG, PNG, MP4, or MOV files · up to 20 at once</div>
       </div>
       <div class="media-preview" id="media-preview"></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:11px">
-        <label style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px">When:</label>
-        <select id="post-when" onchange="togglePostSchedule()"><option value="now">Post now</option><option value="later">Schedule for later</option></select>
+        <label style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px">When should this go out?</label>
+        <select id="post-when" onchange="togglePostSchedule()"><option value="now">Post it right now</option><option value="later">Schedule it for later</option></select>
         <input type="datetime-local" id="post-schedule-at" style="display:none">
       </div>
       <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:11px">
         <button class="btn btn-blue" id="post-btn" onclick="publishPost()" style="flex:2;min-width:180px;justify-content:center">
           <span class="spin" id="post-spin"></span>
-          <span id="post-btn-lbl">🚀 Publish to All Selected Platforms</span>
+          <span id="post-btn-lbl">🚀 Publish to Everywhere You Checked Above</span>
         </button>
       </div>
       <div style="margin-top:10px">
-        <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Or publish to one platform only:</div>
+        <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Or, publish this to just one place:</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <button class="btn-xs p" onclick="publishOne('instagram')">📸 To Instagram</button>
-          <button class="btn-xs p" onclick="publishOne('facebook')">👤 To Facebook</button>
-          <button class="btn-xs p" onclick="publishOne('google')">🌟 To Google</button>
+          <button class="btn-xs p" onclick="publishOne('instagram')">📸 Just Instagram</button>
+          <button class="btn-xs p" onclick="publishOne('facebook')">👤 Just Facebook</button>
+          <button class="btn-xs p" onclick="publishOne('google')">🌟 Just Google</button>
         </div>
       </div>
       <div id="post-results" style="margin-top:11px"></div>
@@ -4486,16 +4487,16 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   </div>
 
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">Upcoming Scheduled Posts</div><div class="ss">Fires automatically at the scheduled time via the same live posting used above</div></div></div>
+    <div class="sh"><div><div class="st" style="font-size:18px">Upcoming Scheduled Posts</div><div class="ss">Anything you've scheduled for later will post automatically, all by itself, at the exact time you picked — you won't need to do anything else.</div></div></div>
     <div id="scheduled-posts-list" style="display:flex;flex-direction:column;gap:6px">
-      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No posts scheduled</div>
+      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Nothing scheduled right now</div>
     </div>
   </div>
 
   <!-- ==================== REAL AD CAMPAIGNS (Meta Ads + Google Ads) ==================== -->
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:18px">🎯 Real Ad Campaigns</div><div class="ss">Creates a real campaign via the Meta Ads / Google Ads API — always PAUSED. You review and turn it on yourself; Eagle I never activates spend.</div></div></div>
-    <div class="ib" style="margin-bottom:13px"><div class="ibt">⚠ Real money, once you activate it</div><div class="ibb">Every campaign created here is created <b>paused</b>. Nothing in Eagle I ever switches a campaign on — you do that in Meta Ads Manager / Google Ads yourself, after reviewing it. Daily budgets above $1,000 are blocked outright as a safety ceiling.</div></div>
+    <div class="sh"><div><div class="st" style="font-size:18px">🎯 Real Ad Campaigns</div><div class="ss">Set up a real paid ad on Facebook/Instagram or Google. Important: it's created "paused," meaning no money is spent until YOU personally go turn it on. Eagle I never spends your money automatically.</div></div></div>
+    <div class="ib" style="margin-bottom:13px"><div class="ibt">⚠ This involves real money, once you turn it on</div><div class="ibb">Every ad campaign created here starts out <b>paused</b> (turned off). Eagle I never switches it on for you — you have to go to Meta Ads Manager or Google Ads yourself, review it, and turn it on when you're ready. As an extra safety measure, you also can't set a daily budget above $1,000 here.</div></div>
     <div class="g2">
       <div class="card" id="ads-meta-card">
         <div style="font-family:var(--fh);font-weight:600;margin-bottom:8px">Meta Ads (Facebook &amp; Instagram)</div>
@@ -4512,30 +4513,30 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <div class="g2">
     <div>
       <div class="sh">
-        <div><div class="st" style="font-size:18px">Engagement Reply Examples <span style="font-family:var(--fm);font-size:8px;color:var(--amber);letter-spacing:1px;border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:2px 6px;margin-left:6px;vertical-align:middle">AI-SIMULATED EXAMPLES</span></div><div class="ss">Illustrative examples of engagement + suggested replies — not a live scan of your real accounts</div></div>
+        <div><div class="st" style="font-size:18px">Engagement Reply Examples <span style="font-family:var(--fm);font-size:8px;color:var(--amber);letter-spacing:1px;border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:2px 6px;margin-left:6px;vertical-align:middle">AI-SIMULATED EXAMPLES</span></div><div class="ss">Made-up examples showing the kind of comments you might get and a good way to reply to each. These are not real comments from your actual Facebook or Instagram — just ideas for inspiration.</div></div>
         <button class="btn-ghost" id="eng-btn" onclick="scanEngagement()"><span class="spin" id="eng-spin2"></span>Refresh</button>
       </div>
       <div id="engagement-feed" style="display:flex;flex-direction:column;gap:8px">
-        <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Click "Refresh" to generate example engagement + reply ideas</div>
+        <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Click "Refresh" above to see some example comments and replies</div>
       </div>
       <div class="sm" id="eng-s"></div>
     </div>
     <div>
-      <div class="sh"><div><div class="st" style="font-size:18px">Post History & Impact</div><div class="ss">All posts · performance metrics · engagement rates</div></div></div>
+      <div class="sh"><div><div class="st" style="font-size:18px">Post History &amp; Impact</div><div class="ss">A record of every post you've published, and how well each one did.</div></div></div>
       <div id="post-history" style="display:flex;flex-direction:column;gap:8px">
-        <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Post history loads here after publishing</div>
+        <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Your posts will show up here once you publish something above</div>
       </div>
     </div>
   </div>
   </div>
 
   <div class="subpage" id="sub-social-keywords">
-  <div class="sh"><div><div class="st">Hottest Keywords</div><div class="ss">AI-estimated · not live search data</div></div><button class="btn btn-blue" id="kw-btn" onclick="loadKw(true)"><span class="spin" id="kw-spin"></span>Refresh</button></div>
+  <div class="sh"><div><div class="st">Hottest Keywords</div><div class="ss">AI's best guess at which search words and phrases are most valuable for your business right now. This is an estimate, not real, live data pulled from Google.</div></div><button class="btn btn-blue" id="kw-btn" onclick="loadKw(true)"><span class="spin" id="kw-spin"></span>Refresh</button></div>
   <div id="kw-prog" class="scan-prog"><div class="sp-bar"><div class="sp-fill"></div></div><span class="sp-lbl">Scanning your keyword market...</span></div>
   <div id="kw-insight" class="ib" style="margin-bottom:15px;display:none"></div>
   <div id="kw-fire-sec" style="display:none;margin-bottom:20px"><div class="sh"><div><div class="st">🔥 On Fire — Build Landing Pages NOW</div></div></div><div class="g3" id="kw-fire"></div></div>
   <div id="kw-hot-sec" style="display:none;margin-bottom:20px"><div class="sh"><div><div class="st">⚡ Hot Keywords</div></div></div><div class="g3" id="kw-hot"></div></div>
-  <div id="kw-tbl-sec" style="display:none"><div class="sh"><div><div class="st">Full Keyword Table</div></div></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>Keyword</th><th>Category</th><th class="r">Searches/Mo</th><th class="r">CPC</th><th class="r">ROI</th><th class="r">Trend</th><th class="r">Competition</th><th>Vol</th></tr></thead><tbody id="kw-tbody"></tbody></table></div></div>
+  <div id="kw-tbl-sec" style="display:none"><div class="sh"><div><div class="st">Full Keyword Table</div><div class="ss">CPC = about how much each click costs if you ran an ad for it. ROI = how good a payoff it's likely to give you, from 0 (poor) to 100 (excellent). Vol = a rough visual bar for how often people search it.</div></div></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>Keyword</th><th>Category</th><th class="r">Searches/Mo</th><th class="r">CPC</th><th class="r">ROI</th><th class="r">Trend</th><th class="r">Competition</th><th>Vol</th></tr></thead><tbody id="kw-tbody"></tbody></table></div></div>
   <div class="sm" id="kw-s" style="margin-top:9px"></div>
   </div>
 </div>
@@ -4544,9 +4545,9 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
 <!-- ==================== ADMIN (platform owner only) ==================== -->
 <div id="page-admin" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Admin — All Tenants</div><div class="ss">Read-only visibility across every account on the platform · you cannot act as another tenant from here</div></div></div>
+  <div class="sh"><div><div class="st">Admin — All Businesses</div><div class="ss">You can look at every business account using Eagle I from here, but you cannot make changes to them or act on their behalf.</div></div></div>
   <div id="admin-tenant-list" style="display:flex;flex-direction:column;gap:8px">
-    <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Loading tenants...</div>
+    <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Loading the list of businesses...</div>
   </div>
   <div id="admin-snapshot" style="margin-top:20px"></div>
 </div>
@@ -4555,16 +4556,16 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
 <!-- ==================== ACCOUNT SETTINGS ==================== -->
 <div id="page-account" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Account Settings</div><div class="ss">Your login, password, and account data</div></div></div>
+  <div class="sh"><div><div class="st">Account Settings</div><div class="ss">Change the email and password you use to sign in, update your business details, or delete your account.</div></div></div>
 
   <div id="verify-banner" class="ib" style="display:none;margin-bottom:16px;border-color:rgba(255,180,0,.35)">
-    <div class="ibt">📧 Verify your email</div>
-    <div class="ibb">We sent a verification link to <span id="verify-email-addr"></span>. <button class="btn-xs p" onclick="resendVerification()" style="margin-left:6px">Resend link</button></div>
+    <div class="ibt">📧 Please verify your email address</div>
+    <div class="ibb">We sent a confirmation email to <span id="verify-email-addr"></span>. Open that email and click the link inside it to confirm this is really you. Don't see it? Check your spam folder, or <button class="btn-xs p" onclick="resendVerification()" style="margin-left:6px">click here to send it again</button></div>
   </div>
 
   <div class="platform-card" style="margin-bottom:16px">
     <div class="platform-name" style="margin-bottom:12px">Company Profile</div>
-    <div style="font-size:12px;color:var(--ink2);margin-bottom:12px">What you entered at signup — edit anytime. This does not regenerate your Strategy/Keywords/Competitors/Opportunities content; use each tab's "Refresh" button for that.</div>
+    <div style="font-size:12px;color:var(--ink2);margin-bottom:12px">This is what you entered when you first signed up — feel free to correct or update it anytime by typing here and clicking "Save Company Profile" below. Note: changing this will NOT automatically update your Strategy, Keywords, Competitors, or Opportunities pages — go to each of those tabs and click their own "Refresh" button if you want those to reflect your changes.</div>
     <div class="g2" style="gap:10px">
       <div class="cred-row"><div class="cred-label">Company Name</div><input class="cred-input" type="text" id="prof-company-name"></div>
       <div class="cred-row"><div class="cred-label">Industry</div>
@@ -4618,8 +4619,8 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   </div>
 
   <div class="platform-card" style="margin-top:16px;border-color:rgba(255,45,74,.35)">
-    <div class="platform-name" style="margin-bottom:6px;color:var(--red)">Delete Account</div>
-    <div style="font-size:12px;color:var(--ink2);margin-bottom:10px">Permanently deletes your account and all data — business profile, leads, landing page, scheduled posts, connections. This cannot be undone.</div>
+    <div class="platform-name" style="margin-bottom:6px;color:var(--red)">Delete My Account</div>
+    <div style="font-size:12px;color:var(--ink2);margin-bottom:10px">Warning: this permanently erases everything — your business details, leads, landing page, scheduled posts, and connected accounts. There is no way to undo this or get your information back once it's done.</div>
     <div class="cred-row"><div class="cred-label">Confirm Password</div><input class="cred-input" type="password" id="acct-del-pass" autocomplete="current-password"></div>
     <button class="btn" style="background:var(--red);color:#fff;margin-top:10px" onclick="deleteAccount()">Delete My Account</button>
     <div class="sm" id="acct-del-s"></div>
@@ -4631,11 +4632,11 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
 <div id="page-credentials" class="page">
 <div class="wrap">
   <div class="sh">
-    <div><div class="st">Platform Credentials</div><div class="ss">Real accounts Eagle I can post to</div></div>
+    <div><div class="st">Connect Your Real Accounts</div><div class="ss">Link your real Facebook, Instagram, and Google Business accounts here so Eagle I can post to them for you.</div></div>
   </div>
   <div class="ib" style="margin-bottom:16px">
-    <div class="ibt">🔒 Real OAuth only — never a pasted password or token</div>
-    <div class="ibb">Both platforms below connect the same way: click Connect, log in on the platform's own site, and Eagle I receives a scoped access token directly from them — nothing is typed into a form here or stored by Eagle I outside that token exchange. See <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button> for the platforms that aren't connectable yet, and why.</div>
+    <div class="ibt">🔒 You never type your password into Eagle I</div>
+    <div class="ibb">Connecting works the same way for both accounts below: click "Connect," you'll be taken to Facebook's or Google's own official website to log in there (not here), and once you approve it, they send Eagle I permission to post on your behalf. Eagle I never sees or stores your actual password. Looking for a platform not listed here, like LinkedIn or Yelp? Click <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button> to see what's available and why.</div>
   </div>
   <div class="g2">
     <div class="platform-card" id="meta-connect-card">
@@ -4643,7 +4644,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
         <div class="platform-icon pi-fb" style="width:36px;height:36px;font-size:18px;margin:0">📘</div>
         <div><div class="platform-name">Facebook &amp; Instagram</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2)" id="meta-connect-sub">Not connected</div></div>
       </div>
-      <div style="font-size:12px;color:var(--ink2);margin-bottom:11px">Real posting via Meta's official Graph API — no pasted tokens. Log in with Facebook, pick your Page, and Eagle I can publish directly to that Page (and its linked Instagram Business account, if any).</div>
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:11px">Click the button below, log in with your real Facebook account, and choose your business's Facebook Page. Eagle I can then post directly to that Page (and to its linked Instagram account too, if you have one).</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="meta-connect-actions">
         <button class="btn-xs p" onclick="window.location.href='/api/social/meta/connect'">Connect Facebook</button>
       </div>
@@ -4654,7 +4655,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
         <div class="platform-icon pi-go" style="width:36px;height:36px;font-size:18px;margin:0">🌟</div>
         <div><div class="platform-name">Google Business Profile</div><div style="font-family:var(--fm);font-size:8px;color:var(--blue2)" class="gbp-sub">Not connected</div></div>
       </div>
-      <div style="font-size:12px;color:var(--ink2);margin-bottom:11px">Real posting via Google's Business Profile API — no pasted tokens. Log in with Google, pick your listing, and Eagle I can publish updates directly to it.</div>
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:11px">Click the button below, log in with your real Google account, and choose your business listing. Eagle I can then post updates directly to it.</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap" class="gbp-actions"></div>
       <div class="sm" id="gbp-connect-s"></div>
     </div>
@@ -4668,67 +4669,67 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
 <!-- ==================== IN PROGRESS (platforms Eagle I can't post to yet) ==================== -->
 <div id="page-inprogress" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">🚧 In Progress</div><div class="ss">Platforms Eagle I can't post to for real yet — and the honest reason why</div></div></div>
+  <div class="sh"><div><div class="st">🚧 Coming Later</div><div class="ss">A plain, honest list of places Eagle I can't post to for you yet, and exactly why not.</div></div></div>
   <div class="ib" style="margin-bottom:16px">
-    <div class="ibt">Why these aren't in the composer</div>
-    <div class="ibb">Facebook, Instagram, and Google Business Profile post for real — connect them in <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('credentials',document.getElementById('t-social'))">⚙ Credentials</button>. The platforms below used to sit in the composer as look-alike options that quietly did nothing when picked, and the old Credentials page asked for real passwords and API keys it never actually used — both removed. This is the honest list instead: what's blocked because no public API exists at all, versus what's technically possible but hasn't been built.</div>
+    <div class="ibt">What Eagle I can do for real, right now</div>
+    <div class="ibb">Facebook, Instagram, and Google Business are all working today — go to <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('credentials',document.getElementById('t-social'))">⚙ Credentials</button> to connect them. Everything below is what people often ask about next, split into two honest groups: places nobody can post to automatically no matter what tool they use, and places that could technically be added here later but haven't been built yet.</div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:16px">No public API exists — not buildable by any app</div></div></div>
+    <div class="sh"><div><div class="st" style="font-size:16px">Nobody can post here automatically — not Eagle I, not any other tool</div></div></div>
     <div class="g2" style="margin-bottom:20px">
       <div class="platform-card">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
           <div class="platform-icon pi-yw" style="width:36px;height:36px;font-size:18px;margin:0">⭐</div>
-          <div><div class="platform-name">Yelp</div><span class="badge b-hot" style="margin-top:3px;display:inline-block">NO PUBLIC API</span></div>
+          <div><div class="platform-name">Yelp</div><span class="badge b-hot" style="margin-top:3px;display:inline-block">NOT POSSIBLE YET</span></div>
         </div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Yelp's public Fusion API is read-only — searching businesses and reading reviews. There's no endpoint for posting updates, responding as the owner, or anything else write-side, for Eagle I or any third-party tool.</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Yelp doesn't let any outside software post updates or reply to reviews on a business's behalf — you have to log in and do it yourself, directly on yelp.com.</div>
       </div>
       <div class="platform-card">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
           <div class="platform-icon pi-hz" style="width:36px;height:36px;font-size:18px;margin:0">🏠</div>
-          <div><div class="platform-name">Houzz</div><span class="badge b-hot" style="margin-top:3px;display:inline-block">NO PUBLIC API</span></div>
+          <div><div class="platform-name">Houzz</div><span class="badge b-hot" style="margin-top:3px;display:inline-block">NOT POSSIBLE YET</span></div>
         </div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Houzz has no public developer API at all — not even a read-only one. A Houzz profile has to be maintained by hand, directly on houzz.com.</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Houzz doesn't offer any way for outside software to connect at all. Your Houzz profile has to be kept up to date by hand, directly on houzz.com.</div>
       </div>
       <div class="platform-card">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
           <div class="platform-icon" style="background:linear-gradient(135deg,#00b551,#008a3d);width:36px;height:36px;font-size:18px;margin:0;border-radius:12px;display:flex;align-items:center;justify-content:center">🏘️</div>
-          <div><div class="platform-name">Nextdoor</div><span class="badge b-hot" style="margin-top:3px;display:inline-block">NO PUBLIC API</span></div>
+          <div><div class="platform-name">Nextdoor</div><span class="badge b-hot" style="margin-top:3px;display:inline-block">NOT POSSIBLE YET</span></div>
         </div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Nextdoor has no public developer API. Posting there means logging in as a real neighbor/business account by hand, directly on nextdoor.com.</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Nextdoor doesn't offer any way for outside software to connect either. Posting there means logging in yourself, directly on nextdoor.com.</div>
       </div>
     </div>
   </div>
   <div class="section">
-    <div class="sh"><div><div class="st" style="font-size:16px">A real API exists — just not built here yet</div></div></div>
+    <div class="sh"><div><div class="st" style="font-size:16px">This one is possible — Eagle I just hasn't added it yet</div></div></div>
     <div class="g2">
       <div class="platform-card">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
           <div class="platform-icon" style="width:36px;height:36px;font-size:18px;margin:0;background:linear-gradient(135deg,#0a66c2,#004182);border-radius:11px;display:flex;align-items:center;justify-content:center">🔗</div>
-          <div><div class="platform-name">LinkedIn</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NOT YET BUILT</span></div>
+          <div><div class="platform-name">LinkedIn</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NOT BUILT YET</span></div>
         </div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7">LinkedIn does have a real API for posting company updates — but using it requires approval through LinkedIn's own Marketing Developer Platform program, the same kind of manual review Meta and Google Business Profile already required. That review hasn't been started for LinkedIn. Real, buildable, just not begun.</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">LinkedIn does allow outside software to post company updates — but first requires LinkedIn's own approval process (similar to what Facebook and Google Business already required for Eagle I). That approval process for LinkedIn simply hasn't been started yet.</div>
       </div>
       <div class="platform-card">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
           <div class="platform-icon pi-web" style="width:36px;height:36px;font-size:18px;margin:0">🌐</div>
-          <div><div class="platform-name">Your Website</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NOT YET BUILT</span></div>
+          <div><div class="platform-name">Your Own Website</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NOT BUILT YET</span></div>
         </div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7">There's no universal "post to a website" API — every business's site is built differently. A WordPress site specifically could connect for real via WordPress's own REST API (an Application Password, entered by you, used only for that site) — that's the most common case and the one most worth building first, but it isn't wired up yet.</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">Every business's website is built differently, so there's no single way to connect to "a website" in general. If your site runs on WordPress specifically, that's the most common case and the most likely to be supported first — but it isn't set up yet.</div>
       </div>
       <div class="platform-card">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
           <div class="platform-icon" style="width:36px;height:36px;font-size:18px;margin:0;background:var(--bg5);border-radius:11px;display:flex;align-items:center;justify-content:center">📡</div>
-          <div><div class="platform-name">Real Social Mention Scanning</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NEEDS A PAID KEY</span></div>
+          <div><div class="platform-name">Really Scanning Social Media for Mentions of Your Business</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NEEDS A PAID TOOL</span></div>
         </div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7">The "Social Mention Ideas" examples on Market Intel are AI-simulated, not a live feed — there's no free API for scanning organic social chatter (Nextdoor and Facebook both lock this down; X's API is paid). Real mention-scanning would need a paid third-party social-listening service (e.g. Mention.com, Brandwatch) with your own account and API key — a real recurring cost, so it's not something to wire up without asking first.</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">The "Social Mention Ideas" you see on Market Intel are AI-written examples, not a real live feed — there's no free way to scan real social media chatter. Doing that for real would require paying for a separate specialized service, so it's not something to add without checking with you first, since it's an ongoing cost.</div>
       </div>
       <div class="platform-card">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
           <div class="platform-icon" style="width:36px;height:36px;font-size:18px;margin:0;background:var(--bg5);border-radius:11px;display:flex;align-items:center;justify-content:center">📈</div>
-          <div><div class="platform-name">S&amp;P 500 Market Signal</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NOT YET BUILT</span></div>
+          <div><div class="platform-name">Stock Market-Based Marketing Signal</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NOT BUILT YET</span></div>
         </div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7">This used to live on the dashboard and Market Intel as an "Automated Ad Rules" card — but the daily change figure it showed was AI-guessed, not a real quote, so despite the name nothing was actually automated. A real index value is easy to get for free (Stooq, Alpha Vantage's free tier), but wiring that up and building real threshold-triggered budget/post actions on top of it is a separate project — parked here rather than left live and mislabeled.</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">This used to be a dashboard feature that suggested changing your ad budget based on how the stock market was doing that day — but the number it used was an AI guess, not a real stock price, so it was removed rather than left live and misleading. A real version of this could be built later.</div>
       </div>
     </div>
   </div>
