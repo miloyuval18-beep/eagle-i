@@ -1115,6 +1115,17 @@ tbody tr:last-child td{border-bottom:none}
   </div>
   <div id="ads-out" style="display:flex;flex-direction:column;gap:9px"><div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">Pick an option from each dropdown above, then click "Generate Ads" — you'll get 4 different versions to choose from</div></div>
   <div class="sm" id="ads-s"></div>
+
+  <div class="section" id="jobs-section" style="margin-top:20px;display:none">
+    <div class="sh"><div><div class="st" style="font-size:15px">🎯 Job Sites — For Neighbor-Radius Ads</div><div class="ss">Add a real address you're doing (or just did) work at. When you create a Facebook/Instagram campaign below, you can target a small radius around it instead of the whole country — "your neighbor just had this done" is a strong, hyper-local angle.</div></div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">
+      <input id="job-address" placeholder="Job site address" style="flex:1;min-width:180px">
+      <input id="job-label" placeholder="Label (optional, e.g. Smith roof job)" style="width:200px">
+      <button class="btn-xs p" onclick="addJob()">+ Add Job Site</button>
+    </div>
+    <div class="sm" id="job-s"></div>
+    <div id="jobs-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
+  </div>
   </div>
 </div>
 </div>
@@ -2892,13 +2903,67 @@ Return ONLY valid JSON: {"ads":[{"variant":"A — Community","hl":"Headline","co
 // creation Meta/Google campaign form either way, just seeded from a
 // different source of ad copy. submitAdCampaign(kind,uid) reads back
 // whatever ids this renders, so callers only need a unique uid.
+/* JOB SITES — real geocoded addresses (routes/jobs.js), used to target a
+   radius ad around a specific job instead of the whole country. */
+let jobsList=[];
+async function loadJobs(){
+  try{
+    const r=await fetch('/api/jobs');
+    const d=await r.json();
+    jobsList=d.jobs||[];
+    renderJobsList();
+  }catch(e){/* leave existing content on transient failure */}
+}
+function renderJobsList(){
+  const el=document.getElementById('jobs-list');if(!el)return;
+  if(!jobsList.length){el.innerHTML='<div style="text-align:center;padding:12px;color:var(--ink3);font-size:12px">No job sites added yet.</div>';return;}
+  el.innerHTML=jobsList.map(j=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 10px;background:var(--bg3)">
+      <div style="font-size:12px;color:var(--ink)">${escapeHtmlClient(j.label||j.formatted_address||j.raw_address)}${j.label?`<div style="font-size:10px;color:var(--ink3)">${escapeHtmlClient(j.formatted_address||j.raw_address)}</div>`:''}</div>
+      <button class="btn-xs" onclick="deleteJob('${j.id}')">Remove</button>
+    </div>`).join('');
+}
+async function addJob(){
+  const addrEl=document.getElementById('job-address'),labelEl=document.getElementById('job-label'),s=document.getElementById('job-s');
+  const address=(addrEl?.value||'').trim();
+  const label=(labelEl?.value||'').trim();
+  if(!address){if(s){s.textContent='Enter an address';s.style.color='var(--red)';}return;}
+  if(s){s.textContent='Finding this address...';s.style.color='var(--ink2)';}
+  try{
+    const r=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address,label:label||null})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed to add job site');
+    if(addrEl)addrEl.value='';
+    if(labelEl)labelEl.value='';
+    if(s){s.textContent='✓ Added: '+(d.job.formatted_address||d.job.raw_address);s.style.color='var(--green)';}
+    await loadJobs();
+  }catch(e){if(s){s.textContent='✗ '+e.message;s.style.color='var(--red)';}}
+}
+async function deleteJob(id){
+  try{
+    await fetch('/api/jobs/'+id,{method:'DELETE'});
+    await loadJobs();
+  }catch(e){showNotif('Error',e.message);}
+}
+function toggleAdRadiusFields(uid){
+  const on=document.getElementById('aci-'+uid+'-radius-on')?.checked;
+  const el=document.getElementById('aci-'+uid+'-radius-fields');
+  if(el)el.style.display=on?'block':'none';
+}
+
 function adCampaignFormHtml(kind,uid,defaults){
   if(kind==='meta'){
+    const jobOptions=jobsList.map(j=>`<option value="${j.id}">${escapeHtmlClient(j.label||j.formatted_address||j.raw_address)}</option>`).join('');
     return `<div style="background:var(--bg4);border-radius:var(--r);padding:9px;margin-top:7px">
       <input id="aci-${uid}-name" placeholder="Campaign name" value="${escAttr(defaults.name||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
       <input id="aci-${uid}-budget" type="number" min="1" step="1" placeholder="Daily budget ($)" style="width:100%;margin-bottom:6px;box-sizing:border-box">
       <input id="aci-${uid}-link" placeholder="Destination link (https://...)" value="${escAttr(defaults.link||C.site||'')}" style="width:100%;margin-bottom:6px;box-sizing:border-box">
       <textarea id="aci-${uid}-message" style="width:100%;min-height:56px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient(defaults.message||'')}</textarea>
+      ${jobsList.length?`<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="aci-${uid}-radius-on" onchange="toggleAdRadiusFields('${uid}')"> 🎯 Target a radius around a job site instead of the whole country</label>
+      <div id="aci-${uid}-radius-fields" style="display:none;margin-bottom:6px">
+        <select id="aci-${uid}-job" style="width:100%;margin-bottom:6px;box-sizing:border-box">${jobOptions}</select>
+        <input id="aci-${uid}-radius" type="number" min="1" max="50" step="1" value="3" placeholder="Radius (miles)" style="width:100%;box-sizing:border-box">
+      </div>`:''}
       <button class="btn-xs p" onclick="submitAdCampaign('meta','${uid}')">Create Campaign (Paused)</button>
       <div class="sm" id="aci-${uid}-s" style="margin-top:4px"></div>
     </div>`;
@@ -2937,7 +3002,15 @@ async function submitAdCampaign(kind,uid){
       const link=(document.getElementById('aci-'+uid+'-link')?.value||'').trim();
       const message=(document.getElementById('aci-'+uid+'-message')?.value||'').trim();
       if(!link||!message){if(s){s.textContent='Fill in link and ad text';s.style.color='var(--red)';}return;}
-      r=await fetch('/api/ads/meta/campaign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,dailyBudgetCents:Math.round(budget*100),message,link})});
+      const body={name,dailyBudgetCents:Math.round(budget*100),message,link};
+      if(document.getElementById('aci-'+uid+'-radius-on')?.checked){
+        const jobId=document.getElementById('aci-'+uid+'-job')?.value;
+        const radiusMiles=Number(document.getElementById('aci-'+uid+'-radius')?.value);
+        if(!jobId){if(s){s.textContent='Pick a job site, or uncheck radius targeting';s.style.color='var(--red)';}return;}
+        body.jobId=jobId;
+        body.radiusMiles=radiusMiles;
+      }
+      r=await fetch('/api/ads/meta/campaign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       d=await r.json();
     }else{
       const finalUrl=(document.getElementById('aci-'+uid+'-url')?.value||'').trim();
@@ -3094,6 +3167,12 @@ async function bootstrap(){
     const permitsTab=document.getElementById('t-permits');
     if(permitsTab)permitsTab.style.display=ME.showPermitsTab?'':'none';
     document.querySelectorAll('.real-estate-only').forEach(el=>{el.style.display=ME.showRealEstateFeatures?'':'none';});
+    // Job Sites (Ad Generator) uses the same gate as Permits/routes/jobs.js's
+    // qualifiesForPermits — not the narrower showRealEstateFeatures — since
+    // a construction company signed up under another industry should still
+    // see it.
+    const jobsSection=document.getElementById('jobs-section');
+    if(jobsSection){jobsSection.style.display=ME.showPermitsTab?'':'none';if(ME.showPermitsTab)loadJobs();}
 
     // Render cached content — generated once at onboarding, free to display now
     const gc=ME.generatedContent||{};

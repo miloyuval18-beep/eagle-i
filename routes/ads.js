@@ -41,6 +41,19 @@ function budgetError(dailyBudgetCents) {
   return null;
 }
 
+// Meta's real custom_locations radius bounds are 1-50 miles — same
+// "reject outright rather than let the platform's own API error surface
+// as a confusing 502" posture as budgetError above.
+const MIN_RADIUS_MILES = 1;
+const MAX_RADIUS_MILES = 50;
+
+function radiusError(miles) {
+  if (!Number.isFinite(miles) || miles <= 0) return 'radius miles must be a positive number.';
+  if (miles < MIN_RADIUS_MILES) return `Radius must be at least ${MIN_RADIUS_MILES} mile.`;
+  if (miles > MAX_RADIUS_MILES) return `Radius above ${MAX_RADIUS_MILES} miles isn't a "neighbor" radius ad anymore — use a country-wide campaign instead.`;
+  return null;
+}
+
 /* ============================== META ADS ============================== */
 // Reuses the same Meta app / OAuth connection as organic posting
 // (routes/social.js) — a tenant that's already connected Facebook/Instagram
@@ -206,12 +219,27 @@ router.patch('/api/ads/meta/ad-account', requireAuth, async (req, res) => {
 
 router.post('/api/ads/meta/campaign', requireAuth, requireMetaConfig, async (req, res) => {
   try {
-    const { name, dailyBudgetCents, message, link, headline, imageUrl, countries, ageMin, ageMax } = req.body || {};
+    const { name, dailyBudgetCents, message, link, headline, imageUrl, countries, ageMin, ageMax, jobId, radiusMiles } = req.body || {};
     if (!name || !name.trim()) return res.status(400).json({ error: { message: 'Campaign name is required.' } });
     if (!message || !message.trim()) return res.status(400).json({ error: { message: 'Ad text (message) is required.' } });
     if (!link || !/^https?:\/\//.test(link)) return res.status(400).json({ error: { message: 'A valid destination link (https://...) is required.' } });
     const budgetErr = budgetError(Number(dailyBudgetCents));
     if (budgetErr) return res.status(400).json({ error: { message: budgetErr } });
+
+    // Radius targeting around a real job site — never trust client-supplied
+    // coordinates directly, always resolve them from this tenant's own
+    // jobs row server-side.
+    let radiusLocation = null;
+    if (jobId) {
+      const jobRes = await query('SELECT latitude, longitude, formatted_address, raw_address FROM jobs WHERE id = $1 AND tenant_id = $2', [jobId, req.tenantId]);
+      if (!jobRes.rows.length) return res.status(404).json({ error: { message: 'Job site not found.' } });
+      const job = jobRes.rows[0];
+      if (job.latitude == null || job.longitude == null) return res.status(400).json({ error: { message: 'That job site has no location on file — try adding it again.' } });
+      const miles = Number.isFinite(Number(radiusMiles)) ? Number(radiusMiles) : 3;
+      const radErr = radiusError(miles);
+      if (radErr) return res.status(400).json({ error: { message: radErr } });
+      radiusLocation = { latitude: Number(job.latitude), longitude: Number(job.longitude), radius: miles, distance_unit: 'mile' };
+    }
 
     const conn = await getMetaConnection(req.tenantId);
     if (!conn) return res.status(400).json({ error: { message: 'No Facebook/Instagram account connected yet — connect one in Social HQ first.' } });
@@ -226,7 +254,9 @@ router.post('/api/ads/meta/campaign', requireAuth, requireMetaConfig, async (req
     });
 
     const targeting = {
-      geo_locations: { countries: (Array.isArray(countries) && countries.length ? countries : ['US']) },
+      geo_locations: radiusLocation
+        ? { custom_locations: [radiusLocation] }
+        : { countries: (Array.isArray(countries) && countries.length ? countries : ['US']) },
       age_min: Number.isFinite(Number(ageMin)) ? Number(ageMin) : 18,
       age_max: Number.isFinite(Number(ageMax)) ? Number(ageMax) : 65
     };
