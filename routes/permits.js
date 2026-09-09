@@ -6,12 +6,25 @@ const { query } = require('../db');
 const { requireAuth } = require('../auth');
 const { getRecentPermits, mostRecentWeekKey, isNewestWeek } = require('../lib/houstonPermits');
 const { HOUSTON_HIGH_VALUE_ZIPS, getHighValueZipInfo } = require('../lib/houstonZipValues');
-const { getRealHcadZipStatsForZips, findConfidentOwners } = require('../lib/hcadZipValues');
+const { getRealHcadZipStatsForZips, findConfidentOwners, getParcelAgesForZips } = require('../lib/hcadZipValues');
 const { getZipRegion } = require('../lib/houstonZipRegions');
-const { buildPermitLetter } = require('../lib/permitMailer');
+const { buildPermitLetter, buildAgingSystemLetter } = require('../lib/permitMailer');
+const { normalizeAddress } = require('../lib/hcadOwnerNames');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
 
 const router = express.Router();
+
+// Roughly the point in a system's typical service life where it's worth a
+// proactive look, not a hard failure age — framed to the homeowner as
+// "likely due," never a guarantee (see lib/permitMailer.js's letter copy).
+// These are defensible engineering ranges, not verified against real
+// roofing/HVAC/plumbing trade guidance — worth a sanity check against
+// that before this copy ships broadly.
+const SYSTEM_AGE_THRESHOLDS = {
+  roof: { minAge: 18, maxAge: 25 },
+  hvac: { minAge: 12, maxAge: 18 },
+  water_heater: { minAge: 8, maxAge: 12 }
+};
 
 router.get('/api/permits/high-value-areas', requireAuth, async (req, res) => {
   try {
@@ -172,6 +185,131 @@ router.post('/api/permits/mailer-letters', requireAuth, async (req, res) => {
     });
   } catch (err) {
     res.status(502).json({ error: { message: 'Failed to build mailer letters: ' + err.message } });
+  }
+});
+
+// Properties whose HCAD-recorded construction year suggests a given
+// system (roof/HVAC/water heater) is likely due, scoped to the same zips
+// the tenant's regular Permits view is already showing (from the same
+// getRecentPermits() window) so this stays relevant to their actual
+// service area rather than all of Harris County. Excludes any address
+// that already has a permit in that same recent window — a house that
+// just pulled a roof permit shouldn't also get an "aging roof" pitch.
+router.get('/api/permits/aging-systems', requireAuth, async (req, res) => {
+  try {
+    const tenantRes = await query('SELECT industry, company_name FROM tenants WHERE id = $1', [req.tenantId]);
+    if (!tenantRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    if (!qualifiesForPermits({ industry: tenantRes.rows[0].industry, companyName: tenantRes.rows[0].company_name })) {
+      return res.status(403).json({ error: { message: 'This feature is only available for real estate, home services, or construction accounts.' } });
+    }
+
+    const system = String(req.query.system || 'roof');
+    const thresholds = SYSTEM_AGE_THRESHOLDS[system];
+    if (!thresholds) {
+      return res.status(400).json({ error: { message: `system must be one of: ${Object.keys(SYSTEM_AGE_THRESHOLDS).join(', ')}` } });
+    }
+
+    const forceRefresh = req.query.refresh === 'true';
+    const { records, fetchedAt } = await getRecentPermits({ weeksBack: 4, forceRefresh });
+    const zips = [...new Set(records.map(r => r.zip).filter(Boolean))];
+    const recentAddresses = new Set(records.filter(r => r.address).map(r => `${r.zip}||${normalizeAddress(r.address)}`));
+
+    const thisYear = new Date().getFullYear();
+    const minYear = thisYear - thresholds.maxAge;
+    const maxYear = thisYear - thresholds.minAge;
+
+    const candidates = await getParcelAgesForZips(zips, { minYear, maxYear, limit: 300 });
+    const properties = candidates
+      .filter(p => !recentAddresses.has(`${p.zip}||${p.normalizedAddress}`))
+      .map(p => {
+        const zipInfo = getHighValueZipInfo(p.zip);
+        return {
+          zip: p.zip,
+          address: p.rawSiteAddress,
+          yearBuilt: p.yearBuilt,
+          approxAge: thisYear - p.yearBuilt,
+          region: getZipRegion(p.zip) || (zipInfo ? zipInfo.neighborhood : null) || `Zip ${p.zip}`,
+          neighborhood: zipInfo ? zipInfo.neighborhood : null,
+          highValue: !!zipInfo
+        };
+      });
+
+    res.json({
+      properties,
+      system,
+      thresholds,
+      fetchedAt: fetchedAt ? new Date(fetchedAt).toISOString() : null
+    });
+  } catch (err) {
+    res.status(502).json({ error: { message: 'Failed to load aging-system properties: ' + err.message } });
+  }
+});
+
+// Same shape and safeguards as POST /api/permits/mailer-letters above,
+// building letters for aging-system properties instead of real permits —
+// see lib/permitMailer.js's buildAgingSystemLetter for why this is a
+// separate function (reusing the permit-letter openers here would falsely
+// claim a permit exists).
+router.post('/api/permits/aging-mailer-letters', requireAuth, async (req, res) => {
+  try {
+    const tenantRes = await query('SELECT company_name, industry FROM tenants WHERE id = $1', [req.tenantId]);
+    if (!tenantRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    if (!qualifiesForPermits({ industry: tenantRes.rows[0].industry, companyName: tenantRes.rows[0].company_name })) {
+      return res.status(403).json({ error: { message: 'This feature is only available for real estate, home services, or construction accounts.' } });
+    }
+
+    const system = String(req.body.system || 'roof');
+    if (!SYSTEM_AGE_THRESHOLDS[system]) {
+      return res.status(400).json({ error: { message: `system must be one of: ${Object.keys(SYSTEM_AGE_THRESHOLDS).join(', ')}` } });
+    }
+
+    const properties = Array.isArray(req.body.properties) ? req.body.properties : [];
+    if (!properties.length) return res.status(400).json({ error: { message: 'No properties selected.' } });
+    if (properties.length > 200) return res.status(400).json({ error: { message: 'Select 200 properties or fewer at a time.' } });
+
+    const profileRes = await query(
+      'SELECT founder_name, phone, email, services, differentiators FROM business_profile WHERE tenant_id = $1',
+      [req.tenantId]
+    );
+    const profile = profileRes.rows[0] || {};
+    const tenant = {
+      name: tenantRes.rows[0].company_name,
+      founder: profile.founder_name,
+      phone: profile.phone,
+      email: profile.email,
+      services: profile.services,
+      unique: profile.differentiators
+    };
+
+    const cleanedProperties = properties.map((p, i) => {
+      const zip = cleanField(p && p.zip).replace(/[^0-9]/g, '').slice(0, 5);
+      const yearBuilt = parseInt(p && p.yearBuilt, 10);
+      return {
+        id: i,
+        zip,
+        address: cleanField(p && p.address),
+        yearBuilt: Number.isFinite(yearBuilt) ? yearBuilt : null
+      };
+    });
+
+    const owners = await findConfidentOwners(
+      cleanedProperties.map(p => ({ id: p.id, zip: p.zip, address: p.address }))
+    );
+
+    const letters = cleanedProperties.map(property => {
+      const zipInfo = getHighValueZipInfo(property.zip);
+      const region = getZipRegion(property.zip) || (zipInfo ? zipInfo.neighborhood : null) || (property.zip ? `Zip ${property.zip}` : '');
+      const owner = owners.get(property.id) || null;
+      const letter = buildAgingSystemLetter({ property, area: { zip: property.zip, region }, tenant, system, owner });
+      return { ...letter, yearBuilt: property.yearBuilt, system, region };
+    });
+
+    res.json({
+      letters,
+      tenant: { name: tenant.name, founder: tenant.founder, phone: tenant.phone, email: tenant.email }
+    });
+  } catch (err) {
+    res.status(502).json({ error: { message: 'Failed to build aging-system mailer letters: ' + err.message } });
   }
 });
 

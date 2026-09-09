@@ -1076,6 +1076,27 @@ tbody tr:last-child td{border-bottom:none}
       <div style="margin-top:8px;display:flex;gap:5px"><button class="btn-xs" onclick="exportPermitAddresses()">📥 Download Addresses as a Spreadsheet</button><button class="btn-xs" onclick="window.open('https://www.houstonpermittingcenter.org/sold-permits-search','_blank')">See the City's Original Records ↗</button></div>
     </div>
   </div>
+
+  <div class="section" style="margin-top:24px">
+    <div class="sh"><div><div class="st">🕰️ Aging Systems</div><div class="ss">Beyond just-filed permits, this looks at how old a home's roof, HVAC, or water heater likely is — from real Harris County property records — and flags ones that are probably due for a look, even before any permit gets filed. "Likely due" is a helpful estimate based on typical service life, not a guarantee anything is actually broken.</div></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <select id="aging-system-select"><option value="roof">🏠 Roof (typically due at 18-25 years)</option><option value="hvac">❄️ HVAC (typically due at 12-18 years)</option><option value="water_heater">🚿 Water Heater (typically due at 8-12 years)</option></select>
+      <button class="btn btn-blue" id="aging-btn" onclick="loadAgingSystems()"><span class="spin" id="aging-spin"></span><span id="aging-lbl">Find Aging Systems</span></button>
+    </div>
+    <div class="sm" id="aging-s"></div>
+    <div id="aging-select-bar" class="card" style="display:none;margin-bottom:12px;background:var(--bg4)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <span id="aging-sel-count" style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--blue2)">0 selected</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-xs" onclick="selectAllAgingProperties()">Select Everything Shown</button>
+          <button class="btn-xs" onclick="clearAgingSelection()">Clear My Selections</button>
+          <button class="btn-xs p" id="aging-gen-btn" disabled onclick="generateAgingMailerPdf('download')">📄 Create Mailer Letters (PDF file)</button>
+          <button class="btn-xs" id="aging-print-btn" disabled onclick="generateAgingMailerPdf('print')">🖨️ Print Letters Now</button>
+        </div>
+      </div>
+    </div>
+    <div id="aging-out"><div style="text-align:center;padding:24px;color:var(--ink3);font-size:12px">Pick a system above, then click "Find Aging Systems"</div></div>
+  </div>
 </div>
 </div>
 
@@ -2842,6 +2863,148 @@ async function generateMailerPdf(action){
   }catch(e){showNotif('Error',e.message);}
   btn.disabled=false;btn.textContent=orig;
 }
+
+/* AGING SYSTEMS — properties whose real HCAD-recorded construction year
+   suggests a roof/HVAC/water heater is likely due, even with no permit
+   filed. Same select -> mailer-PDF pattern as the permit list above, kept
+   as its own simpler flow rather than reusing permSelected/renderPermAreas
+   directly (different data shape: no permit type/date/comments, just an
+   address + year built). */
+let agingProperties=[];
+let agingSelected=new Map(); // "zip|address" -> property
+function agingKey(p){return p.zip+'|'+p.address;}
+async function loadAgingSystems(){
+  const btn=document.getElementById('aging-btn'),spin=document.getElementById('aging-spin'),lbl=document.getElementById('aging-lbl'),s=document.getElementById('aging-s');
+  const system=document.getElementById('aging-system-select')?.value||'roof';
+  if(btn)btn.disabled=true;if(spin)spin.style.display='block';if(lbl)lbl.textContent='Searching...';
+  if(s){s.textContent='Checking real Harris County property records...';s.style.color='var(--ink2)';}
+  try{
+    const r=await fetch('/api/permits/aging-systems?system='+encodeURIComponent(system));
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed to load');
+    agingProperties=d.properties||[];
+    agingSelected=new Map();
+    renderAgingProperties();
+    updateAgingSelectBar();
+    if(s){s.textContent=`${agingProperties.length} propert${agingProperties.length===1?'y':'ies'} found${d.fetchedAt?' · permit data as of '+new Date(d.fetchedAt).toLocaleString():''}`;s.style.color='var(--ink2)';}
+  }catch(e){if(s){s.textContent='Error: '+e.message;s.style.color='var(--red)';}}
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';if(lbl)lbl.textContent='Find Aging Systems';
+}
+function renderAgingProperties(){
+  const out=document.getElementById('aging-out');if(!out)return;
+  if(!agingProperties.length){out.innerHTML='<div style="text-align:center;padding:24px;color:var(--ink3);font-size:12px">No matching properties found in your recent permit areas for this system and age range.</div>';return;}
+  out.innerHTML='<div class="g3">'+agingProperties.map(p=>{
+    const key=agingKey(p);
+    const checked=agingSelected.has(key)?'checked':'';
+    return `<div class="card">
+      <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+        <input type="checkbox" ${checked} onchange="toggleAgingSelect('${escAttr(key)}',this.checked)" style="margin-top:3px">
+        <div>
+          <div style="font-family:var(--fh);font-size:13px;font-weight:600;color:var(--ink)">${escapeHtmlClient(p.address)}</div>
+          <div style="font-size:11px;color:var(--ink2);margin-top:2px">${p.zip}${p.region?' · '+escapeHtmlClient(p.region):''}</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:2px">Built ~${p.yearBuilt} · about ${p.approxAge} years old</div>
+        </div>
+      </label>
+    </div>`;
+  }).join('')+'</div>';
+}
+function toggleAgingSelect(key,checked){
+  if(checked){
+    const p=agingProperties.find(x=>agingKey(x)===key);
+    if(p)agingSelected.set(key,p);
+  }else agingSelected.delete(key);
+  updateAgingSelectBar();
+}
+function selectAllAgingProperties(){
+  agingSelected=new Map();
+  agingProperties.forEach(p=>agingSelected.set(agingKey(p),p));
+  renderAgingProperties();updateAgingSelectBar();
+}
+function clearAgingSelection(){
+  agingSelected=new Map();
+  renderAgingProperties();updateAgingSelectBar();
+}
+function updateAgingSelectBar(){
+  const bar=document.getElementById('aging-select-bar');if(!bar)return;
+  const n=agingSelected.size;
+  bar.style.display=agingProperties.length?'':'none';
+  const countEl=document.getElementById('aging-sel-count');if(countEl)countEl.textContent=n+' selected';
+  const genBtn=document.getElementById('aging-gen-btn'),printBtn=document.getElementById('aging-print-btn');
+  if(genBtn)genBtn.disabled=!n;
+  if(printBtn)printBtn.disabled=!n;
+}
+async function generateAgingMailerPdf(action){
+  if(!agingSelected.size){showNotif('Nothing selected','Select at least one property first');return;}
+  const system=document.getElementById('aging-system-select')?.value||'roof';
+  const btnId=action==='print'?'aging-print-btn':'aging-gen-btn';
+  const btn=document.getElementById(btnId);
+  const orig=btn.textContent;btn.disabled=true;btn.textContent='Generating…';
+  try{
+    const properties=[...agingSelected.values()].map(v=>({zip:v.zip,address:v.address,yearBuilt:v.yearBuilt}));
+    const r=await fetch('/api/permits/aging-mailer-letters',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({properties,system})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed to build letters');
+
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({unit:'pt',format:'letter'});
+    const marginX=64,pageW=612,pageH=792,maxWidth=pageW-marginX*2;
+    const tenant=d.tenant||{};
+    let realNameCount=0;
+
+    d.letters.forEach((L,i)=>{
+      if(i>0)doc.addPage();
+      if(L.recipientName&&L.recipientName!=='Property Owner')realNameCount++;
+      let y=60;
+      doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(tenant.name||'',marginX,y);
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120);
+      const contactLine=[tenant.phone,tenant.email].filter(Boolean).join(' · ');
+      if(contactLine)doc.text(contactLine,pageW-marginX,y,{align:'right'});
+      doc.setTextColor(0);
+      y+=6;doc.setDrawColor(210);doc.line(marginX,y,pageW-marginX,y);
+      y+=28;
+
+      doc.setFontSize(10);
+      doc.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),marginX,y);y+=26;
+      doc.text(L.recipientName||'Property Owner',marginX,y);y+=14;
+      doc.text(L.recipientAddress||'',marginX,y);y+=14;
+      doc.text('Houston, TX'+(L.zip?' '+L.zip:''),marginX,y);y+=32;
+
+      doc.text(L.greeting||'Dear Property Owner,',marginX,y);y+=22;
+
+      doc.setFontSize(11);
+      const lh=16;
+      (L.bodyParagraphs||[]).forEach((para,pi)=>{
+        if(pi>0)y+=8;
+        const lines=doc.splitTextToSize(para||'',maxWidth);
+        lines.forEach(line=>{
+          if(y>pageH-130){doc.addPage();y=60;}
+          doc.text(line,marginX,y);y+=lh;
+        });
+      });
+
+      y+=14;
+      doc.text(L.signOff||'Sincerely,',marginX,y);y+=28;
+      (L.signatureLines||[]).forEach(line=>{doc.text(line,marginX,y);y+=14;});
+
+      doc.setFontSize(8);doc.setTextColor(150);
+      doc.text(`Ref: Built ~${L.yearBuilt||'—'} · ${L.workLabel||''}`,marginX,pageH-40);
+      doc.setTextColor(0);
+    });
+
+    const filename='aging_'+system+'_letters_'+new Date().toISOString().slice(0,10)+'.pdf';
+    const nameNote=realNameCount?` · ${realNameCount} addressed to a real confirmed owner name`:'';
+    if(action==='print'){
+      doc.autoPrint();
+      window.open(doc.output('bloburl'));
+      showNotif('Mailer ready',d.letters.length+' letter'+(d.letters.length===1?'':'s')+' opened for printing'+nameNote);
+    }else{
+      doc.save(filename);
+      showNotif('Mailer downloaded',d.letters.length+' personalized letter'+(d.letters.length===1?'':'s')+' saved as '+filename+nameNote);
+    }
+  }catch(e){showNotif('Error',e.message);}
+  btn.disabled=false;btn.textContent=orig;
+}
+
 function openOfficialPermitRecord(projectNo){
   // No reliable direct-link exists to a specific permit's official record —
   // the city's main portal is login-gated for registered applicants only,

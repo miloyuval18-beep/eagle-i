@@ -117,8 +117,8 @@ async function main() {
   const NEWLINE = 0x0a;
 
   const {
-    buildRealAcctHeaderIndex, parseRealAcctLine, parseRealAcctOwnerLine,
-    aggregateZipValues, upsertZipStats, replaceOwnerParcels
+    buildRealAcctHeaderIndex, parseRealAcctLine, parseRealAcctOwnerLine, parseRealAcctParcelAgeLine,
+    aggregateZipValues, upsertZipStats, replaceOwnerParcels, replaceParcelAges
   } = require('../lib/hcadZipValues');
 
   const firstNewline = buf.indexOf(NEWLINE);
@@ -174,11 +174,15 @@ async function main() {
     return;
   }
 
-  console.log('Parsing zip/value aggregates and confident owner names (Houston-area zips only)...');
+  console.log('Parsing zip/value aggregates, confident owner names, and parcel ages (Houston-area zips only)...');
   const parsed = [];
   const ownerRows = [];
+  const ageRows = [];
   let lineStart = firstNewline + 1;
   let totalLines = 0;
+  // One pass over the file for all three parsers — a second or third
+  // independent full scan of an ~800MB+ inflated buffer would meaningfully
+  // slow an already multi-minute, ~1.8M-line import.
   while (lineStart < buf.length) {
     let lineEnd = buf.indexOf(NEWLINE, lineStart);
     if (lineEnd === -1) lineEnd = buf.length;
@@ -189,9 +193,12 @@ async function main() {
     if (row && row.zip.startsWith(HOUSTON_ZIP_PREFIX)) parsed.push(row);
     const ownerRow = parseRealAcctOwnerLine(headerIndex, line);
     if (ownerRow && ownerRow.zip.startsWith(HOUSTON_ZIP_PREFIX)) ownerRows.push(ownerRow);
+    const ageRow = parseRealAcctParcelAgeLine(headerIndex, line);
+    if (ageRow && ageRow.zip.startsWith(HOUSTON_ZIP_PREFIX)) ageRows.push(ageRow);
   }
   console.log(`Scanned ${totalLines.toLocaleString()} accounts, kept ${parsed.length.toLocaleString()} with a usable Houston-area zip + market value.`);
   console.log(`Of those, ${ownerRows.length.toLocaleString()} parsed as a confident individual owner name (businesses, trusts, government owners, and HCAD's "CURRENT OWNER" placeholder are excluded).`);
+  console.log(`Of those, ${ageRows.length.toLocaleString()} had a usable year-built value.`);
 
   const stats = aggregateZipValues(parsed);
   console.log(`Aggregated into ${stats.length} zip codes.`);
@@ -209,6 +216,8 @@ async function main() {
   await upsertZipStats(stats, taxYear);
   console.log(`Writing ${ownerRows.length.toLocaleString()} rows to hcad_owner_parcels (replacing the previous import)...`);
   await replaceOwnerParcels(ownerRows, taxYear);
+  console.log(`Writing ${ageRows.length.toLocaleString()} rows to hcad_parcel_ages (replacing the previous import)...`);
+  await replaceParcelAges(ageRows, taxYear);
   console.log('Done.');
 }
 
