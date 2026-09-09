@@ -1550,21 +1550,32 @@ async function actOnStrategy(i){
   const btn=document.getElementById('strat-act-btn-'+i);
   const container=document.getElementById('strat-ic-'+i);
   if(btn){btn.disabled=true;btn.textContent='Drafting...';}
+  // Visible immediately, in the card itself — a failure below replaces
+  // this with a real error message in the same spot rather than only a
+  // toast, which is easy to miss and reads as "the button did nothing."
+  if(container)container.innerHTML='<div style="margin-top:8px;font-size:12px;color:var(--ink3)">Drafting...</div>';
   try{
-    const p=await claude(`A marketing recommendation for ${C.name} (industry: ${ME?.industry||'general'}, area: ${C.community||'their service area'}, phone ${C.phone}) needs to become one real action inside this app.
+    // One flat schema with every field always present (empty string for
+    // whichever branch doesn't apply) — asking for four alternative full
+    // JSON shapes in one prompt was unreliable: the model sometimes
+    // blended shapes or added prose around the "wrong" example, which
+    // failed to parse and made the button look broken again. A single
+    // shape is a much more standard structured-output pattern.
+    const p=await claude(`A marketing recommendation for ${C.name} (industry: ${ME?.industry||'general'}, area: ${C.community||'their service area'}, phone ${C.phone}, voice: ${C.voice||'friendly and professional'}) needs to become one real action inside this app.
 Recommendation: "${title}" — ${fix}
-Pick exactly ONE actionType from this list, whichever the recommendation is actually asking for:
-- "post": share something publicly on social media — use this if nothing more specific fits
-- "review_request": ask a specific past customer to leave a review
-- "vendor_outreach": reach out to a referral partner, vendor, or other business contact by email
-- "ad_campaign": run a paid ad on Meta (Facebook/Instagram) or Google
-Return ONLY valid JSON in the exact shape for the type you picked:
-{"actionType":"post","post":"2-4 sentence post in ${C.voice||'a friendly, professional'} voice, mentioning ${C.phone} where natural"}
-{"actionType":"review_request","note":"one short sentence on who to ask and why"}
-{"actionType":"vendor_outreach","recipientType":"e.g. Real Estate Agent","subject":"email subject line","message":"2-3 sentence outreach email from ${C.founder||'the owner'} at ${C.name}, phone ${C.phone}, in ${C.voice||'a friendly, professional'} voice"}
-{"actionType":"ad_campaign","platform":"meta or google","headline":"short ad headline","body":"2-3 sentence ad copy mentioning ${C.phone}"}`,600);
-    renderStrategyAction(i,container,p||{});
-  }catch(e){showNotif('Could not draft',e.message);}
+Decide which ONE of these four real actions the recommendation is actually asking for, then fill in only the fields that action needs (leave the rest as empty strings):
+- post: share something publicly on social media — the default if nothing more specific fits
+- review_request: ask a specific past customer to leave a review
+- vendor_outreach: reach out to a referral partner, vendor, or other business contact by email
+- ad_campaign: run a paid ad on Meta (Facebook/Instagram) or Google
+Return ONLY this exact JSON shape, all keys present:
+{"actionType":"post|review_request|vendor_outreach|ad_campaign","post":"post text if actionType=post, else \"\"","reviewNote":"one short sentence on who to ask if actionType=review_request, else \"\"","vendorRecipientType":"e.g. Real Estate Agent, if actionType=vendor_outreach, else \"\"","vendorSubject":"email subject if actionType=vendor_outreach, else \"\"","vendorMessage":"2-3 sentence outreach email if actionType=vendor_outreach, else \"\"","adPlatform":"meta or google, if actionType=ad_campaign, else \"\"","adHeadline":"short ad headline if actionType=ad_campaign, else \"\"","adBody":"2-3 sentence ad copy if actionType=ad_campaign, else \"\""}`,700);
+    if(!p||typeof p!=='object')throw new Error('Got an unreadable response — try again.');
+    renderStrategyAction(i,container,p);
+  }catch(e){
+    if(container)container.innerHTML=`<div style="margin-top:8px;font-size:12px;color:var(--red)">Could not draft: ${escapeHtmlClient(e.message)}. <a href="#" onclick="actOnStrategy(${i});return false" style="color:var(--red);text-decoration:underline">Try again</a></div>`;
+    showNotif('Could not draft',e.message);
+  }
   if(btn){btn.disabled=false;btn.textContent='🚀 Act On This';}
 }
 function renderStrategyAction(i,container,p){
@@ -1572,7 +1583,7 @@ function renderStrategyAction(i,container,p){
   const s=_strategyCards[i]||{};
   if(p.actionType==='review_request'){
     container.innerHTML=`<div style="margin-top:8px;background:var(--bg4);border-radius:var(--r);padding:11px">
-      <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">${escapeHtmlClient(p.note||'Ask a recent customer for a review.')}</div>
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">${escapeHtmlClient(p.reviewNote||'Ask a recent customer for a review.')}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
         <input id="strat-rr-${i}-name" placeholder="Customer name" style="flex:1;min-width:120px">
         <input id="strat-rr-${i}-email" type="email" placeholder="Customer email" style="flex:1;min-width:160px">
@@ -1584,9 +1595,9 @@ function renderStrategyAction(i,container,p){
   }
   if(p.actionType==='vendor_outreach'){
     container.innerHTML=`<div style="margin-top:8px;background:var(--bg4);border-radius:var(--r);padding:11px">
-      ${p.recipientType?`<div style="font-size:11px;color:var(--ink3);margin-bottom:6px">Suggested contact: ${escapeHtmlClient(p.recipientType)}</div>`:''}
-      <input id="strat-vo-${i}-subject" value="${escAttr(p.subject||'')}" placeholder="Subject" style="width:100%;margin-bottom:6px;box-sizing:border-box">
-      <textarea id="strat-vo-${i}-body" style="width:100%;min-height:70px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient(p.message||'')}</textarea>
+      ${p.vendorRecipientType?`<div style="font-size:11px;color:var(--ink3);margin-bottom:6px">Suggested contact: ${escapeHtmlClient(p.vendorRecipientType)}</div>`:''}
+      <input id="strat-vo-${i}-subject" value="${escAttr(p.vendorSubject||'')}" placeholder="Subject" style="width:100%;margin-bottom:6px;box-sizing:border-box">
+      <textarea id="strat-vo-${i}-body" style="width:100%;min-height:70px;margin-bottom:6px;box-sizing:border-box">${escapeHtmlClient(p.vendorMessage||'')}</textarea>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
         <input id="strat-vo-${i}-name" placeholder="Recipient name" style="flex:1;min-width:120px">
         <input id="strat-vo-${i}-to" type="email" placeholder="Recipient email" style="flex:1;min-width:160px">
@@ -1597,11 +1608,11 @@ function renderStrategyAction(i,container,p){
     return;
   }
   if(p.actionType==='ad_campaign'){
-    const plat=p.platform==='google'?'google':'meta';
+    const plat=p.adPlatform==='google'?'google':'meta';
     const uid='strat-'+i;
     const defaults=plat==='google'
-      ? {name:(s.title||'Campaign')+' — '+C.name,headlines:(p.headline||''),descriptions:(p.body||'')}
-      : {name:(s.title||'Campaign')+' — '+C.name,message:(p.headline?p.headline+'\n\n':'')+(p.body||'')};
+      ? {name:(s.title||'Campaign')+' — '+C.name,headlines:(p.adHeadline||''),descriptions:(p.adBody||'')}
+      : {name:(s.title||'Campaign')+' — '+C.name,message:(p.adHeadline?p.adHeadline+'\n\n':'')+(p.adBody||'')};
     const wrap=document.createElement('div');
     wrap.innerHTML=`<div style="font-size:11px;color:var(--ink3);margin-top:8px">Drafted for ${plat==='google'?'Google Ads':'Meta Ads (Facebook/Instagram)'}</div>`;
     container.innerHTML='';
@@ -1611,8 +1622,10 @@ function renderStrategyAction(i,container,p){
     container.appendChild(formWrap);
     return;
   }
-  // Fallback — including actionType 'post' — turns it into the shared
-  // publish/schedule composer used everywhere else in the app.
+  // Fallback — including actionType 'post', and any unrecognized/missing
+  // actionType (a malformed or off-schema model response still lands
+  // somewhere useful instead of the card looking untouched) — turns it
+  // into the shared publish/schedule composer used everywhere else.
   openInlineComposer(container,p.post||s.fix||s.title||'');
 }
 async function sendStrategyReviewRequest(i){
