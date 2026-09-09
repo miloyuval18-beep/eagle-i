@@ -1896,9 +1896,18 @@ async function loadComp(){
 
 /* REAL COMPETITORS (Google Places) — separate from the AI archetypes above */
 function deriveRealCompetitorEdge(c){
-  // Computed straight from the real Google data on this business — no AI
-  // guessing involved. Every branch names the actual gap AND the specific
-  // Eagle I move that exploits it — never just "go read their reviews."
+  // Prefer a real, server-verified weakness in how THEY promote themselves
+  // — their own website's mobile support, ad tracking, social links, SEO
+  // basics, content — computed in routes/onboarding.js by actually
+  // fetching their site (see lib/competitorPromoAnalysis.js). Only falls
+  // back to a plain ratings comparison when that check found nothing (or
+  // couldn't reach their site, or there's no website at all).
+  if(c.promoWeakness&&c.promoExploit)return{weakness:c.promoWeakness,exploit:c.promoExploit};
+
+  if(!c.website)return{
+    weakness:"No website listed on Google — anyone who clicks through to learn more has nowhere to land.",
+    exploit:"Capture that traffic yourself: build a page in the Landing Pages tab and link it from your Google Business Profile and social posts — you'll show up where they don't."
+  };
   if(c.rating==null)return{
     weakness:"No star rating on Google yet — they have no visible track record for anyone comparing options.",
     exploit:"Beat them to it: connect your free Google Business Profile in the Credentials tab, then send a few review requests from Social HQ so you show up with real stars before they do."
@@ -1915,12 +1924,8 @@ function deriveRealCompetitorEdge(c){
     weakness:`Only ${c.reviewCount||0} review${c.reviewCount===1?'':'s'} — a thin track record even with a decent rating.`,
     exploit:"Reviews are a numbers game: use Social HQ to request reviews from your last 10-15 customers. More reviews than them is usually enough to out-rank them in local search."
   };
-  if(!c.website)return{
-    weakness:"No website listed on Google — anyone who clicks through to learn more has nowhere to land.",
-    exploit:"Capture that traffic yourself: build a page in the Landing Pages tab and link it from your Google Business Profile and social posts — you'll show up where they don't."
-  };
   return{
-    weakness:`Strong online presence (★${c.rating}, ${c.reviewCount} reviews) — hard to out-rate head-on.`,
+    weakness:`Strong online presence (★${c.rating}, ${c.reviewCount} reviews) and no obvious gap in their own promotion — hard to out-rate head-on.`,
     exploit:"Don't fight them on reviews — fight them on speed and visibility instead: run a targeted campaign in the Ad Generator so you show up first when someone searches, and build a landing page in the Landing Pages tab around what actually makes you different."
   };
 }

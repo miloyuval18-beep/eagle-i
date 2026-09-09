@@ -9,6 +9,7 @@ const { requireAuth } = require('../auth');
 const { checkAndIncrementUsage, checkAndIncrementPlacesUsage, currentMonth } = require('../lib/usage');
 const { generateJSON } = require('../lib/anthropic');
 const { searchNearbyCompetitors } = require('../lib/googlePlaces');
+const { derivePromotionEdge } = require('../lib/competitorPromoAnalysis');
 const { detectsHighValueFocus } = require('../lib/vendorTargeting');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
 const { findContactEmail } = require('../lib/vendorContactFinder');
@@ -18,6 +19,19 @@ const { escapeHtml } = require('../lib/landingPageTemplate');
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const PLACES_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+// For each real competitor, look for a real weakness in how THEY promote
+// themselves (their site's mobile support, ad tracking, social links, SEO
+// basics, content) rather than only comparing star ratings. Runs once per
+// Places lookup/refresh (usage-capped already) and gets cached alongside
+// the competitor list, so it never re-fetches their sites on every view.
+async function attachPromotionEdges(competitors) {
+  return Promise.all(competitors.map(async c => {
+    let edge = null;
+    try { edge = await derivePromotionEdge(c.website); } catch (e) { edge = null; }
+    return { ...c, promoWeakness: edge?.weakness || null, promoExploit: edge?.exploit || null };
+  }));
+}
 
 const router = express.Router();
 
@@ -354,11 +368,12 @@ router.get('/api/competitors/places', requireAuth, async (req, res) => {
     const tenantRes = await query('SELECT industry FROM tenants WHERE id = $1', [req.tenantId]);
     const industry = tenantRes.rows[0]?.industry;
 
-    const competitors = await searchNearbyCompetitors({
+    const rawCompetitors = await searchNearbyCompetitors({
       services: profile.services,
       serviceArea: profile.service_area,
       industry
     });
+    const competitors = await attachPromotionEdges(rawCompetitors);
 
     await query(
       `UPDATE business_profile SET places_competitors = $1, places_competitors_fetched_at = now() WHERE tenant_id = $2`,
