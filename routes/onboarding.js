@@ -10,6 +10,7 @@ const { checkAndIncrementUsage, checkAndIncrementPlacesUsage, currentMonth } = r
 const { generateJSON } = require('../lib/anthropic');
 const { searchNearbyCompetitors } = require('../lib/googlePlaces');
 const { derivePromotionEdge } = require('../lib/competitorPromoAnalysis');
+const { detectRatingDrops } = require('../lib/competitorRatingAlerts');
 const { detectsHighValueFocus } = require('../lib/vendorTargeting');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
 const { findContactEmail } = require('../lib/vendorContactFinder');
@@ -383,6 +384,23 @@ router.get('/api/competitors/places', requireAuth, async (req, res) => {
     res.json({ competitors, source: 'live', fetchedAt: new Date().toISOString(), sparse: competitors.length === 0 });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to load real competitor data: ' + err.message } });
+  }
+});
+
+// Rating-drop history built by lib/competitorRatingWorker.js's background
+// checks — the tenant is already emailed when a drop is detected, this is
+// just a dashboard view of the same underlying data (useful between
+// emails, or if they want to see the trend). See lib/competitorRatingAlerts.js.
+router.get('/api/competitors/rating-alerts', requireAuth, async (req, res) => {
+  try {
+    const historyRes = await query(
+      `SELECT place_id, competitor_name, rating, review_count, checked_at FROM competitor_rating_history WHERE tenant_id = $1 ORDER BY checked_at ASC`,
+      [req.tenantId]
+    );
+    const alerts = detectRatingDrops(historyRes.rows);
+    res.json({ alerts });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to load rating alerts: ' + err.message } });
   }
 });
 

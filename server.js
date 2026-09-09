@@ -27,6 +27,7 @@ const jobsRoutes = require('./routes/jobs');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
+const { startCompetitorRatingWorker } = require('./lib/competitorRatingWorker');
 
 // Last-resort safety net: anything that escapes every route's own try/catch
 // (a genuine bug, not a "service not configured" 4xx) gets emailed to the
@@ -138,4 +139,5 @@ app.listen(PORT, () => {
   }
   startWeatherSignalPoller();
   startScheduledPostsWorker();
+  startCompetitorRatingWorker();
 });

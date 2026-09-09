@@ -754,6 +754,11 @@ tbody tr:last-child td{border-bottom:none}
   <div class="sh" style="margin-top:28px"><div><div class="st">Real Nearby Competitors</div><div class="ss">This one is different — it shows real businesses actually located near you, pulled directly from Google, along with their real star ratings and review counts. Click "Find Real Competitors" below.</div></div><button class="btn btn-blue" id="places-comp-btn" onclick="loadPlacesCompetitors(false)"><span class="spin" id="places-comp-spin"></span><span id="places-comp-lbl">Find Real Competitors</span></button></div>
   <div id="places-comp-out"><div style="text-align:center;padding:24px;color:var(--ink3);font-size:12px">Click the black "Find Real Competitors" button above</div></div>
   <div class="sm" id="places-comp-s"></div>
+
+  <div id="rating-alerts-section" style="display:none">
+    <div class="sh" style="margin-top:28px"><div><div class="st">📉 Rating Watch</div><div class="ss">Eagle I quietly re-checks your tracked competitors' real Google ratings in the background and emails you the moment one drops — this is that same history. A drop here means their average moved down, not that a specific bad review was spotted (Google doesn't expose individual review content through this).</div></div></div>
+    <div id="rating-alerts-out"></div>
+  </div>
 </div>
 </div>
 
@@ -1914,6 +1919,26 @@ function renderCompetitorCards(competitors){
     </div>`).join('')+'</div>';
 }
 function renderCompetitorsFromCache(){renderCompetitorCards(ME?.generatedContent?.competitors?.competitors);}
+// Rating Watch — background-detected drops in a tracked real competitor's
+// Google rating (lib/competitorRatingWorker.js already emailed the tenant
+// when one was found; this is just a dashboard view of the same history).
+async function loadRatingAlerts(){
+  const section=document.getElementById('rating-alerts-section'),out=document.getElementById('rating-alerts-out');
+  if(!section||!out)return;
+  try{
+    const r=await fetch('/api/competitors/rating-alerts');
+    const d=await r.json();
+    if(!r.ok)return;
+    const alerts=d.alerts||[];
+    if(!alerts.length){section.style.display='none';return;}
+    section.style.display='';
+    out.innerHTML='<div class="g3">'+alerts.map(a=>`
+      <div class="compc">
+        <div class="comp-n">${escapeHtmlClient(a.competitorName)}</div>
+        <div class="cweak"><div class="cwl">⚠ Rating Dropped</div><div class="cwt">★${a.previousRating} → ★${a.currentRating} (down ${a.drop}) as of ${new Date(a.currentCheckedAt).toLocaleDateString()}${a.reviewCount!=null?' · '+a.reviewCount+' reviews':''}</div></div>
+      </div>`).join('')+'</div>';
+  }catch(e){/* leave existing content on transient failure */}
+}
 async function loadComp(){
   const btn=document.getElementById('comp-btn'),spin=document.getElementById('comp-spin');
   btn.disabled=true;spin.style.display='block';document.getElementById('comp-lbl').textContent='Analyzing...';
@@ -3221,6 +3246,7 @@ async function bootstrap(){
   loadScheduledPosts();
   loadVendorOutreach();
   loadPartnerOutreach();
+  loadRatingAlerts();
   loadDashEmailSnapshot();
   initInfoBoxes();
   const rrGoogle=document.getElementById('rr-google-url');if(rrGoogle)rrGoogle.value=ME.profile.googleReviewUrl||'';
