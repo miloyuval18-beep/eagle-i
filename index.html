@@ -522,7 +522,7 @@ tbody tr:last-child td{border-bottom:none}
     <div class="tab" id="t-market" onclick="goTo('market',this)">📊 Market Intel</div>
     <div class="tab" id="t-competitors" onclick="goTo('competitors',this)">🏆 Competitors</div>
     <div class="tab" id="t-opps" onclick="goTo('opps',this)">🎯 Opportunities<span class="tbadge on" id="opp-badge">!</span></div>
-    <div class="tab" id="t-leads" onclick="goTo('leads',this)">📥 Leads<span class="tbadge on" id="inbox-badge" style="display:none">0</span></div>
+    <div class="tab" id="t-leads" onclick="goTo('leads',this)">🩺 Website Checkup</div>
     <div class="tab" id="t-permits" onclick="goTo('permits',this)">📋 Permits<span class="tbadge on" id="perm-badge">0</span></div>
     <div class="tab" id="t-budgetads" onclick="goTo('budgetads',this)">💰 Budget &amp; Ads</div>
     <div class="tab" id="t-growth" onclick="goTo('growth',this)">🤝 Growth &amp; Partners</div>
@@ -773,10 +773,19 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 </div>
 
-<!-- ==================== LEADS (landing pages that capture them + the inbox they land in) ==================== -->
+<!-- ==================== WEBSITE CHECKUP (real analysis of the business's own site) ==================== -->
 <div id="page-leads" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Leads</div><div class="ss">A "landing page" is a simple webpage with a contact form on it — people can find it and fill it out to reach you. This tab lets you create and publish one, and see everyone who has filled it out.</div></div></div>
+  <div class="sh"><div><div class="st">Website Checkup</div><div class="ss">A real, automatic scan of your own website — not an estimate. Eagle I visits the site you listed in your Company Profile and checks it for the kinds of things that cost you visitors and customers: whether it works well on a phone, whether it's secure, whether there's a clear way to contact you, and more. Click "Check My Website" below to run it.</div></div><button class="btn btn-blue" id="wc-btn" onclick="runWebsiteCheckup()"><span class="spin" id="wc-spin"></span><span id="wc-lbl">Check My Website</span></button></div>
+  <div id="wc-out"><div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click the black "Check My Website" button above</div><div style="font-size:12px">You'll get a plain-language list of anything worth fixing, and exactly why it matters</div></div></div>
+  <div class="sm" id="wc-s"></div>
+
+  <!-- Old "publish a landing page + inbox" feature — kept fully working in
+       code (routes/leads.js, /lp/:slug, /api/leads), just no longer linked
+       from navigation now that Website Checkup covers this tab. Any page a
+       tenant already published stays live at its real URL. To bring this
+       UI back, remove display:none below and restore the subtabs bar. -->
+  <div id="legacy-leads-ui" style="display:none">
   <div class="subtabs">
     <div class="subtab active" onclick="goSub('leads','pages',this)">🚀 Landing Pages</div>
     <div class="subtab" onclick="goSub('leads','inbox',this)">📥 Inbox</div>
@@ -833,6 +842,7 @@ tbody tr:last-child td{border-bottom:none}
   </div>
   <div id="inbox-list" style="display:flex;flex-direction:column;gap:8px">
     <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Nothing here yet. Go to the "🚀 Landing Pages" tab above, create a page, and click "Make This Page Live" — once someone fills out that page's form, they'll show up here.</div>
+  </div>
   </div>
   </div>
 </div>
@@ -1534,7 +1544,7 @@ const STRATEGY_CATEGORIES=[
   {key:'referrals',label:'🤝 Referrals & Partnerships',blurb:'Recommendations that use Growth & Partners — vendors, referral partners, and networking.'},
   {key:'reputation',label:'🏆 Reviews, PR & Awards',blurb:'Recommendations that use Social HQ\'s review requests and the PR & Awards tools.'},
   {key:'ads',label:'🎯 Paid Advertising',blurb:'Recommendations that use the Ad Generator and Real Ad Campaigns.'},
-  {key:'leads',label:'📥 Capturing Leads',blurb:'Recommendations that use Landing Pages, or Permits if you are in real estate or home services.'},
+  {key:'leads',label:'📥 Capturing Leads',blurb:'Recommendations that use Website Checkup to improve your own site, or Permits if you are in real estate or home services.'},
   {key:'market',label:'📊 Market & Competitors',blurb:'Recommendations that use Market Intel, Competitors, and Opportunities.'}
 ];
 function strategyCardHtml(s,i){
@@ -1619,8 +1629,7 @@ const STRATEGY_NAV_TARGETS={
   market:{tab:'market',label:'Market Intel'},
   competitors:{tab:'competitors',label:'Competitors'},
   opps:{tab:'opps',label:'Opportunities'},
-  landing_page:{tab:'leads',sub:['leads','pages'],label:'Leads → Landing Pages'},
-  leads_inbox:{tab:'leads',sub:['leads','inbox'],label:'Leads → Inbox'},
+  website_checkup:{tab:'leads',label:'Website Checkup'},
   growth_vendors:{tab:'growth',sub:['growth','vendors'],label:'Growth & Partners → Vendors'},
   networking:{tab:'growth',sub:['growth','network'],label:'Growth & Partners → Networking'},
   pr_awards:{tab:'growth',sub:['growth','pr'],label:'Growth & Partners → PR & Awards'},
@@ -1658,7 +1667,7 @@ async function actOnStrategy(i){
     // One flat schema, every field always present (empty string for
     // whichever branch doesn't apply) — a multi-shape prompt was
     // unreliable (see git history). "post" is now a real category, not a
-    // catch-all — a recommendation that's about landing pages, keyword
+    // catch-all — a recommendation that's about your website, keyword
     // research, competitor research, permits, PR, networking, or budget
     // routes to "navigate" (a real link to the tab that actually handles
     // it) instead of forcing an unrelated social post. "none" is for
@@ -1671,7 +1680,7 @@ Decide which ONE of these actually matches what the recommendation is asking for
 - review_request: ask a specific past customer to leave a review
 - vendor_outreach: reach out to one specific referral partner, vendor, or business contact by email
 - ad_campaign: run a paid ad on Meta (Facebook/Instagram) or Google
-- navigate: the recommendation is about something handled in a different tab of this app rather than sent directly — set navigateTarget to exactly one of: market, competitors, opps, landing_page, leads_inbox, growth_vendors, networking, pr_awards, permits, budget, ads, social_hq, keywords, credentials
+- navigate: the recommendation is about something handled in a different tab of this app rather than sent directly — set navigateTarget to exactly one of: market, competitors, opps, website_checkup, growth_vendors, networking, pr_awards, permits, budget, ads, social_hq, keywords, credentials
 - none: the recommendation is about something Eagle I has no tool for at all (e.g. hiring, pricing, internal operations) — do not force it into any of the above
 Return ONLY this exact JSON shape, all keys present:
 {"actionType":"post|review_request|vendor_outreach|ad_campaign|navigate|none","post":"","reviewNote":"","vendorRecipientType":"","vendorSubject":"","vendorMessage":"","adPlatform":"","adHeadline":"","adBody":"","navigateTarget":"","navigateNote":"one short sentence on what to do once there, if actionType=navigate","noteForOwner":"one short sentence on why Eagle I can't act on this directly, if actionType=none"}`,800);
@@ -1831,7 +1840,7 @@ Return ONLY valid JSON: {"keywords":[{"keyword":"realistic keyword for this busi
         <div class="kwn">${k.keyword}</div>
         <div class="kwm"><span class="kwv">${k.vol?.toLocaleString()}/mo</span><span class="kwp">$${k.cpc?.toFixed(2)}</span><span class="badge ${cls==='kwc-fire'?'b-hot':'b-warm'}">ROI ${k.roi}</span><span class="${td[k.dir]||'cbl'}" style="font-family:var(--fm);font-size:9px;font-weight:700">${k.trend}</span></div>
         <div class="kwact">${k.action}</div>
-        <div style="margin-top:6px;display:flex;gap:4px"><button class="btn-xs p" onclick="goLPKw('${k.keyword.replace(/'/g,"\\'")}')">Landing Page</button><button class="btn-xs" onclick="copyText('${k.keyword.replace(/'/g,"\\'").replace(/"/g,'\\"')}')">Copy</button></div>
+        <div style="margin-top:6px;display:flex;gap:4px"><button class="btn-xs p" onclick="goToWebsiteCheckup()">Website Checkup</button><button class="btn-xs" onclick="copyText('${k.keyword.replace(/'/g,"\\'").replace(/"/g,'\\"')}')">Copy</button></div>
       </div>`;
     const dkg=document.getElementById('dash-kw-grid');
     if(dkg)dkg.innerHTML=fire.concat(hot.slice(0,3)).map((k,i)=>mkCard(k,i,i<3?'kwc-fire':'kwc-hot')).join('');
@@ -1857,10 +1866,8 @@ Return ONLY valid JSON: {"keywords":[{"keyword":"realistic keyword for this busi
   document.getElementById('kw-prog').classList.remove('show');
   btn.disabled=false;spin.style.display='none';
 }
-function goLPKw(kw){
+function goToWebsiteCheckup(){
   goTo('leads',document.getElementById('t-leads'));
-  const el=document.querySelector(`.lp-trig[onclick*="primary"]`);
-  if(el)selLP(el,'primary');
 }
 
 /* COMPETITORS */
@@ -1906,7 +1913,7 @@ function deriveRealCompetitorEdge(c){
 
   if(!c.website)return{
     weakness:"No website listed on Google — anyone who clicks through to learn more has nowhere to land.",
-    exploit:"Capture that traffic yourself: build a page in the Landing Pages tab and link it from your Google Business Profile and social posts — you'll show up where they don't."
+    exploit:"Capture that traffic yourself: make sure your own website (check it under Website Checkup) has a clear way to contact you, and link it from your Google Business Profile and social posts — you'll show up where they don't."
   };
   if(c.rating==null)return{
     weakness:"No star rating on Google yet — they have no visible track record for anyone comparing options.",
@@ -1926,7 +1933,7 @@ function deriveRealCompetitorEdge(c){
   };
   return{
     weakness:`Strong online presence (★${c.rating}, ${c.reviewCount} reviews) — hard to out-rate head-on with reviews alone.`,
-    exploit:"Don't fight them on reviews — fight them on speed and visibility instead: run a targeted campaign in the Ad Generator so you show up first when someone searches, and build a landing page in the Landing Pages tab around what actually makes you different."
+    exploit:"Don't fight them on reviews — fight them on speed and visibility instead: run a targeted campaign in the Ad Generator so you show up first when someone searches, and make sure your own website (check it under Website Checkup) makes clear what actually makes you different."
   };
 }
 function renderPlacesCompetitors(list,sparse){
@@ -2027,6 +2034,47 @@ async function loadNews(){
 }
 
 /* SOCIAL SCAN */
+/* WEBSITE CHECKUP — real analysis of the tenant's OWN website (not an
+   estimate): server fetches business_profile.site and checks it for the
+   same kind of real, confirmable gaps the Competitors tab checks a real
+   competitor's site for (see lib/websiteCheckup.js). */
+async function runWebsiteCheckup(){
+  const btn=document.getElementById('wc-btn'),spin=document.getElementById('wc-spin'),lbl=document.getElementById('wc-lbl'),out=document.getElementById('wc-out'),s=document.getElementById('wc-s');
+  if(btn)btn.disabled=true;if(spin)spin.style.display='block';if(lbl)lbl.textContent='Checking...';
+  if(s)s.textContent='Visiting your website...';
+  try{
+    const r=await fetch('/api/website-checkup');
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Check failed');
+    renderWebsiteCheckup(d);
+    if(s)s.textContent=d.checkedAt?`Checked ${new Date(d.checkedAt).toLocaleString()}`:'';
+  }catch(e){if(s){s.textContent='Error: '+e.message;s.style.color='var(--red)';}}
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';if(lbl)lbl.textContent='Re-Check My Website';
+}
+function renderWebsiteCheckup(d){
+  const out=document.getElementById('wc-out');
+  if(!out)return;
+  if(!d.configured){
+    out.innerHTML=`<div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">No website on file yet</div><div style="font-size:12px;margin-bottom:12px">Add your website's address in Account Settings, then come back and click "Check My Website."</div><button class="btn-xs p" onclick="goTo('account',document.getElementById('t-account'))">⚙ Add My Website in Account Settings</button></div>`;
+    return;
+  }
+  if(!d.reachable){
+    const urlOnly=(d.findings||[]).map(f=>`<div class="cweak" style="margin-bottom:8px"><div class="cwl">⚠ ${escapeHtmlClient(f.issue)}</div><div class="cwt">${escapeHtmlClient(f.fix)}</div></div>`).join('');
+    out.innerHTML=`<div style="padding:16px 0"><div style="text-align:center;padding:16px;color:var(--ink3);margin-bottom:14px"><div style="font-size:13px">Eagle I couldn't load <strong>${escapeHtmlClient(d.checkedUrl||'your website')}</strong> just now — it may be temporarily down, or it's blocking automatic visits. Try again later, or check it yourself in a browser.</div></div>${urlOnly}</div>`;
+    return;
+  }
+  if(!d.findings||!d.findings.length){
+    out.innerHTML=`<div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px;color:var(--green)">Looks good!</div><div style="font-size:12px">Your website (${escapeHtmlClient(d.checkedUrl||'')}) covers everything Eagle I checks for. Nothing to fix here right now.</div></div>`;
+    return;
+  }
+  out.innerHTML=`<div style="font-size:12px;color:var(--ink2);margin-bottom:12px">Checked <strong>${escapeHtmlClient(d.checkedUrl||'')}</strong> — ${d.findings.length} thing${d.findings.length===1?'':'s'} worth fixing, most useful first:</div>`+
+    d.findings.map(f=>`
+    <div class="compc" style="margin-bottom:10px">
+      <div class="cweak"><div class="cwl">⚠ ${escapeHtmlClient(f.issue)}</div></div>
+      <div class="cang" style="margin-top:5px"><div class="cal">✓ How To Fix It</div><div class="cat">${escapeHtmlClient(f.fix)}</div></div>
+    </div>`).join('');
+}
+
 /* LANDING PAGES — real, persisted, publishable at a public URL. A tenant
    can hold several pages (one per ZIP/service angle), not just one. */
 let lpTrig='primary',lpHTML='',currentLpPage=null,landingPages=[];
@@ -3138,8 +3186,8 @@ const TAB_CONTEXTS = {
                chips:['What are competitor weaknesses I can exploit?','How do I differentiate?']},
   opps:       {icon:'🎯', title:'Live Opportunities', ctx:'News · social · weather · permit data',
                chips:['Which opportunity is hottest right now?','Draft outreach for the top lead']},
-  leads:      {icon:'📥', title:'Leads', ctx:'Landing pages that capture leads · the leads they\'ve caught',
-               chips:['Which page should I publish first?','Which new leads should I follow up with today?']},
+  leads:      {icon:'🩺', title:'Website Checkup', ctx:'Real scan of the business\'s own website · what to fix',
+               chips:['Which website fix should I do first?','How do I get my website fixed?']},
   permits:    {icon:'📋', title:'Permits', ctx:'Property-record outreach (real-estate/home-services)',
                chips:['Which permits are highest value?','How do I pitch permit leads?']},
   budgetads:  {icon:'💰', title:'Budget & Ads', ctx:'Allocation across channels · platform-specific ad copy',
@@ -4592,7 +4640,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <div class="sh"><div><div class="st">Hottest Keywords</div><div class="ss">AI's best guess at which search words and phrases are most valuable for your business right now. This is an estimate, not real, live data pulled from Google.</div></div><button class="btn btn-blue" id="kw-btn" onclick="loadKw(true)"><span class="spin" id="kw-spin"></span>Refresh</button></div>
   <div id="kw-prog" class="scan-prog"><div class="sp-bar"><div class="sp-fill"></div></div><span class="sp-lbl">Scanning your keyword market...</span></div>
   <div id="kw-insight" class="ib" style="margin-bottom:15px;display:none"></div>
-  <div id="kw-fire-sec" style="display:none;margin-bottom:20px"><div class="sh"><div><div class="st">🔥 On Fire — Build Landing Pages NOW</div></div></div><div class="g3" id="kw-fire"></div></div>
+  <div id="kw-fire-sec" style="display:none;margin-bottom:20px"><div class="sh"><div><div class="st">🔥 On Fire — Target These Now</div></div></div><div class="g3" id="kw-fire"></div></div>
   <div id="kw-hot-sec" style="display:none;margin-bottom:20px"><div class="sh"><div><div class="st">⚡ Hot Keywords</div></div></div><div class="g3" id="kw-hot"></div></div>
   <div id="kw-tbl-sec" style="display:none"><div class="sh"><div><div class="st">Full Keyword Table</div><div class="ss">CPC = about how much each click costs if you ran an ad for it. ROI = how good a payoff it's likely to give you, from 0 (poor) to 100 (excellent). Vol = a rough visual bar for how often people search it.</div></div></div><div class="tbl-wrap"><table><thead><tr><th>#</th><th>Keyword</th><th>Category</th><th class="r">Searches/Mo</th><th class="r">CPC</th><th class="r">ROI</th><th class="r">Trend</th><th class="r">Competition</th><th>Vol</th></tr></thead><tbody id="kw-tbody"></tbody></table></div></div>
   <div class="sm" id="kw-s" style="margin-top:9px"></div>

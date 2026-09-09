@@ -22,6 +22,7 @@ const adsRoutes = require('./routes/ads');
 const { router: gbpRoutes } = require('./routes/gbp');
 const scheduledPostsRoutes = require('./routes/scheduledPosts');
 const partnersRoutes = require('./routes/partners');
+const websiteCheckupRoutes = require('./routes/websiteCheckup');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -86,6 +87,7 @@ app.use(adsRoutes);
 app.use(gbpRoutes);
 app.use(scheduledPostsRoutes);
 app.use(partnersRoutes);
+app.use(websiteCheckupRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
