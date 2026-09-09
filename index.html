@@ -1895,15 +1895,34 @@ async function loadComp(){
 }
 
 /* REAL COMPETITORS (Google Places) — separate from the AI archetypes above */
-function deriveRealCompetitorWeakness(c){
+function deriveRealCompetitorEdge(c){
   // Computed straight from the real Google data on this business — no AI
-  // guessing involved. Picks the single most useful gap to exploit.
-  if(c.rating==null)return"No star rating on Google yet — they haven't built up a public reputation you'd need to compete with.";
-  if(c.rating<3.5)return`Low rating (★${c.rating}) — customers are visibly unhappy with them, which you can win on.`;
-  if(c.rating<4.2)return`Middling rating (★${c.rating}) — there's real room to out-perform them on reviews.`;
-  if((c.reviewCount||0)<10)return`Very few reviews${c.reviewCount?` (only ${c.reviewCount})`:''} — a thin online reputation you can out-market.`;
-  if(!c.website)return"No website listed on Google — they may be missing out on search traffic entirely.";
-  return"Strong on paper (good rating and review count) — read their actual reviews for service gaps you can target.";
+  // guessing involved. Every branch names the actual gap AND the specific
+  // Eagle I move that exploits it — never just "go read their reviews."
+  if(c.rating==null)return{
+    weakness:"No star rating on Google yet — they have no visible track record for anyone comparing options.",
+    exploit:"Beat them to it: connect your free Google Business Profile in the Credentials tab, then send a few review requests from Social HQ so you show up with real stars before they do."
+  };
+  if(c.rating<3.5)return{
+    weakness:`Low rating (★${c.rating}) — real customers are visibly unhappy with them.`,
+    exploit:"Put that contrast to work: run a paid ad in the Ad Generator that leads with your service quality, and send review requests from Social HQ to your happiest recent customers so your rating stands out next to theirs."
+  };
+  if(c.rating<4.2)return{
+    weakness:`Middling rating (★${c.rating}) — good enough to get by, not good enough to stand out.`,
+    exploit:`Out-rate them: send a round of review requests from Social HQ this week — a handful of new 5-star reviews is usually enough to pull ahead of a ★${c.rating} average.`
+  };
+  if((c.reviewCount||0)<10)return{
+    weakness:`Only ${c.reviewCount||0} review${c.reviewCount===1?'':'s'} — a thin track record even with a decent rating.`,
+    exploit:"Reviews are a numbers game: use Social HQ to request reviews from your last 10-15 customers. More reviews than them is usually enough to out-rank them in local search."
+  };
+  if(!c.website)return{
+    weakness:"No website listed on Google — anyone who clicks through to learn more has nowhere to land.",
+    exploit:"Capture that traffic yourself: build a page in the Landing Pages tab and link it from your Google Business Profile and social posts — you'll show up where they don't."
+  };
+  return{
+    weakness:`Strong online presence (★${c.rating}, ${c.reviewCount} reviews) — hard to out-rate head-on.`,
+    exploit:"Don't fight them on reviews — fight them on speed and visibility instead: run a targeted campaign in the Ad Generator so you show up first when someone searches, and build a landing page in the Landing Pages tab around what actually makes you different."
+  };
 }
 function renderPlacesCompetitors(list,sparse){
   const el=document.getElementById('places-comp-out');
@@ -1912,14 +1931,18 @@ function renderPlacesCompetitors(list,sparse){
     el.innerHTML=`<div style="text-align:center;padding:24px;color:var(--ink3)"><div style="font-size:12px">No nearby businesses found in Google Places for this industry/area.</div>${sparse?'<div style="font-size:11px;margin-top:6px">Coverage is sparse here — see the AI-estimated archetypes above instead.</div>':''}</div>`;
     return;
   }
-  el.innerHTML='<div class="g3">'+list.map(c=>`
+  el.innerHTML='<div class="g3">'+list.map(c=>{
+    const edge=deriveRealCompetitorEdge(c);
+    return`
     <div class="compc">
       <div class="comp-n">${c.name}</div>
       <div style="font-size:12px;color:var(--ink2);margin-bottom:5px">${c.rating?('★ '+c.rating+' ('+(c.reviewCount||0)+' reviews)'):'No rating yet'}</div>
       ${c.address?`<div style="font-size:11px;color:var(--ink3);margin-bottom:4px">${c.address}</div>`:''}
-      <div class="cweak" style="margin-top:6px"><div class="cwl">Weakness</div><div class="cwt">${escapeHtmlClient(deriveRealCompetitorWeakness(c))}</div></div>
+      <div class="cweak" style="margin-top:6px"><div class="cwl">⚠ Weakness</div><div class="cwt">${escapeHtmlClient(edge.weakness)}</div></div>
+      <div class="cang" style="margin-top:5px"><div class="cal">✓ How To Exploit It</div><div class="cat">${escapeHtmlClient(edge.exploit)}</div></div>
       ${c.website?`<a href="${c.website}" target="_blank" style="font-size:11px;color:var(--blue2);display:inline-block;margin-top:6px">Visit website ↗</a>`:''}
-    </div>`).join('')+'</div>';
+    </div>`;
+  }).join('')+'</div>';
 }
 async function loadPlacesCompetitors(force){
   const btn=document.getElementById('places-comp-btn'),spin=document.getElementById('places-comp-spin'),lbl=document.getElementById('places-comp-lbl'),s=document.getElementById('places-comp-s');
