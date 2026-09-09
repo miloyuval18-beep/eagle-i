@@ -33,9 +33,16 @@ Key differentiators: ${profile.differentiators || 'not specified'}. Brand voice:
 
   return {
     strategy: `${ctx}
-Generate 4 prioritized growth strategy recommendations for this business.
+Generate 8 prioritized growth recommendations for this business, spread across these six categories — include at least one from each category that's genuinely relevant to this business (skip a category only if it truly doesn't apply to this industry):
+- content: post to social media, or find better keywords to target
+- referrals: build relationships with referral partners, vendors, or local networking/professional groups
+- reputation: ask customers for reviews, or pursue press coverage and awards
+- ads: run a paid ad campaign
+- leads: build a landing page to capture leads online (for real estate/home services specifically, this can instead mean reaching out to nearby property owners with recent building permits)
+- market: research competitors, or act on a seasonal/market opportunity
+For each one, set "category" to exactly one of: content, referrals, reputation, ads, leads, market.
 For each one, write "fixSteps" as 2-4 short, concrete steps in plain language a non-technical business owner could follow with no guessing — each one a specific, literal action to take right now, not vague advice. Example of the level of detail wanted: "Open the Permits tab and select the 25 highest-value homes" rather than "target high-value areas." If following through means going to a specific place inside this app, set "whereTab" to exactly one of: market, competitors, opps, landing_page, leads_inbox, growth_vendors, networking, pr_awards, permits, budget, ads, social_hq, keywords — or "" if nothing in the app applies.
-Return ONLY valid JSON: {"strategies":[{"priority":"high","title":"Title","problem":"Problem","fixSteps":["Step 1","Step 2","Step 3"],"whereTab":"permits","impact":"Numbers-based impact","timeline":"When"}]}`,
+Return ONLY valid JSON: {"strategies":[{"priority":"high","category":"content","title":"Title","problem":"Problem","fixSteps":["Step 1","Step 2","Step 3"],"whereTab":"permits","impact":"Numbers-based impact","timeline":"When"}]}`,
 
     keywords: `${ctx}
 Generate the highest-demand marketing keywords/search terms this business should target, based on its actual services and service area.
@@ -51,6 +58,13 @@ Return ONLY valid JSON: {"competitors":[{"archetype":"e.g. established local fir
 Generate 4 realistic, general marketing opportunities/angles this business could act on this month (seasonal, market-condition, or community-based angles appropriate to the industry — do not invent specific news events or statistics that would need a citation).
 Return ONLY valid JSON: {"opps":[{"title":"Title","desc":"Why this matters for this business","action":"Specific action to take","priority":"hot"}]}`
   };
+}
+
+// strategy now asks for 8 items with multi-step instructions instead of 4
+// one-line ones — needs more room than the other sections' flat 1500.
+const SECTION_MAX_TOKENS = { strategy: 3000 };
+function maxTokensFor(section) {
+  return SECTION_MAX_TOKENS[section] || 1500;
 }
 
 router.get('/api/me', requireAuth, async (req, res) => {
@@ -176,7 +190,7 @@ router.post('/api/onboarding', requireAuth, async (req, res) => {
         break;
       }
       try {
-        generated[key] = await generateJSON(prompt, 1500);
+        generated[key] = await generateJSON(prompt, maxTokensFor(key));
       } catch (err) {
         errors[key] = err.message;
       }
@@ -289,7 +303,7 @@ router.post('/api/onboarding/regenerate/:section', requireAuth, async (req, res)
       return res.status(429).json({ error: { message: `Monthly generation limit reached (${usage.used}/${usage.cap}).` } });
     }
 
-    const result = await generateJSON(prompts[section], 1500);
+    const result = await generateJSON(prompts[section], maxTokensFor(section));
     const updatedContent = { ...(profile.generated_content || {}), [section]: result };
     await query(
       `UPDATE business_profile SET generated_content = $1, updated_at = now() WHERE tenant_id = $2`,

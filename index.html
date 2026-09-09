@@ -721,12 +721,10 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 <div id="page-strategy" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">Growth Strategy</div><div class="ss">Your personal to-do list, written by AI just for your business and ranked by what matters most. Click the button on the right to build (or rebuild) this list.</div></div><button class="btn btn-blue" id="strat-btn" onclick="loadStrategy()"><span class="spin" id="strat-spin"></span><span id="strat-lbl">Generate Full Strategy</span></button></div>
+  <div class="sh"><div><div class="st">Growth Strategy</div><div class="ss">Your personal to-do list, written by AI just for your business and organized by which part of Eagle I each idea uses. Click the button on the right to build (or rebuild) this list.</div></div><button class="btn btn-blue" id="strat-btn" onclick="loadStrategy()"><span class="spin" id="strat-spin"></span><span id="strat-lbl">Generate Full Strategy</span></button></div>
   <div class="section">
-    <div style="font-family:var(--fm);font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;display:flex;align-items:center;gap:6px"><div class="ubar-dot"></div>Priority Actions</div>
     <div id="strat-cards" class="g2" style="margin-bottom:14px"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">Building your to-do list — this can take up to 30 seconds...</div></div>
   </div>
-  <div id="strat-extra" style="display:none;margin-bottom:22px"></div>
   <div class="sm" id="strat-s"></div>
 </div>
 </div>
@@ -1556,36 +1554,69 @@ async function sendSignalEmail(uid,channel){
 // truncating the handler, so the button did nothing when clicked. Indexing
 // into a plain array sidesteps HTML-attribute escaping entirely.
 let _strategyCards=[];
+// The six areas a recommendation's "category" can fall into — each one
+// maps to a real, already-built part of Eagle I, so the Strategy page
+// reads as a tour of what to do in each part of the app rather than one
+// undifferentiated list. Order here is the order sections render in.
+const STRATEGY_CATEGORIES=[
+  {key:'content',label:'📱 Content & Social Media',blurb:'Recommendations that use Social HQ — posting, and finding the right keywords to target.'},
+  {key:'referrals',label:'🤝 Referrals & Partnerships',blurb:'Recommendations that use Growth & Partners — vendors, referral partners, and networking.'},
+  {key:'reputation',label:'🏆 Reviews, PR & Awards',blurb:'Recommendations that use Social HQ\'s review requests and the PR & Awards tools.'},
+  {key:'ads',label:'🎯 Paid Advertising',blurb:'Recommendations that use the Ad Generator and Real Ad Campaigns.'},
+  {key:'leads',label:'📥 Capturing Leads',blurb:'Recommendations that use Landing Pages, or Permits if you are in real estate or home services.'},
+  {key:'market',label:'📊 Market & Competitors',blurb:'Recommendations that use Market Intel, Competitors, and Opportunities.'}
+];
+function strategyCardHtml(s,i){
+  // fixSteps (an array) is the current shape; fix (a single string) is
+  // what older, already-generated content still has cached — fall back
+  // to showing that as a single-item list so nothing breaks for anyone
+  // who hasn't clicked "Generate Full Strategy" again since this
+  // changed. whereTab likewise only exists on newer content.
+  const steps=Array.isArray(s.fixSteps)&&s.fixSteps.length?s.fixSteps:(s.fix?[s.fix]:[]);
+  const stepsHtml=steps.length
+    ?`<ol style="margin:0;padding-left:18px;font-size:12px;color:var(--ink);line-height:1.8">${steps.map(st=>`<li>${st}</li>`).join('')}</ol>`
+    :'<div style="font-size:12px;color:var(--ink3)">No specific steps given.</div>';
+  const navTarget=STRATEGY_NAV_TARGETS[s.whereTab];
+  const navLink=navTarget
+    ?`<button class="btn-xs" onclick="goStrategyNavTarget('${s.whereTab}')" style="margin-bottom:8px">🧭 Go to ${escapeHtmlClient(navTarget.label)}</button>`
+    :'';
+  return `
+  <div class="card" style="border-left:3px solid ${s.priority==='high'?'var(--red)':'var(--amber)'}">
+    <div class="ce" style="color:${s.priority==='high'?'var(--red)':'var(--amber)'}">${(s.priority||'').toUpperCase()} · ${(s.timeline||'').toUpperCase()}</div>
+    <div class="ct">${s.title||''}</div>
+    <div style="font-size:13px;color:var(--ink2);margin:8px 0 9px;line-height:1.7">${s.problem||''}</div>
+    <div style="background:var(--bg4);border-radius:var(--r);padding:9px 11px;border-left:2px solid var(--blue2);margin-bottom:7px"><strong style="color:var(--blue2);font-size:12px;display:block;margin-bottom:4px">Exactly what to do:</strong>${stepsHtml}</div>
+    ${navLink}
+    <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:8px">📈 ${s.impact||''}</div>
+    <button class="btn-xs p" id="strat-act-btn-${i}" onclick="actOnStrategy(${i})">🚀 Act On This — Let Eagle I Do It For You</button>
+    <div id="strat-ic-${i}"></div>
+  </div>`;
+}
 function renderStrategyCards(strategies){
   const el=document.getElementById('strat-cards');
   if(!el)return;
   _strategyCards=strategies||[];
   if(!strategies||!strategies.length){el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">You don\'t have a strategy list yet. Click the black "Generate Full Strategy" button near the top of this page to create one — it takes about 30 seconds.</div>';return;}
-  el.innerHTML=strategies.map((s,i)=>{
-    // fixSteps (an array) is the current shape; fix (a single string) is
-    // what older, already-generated content still has cached — fall back
-    // to showing that as a single-item list so nothing breaks for anyone
-    // who hasn't clicked "Generate Full Strategy" again since this
-    // changed. whereTab likewise only exists on newer content.
-    const steps=Array.isArray(s.fixSteps)&&s.fixSteps.length?s.fixSteps:(s.fix?[s.fix]:[]);
-    const stepsHtml=steps.length
-      ?`<ol style="margin:0;padding-left:18px;font-size:12px;color:var(--ink);line-height:1.8">${steps.map(st=>`<li>${st}</li>`).join('')}</ol>`
-      :'<div style="font-size:12px;color:var(--ink3)">No specific steps given.</div>';
-    const navTarget=STRATEGY_NAV_TARGETS[s.whereTab];
-    const navLink=navTarget
-      ?`<button class="btn-xs" onclick="goStrategyNavTarget('${s.whereTab}')" style="margin-bottom:8px">🧭 Go to ${escapeHtmlClient(navTarget.label)}</button>`
-      :'';
+  const indexed=strategies.map((s,i)=>({s,i}));
+  const hasCategories=indexed.some(x=>x.s.category);
+  if(!hasCategories){
+    // Older cached content has no "category" — fall back to one flat
+    // grid rather than a single "Other" section with everything in it.
+    el.innerHTML=indexed.map(({s,i})=>strategyCardHtml(s,i)).join('');
+    return;
+  }
+  let isFirst=true;
+  el.innerHTML=STRATEGY_CATEGORIES.map(cat=>{
+    const items=indexed.filter(x=>x.s.category===cat.key);
+    if(!items.length)return '';
+    const marginTop=isFirst?'0':'16px';
+    isFirst=false;
     return `
-    <div class="card" style="border-left:3px solid ${s.priority==='high'?'var(--red)':'var(--amber)'}">
-      <div class="ce" style="color:${s.priority==='high'?'var(--red)':'var(--amber)'}">${(s.priority||'').toUpperCase()} · ${(s.timeline||'').toUpperCase()}</div>
-      <div class="ct">${s.title||''}</div>
-      <div style="font-size:13px;color:var(--ink2);margin:8px 0 9px;line-height:1.7">${s.problem||''}</div>
-      <div style="background:var(--bg4);border-radius:var(--r);padding:9px 11px;border-left:2px solid var(--blue2);margin-bottom:7px"><strong style="color:var(--blue2);font-size:12px;display:block;margin-bottom:4px">Exactly what to do:</strong>${stepsHtml}</div>
-      ${navLink}
-      <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:8px">📈 ${s.impact||''}</div>
-      <button class="btn-xs p" id="strat-act-btn-${i}" onclick="actOnStrategy(${i})">🚀 Act On This — Let Eagle I Do It For You</button>
-      <div id="strat-ic-${i}"></div>
-    </div>`;
+    <div style="grid-column:1/-1;margin:${marginTop} 0 2px">
+      <div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--ink)">${cat.label}</div>
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:4px">${cat.blurb}</div>
+    </div>
+    ${items.map(({s,i})=>strategyCardHtml(s,i)).join('')}`;
   }).join('');
 }
 // Turns one strategy recommendation into whatever real action the "Fix:"
