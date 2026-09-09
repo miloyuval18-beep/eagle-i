@@ -1580,6 +1580,17 @@ function strategyCardHtml(s,i){
   const navLink=navTarget
     ?`<button class="btn-xs" onclick="goStrategyNavTarget('${s.whereTab}')" style="margin-bottom:8px">🧭 Go to ${escapeHtmlClient(navTarget.label)}</button>`
     :'';
+  // eagleCanDoIt only exists on newer content — older cached items default
+  // to showing the button (today's behavior) rather than silently losing
+  // it for everything generated before this existed. When it IS present
+  // and false, this recommendation is real, worthwhile advice that this
+  // app just has no tool to execute — it still shows up in full, it just
+  // doesn't get a button implying Eagle I can do it for you. The plain
+  // "Go to X" link above (if any) is the only clickable affordance then.
+  const canDoIt=s.eagleCanDoIt!==false;
+  const actBtn=canDoIt
+    ?`<button class="btn-xs p" id="strat-act-btn-${i}" onclick="actOnStrategy(${i})">🚀 Act On This — Let Eagle I Do It For You</button>`
+    :'';
   return `
   <div class="card" style="border-left:3px solid ${s.priority==='high'?'var(--red)':'var(--amber)'}">
     <div class="ce" style="color:${s.priority==='high'?'var(--red)':'var(--amber)'}">${(s.priority||'').toUpperCase()} · ${(s.timeline||'').toUpperCase()}</div>
@@ -1588,7 +1599,7 @@ function strategyCardHtml(s,i){
     <div style="background:var(--bg4);border-radius:var(--r);padding:9px 11px;border-left:2px solid var(--blue2);margin-bottom:7px"><strong style="color:var(--blue2);font-size:12px;display:block;margin-bottom:4px">Exactly what to do:</strong>${stepsHtml}</div>
     ${navLink}
     <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:8px">📈 ${s.impact||''}</div>
-    <button class="btn-xs p" id="strat-act-btn-${i}" onclick="actOnStrategy(${i})">🚀 Act On This — Let Eagle I Do It For You</button>
+    ${actBtn}
     <div id="strat-ic-${i}"></div>
   </div>`;
 }
