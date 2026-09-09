@@ -1433,6 +1433,7 @@ async function loadSignals(force){
 function renderSignals(d){
   const out=document.getElementById('signals-out');if(!out)return;
   const alerts=d.weatherAlerts||[],spikes=d.permitSpikes||[];
+  const recentAddresses=d.recentPermitAddresses||[];
   if(!alerts.length&&!spikes.length){
     out.innerHTML='<div class="ib"><div class="ibb">No active storm alerts and no permit-volume spikes right now — this is real, live data, not a placeholder.</div></div>';
     return;
@@ -1442,11 +1443,22 @@ function renderSignals(d){
     const sev=(a.severity||'').toLowerCase();
     const bc=sev==='extreme'||sev==='severe'?'rgba(255,45,74,.3)':'rgba(255,168,0,.28)';
     const lc=sev==='extreme'||sev==='severe'?'var(--red)':'var(--amber)';
+    const preview=recentAddresses.slice(0,5);
+    const previewHtml=preview.length
+      ?`<div style="background:var(--bg4);border-radius:var(--r);padding:7px 9px;margin-bottom:8px">
+          <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🏘️ Real recent permit activity in the Houston area (not necessarily this storm's path)</div>
+          ${preview.map(r=>`<div style="font-size:11px;color:var(--ink2);line-height:1.6">${r.address}${r.zip?' · '+r.zip:''}</div>`).join('')}
+        </div>`
+      :'';
     html+=`<div class="card" style="border:1px solid ${bc}">
       <span class="badge" style="background:${lc}20;color:${lc};font-size:8px">🌩️ LIVE · ${(a.severity||'').toUpperCase()}</span>
       <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 3px">${a.event||''}</div>
       <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">${(a.headline||'').slice(0,200)}</div>
+      ${previewHtml}
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
       <button class="btn-xs p" onclick='draftSignalOutreach("weather",${JSON.stringify({event:a.event,headline:a.headline}).replace(/'/g,"&#39;")},"sig-draft-w${i}")'>✍️ Draft outreach</button>
+      ${preview.length?'<button class="btn-xs" onclick="goToRecentPermitTargets()">🏘️ View Recent Addresses &amp; Send Mailers</button>':''}
+      </div>
       <div id="sig-draft-w${i}" style="margin-top:8px"></div>
     </div>`;
   });
@@ -1462,6 +1474,13 @@ function renderSignals(d){
   });
   html+='</div>';
   out.innerHTML=html;
+}
+// A weather-alert card's "View Recent Addresses" button — jumps straight
+// into the Permits tab's existing select -> "Create Mailer Letters (PDF)"
+// flow instead of building a second, duplicate mailer path here.
+function goToRecentPermitTargets(){
+  goTo('permits',document.getElementById('t-permits'));
+  loadPerms(true);
 }
 // Drafts still come from /api/signals/draft-outreach (routes/signals.js) —
 // that endpoint's own comment is explicit that it "deliberately does NOT

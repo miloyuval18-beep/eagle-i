@@ -59,11 +59,34 @@ router.get('/api/signals', requireAuth, async (req, res) => {
       };
     });
 
+    // A weather alert on its own gave zero concrete addresses to act on —
+    // just alert text and a generic AI-drafted message. This gives every
+    // weather card something real to point at: the most recent permits
+    // already on hand (same Houston-wide scope as the weather poll
+    // itself — deliberately NOT claiming these are "in this storm's
+    // path," since no geometry/geocoding exists anywhere in this app to
+    // honestly make that connection). Sorted newest-first, deduped by
+    // address (a property can have more than one permit in the window),
+    // capped so the response stays small.
+    const seenAddresses = new Set();
+    const recentPermitAddresses = (permitsData.records || [])
+      .filter(r => r.address)
+      .sort((a, b) => new Date(b.permitDate || 0) - new Date(a.permitDate || 0))
+      .filter(r => {
+        const key = r.address.trim().toLowerCase();
+        if (seenAddresses.has(key)) return false;
+        seenAddresses.add(key);
+        return true;
+      })
+      .slice(0, 20)
+      .map(r => ({ zip: r.zip, address: r.address, permitType: r.permitType, permitDate: r.permitDate }));
+
     res.json({
       weatherAlerts: stormAlerts,
       weatherFetchedAt: weather.fetchedAt ? new Date(weather.fetchedAt).toISOString() : null,
       permitSpikes: spikes,
-      permitsFetchedAt: permitsData.fetchedAt ? new Date(permitsData.fetchedAt).toISOString() : null
+      permitsFetchedAt: permitsData.fetchedAt ? new Date(permitsData.fetchedAt).toISOString() : null,
+      recentPermitAddresses
     });
   } catch (err) {
     res.status(502).json({ error: { message: 'Failed to load signals: ' + err.message } });
