@@ -1646,7 +1646,11 @@ const STRATEGY_NAV_TARGETS={
   budget:{tab:'budgetads',sub:['budgetads','budget'],label:'Budget & Playbook'},
   ads:{tab:'budgetads',sub:['budgetads','ads'],label:'Ad Generator'},
   social_hq:{tab:'social',sub:['social','hq'],label:'Social HQ'},
-  keywords:{tab:'social',sub:['social','keywords'],label:'Keywords'}
+  keywords:{tab:'social',sub:['social','keywords'],label:'Keywords'},
+  // Credentials has no nav tab of its own — it's only reached via a
+  // button inside Social HQ — so it needs navBtn to say which tab to
+  // highlight instead of the usual 't-'+tab guess.
+  credentials:{tab:'credentials',navBtn:'t-social',label:'Credentials → Connect Your Accounts'}
 };
 function goSubtab(page,sub){
   goSub(page,sub,document.querySelector(`[onclick*="goSub('${page}','${sub}'"]`));
@@ -1654,7 +1658,7 @@ function goSubtab(page,sub){
 function goStrategyNavTarget(target){
   const t=STRATEGY_NAV_TARGETS[target];
   if(!t)return;
-  goTo(t.tab,document.getElementById('t-'+t.tab));
+  goTo(t.tab,document.getElementById(t.navBtn||('t-'+t.tab)));
   if(t.sub)goSubtab(t.sub[0],t.sub[1]);
 }
 async function actOnStrategy(i){
@@ -1685,7 +1689,7 @@ Decide which ONE of these actually matches what the recommendation is asking for
 - review_request: ask a specific past customer to leave a review
 - vendor_outreach: reach out to one specific referral partner, vendor, or business contact by email
 - ad_campaign: run a paid ad on Meta (Facebook/Instagram) or Google
-- navigate: the recommendation is about something handled in a different tab of this app rather than sent directly — set navigateTarget to exactly one of: market, competitors, opps, landing_page, leads_inbox, growth_vendors, networking, pr_awards, permits, budget, ads, social_hq, keywords
+- navigate: the recommendation is about something handled in a different tab of this app rather than sent directly — set navigateTarget to exactly one of: market, competitors, opps, landing_page, leads_inbox, growth_vendors, networking, pr_awards, permits, budget, ads, social_hq, keywords, credentials
 - none: the recommendation is about something Eagle I has no tool for at all (e.g. hiring, pricing, internal operations) — do not force it into any of the above
 Return ONLY this exact JSON shape, all keys present:
 {"actionType":"post|review_request|vendor_outreach|ad_campaign|navigate|none","post":"","reviewNote":"","vendorRecipientType":"","vendorSubject":"","vendorMessage":"","adPlatform":"","adHeadline":"","adBody":"","navigateTarget":"","navigateNote":"one short sentence on what to do once there, if actionType=navigate","noteForOwner":"one short sentence on why Eagle I can't act on this directly, if actionType=none"}`,800);
