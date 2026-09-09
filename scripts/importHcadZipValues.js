@@ -27,8 +27,16 @@
 // lib/hcadZipValues.js's findConfidentOwners().
 //
 // Usage:
-//   node scripts/importHcadZipValues.js            # downloads, imports, writes to DB
-//   node scripts/importHcadZipValues.js --dry-run   # downloads + parses, prints summary, writes nothing
+//   node scripts/importHcadZipValues.js               # downloads, imports, writes to DB
+//   node scripts/importHcadZipValues.js --dry-run      # downloads + parses, prints summary, writes nothing
+//   node scripts/importHcadZipValues.js --header-only  # downloads, prints real_acct.txt's full column
+//                                                       # list + a plausibility spot-check of any
+//                                                       # candidate year-built/deed-date columns, then
+//                                                       # exits before the full parse or any DB write —
+//                                                       # a one-off feasibility check for a planned
+//                                                       # feature (aging-system targeting), see the
+//                                                       # "Feature D" plan this codebase's git history
+//                                                       # has for the full context.
 
 const path = require('path');
 const { readZipEntries } = require('../lib/xlsxReader');
@@ -52,6 +60,15 @@ if (!process.env.DATABASE_URL) {
 }
 
 const DRY_RUN = process.argv.includes('--dry-run');
+const HEADER_ONLY = process.argv.includes('--header-only');
+// Column-name substrings worth flagging as candidates for a property's
+// original-construction year or its most recent sale/deed date — real
+// Texas CAD real_acct exports commonly (not guaranteed) carry something
+// like this, but nothing in this codebase has ever read past the four
+// columns already in use, so this is a genuine unknown until checked
+// against the live file.
+const YEAR_BUILT_CANDIDATES = /yr_impr|year_?built|yr_?built|impr_?yr|act_yr_?built|eff_yr_?built/i;
+const DEED_DATE_CANDIDATES = /deed_?dt|deed_?date|sale_?dt|sale_?date|instr_?dt|ownership_?dt/i;
 const TAX_YEARS_URL = 'https://hcad.org/actions/hcad-pdata/default/get-tax-years';
 const DOWNLOADS_URL = (year) =>
   `https://hcad.org/actions/hcad-pdata/default/get-property-downloads?t=${year}&c=CAMA&s=${encodeURIComponent('Real Property')}`;
@@ -112,6 +129,49 @@ async function main() {
   }
   if (headerIndex.site_addr_1 === undefined || headerIndex.mailto === undefined) {
     throw new Error('real_acct.txt header did not contain expected columns (site_addr_1, mailto) — HCAD may have changed their file layout. See README.md\'s "HCAD real home-value data" section.');
+  }
+
+  if (HEADER_ONLY) {
+    const allColumns = Object.keys(headerIndex);
+    console.log(`\nreal_acct.txt has ${allColumns.length} columns:`);
+    console.log(allColumns.join(', '));
+
+    const yearBuiltCols = allColumns.filter(c => YEAR_BUILT_CANDIDATES.test(c));
+    const deedDateCols = allColumns.filter(c => DEED_DATE_CANDIDATES.test(c));
+    console.log(`\nYear-built candidate column(s): ${yearBuiltCols.length ? yearBuiltCols.join(', ') : 'NONE FOUND'}`);
+    console.log(`Deed/sale-date candidate column(s): ${deedDateCols.length ? deedDateCols.join(', ') : 'NONE FOUND'}`);
+
+    if (yearBuiltCols.length) {
+      // Spot-check plausibility against a real sample (not the whole
+      // 1.8M-line file) — a column matching the name pattern could still
+      // be something else entirely (e.g. a permit-year field, or blank).
+      const col = yearBuiltCols[0];
+      const idx = headerIndex[col];
+      const sampleValues = [];
+      let lineStart = firstNewline + 1;
+      let sampled = 0;
+      while (lineStart < buf.length && sampled < 500) {
+        let lineEnd = buf.indexOf(NEWLINE, lineStart);
+        if (lineEnd === -1) lineEnd = buf.length;
+        const line = buf.subarray(lineStart, lineEnd).toString('utf8');
+        lineStart = lineEnd + 1;
+        sampled++;
+        const cells = line.split('\t');
+        const raw = (cells[idx] || '').trim();
+        if (raw) sampleValues.push(raw);
+      }
+      const numeric = sampleValues.map(v => parseInt(v, 10)).filter(n => Number.isFinite(n));
+      const plausibleYears = numeric.filter(n => n >= 1900 && n <= new Date().getFullYear());
+      console.log(`\nSpot-check of "${col}" across the first 500 lines:`);
+      console.log(`  ${sampleValues.length} non-blank values, ${numeric.length} numeric, ${plausibleYears.length} in a plausible year range (1900-${new Date().getFullYear()}).`);
+      console.log(`  Sample raw values: ${sampleValues.slice(0, 15).join(', ')}`);
+      console.log(plausibleYears.length >= numeric.length * 0.8
+        ? '  Looks plausible as a real year-built field.'
+        : '  Does NOT look like a plausible year-built field — verify manually before building on it.');
+    }
+
+    console.log('\n--header-only: not parsing the full file or writing to the database.');
+    return;
   }
 
   console.log('Parsing zip/value aggregates and confident owner names (Houston-area zips only)...');
