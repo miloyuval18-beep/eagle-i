@@ -748,12 +748,10 @@ tbody tr:last-child td{border-bottom:none}
 <div id="page-competitors" class="page">
 <div class="wrap">
   <div class="sh"><div><div class="st">Competitor Analysis</div><div class="ss">See what businesses like yours typically do well and where they usually fall short, so you know how to stand out. Click "Analyze Competitors" below to get started.</div></div><button class="btn btn-blue" id="comp-btn" onclick="loadComp()"><span class="spin" id="comp-spin"></span><span id="comp-lbl">Analyze Competitors</span></button></div>
-  <div class="ib" data-ib-id="comp-how-to-read" style="margin-bottom:15px"><div class="ibt">How to read this<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div><div class="ibb">These are examples written by AI showing the common TYPES of competitors in your industry, and how you could stand out from each type. They are not the names of real companies near you, and they weren't pulled from a real search — think of them as useful patterns to think about, not a list of your actual competitors.</div></div>
   <div id="comp-out"><div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click the black "Analyze Competitors" button above</div><div style="font-size:12px">You'll get common competitor types for your industry, and ideas for how to beat each one</div></div></div>
   <div class="sm" id="comp-s"></div>
 
   <div class="sh" style="margin-top:28px"><div><div class="st">Real Nearby Competitors</div><div class="ss">This one is different — it shows real businesses actually located near you, pulled directly from Google, along with their real star ratings and review counts. Click "Find Real Competitors" below.</div></div><button class="btn btn-blue" id="places-comp-btn" onclick="loadPlacesCompetitors(false)"><span class="spin" id="places-comp-spin"></span><span id="places-comp-lbl">Find Real Competitors</span></button></div>
-  <div class="ib" data-ib-id="comp-real-data" style="margin-bottom:15px"><div class="ibt">🌐 Real data, but it may be incomplete<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div><div class="ibb">This list comes straight from Google for your industry and area. Some industries (especially specialized professional services) may show only a few results or none at all — if that happens, use the AI-written examples above instead, since those always work no matter your industry.</div></div>
   <div id="places-comp-out"><div style="text-align:center;padding:24px;color:var(--ink3);font-size:12px">Click the black "Find Real Competitors" button above</div></div>
   <div class="sm" id="places-comp-s"></div>
 </div>
@@ -1874,6 +1872,7 @@ function renderCompetitorCards(competitors){
     <div class="compc">
       <div class="comp-n">${c.archetype||''}</div>
       <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:5px"><strong style="color:var(--ink)">Typical strength:</strong> ${c.typical_strength||''}</div>
+      <div class="cweak"><div class="cwl">⚠ Typical Weakness</div><div class="cwt">${c.typical_weakness||''}</div></div>
       <div class="cang"><div class="cal">✓ How ${C.name||'you'} Wins</div><div class="cat">${c.how_to_win||''}</div></div>
     </div>`).join('')+'</div>';
 }
