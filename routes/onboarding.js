@@ -34,7 +34,8 @@ Key differentiators: ${profile.differentiators || 'not specified'}. Brand voice:
   return {
     strategy: `${ctx}
 Generate 4 prioritized growth strategy recommendations for this business.
-Return ONLY valid JSON: {"strategies":[{"priority":"high","title":"Title","problem":"Problem","fix":"Numbered steps","impact":"Numbers-based impact","timeline":"When"}]}`,
+For each one, write "fixSteps" as 2-4 short, concrete steps in plain language a non-technical business owner could follow with no guessing — each one a specific, literal action to take right now, not vague advice. Example of the level of detail wanted: "Open the Permits tab and select the 25 highest-value homes" rather than "target high-value areas." If following through means going to a specific place inside this app, set "whereTab" to exactly one of: market, competitors, opps, landing_page, leads_inbox, growth_vendors, networking, pr_awards, permits, budget, ads, social_hq, keywords — or "" if nothing in the app applies.
+Return ONLY valid JSON: {"strategies":[{"priority":"high","title":"Title","problem":"Problem","fixSteps":["Step 1","Step 2","Step 3"],"whereTab":"permits","impact":"Numbers-based impact","timeline":"When"}]}`,
 
     keywords: `${ctx}
 Generate the highest-demand marketing keywords/search terms this business should target, based on its actual services and service area.

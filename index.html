@@ -239,8 +239,11 @@ select:focus{border-color:var(--blue2)}
 .b-blue{background:var(--glow);color:var(--blue2);border:1px solid var(--bdr2)}
 .b-fire{background:rgba(74,70,63,.14);color:#4a463f;border:1px solid rgba(74,70,63,.3)}
 .ib{background:var(--glow2);border:1px solid var(--bdr2);border-radius:var(--r2);padding:13px 16px}
-.ibt{font-family:var(--fh);font-size:14px;font-weight:600;color:var(--blue2);letter-spacing:1px;margin-bottom:4px}
+.ibt{font-family:var(--fh);font-size:14px;font-weight:600;color:var(--blue2);letter-spacing:1px;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .ibb{font-size:13px;color:var(--ink2);line-height:1.75}
+.ib.collapsed .ibb{display:none}
+.ib-toggle{flex-shrink:0;background:none;border:1px solid var(--bdr2);border-radius:6px;padding:2px 9px;font-family:var(--fm);font-size:11px;font-weight:600;color:var(--ink2);letter-spacing:.3px;cursor:pointer}
+.ib-toggle:hover{border-color:var(--ink);color:var(--ink)}
 .tbl-wrap{overflow-x:auto;border-radius:var(--r2);border:1px solid var(--bdr)}
 table{width:100%;border-collapse:collapse}
 thead tr{background:var(--bg4);border-bottom:1px solid var(--bdr2)}
@@ -725,10 +728,6 @@ tbody tr:last-child td{border-bottom:none}
   </div>
   <div id="strat-extra" style="display:none;margin-bottom:22px"></div>
   <div class="sm" id="strat-s"></div>
-  <div class="section" id="strat-hcad-section" style="display:none">
-    <div class="sh"><div><div class="st">Reaching Out to Property Owners</div><div class="ss">This section only shows up for home services and real estate businesses.</div></div></div>
-    <div class="ib"><div class="ibt">Want to mail nearby homeowners?</div><div class="ibb">This tool is only available for home services and real estate businesses. Go to the Permits tab (in the menu) to find nearby homeowners who recently filed a building permit — a good sign they may need your services soon.</div></div>
-  </div>
 </div>
 </div>
 
@@ -778,12 +777,12 @@ tbody tr:last-child td{border-bottom:none}
 <div id="page-competitors" class="page">
 <div class="wrap">
   <div class="sh"><div><div class="st">Competitor Analysis</div><div class="ss">See what businesses like yours typically do well and where they usually fall short, so you know how to stand out. Click "Analyze Competitors" below to get started.</div></div><button class="btn btn-blue" id="comp-btn" onclick="loadComp()"><span class="spin" id="comp-spin"></span><span id="comp-lbl">Analyze Competitors</span></button></div>
-  <div class="ib" style="margin-bottom:15px"><div class="ibt">How to read this</div><div class="ibb">These are examples written by AI showing the common TYPES of competitors in your industry, and how you could stand out from each type. They are not the names of real companies near you, and they weren't pulled from a real search — think of them as useful patterns to think about, not a list of your actual competitors.</div></div>
+  <div class="ib" data-ib-id="comp-how-to-read" style="margin-bottom:15px"><div class="ibt">How to read this<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div><div class="ibb">These are examples written by AI showing the common TYPES of competitors in your industry, and how you could stand out from each type. They are not the names of real companies near you, and they weren't pulled from a real search — think of them as useful patterns to think about, not a list of your actual competitors.</div></div>
   <div id="comp-out"><div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click the black "Analyze Competitors" button above</div><div style="font-size:12px">You'll get common competitor types for your industry, and ideas for how to beat each one</div></div></div>
   <div class="sm" id="comp-s"></div>
 
   <div class="sh" style="margin-top:28px"><div><div class="st">Real Nearby Competitors</div><div class="ss">This one is different — it shows real businesses actually located near you, pulled directly from Google, along with their real star ratings and review counts. Click "Find Real Competitors" below.</div></div><button class="btn btn-blue" id="places-comp-btn" onclick="loadPlacesCompetitors(false)"><span class="spin" id="places-comp-spin"></span><span id="places-comp-lbl">Find Real Competitors</span></button></div>
-  <div class="ib" style="margin-bottom:15px"><div class="ibt">🌐 Real data, but it may be incomplete</div><div class="ibb">This list comes straight from Google for your industry and area. Some industries (especially specialized professional services) may show only a few results or none at all — if that happens, use the AI-written examples above instead, since those always work no matter your industry.</div></div>
+  <div class="ib" data-ib-id="comp-real-data" style="margin-bottom:15px"><div class="ibt">🌐 Real data, but it may be incomplete<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div><div class="ibb">This list comes straight from Google for your industry and area. Some industries (especially specialized professional services) may show only a few results or none at all — if that happens, use the AI-written examples above instead, since those always work no matter your industry.</div></div>
   <div id="places-comp-out"><div style="text-align:center;padding:24px;color:var(--ink3);font-size:12px">Click the black "Find Real Competitors" button above</div></div>
   <div class="sm" id="places-comp-s"></div>
 </div>
@@ -935,8 +934,8 @@ tbody tr:last-child td{border-bottom:none}
   <div class="subpage" id="sub-growth-pr">
   <div class="sh"><div><div class="st">PR &amp; Awards Engine</div><div class="ss">Find real awards you could apply for and places you could get an article written about your business. Both help potential customers trust you before they've even met you.</div></div>
   <button class="btn btn-blue" id="pr-btn" onclick="loadPR()"><span class="spin" id="pr-spin"></span><span id="pr-lbl">Generate PR Strategy</span></button></div>
-  <div class="ib" style="margin-bottom:18px">
-    <div class="ibt">Why this matters</div>
+  <div class="ib" data-ib-id="pr-why" style="margin-bottom:18px">
+    <div class="ibt">Why this matters<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div>
     <div class="ibb">Winning an award, being published in an article, or getting mentioned in the news all make your business look like the obvious, trustworthy choice. Eagle I helps you find realistic opportunities below and writes a first draft of every application for you — click "Generate Nomination" on any card.</div>
   </div>
   <div class="section">
@@ -1038,7 +1037,7 @@ tbody tr:last-child td{border-bottom:none}
 <div class="wrap">
   <div class="sh"><div><div class="st">High-Value Area Permits</div><div class="ss">A list of real Houston homes where someone recently filed a building or renovation permit — a good sign they might need your services soon. Pulled fresh from the city's own records every week. Click "Load Permits" below to see this week's list.</div></div>
   <button class="btn btn-blue" id="perm-btn" onclick="loadPerms(false)"><span class="spin" id="perm-spin"></span><svg id="perm-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Load Permits</button></div>
-  <div class="ib" style="margin-bottom:13px"><div class="ibt">🌐 What's real here, in plain terms</div><div class="ibb">This list is real — it comes straight from the City of Houston, updated once a week (not second-by-second). It only gives us the property's address, not the owner's name, which is completely fine: mail addressed simply to "Property Owner" reaches the right house and is standard practice for this kind of outreach. On the rare property where public county tax records clearly show a real owner's name, your mailer letter will use that name instead — otherwise it stays addressed to "Property Owner," never a guess. Where you see a <b>🏛️ REAL HCAD DATA</b> badge, the home value shown comes directly from Harris County's own official property records. Neighborhood names below (River Oaks, The Heights, etc.) are general area groupings, not exact legal boundaries.</div></div>
+  <div class="ib" data-ib-id="permits-real" style="margin-bottom:13px"><div class="ibt">🌐 What's real here, in plain terms<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div><div class="ibb">This list is real — it comes straight from the City of Houston, updated once a week (not second-by-second). It only gives us the property's address, not the owner's name, which is completely fine: mail addressed simply to "Property Owner" reaches the right house and is standard practice for this kind of outreach. On the rare property where public county tax records clearly show a real owner's name, your mailer letter will use that name instead — otherwise it stays addressed to "Property Owner," never a guess. Where you see a <b>🏛️ REAL HCAD DATA</b> badge, the home value shown comes directly from Harris County's own official property records. Neighborhood names below (River Oaks, The Heights, etc.) are general area groupings, not exact legal boundaries.</div></div>
   <div id="perm-s" style="margin-bottom:10px"></div>
 
   <div id="perm-filter-wrap" style="display:none;margin-bottom:12px;position:relative">
@@ -1116,7 +1115,7 @@ tbody tr:last-child td{border-bottom:none}
       </div>
       <div id="b-seg" class="b-seg"></div>
       <div class="g2" id="b-cards" style="gap:6px"></div>
-      <div class="ib" style="margin-top:11px"><div class="ibt">Why spending on marketing is worth it</div><div class="ibb">One new customer is often worth so much over time that it pays for a full year of advertising on its own. Referrals and community involvement are usually your cheapest way to get new customers — worth doing alongside paid ads, not instead of them.</div></div>
+      <div class="ib" data-ib-id="budget-why" style="margin-top:11px"><div class="ibt">Why spending on marketing is worth it<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div><div class="ibb">One new customer is often worth so much over time that it pays for a full year of advertising on its own. Referrals and community involvement are usually your cheapest way to get new customers — worth doing alongside paid ads, not instead of them.</div></div>
     </div>
     <div>
       <div class="sh"><div><div class="st" style="font-size:17px">90-Day Playbook</div><div class="ss">A step-by-step plan for your next 90 days, broken into phases. Click the button below to build yours.</div></div></div>
@@ -1230,6 +1229,33 @@ function showNotif(t,b){
   setTimeout(()=>el.style.display='none',4500);
 }
 function copyText(t){navigator.clipboard?.writeText(t).then(()=>showNotif('Copied!','Ready to use')).catch(()=>{});}
+
+/* COLLAPSIBLE INFO BOXES — every permanent "general info" banner (.ib
+   with a data-ib-id) can be hidden once read. Only the permanent
+   explanatory banners get an id and a toggle — never the transient
+   loading/error/success messages a function writes in on the fly, since
+   those disappear on their own anyway. Collapsed state is remembered per
+   box (by its own id) in localStorage, so it stays hidden on future
+   visits, not just for this session. All of these boxes already exist in
+   the static HTML at page load (tabs are just hidden/shown, not
+   inserted), so one pass at bootstrap covers every tab. */
+function initInfoBoxes(){
+  document.querySelectorAll('.ib[data-ib-id]').forEach(box=>{
+    const btn=box.querySelector('.ib-toggle');
+    let collapsed=false;
+    try{collapsed=localStorage.getItem('ib-collapsed-'+box.getAttribute('data-ib-id'))==='1';}catch(e){}
+    box.classList.toggle('collapsed',collapsed);
+    if(btn)btn.textContent=collapsed?'Show':'Hide';
+  });
+}
+function toggleInfoBox(btn){
+  const box=btn.closest('.ib');
+  if(!box)return;
+  const collapsed=box.classList.toggle('collapsed');
+  btn.textContent=collapsed?'Show':'Hide';
+  const id=box.getAttribute('data-ib-id');
+  if(id){try{localStorage.setItem('ib-collapsed-'+id, collapsed?'1':'0');}catch(e){}}
+}
 
 /* CLAUDE API */
 // Claude occasionally slips a single-quoted property name into otherwise-
@@ -1535,16 +1561,32 @@ function renderStrategyCards(strategies){
   if(!el)return;
   _strategyCards=strategies||[];
   if(!strategies||!strategies.length){el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3);font-size:12px">You don\'t have a strategy list yet. Click the black "Generate Full Strategy" button near the top of this page to create one — it takes about 30 seconds.</div>';return;}
-  el.innerHTML=strategies.map((s,i)=>`
+  el.innerHTML=strategies.map((s,i)=>{
+    // fixSteps (an array) is the current shape; fix (a single string) is
+    // what older, already-generated content still has cached — fall back
+    // to showing that as a single-item list so nothing breaks for anyone
+    // who hasn't clicked "Generate Full Strategy" again since this
+    // changed. whereTab likewise only exists on newer content.
+    const steps=Array.isArray(s.fixSteps)&&s.fixSteps.length?s.fixSteps:(s.fix?[s.fix]:[]);
+    const stepsHtml=steps.length
+      ?`<ol style="margin:0;padding-left:18px;font-size:12px;color:var(--ink);line-height:1.8">${steps.map(st=>`<li>${st}</li>`).join('')}</ol>`
+      :'<div style="font-size:12px;color:var(--ink3)">No specific steps given.</div>';
+    const navTarget=STRATEGY_NAV_TARGETS[s.whereTab];
+    const navLink=navTarget
+      ?`<button class="btn-xs" onclick="goStrategyNavTarget('${s.whereTab}')" style="margin-bottom:8px">🧭 Go to ${escapeHtmlClient(navTarget.label)}</button>`
+      :'';
+    return `
     <div class="card" style="border-left:3px solid ${s.priority==='high'?'var(--red)':'var(--amber)'}">
       <div class="ce" style="color:${s.priority==='high'?'var(--red)':'var(--amber)'}">${(s.priority||'').toUpperCase()} · ${(s.timeline||'').toUpperCase()}</div>
       <div class="ct">${s.title||''}</div>
       <div style="font-size:13px;color:var(--ink2);margin:8px 0 9px;line-height:1.7">${s.problem||''}</div>
-      <div style="background:var(--bg4);border-radius:var(--r);padding:9px 11px;border-left:2px solid var(--blue2);font-size:12px;color:var(--ink);line-height:1.65;margin-bottom:7px"><strong style="color:var(--blue2)">Fix:</strong> ${s.fix||''}</div>
+      <div style="background:var(--bg4);border-radius:var(--r);padding:9px 11px;border-left:2px solid var(--blue2);margin-bottom:7px"><strong style="color:var(--blue2);font-size:12px;display:block;margin-bottom:4px">Exactly what to do:</strong>${stepsHtml}</div>
+      ${navLink}
       <div style="font-family:var(--fm);font-size:8px;color:var(--green);margin-bottom:8px">📈 ${s.impact||''}</div>
-      <button class="btn-xs p" id="strat-act-btn-${i}" onclick="actOnStrategy(${i})">🚀 Act On This</button>
+      <button class="btn-xs p" id="strat-act-btn-${i}" onclick="actOnStrategy(${i})">🚀 Act On This — Let Eagle I Do It For You</button>
       <div id="strat-ic-${i}"></div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 // Turns one strategy recommendation into whatever real action the "Fix:"
 // text is actually asking for — not always a post. One Claude call both
@@ -1561,14 +1603,19 @@ function renderStrategyCards(strategies){
 // actOnStrategy's classification only ever has to name one of these keys,
 // never invent a destination. Each maps to a real goTo()/goSub() call.
 const STRATEGY_NAV_TARGETS={
-  landing_page:{tab:'leads',sub:['leads','pages'],label:'Landing Pages'},
-  keywords:{tab:'social',sub:['social','keywords'],label:'Keywords'},
+  market:{tab:'market',label:'Market Intel'},
   competitors:{tab:'competitors',label:'Competitors'},
+  opps:{tab:'opps',label:'Opportunities'},
+  landing_page:{tab:'leads',sub:['leads','pages'],label:'Leads → Landing Pages'},
+  leads_inbox:{tab:'leads',sub:['leads','inbox'],label:'Leads → Inbox'},
+  growth_vendors:{tab:'growth',sub:['growth','vendors'],label:'Growth & Partners → Vendors'},
+  networking:{tab:'growth',sub:['growth','network'],label:'Growth & Partners → Networking'},
+  pr_awards:{tab:'growth',sub:['growth','pr'],label:'Growth & Partners → PR & Awards'},
   permits:{tab:'permits',label:'Permits'},
-  pr_awards:{tab:'growth',sub:['growth','pr'],label:'PR & Awards'},
-  networking:{tab:'growth',sub:['growth','network'],label:'Networking'},
   budget:{tab:'budgetads',sub:['budgetads','budget'],label:'Budget & Playbook'},
-  market:{tab:'market',label:'Market Intel'}
+  ads:{tab:'budgetads',sub:['budgetads','ads'],label:'Ad Generator'},
+  social_hq:{tab:'social',sub:['social','hq'],label:'Social HQ'},
+  keywords:{tab:'social',sub:['social','keywords'],label:'Keywords'}
 };
 function goSubtab(page,sub){
   goSub(page,sub,document.querySelector(`[onclick*="goSub('${page}','${sub}'"]`));
@@ -1581,7 +1628,8 @@ function goStrategyNavTarget(target){
 }
 async function actOnStrategy(i){
   const s=_strategyCards[i]||{};
-  const title=s.title||'',fix=s.fix||'';
+  const title=s.title||'';
+  const fix=Array.isArray(s.fixSteps)&&s.fixSteps.length?s.fixSteps.join('; '):(s.fix||'');
   const btn=document.getElementById('strat-act-btn-'+i);
   const container=document.getElementById('strat-ic-'+i);
   if(btn){btn.disabled=true;btn.textContent='Drafting...';}
@@ -1606,7 +1654,7 @@ Decide which ONE of these actually matches what the recommendation is asking for
 - review_request: ask a specific past customer to leave a review
 - vendor_outreach: reach out to one specific referral partner, vendor, or business contact by email
 - ad_campaign: run a paid ad on Meta (Facebook/Instagram) or Google
-- navigate: the recommendation is about landing pages, keyword/SEO research, competitor research, permit-based mail targeting, PR/awards/press, networking/referral groups, or budget/ad-spend planning — set navigateTarget to exactly one of: landing_page, keywords, competitors, permits, pr_awards, networking, budget, market
+- navigate: the recommendation is about something handled in a different tab of this app rather than sent directly — set navigateTarget to exactly one of: market, competitors, opps, landing_page, leads_inbox, growth_vendors, networking, pr_awards, permits, budget, ads, social_hq, keywords
 - none: the recommendation is about something Eagle I has no tool for at all (e.g. hiring, pricing, internal operations) — do not force it into any of the above
 Return ONLY this exact JSON shape, all keys present:
 {"actionType":"post|review_request|vendor_outreach|ad_campaign|navigate|none","post":"","reviewNote":"","vendorRecipientType":"","vendorSubject":"","vendorMessage":"","adPlatform":"","adHeadline":"","adBody":"","navigateTarget":"","navigateNote":"one short sentence on what to do once there, if actionType=navigate","noteForOwner":"one short sentence on why Eagle I can't act on this directly, if actionType=none"}`,800);
@@ -1682,7 +1730,7 @@ function renderStrategyAction(i,container,p){
   // actionType (a malformed or off-schema model response still lands
   // somewhere useful instead of the card looking untouched) — turns it
   // into the shared publish/schedule composer used everywhere else.
-  openInlineComposer(container,p.post||s.fix||s.title||'');
+  openInlineComposer(container,p.post||(Array.isArray(s.fixSteps)&&s.fixSteps.length?s.fixSteps.join('. '):s.fix)||s.title||'');
 }
 async function sendStrategyReviewRequest(i){
   const name=(document.getElementById('strat-rr-'+i+'-name')?.value||'').trim();
@@ -1718,8 +1766,6 @@ async function sendStrategyOutreach(i){
 }
 function renderStrategyFromCache(){
   renderStrategyCards(ME?.generatedContent?.strategy?.strategies);
-  const hcad=document.getElementById('strat-hcad-section');
-  if(hcad)hcad.style.display=ME?.showRealEstateFeatures?'block':'none';
 }
 async function loadStrategy(){
   const btn=document.getElementById('strat-btn'),spin=document.getElementById('strat-spin');
@@ -3019,6 +3065,7 @@ async function bootstrap(){
   loadVendorOutreach();
   loadPartnerOutreach();
   loadDashEmailSnapshot();
+  initInfoBoxes();
   const rrGoogle=document.getElementById('rr-google-url');if(rrGoogle)rrGoogle.value=ME.profile.googleReviewUrl||'';
   const rrYelp=document.getElementById('rr-yelp-url');if(rrYelp)rrYelp.value=ME.profile.yelpReviewUrl||'';
   fillCompanyProfileForm();
@@ -4496,7 +4543,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <!-- ==================== REAL AD CAMPAIGNS (Meta Ads + Google Ads) ==================== -->
   <div class="section">
     <div class="sh"><div><div class="st" style="font-size:18px">🎯 Real Ad Campaigns</div><div class="ss">Set up a real paid ad on Facebook/Instagram or Google. Important: it's created "paused," meaning no money is spent until YOU personally go turn it on. Eagle I never spends your money automatically.</div></div></div>
-    <div class="ib" style="margin-bottom:13px"><div class="ibt">⚠ This involves real money, once you turn it on</div><div class="ibb">Every ad campaign created here starts out <b>paused</b> (turned off). Eagle I never switches it on for you — you have to go to Meta Ads Manager or Google Ads yourself, review it, and turn it on when you're ready. As an extra safety measure, you also can't set a daily budget above $1,000 here.</div></div>
+    <div class="ib" data-ib-id="ads-real-money" style="margin-bottom:13px"><div class="ibt">⚠ This involves real money, once you turn it on<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div><div class="ibb">Every ad campaign created here starts out <b>paused</b> (turned off). Eagle I never switches it on for you — you have to go to Meta Ads Manager or Google Ads yourself, review it, and turn it on when you're ready. As an extra safety measure, you also can't set a daily budget above $1,000 here.</div></div>
     <div class="g2">
       <div class="card" id="ads-meta-card">
         <div style="font-family:var(--fh);font-weight:600;margin-bottom:8px">Meta Ads (Facebook &amp; Instagram)</div>
@@ -4634,8 +4681,8 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <div class="sh">
     <div><div class="st">Connect Your Real Accounts</div><div class="ss">Link your real Facebook, Instagram, and Google Business accounts here so Eagle I can post to them for you.</div></div>
   </div>
-  <div class="ib" style="margin-bottom:16px">
-    <div class="ibt">🔒 You never type your password into Eagle I</div>
+  <div class="ib" data-ib-id="credentials-security" style="margin-bottom:16px">
+    <div class="ibt">🔒 You never type your password into Eagle I<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div>
     <div class="ibb">Connecting works the same way for both accounts below: click "Connect," you'll be taken to Facebook's or Google's own official website to log in there (not here), and once you approve it, they send Eagle I permission to post on your behalf. Eagle I never sees or stores your actual password. Looking for a platform not listed here, like LinkedIn or Yelp? Click <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('inprogress',document.getElementById('t-inprogress'))">🚧 In Progress</button> to see what's available and why.</div>
   </div>
   <div class="g2">
@@ -4670,8 +4717,8 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
 <div id="page-inprogress" class="page">
 <div class="wrap">
   <div class="sh"><div><div class="st">🚧 Coming Later</div><div class="ss">A plain, honest list of places Eagle I can't post to for you yet, and exactly why not.</div></div></div>
-  <div class="ib" style="margin-bottom:16px">
-    <div class="ibt">What Eagle I can do for real, right now</div>
+  <div class="ib" data-ib-id="inprogress-can-do" style="margin-bottom:16px">
+    <div class="ibt">What Eagle I can do for real, right now<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div>
     <div class="ibb">Facebook, Instagram, and Google Business are all working today — go to <button class="btn-xs" style="display:inline;padding:1px 6px" onclick="goTo('credentials',document.getElementById('t-social'))">⚙ Credentials</button> to connect them. Everything below is what people often ask about next, split into two honest groups: places nobody can post to automatically no matter what tool they use, and places that could technically be added here later but haven't been built yet.</div>
   </div>
   <div class="section">
