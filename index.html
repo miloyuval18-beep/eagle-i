@@ -319,18 +319,6 @@ tbody tr:last-child td{border-bottom:none}
 .pk{color:var(--ink3)}.pv{color:var(--ink);font-weight:500}
 .pv-g{color:var(--green);font-family:var(--fh);font-size:15px;letter-spacing:1px}
 .pc-opp{font-size:13px;color:var(--ink2);background:var(--glow);border-radius:4px;padding:5px 7px;margin-top:5px;border:1px solid var(--bdr2)}
-.lead{background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);padding:11px;transition:all .2s}
-.lead:hover{border-color:var(--bdr2)}
-.lead-src{display:flex;align-items:center;gap:7px;margin-bottom:6px}
-.lead-ico{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:13px;font-weight:700;flex-shrink:0}
-.src-nd{background:var(--bg4);color:var(--ink2);border:1px solid var(--bdr2)}
-.src-fb{background:var(--bg4);color:var(--ink2);border:1px solid var(--bdr2)}
-.src-rd{background:var(--bg4);color:var(--ink2);border:1px solid var(--bdr2)}
-.src-gm{background:var(--bg4);color:var(--ink2);border:1px solid var(--bdr2)}
-.lead-who{font-size:14px;font-weight:600;color:var(--ink)}
-.lead-wh{font-family:var(--fm);font-size:13px;color:var(--ink3)}
-.lead-bgs{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
-.lead-txt{font-size:14px;color:var(--ink);line-height:1.6;margin-bottom:7px}
 .notif{position:fixed;top:67px;right:15px;z-index:999;background:var(--bg3);border:1px solid var(--bdr2);border-radius:var(--r2);padding:10px 13px;max-width:260px;border-left:3px solid var(--blue2);display:none;animation:fu .3s}
 .notif-t{font-family:var(--fh);font-size:13px;font-weight:600;color:var(--ink);letter-spacing:.3px;margin-bottom:1px}
 .notif-b{font-size:14px;color:var(--ink2)}
@@ -752,21 +740,6 @@ tbody tr:last-child td{border-bottom:none}
   <div class="section">
     <div id="mkt-out"><div class="ib"><div class="ibt">Market Analysis</div><div class="ibb">Click the black "Analyze Market" button near the top of this page. Eagle I will look at your business details and score how good an opportunity each of your services is right now. This is AI's best estimate, not a live feed of real market data.</div></div></div>
     <div class="sm" id="mkt-s"></div>
-  </div>
-  <div class="section">
-    <div class="sh">
-      <div><div class="st">Social Mention Ideas <span style="font-family:var(--fm);font-size:8px;color:var(--amber);letter-spacing:1px;border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:2px 6px;margin-left:6px;vertical-align:middle">AI-SIMULATED EXAMPLES</span></div><div class="ss">These are made-up examples to show you the kind of thing someone nearby might post online when they need a business like yours. They are not real, live posts. For real leads who actually contacted you, go to the Leads tab instead.</div></div>
-      <div style="display:flex;gap:7px"><select id="lead-filter" onchange="filterLeads()"><option value="all">All</option><option value="hot">Hot</option><option value="warm">Warm</option></select><button class="btn btn-blue" id="scan-btn" onclick="runScan()"><span class="spin" id="scan-spin"></span><svg id="scan-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="scan-lbl">Generate Examples</span></button></div>
-    </div>
-    <div class="g4" style="margin-bottom:13px">
-      <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);padding:13px"><div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">New Today</div><div style="font-family:var(--fh);font-size:26px;font-weight:700;color:var(--ink)" id="lead-new">0</div></div>
-      <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);padding:13px"><div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">Hot Leads</div><div style="font-family:var(--fh);font-size:26px;font-weight:700;color:var(--red)" id="lead-hot">0</div></div>
-      <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);padding:13px"><div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">Warm Leads</div><div style="font-family:var(--fh);font-size:26px;font-weight:700;color:var(--amber)" id="lead-warm">0</div></div>
-      <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r2);padding:13px"><div style="font-family:var(--fm);font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">Scans Run</div><div style="font-family:var(--fh);font-size:26px;font-weight:700;color:var(--blue2)" id="lead-scans">0</div></div>
-    </div>
-    <div id="alert-feed" style="display:flex;flex-direction:column;gap:7px"><div style="text-align:center;padding:22px;color:var(--ink3);font-size:12px">Click the "Generate Examples" button above to see some examples</div></div>
-    <div style="margin-top:8px;display:flex;gap:6px"><button class="btn-ghost" onclick="exportLeads()">Download as a Spreadsheet</button><button class="btn-ghost" onclick="clearLeads()">Clear This List</button></div>
-    <div class="sm" id="scan-s"></div>
   </div>
 </div>
 </div>
@@ -2008,60 +1981,6 @@ async function loadNews(){
 }
 
 /* SOCIAL SCAN */
-let allLeads=[],scanCount=0;
-function filterLeads(){const f=document.getElementById('lead-filter').value;renderLeads(f==='all'?allLeads:allLeads.filter(l=>l.heat===f));}
-async function runScan(){
-  const btn=document.getElementById('scan-btn'),spin=document.getElementById('scan-spin'),ico=document.getElementById('scan-ico');
-  btn.disabled=true;spin.style.display='block';ico.style.display='none';
-  document.getElementById('scan-s').textContent='Scanning Nextdoor, Facebook, Reddit, Google...';
-  try{
-    const p=await claude(`Social media lead scanning for ${C.name} (industry: ${ME?.industry||'general'}, services: ${C.services}, area: ${C.community||'their service area'}). ${MONTH} ${TODAY.getFullYear()}.
-Return ONLY valid JSON: {"alerts":[{"platform":"Nextdoor","author":"Sarah M.","location":"Neighborhood name","time":"22 min ago","text":"Realistic ${MONTH} post from someone seeking this business's services","category":"service category","heat":"hot","srcCls":"src-nd","srcLetter":"N"}]}
-10 alerts relevant to this business's actual services. Platforms: Nextdoor=src-nd/N, Facebook=src-fb/F, Reddit=src-rd/R, Google=src-gm/G. Heat: hot/warm/cold.`);
-    allLeads=(p.alerts||[]).map((a,i)=>{return {...a,isNew:i<4,id:Date.now()+i};});
-    scanCount++;
-    const hot=allLeads.filter(a=>a.heat==='hot').length;
-    const warm=allLeads.filter(a=>a.heat==='warm').length;
-    document.getElementById('lead-new').textContent=allLeads.length;
-    document.getElementById('lead-hot').textContent=hot;
-    document.getElementById('lead-warm').textContent=warm;
-    document.getElementById('lead-scans').textContent=scanCount;
-    const ko=document.getElementById('kpi-opps');if(ko)ko.textContent=hot+warm;
-    const kt=document.getElementById('kpi-opps-t');if(kt)kt.textContent=hot+' hot';
-    renderLeads(allLeads);
-    if(hot>0)showNotif(`${hot} Hot Lead${hot>1?'s':''}!`,`Respond quickly — ${C.phone}`);
-    document.getElementById('scan-s').textContent=`${allLeads.length} alerts (${hot} hot) · scan #${scanCount} · ${new Date().toLocaleTimeString()}`;
-  }catch(e){document.getElementById('scan-s').textContent='Error: '+e.message;}
-  btn.disabled=false;spin.style.display='none';ico.style.display='';
-  document.getElementById('scan-lbl').textContent='Scan Again';
-}
-function renderLeads(leads){
-  const feed=document.getElementById('alert-feed');
-  if(!leads.length){feed.innerHTML='<div style="text-align:center;padding:20px;color:var(--ink3)">No alerts match</div>';return;}
-  const ss={'src-nd':'background:rgba(0,181,81,.15);color:#00b551','src-fb':'background:rgba(24,119,242,.15);color:#1877f2','src-rd':'background:rgba(255,69,0,.15);color:#ff4500','src-gm':'background:rgba(234,67,53,.15);color:#ea4335'};
-  feed.innerHTML=leads.map(a=>`
-    <div class="lead" style="border-left:3px solid ${a.heat==='hot'?'var(--red)':a.heat==='warm'?'var(--amber)':'var(--blue2)'}">
-      <div class="lead-src">
-        <div class="lead-ico ${a.srcCls||'src-nd'}" style="${ss[a.srcCls]||ss['src-nd']}">${a.srcLetter||'N'}</div>
-        <div><div class="lead-who">${a.platform} · <span style="font-weight:400;color:var(--ink2)">${a.author}</span></div><div class="lead-wh">${a.location} · ${a.time}</div></div>
-        <div class="lead-bgs">${a.isNew?'<span class="badge b-new">NEW</span>':''}<span class="badge b-${a.heat}">${a.heat.toUpperCase()}</span><span class="badge b-blue">${a.category}</span></div>
-      </div>
-      <div class="lead-txt">${a.text}</div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap">
-        <button class="btn-xs p" onclick="copyText('Hi ${a.author}! I am ${C.founder||"the owner"} at ${C.name}. We specialize in ${a.category}. Free assessment? ${C.phone} or ${C.email}.')">Copy Response</button>
-        <button class="btn-xs" onclick="this.closest('.lead').remove()">Dismiss</button>
-      </div>
-    </div>`).join('');
-}
-function clearLeads(){allLeads=[];document.getElementById('alert-feed').innerHTML='<div style="text-align:center;padding:20px;color:var(--ink3);font-size:12px">Cleared</div>';['lead-new','lead-hot','lead-warm'].forEach(id=>document.getElementById(id).textContent='0');}
-function exportLeads(){
-  if(!allLeads.length){showNotif('No leads','Run a scan first');return;}
-  const rows=[['Platform','Author','Location','Category','Heat','Time','Post']];
-  allLeads.forEach(a=>rows.push([a.platform,a.author,a.location,a.category,a.heat,a.time,`"${a.text}"`]));
-  const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});
-  const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='levi_leads_'+TODAY.toISOString().slice(0,10)+'.csv';link.click();
-}
-
 /* LANDING PAGES — real, persisted, publishable at a public URL. A tenant
    can hold several pages (one per ZIP/service angle), not just one. */
 let lpTrig='primary',lpHTML='',currentLpPage=null,landingPages=[];
@@ -4815,7 +4734,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
           <div class="platform-icon" style="width:36px;height:36px;font-size:18px;margin:0;background:var(--bg5);border-radius:11px;display:flex;align-items:center;justify-content:center">📡</div>
           <div><div class="platform-name">Really Scanning Social Media for Mentions of Your Business</div><span class="badge b-warm" style="margin-top:3px;display:inline-block">NEEDS A PAID TOOL</span></div>
         </div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.7">The "Social Mention Ideas" you see on Market Intel are AI-written examples, not a real live feed — there's no free way to scan real social media chatter. Doing that for real would require paying for a separate specialized service, so it's not something to add without checking with you first, since it's an ongoing cost.</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.7">There's no free way to scan real social media chatter for mentions of your business — doing that for real would require paying for a separate specialized service, so it's not something to add without checking with you first, since it's an ongoing cost.</div>
       </div>
       <div class="platform-card">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
