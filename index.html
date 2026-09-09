@@ -1874,7 +1874,6 @@ function renderCompetitorCards(competitors){
     <div class="compc">
       <div class="comp-n">${c.archetype||''}</div>
       <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:5px"><strong style="color:var(--ink)">Typical strength:</strong> ${c.typical_strength||''}</div>
-      <div class="cweak"><div class="cwl">⚠ Typical Weakness</div><div class="cwt">${c.typical_weakness||''}</div></div>
       <div class="cang"><div class="cal">✓ How ${C.name||'you'} Wins</div><div class="cat">${c.how_to_win||''}</div></div>
     </div>`).join('')+'</div>';
 }
@@ -1897,6 +1896,16 @@ async function loadComp(){
 }
 
 /* REAL COMPETITORS (Google Places) — separate from the AI archetypes above */
+function deriveRealCompetitorWeakness(c){
+  // Computed straight from the real Google data on this business — no AI
+  // guessing involved. Picks the single most useful gap to exploit.
+  if(c.rating==null)return"No star rating on Google yet — they haven't built up a public reputation you'd need to compete with.";
+  if(c.rating<3.5)return`Low rating (★${c.rating}) — customers are visibly unhappy with them, which you can win on.`;
+  if(c.rating<4.2)return`Middling rating (★${c.rating}) — there's real room to out-perform them on reviews.`;
+  if((c.reviewCount||0)<10)return`Very few reviews${c.reviewCount?` (only ${c.reviewCount})`:''} — a thin online reputation you can out-market.`;
+  if(!c.website)return"No website listed on Google — they may be missing out on search traffic entirely.";
+  return"Strong on paper (good rating and review count) — read their actual reviews for service gaps you can target.";
+}
 function renderPlacesCompetitors(list,sparse){
   const el=document.getElementById('places-comp-out');
   if(!el)return;
@@ -1909,7 +1918,8 @@ function renderPlacesCompetitors(list,sparse){
       <div class="comp-n">${c.name}</div>
       <div style="font-size:12px;color:var(--ink2);margin-bottom:5px">${c.rating?('★ '+c.rating+' ('+(c.reviewCount||0)+' reviews)'):'No rating yet'}</div>
       ${c.address?`<div style="font-size:11px;color:var(--ink3);margin-bottom:4px">${c.address}</div>`:''}
-      ${c.website?`<a href="${c.website}" target="_blank" style="font-size:11px;color:var(--blue2)">Visit website ↗</a>`:''}
+      <div class="cweak" style="margin-top:6px"><div class="cwl">Weakness</div><div class="cwt">${escapeHtmlClient(deriveRealCompetitorWeakness(c))}</div></div>
+      ${c.website?`<a href="${c.website}" target="_blank" style="font-size:11px;color:var(--blue2);display:inline-block;margin-top:6px">Visit website ↗</a>`:''}
     </div>`).join('')+'</div>';
 }
 async function loadPlacesCompetitors(force){
