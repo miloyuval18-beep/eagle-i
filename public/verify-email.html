@@ -8,14 +8,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
+  /* Contrast pass — same verified palette as the main dashboard (see
+     index.html's :root comment): ink/ink2/ink3 all clear WCAG AA
+     everywhere they're used and AAA in most places; bdr2 now clears the
+     3:1 non-text minimum for visible card/input borders. */
   --bg:#faf9f6;--bg-card:#ffffff;--bg-soft:#f1efea;
-  --ink:#262421;--ink2:#5b5750;--ink3:#726d63;
-  --bdr:#e3e0da;--bdr2:#cfcbc3;--bdr-strong:#262421;
+  --ink:#201e1a;--ink2:#423d37;--ink3:#524d45;
+  --bdr:#bdb6a8;--bdr2:#8f8879;--bdr-strong:#201e1a;
   --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
-.card{width:100%;max-width:420px;background:var(--bg-card);border:1px solid var(--bdr);border-radius:14px;padding:32px;box-shadow:0 2px 4px rgba(38,36,33,.04),0 8px 24px rgba(38,36,33,.07);text-align:center}
+.card{width:100%;max-width:420px;background:var(--bg-card);border:1px solid var(--bdr);border-radius:14px;padding:32px;box-shadow:0 2px 4px rgba(32,30,26,.04),0 8px 24px rgba(32,30,26,.07);text-align:center}
 h1{font-size:24px;font-weight:800;letter-spacing:.2px;margin-bottom:6px}
 .sub{font-size:15px;color:var(--ink3);margin-bottom:24px}
 button.primary{width:100%;margin-top:10px;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:14px;font-family:var(--f);font-size:16px;font-weight:700;cursor:pointer}
