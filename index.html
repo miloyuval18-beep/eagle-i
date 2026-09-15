@@ -2872,6 +2872,8 @@ async function generateMailerPdf(action){
    address + year built). */
 let agingProperties=[];
 let agingSelected=new Map(); // "zip|address" -> property
+let agingSystemLabel='';
+const AGING_SYSTEM_LABELS={roof:'🏠 Roof',hvac:'❄️ HVAC',water_heater:'🚿 Water Heater'};
 function agingKey(p){return p.zip+'|'+p.address;}
 async function loadAgingSystems(){
   const btn=document.getElementById('aging-btn'),spin=document.getElementById('aging-spin'),lbl=document.getElementById('aging-lbl'),s=document.getElementById('aging-s');
@@ -2883,6 +2885,7 @@ async function loadAgingSystems(){
     const d=await r.json();
     if(!r.ok)throw new Error(d.error?.message||'Failed to load');
     agingProperties=d.properties||[];
+    agingSystemLabel=AGING_SYSTEM_LABELS[d.system]||AGING_SYSTEM_LABELS[system]||'';
     agingSelected=new Map();
     renderAgingProperties();
     updateAgingSelectBar();
@@ -2903,6 +2906,7 @@ function renderAgingProperties(){
           <div style="font-family:var(--fh);font-size:13px;font-weight:600;color:var(--ink)">${escapeHtmlClient(p.address)}</div>
           <div style="font-size:11px;color:var(--ink2);margin-top:2px">${p.zip}${p.region?' · '+escapeHtmlClient(p.region):''}</div>
           <div style="font-size:11px;color:var(--ink3);margin-top:2px">Built ~${p.yearBuilt} · about ${p.approxAge} years old</div>
+          ${agingSystemLabel?`<div style="font-size:10px;color:var(--ink2);margin-top:2px;font-weight:600">System: ${agingSystemLabel}</div>`:''}
         </div>
       </label>
     </div>`;
