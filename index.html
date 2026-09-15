@@ -1734,7 +1734,7 @@ Recommendation: "${title}" — ${fix}
 Decide which ONE of these actually matches what the recommendation is asking for, then fill in only the fields that type needs (leave every other field as an empty string):
 - post: the recommendation is literally about sharing/announcing something on social media
 - review_request: ask a specific past customer to leave a review
-- vendor_outreach: reach out to one specific referral partner, vendor, or business contact by email
+- vendor_outreach: reach out to one specific referral partner, vendor, or business contact by email — vendorMessage must be formal and professional, proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward, not a quick pitch
 - ad_campaign: run a paid ad on Meta (Facebook/Instagram) or Google
 - navigate: the recommendation is about something handled in a different tab of this app rather than sent directly — set navigateTarget to exactly one of: market, competitors, opps, website_checkup, growth_vendors, networking, pr_awards, permits, budget, ads, social_hq, keywords, credentials
 - none: the recommendation is about something Eagle I has no tool for at all (e.g. hiring, pricing, internal operations) — do not force it into any of the above
@@ -2330,7 +2330,7 @@ async function loadVendors(){
   try{
     const p=await claude(`Identify realistic categories of local referral partners for ${C.name} (industry: ${ME?.industry||'general'}, services: ${C.services}, area: ${C.community||'their service area'}) — businesses or professionals who could refer clients to them, or vice versa. Do not invent specific real company names.
 Client: ${C.name}, ${C.phone}, ${C.email}. Founder: ${C.founder}.
-Return ONLY valid JSON: {"vendors":[{"type":"short category label appropriate to this industry, e.g. 'Real Estate Agent' or 'Complementary Service'","specialty":"why this category is a good referral fit","first_msg":"Personalized 2-sentence outreach message from ${C.founder} at ${C.phone} mentioning ${C.name} and specific value to this category"}]}
+Return ONLY valid JSON: {"vendors":[{"type":"short category label appropriate to this industry, e.g. 'Real Estate Agent' or 'Complementary Service'","specialty":"why this category is a good referral fit","first_msg":"A formal, professional outreach message (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name}, proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward — not a quick pitch, a genuine relationship-building request"}]}
 6-8 categories genuinely relevant to this specific industry.`,1500);
     const vendors=p.vendors||[];
     document.getElementById('ven-out').innerHTML=`<div class="g3">${vendors.map((v,i)=>{
@@ -2516,12 +2516,15 @@ async function genOutreach(){
   const cmap={li:'LinkedIn DM under 280 chars',email:'professional email',event:'post-event follow-up email'};
   const pt=document.getElementById('out-type').value;
   const pc=document.getElementById('out-ch').value;
+  // A past customer isn't a business-partnership prospect — the meeting
+  // proposal only applies to the "someone to work with" recipient types.
+  const isPartnershipContact=pt!=='past_customer';
   try{
     const p=await claude(`4 outreach message variants from ${C.founder||'the owner'} at ${C.name} to a ${tmap[pt]} via ${cmap[pc]}.
 Business: ${C.name}, industry: ${ME?.industry||'general'}, services: ${C.services}, differentiators: ${C.unique}, voice: ${C.voice}.
 Contact: ${C.phone}, ${C.email}. Area: ${C.community}.
 Return ONLY valid JSON: {"messages":[{"variant":"Community","subject":"Subject if email","body":"Message","note":"When to use"}]}
-4 variants: Community/Local connection, Authority (credentials/differentiators), Reciprocal (offer them value), Urgency (timing angle). Keep under 280 chars for LinkedIn.`,800);
+4 variants: Community/Local connection, Authority (credentials/differentiators), Reciprocal (offer them value), Urgency (timing angle). Keep under 280 chars for LinkedIn.${isPartnershipContact?' Every variant should be formal and professional, and propose setting up a time to meet to discuss opportunities for the two businesses to help each other going forward.':''}`,800);
     window._outreachMsgs=p.messages||[];
     const canSend=(pc==='email'||pc==='event');
     document.getElementById('out-msgs').innerHTML=(p.messages||[]).map((m,i)=>`
