@@ -472,7 +472,13 @@ router.get('/api/vendors/places', requireAuth, async (req, res) => {
     const vendors = await searchNearbyCompetitors({
       services: category,
       serviceArea: profile.service_area,
-      highValueFocus
+      highValueFocus,
+      // Significantly more than the default 10 — this is a "who could I
+      // work with" lookup (Vendor Directory / Professional Partner
+      // Network), not the competitor lookup below, which stays at the
+      // default since a shorter competitor list is what that feature
+      // actually wants.
+      resultCount: 60
     });
 
     const updatedVendors = { ...(profile.places_vendors || {}), [cacheKey]: { results: vendors, fetchedAt: new Date().toISOString() } };
