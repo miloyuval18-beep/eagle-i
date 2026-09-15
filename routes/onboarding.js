@@ -404,6 +404,22 @@ router.get('/api/competitors/rating-alerts', requireAuth, async (req, res) => {
   }
 });
 
+// Marks each real vendor result with `emailed: true` when this tenant has
+// already sent it a real outreach email (routes/vendors/outreach-email,
+// vendor_outreach table) — matched by name since that's the only stable
+// key available before "Find & Send" looks up an address, and it's the
+// same name vendor_outreach.vendor_name is stored under. Only a genuinely
+// sent email counts, not a failed attempt.
+async function markEmailedVendors(tenantId, vendors) {
+  if (!vendors.length) return vendors;
+  const sentRes = await query(
+    `SELECT DISTINCT LOWER(vendor_name) AS name FROM vendor_outreach WHERE tenant_id = $1 AND status = 'sent'`,
+    [tenantId]
+  );
+  const emailedNames = new Set(sentRes.rows.map(r => r.name));
+  return vendors.map(v => ({ ...v, emailed: emailedNames.has(String(v.name || '').toLowerCase()) }));
+}
+
 // Real referral-partner businesses for one category, e.g. "Real Estate
 // Agent" — the AI-suggested category type (from POST /api/claude's vendor
 // prompt) is the search term; this finds who actually exists nearby.
@@ -436,7 +452,7 @@ router.get('/api/vendors/places', requireAuth, async (req, res) => {
 
     if (isFresh && !forceRefresh) {
       return res.json({
-        vendors: cached.results || [],
+        vendors: await markEmailedVendors(req.tenantId, cached.results || []),
         source: 'cache',
         fetchedAt: cached.fetchedAt,
         sparse: (cached.results || []).length === 0,
@@ -465,7 +481,7 @@ router.get('/api/vendors/places', requireAuth, async (req, res) => {
       [JSON.stringify(updatedVendors), req.tenantId]
     );
 
-    res.json({ vendors, source: 'live', fetchedAt: new Date().toISOString(), sparse: vendors.length === 0, highValueFocus });
+    res.json({ vendors: await markEmailedVendors(req.tenantId, vendors), source: 'live', fetchedAt: new Date().toISOString(), sparse: vendors.length === 0, highValueFocus });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to load real vendor data: ' + err.message } });
   }

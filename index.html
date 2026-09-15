@@ -2370,7 +2370,7 @@ async function loadRealVendors(category,idx,idPrefix){
       (d.highValueFocus?`<div style="font-size:11px;color:var(--ink2);background:var(--bg4);border-left:2px solid var(--amber);border-radius:var(--r);padding:6px 9px;margin-bottom:7px">🏛️ Your profile reads as a luxury/high-end focus — prioritizing vendors in or near Houston's known high-value neighborhoods (River Oaks, Memorial, West University Place, and similar).</div>`:'')+
       vendors.map(v=>`
         <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-          <div style="color:var(--ink);font-weight:600">${v.name}${v.inHighValueZip?' <span style="font-family:var(--fm);font-size:8px;color:var(--amber);border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🏛️ HIGH-VALUE AREA</span>':''}</div>
+          <div style="color:var(--ink);font-weight:600">${v.name}${v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':''}${v.inHighValueZip?' <span style="font-family:var(--fm);font-size:8px;color:var(--amber);border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🏛️ HIGH-VALUE AREA</span>':''}</div>
           <div style="color:var(--ink2)">${v.rating?('★ '+v.rating+' ('+(v.reviewCount||0)+' reviews)'):'No rating yet'}${v.address?' · '+v.address:''}</div>
           ${v.website?`<a href="${v.website}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
           <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
@@ -2382,6 +2382,9 @@ async function loadRealVendors(category,idx,idPrefix){
   }catch(e){el.innerHTML=`<div style="font-size:11px;color:var(--red)">Network error: ${e.message}</div>`;}
 }
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// A negative cap (tenants.monthly_generation_cap = -1) means unlimited —
+// see lib/usage.js — so show that instead of e.g. "4/-1".
+function fmtUsage(used,cap){return cap<0?`${used} (Unlimited)`:`${used}/${cap}`;}
 // One button: looks up the vendor's email if the field is still empty (or
 // uses whatever's already typed there), then always confirms the exact
 // recipient + message before actually sending — no undo once an email is
@@ -2428,7 +2431,11 @@ async function findAndSendVendorOutreach(btn,vendorName,website){
     const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName,message})});
     const d=await r.json();
     if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-    else{s.textContent='✓ Sent to '+email;s.style.color='var(--green)';loadVendorOutreach();}
+    else{
+      s.textContent='✓ Sent to '+email;s.style.color='var(--green)';loadVendorOutreach();
+      const nameEl=row.querySelector('div[style*="font-weight:600"]');
+      if(nameEl&&!nameEl.querySelector('.b-new'))nameEl.insertAdjacentHTML('beforeend',' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>');
+    }
   }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
   btn.disabled=false;btn.textContent=orig;
 }
@@ -3336,12 +3343,12 @@ async function bootstrap(){
     const topName=document.getElementById('topbar-company-name');if(topName)topName.textContent=C.name;
     const topPlan=document.getElementById('topbar-plan-tier');if(topPlan)topPlan.textContent='● '+ME.planTier;
     const heroPlan=document.getElementById('hero-plan');if(heroPlan)heroPlan.textContent=ME.planTier;
-    const heroUsage=document.getElementById('hero-usage');if(heroUsage)heroUsage.textContent=`${ME.generationsUsed}/${ME.monthlyGenerationCap}`;
+    const heroUsage=document.getElementById('hero-usage');if(heroUsage)heroUsage.textContent=fmtUsage(ME.generationsUsed,ME.monthlyGenerationCap);
     const heroInd=document.getElementById('hero-industry');if(heroInd)heroInd.textContent=(ME.industry||'').replace('_',' ');
     const proofName=document.getElementById('proof-company-name');if(proofName)proofName.textContent=C.name;
     const proofContact=document.getElementById('proof-contact');if(proofContact)proofContact.textContent=[C.phone,C.email].filter(Boolean).join(' · ')||'No contact info yet';
     const proofPlan=document.getElementById('proof-plan');if(proofPlan)proofPlan.textContent=ME.planTier;
-    const proofUsage=document.getElementById('proof-usage');if(proofUsage)proofUsage.textContent=`${ME.generationsUsed}/${ME.monthlyGenerationCap}`;
+    const proofUsage=document.getElementById('proof-usage');if(proofUsage)proofUsage.textContent=fmtUsage(ME.generationsUsed,ME.monthlyGenerationCap);
     const proofInd=document.getElementById('proof-industry');if(proofInd)proofInd.textContent=(ME.industry||'').replace('_',' ');
     if(ME.profile.logoUrl){
       [document.getElementById('topbar-logo'),document.getElementById('proof-logo')].forEach(img=>{
@@ -3351,7 +3358,7 @@ async function bootstrap(){
         img.style.display='';
       });
     }
-    const kpiQuota=document.getElementById('kpi-quota');if(kpiQuota)kpiQuota.textContent=`${ME.generationsUsed}/${ME.monthlyGenerationCap}`;
+    const kpiQuota=document.getElementById('kpi-quota');if(kpiQuota)kpiQuota.textContent=fmtUsage(ME.generationsUsed,ME.monthlyGenerationCap);
     const kpiIndustry=document.getElementById('kpi-industry');if(kpiIndustry)kpiIndustry.textContent=(ME.industry||'').replace('_',' ');
 
     // Real-estate/home-services-only features (HCAD-style targeting, and any
