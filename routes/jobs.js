@@ -65,6 +65,9 @@ router.post('/api/jobs', requireAuth, async (req, res) => {
 
 router.get('/api/jobs', requireAuth, async (req, res) => {
   try {
+    const tenant = await requireJobsEligibleTenant(req, res);
+    if (!tenant) return;
+
     const result = await query('SELECT * FROM jobs WHERE tenant_id = $1 ORDER BY created_at DESC', [req.tenantId]);
     res.json({ jobs: result.rows });
   } catch (err) {
@@ -74,6 +77,9 @@ router.get('/api/jobs', requireAuth, async (req, res) => {
 
 router.delete('/api/jobs/:id', requireAuth, async (req, res) => {
   try {
+    const tenant = await requireJobsEligibleTenant(req, res);
+    if (!tenant) return;
+
     const result = await query('DELETE FROM jobs WHERE id = $1 AND tenant_id = $2 RETURNING id', [req.params.id, req.tenantId]);
     if (!result.rows.length) {
       return res.status(404).json({ error: { message: 'Job site not found.' } });

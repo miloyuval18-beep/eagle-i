@@ -1,8 +1,11 @@
 // Real Signal Detection: live NWS storm alerts + real permit-spike
 // detection (both from lib/weatherSignals.js and lib/houstonPermits.js).
-// Gated the same way Permits already is — real-estate/home-services
-// tenants, Houston-scoped — see lib/weatherSignals.js's header comment for
-// why that geo assumption is made rather than solved generally.
+// Gated the same way Permits already is — via qualifiesForPermits(), so a
+// construction company signed up under "Other"/"Professional Services"
+// qualifies the same way it already does for the Permits tab, not just a
+// plain industry-code check — Houston-scoped — see lib/weatherSignals.js's
+// header comment for why that geo assumption is made rather than solved
+// generally.
 //
 // Deliberately does NOT auto-send anything. draft-outreach generates text
 // for the owner to review and send themselves via the channels that
@@ -18,9 +21,9 @@ const { getHighValueZipInfo } = require('../lib/houstonZipValues');
 const { getRealHcadZipStatsForZips } = require('../lib/hcadZipValues');
 const { generateJSON } = require('../lib/anthropic');
 const { checkAndIncrementUsage } = require('../lib/usage');
+const { qualifiesForPermits } = require('../lib/realEstateAccess');
 
 const router = express.Router();
-const REAL_ESTATE_INDUSTRIES = new Set(['home_services', 'real_estate']);
 
 async function requireRealEstateTenant(req, res) {
   const tenantRes = await query('SELECT industry, company_name FROM tenants WHERE id = $1', [req.tenantId]);
@@ -28,8 +31,8 @@ async function requireRealEstateTenant(req, res) {
     res.status(404).json({ error: { message: 'Tenant not found.' } });
     return null;
   }
-  if (!REAL_ESTATE_INDUSTRIES.has(tenantRes.rows[0].industry)) {
-    res.status(403).json({ error: { message: 'This feature is only available for real estate / home services accounts.' } });
+  if (!qualifiesForPermits({ industry: tenantRes.rows[0].industry, companyName: tenantRes.rows[0].company_name })) {
+    res.status(403).json({ error: { message: 'This feature is only available for real estate, home services, or construction accounts.' } });
     return null;
   }
   return tenantRes.rows[0];
