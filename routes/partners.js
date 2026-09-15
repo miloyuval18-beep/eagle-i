@@ -54,7 +54,7 @@ ${escapeHtml(message).split('\n').map(line => `<p>${line}</p>`).join('')}
       sent = await sendEmail({
         to: toEmail.trim(),
         subject: (subject && subject.trim()) || `A note from ${companyName}`,
-        html, text: message, replyTo
+        html, text: message, replyTo, fromName: companyName
       });
     } catch (err) {
       sendError = err;

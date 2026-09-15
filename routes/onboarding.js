@@ -530,7 +530,7 @@ ${escapeHtml(message).split('\n').map(line => `<p>${line}</p>`).join('')}
 
     let sent, sendError;
     try {
-      sent = await sendEmail({ to: toEmail.trim(), subject: `Quick note from ${companyName}`, html, text: message, replyTo });
+      sent = await sendEmail({ to: toEmail.trim(), subject: `Quick note from ${companyName}`, html, text: message, replyTo, fromName: companyName });
     } catch (err) {
       sendError = err;
     }

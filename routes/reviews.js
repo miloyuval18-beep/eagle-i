@@ -63,7 +63,7 @@ router.post('/api/review-requests', requireAuth, async (req, res) => {
     const replyTo = buildReplyToAddress('review', reviewRequestId) || validProfileEmail;
 
     try {
-      const sent = await sendEmail({ to: customerEmail.trim(), subject, html, text, replyTo });
+      const sent = await sendEmail({ to: customerEmail.trim(), subject, html, text, replyTo, fromName: companyName });
       const row = await query(
         `INSERT INTO review_requests (id, tenant_id, sent_by, customer_name, customer_email, included_platforms, status, resend_email_id)
          VALUES ($1,$2,$3,$4,$5,$6,'sent',$7) RETURNING *`,
