@@ -25,11 +25,13 @@ const partnersRoutes = require('./routes/partners');
 const websiteCheckupRoutes = require('./routes/websiteCheckup');
 const jobsRoutes = require('./routes/jobs');
 const tbaeRoutes = require('./routes/tbaeRegistrants');
+const tdlrRoutes = require('./routes/tdlrRegistrants');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
 const { startCompetitorRatingWorker } = require('./lib/competitorRatingWorker');
 const { startTbaeRosterWorker } = require('./lib/tbaeRosterWorker');
+const { startTdlrRosterWorker } = require('./lib/tdlrRosterWorker');
 
 // Last-resort safety net: anything that escapes every route's own try/catch
 // (a genuine bug, not a "service not configured" 4xx) gets emailed to the
@@ -94,6 +96,7 @@ app.use(partnersRoutes);
 app.use(websiteCheckupRoutes);
 app.use(jobsRoutes);
 app.use(tbaeRoutes);
+app.use(tdlrRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
@@ -144,4 +147,5 @@ app.listen(PORT, () => {
   startScheduledPostsWorker();
   startCompetitorRatingWorker();
   startTbaeRosterWorker();
+  startTdlrRosterWorker();
 });
