@@ -13,7 +13,7 @@ const { findContactEmail } = require('../lib/vendorContactFinder');
 const { getHoustonAreaRegistrants, getRegistrantById, saveContactInfo } = require('../lib/tbaeRegistrants');
 
 const router = express.Router();
-const VALID_PROFESSIONS = new Set(['architect', 'interior_designer']);
+const VALID_PROFESSIONS = new Set(['architect', 'interior_designer', 'landscape_architect']);
 
 // Same emailed-status pattern as routes/onboarding.js's markEmailedVendors,
 // inlined here rather than shared since the two tables (vendor_outreach)
@@ -32,7 +32,7 @@ async function markEmailed(tenantId, registrants) {
 router.get('/api/tbae/registrants', requireAuth, async (req, res) => {
   const profession = (req.query.profession || '').trim();
   if (!VALID_PROFESSIONS.has(profession)) {
-    return res.status(400).json({ error: { message: 'profession must be "architect" or "interior_designer".' } });
+    return res.status(400).json({ error: { message: 'profession must be "architect", "interior_designer", or "landscape_architect".' } });
   }
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 40, 1), 100);
   const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);

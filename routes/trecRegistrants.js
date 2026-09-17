@@ -1,16 +1,14 @@
-// Real, TDLR-verified electricians and HVAC (A/C) contractors in the
-// Houston area — see migrations/..._tdlr_registrants.js and
-// scripts/importTdlrRegistrants.js for the data source. Structurally
-// identical to routes/tbaeRegistrants.js; the main difference is TDLR's
-// data already includes a real phone number directly from the state, so
-// find-contact here only needs Places for a website (to then check for a
-// published email), not for the phone itself.
+// Real, TREC-verified real estate brokers in the Houston area — see
+// migrations/..._trec_registrants.js and scripts/importTrecRegistrants.js.
+// TREC's data has no phone/address at all (unlike TDLR/TSBPE/TBPELS), so
+// find-contact here works the same way as routes/tbaeRegistrants.js: a
+// Places search by name, since there's nothing else to bridge from.
 const express = require('express');
 const { requireAuth } = require('../auth');
 const { checkAndIncrementPlacesUsage } = require('../lib/usage');
 const { searchNearbyCompetitors } = require('../lib/googlePlaces');
 const { findContactEmail } = require('../lib/vendorContactFinder');
-const { LICENSE_TYPES, getHoustonAreaRegistrants, getRegistrantById, saveContactInfo } = require('../lib/tdlrRegistrants');
+const { LICENSE_TYPES, getHoustonAreaRegistrants, getRegistrantById, saveContactInfo } = require('../lib/trecRegistrants');
 
 const router = express.Router();
 const VALID_LICENSE_TYPES = new Set(LICENSE_TYPES);
@@ -26,7 +24,7 @@ async function markEmailed(tenantId, registrants) {
   return registrants.map(r => ({ ...r, emailed: emailedNames.has(String(r.displayName || '').toLowerCase()) }));
 }
 
-router.get('/api/tdlr/registrants', requireAuth, async (req, res) => {
+router.get('/api/trec/registrants', requireAuth, async (req, res) => {
   const licenseType = (req.query.licenseType || '').trim();
   if (!VALID_LICENSE_TYPES.has(licenseType)) {
     return res.status(400).json({ error: { message: `licenseType must be one of: ${LICENSE_TYPES.join(', ')}.` } });
@@ -43,16 +41,11 @@ router.get('/api/tdlr/registrants', requireAuth, async (req, res) => {
       hasMore: offset + registrants.length < total
     });
   } catch (err) {
-    res.status(500).json({ error: { message: 'Failed to load TDLR registrants: ' + err.message } });
+    res.status(500).json({ error: { message: 'Failed to load TREC registrants: ' + err.message } });
   }
 });
 
-// Looks up one registrant's real business listing via Places (by
-// business name + city, same as routes/tbaeRegistrants.js's find-contact)
-// to find a website worth checking for a published email — the phone
-// number itself is already real, straight from TDLR's own data, no
-// Places call needed for that part.
-router.post('/api/tdlr/registrants/:id/find-contact', requireAuth, async (req, res) => {
+router.post('/api/trec/registrants/:id/find-contact', requireAuth, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) return res.status(400).json({ error: { message: 'Invalid registrant id.' } });
 
@@ -70,11 +63,11 @@ router.post('/api/tdlr/registrants/:id/find-contact', requireAuth, async (req, r
       });
     }
 
-    if (!registrant.business_name) {
-      return res.json({ website: null, email: null, address: null, reason: 'No business name on file for this registrant.' });
+    if (!registrant.full_name) {
+      return res.json({ website: null, email: null, address: null, reason: 'No name on file for this registrant.' });
     }
     if (!process.env.GOOGLE_PLACES_API_KEY) {
-      return res.status(503).json({ error: { message: 'Firm lookup is not configured on this server yet (missing GOOGLE_PLACES_API_KEY).' } });
+      return res.status(503).json({ error: { message: 'Lookup is not configured on this server yet (missing GOOGLE_PLACES_API_KEY).' } });
     }
 
     const usage = await checkAndIncrementPlacesUsage(req.tenantId);
@@ -83,8 +76,8 @@ router.post('/api/tdlr/registrants/:id/find-contact', requireAuth, async (req, r
     }
 
     const results = await searchNearbyCompetitors({
-      services: registrant.business_name,
-      serviceArea: `${registrant.business_city || 'Houston'}, TX`,
+      services: registrant.full_name,
+      serviceArea: `${registrant.county ? registrant.county + ' County, ' : ''}Houston, TX`,
       resultCount: 1
     });
     const match = results[0];
@@ -106,7 +99,7 @@ router.post('/api/tdlr/registrants/:id/find-contact', requireAuth, async (req, r
       email,
       address: match?.address || null,
       source: 'live',
-      reason: match ? (email ? null : 'No published email found on their website — the phone number above is already real, straight from TDLR.') : 'No matching business found on Google for this firm.'
+      reason: match ? (email ? null : 'No published email found on their website.') : 'No matching business found on Google for this name — TREC provides no phone or address to fall back on for brokers.'
     });
   } catch (err) {
     res.status(500).json({ error: { message: 'Contact lookup failed: ' + err.message } });
