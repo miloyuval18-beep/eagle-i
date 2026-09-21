@@ -33,6 +33,8 @@ const tdiRoutes = require('./routes/tdiRegistrants');
 const tdaRoutes = require('./routes/tdaRegistrants');
 const tdiAgenciesRoutes = require('./routes/tdiAgencies');
 const comptrollerTradesRoutes = require('./routes/comptrollerTrades');
+const vendorDirectoryRoutes = require('./routes/vendorDirectory');
+const unsubscribeRoutes = require('./routes/unsubscribe');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -118,6 +120,8 @@ app.use(tdiRoutes);
 app.use(tdaRoutes);
 app.use(tdiAgenciesRoutes);
 app.use(comptrollerTradesRoutes);
+app.use(vendorDirectoryRoutes);
+app.use(unsubscribeRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));

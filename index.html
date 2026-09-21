@@ -86,6 +86,56 @@ body::before{content:none}
 .pf-row.on{color:var(--blue2)}
 .pf-row-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pf-row-count{font-family:var(--fm);font-size:13px;color:var(--ink3);flex-shrink:0}
+
+/* Verified vendor directories (Vendors tab) */
+.vd-cats{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.vd-filters{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:10px}
+.vd-filters .vd-search{flex:1 1 170px;min-width:0;padding:6px 9px;font-size:12px}
+.vd-filters select{padding:3px 6px;max-width:100%}
+.vd-hide{display:inline-flex;align-items:center;gap:5px;font-family:var(--fm);font-size:12px;color:var(--ink2);cursor:pointer}
+.vd-locwrap{position:relative}
+.vd-locpanel{position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:320px;max-width:calc(100vw - 32px);padding:11px}
+.vd-locpanel .vd-locsearch{width:100%;box-sizing:border-box;padding:6px 9px;font-size:12px;margin-bottom:8px}
+.vd-locactions{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.vd-loccount{font-family:var(--fm);font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:1px}
+.vd-loclist{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.vd-selbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;background:var(--bg4)}
+.vd-selcount{font-family:var(--fh);font-size:14px;font-weight:600;color:var(--blue2)}
+.vd-selhint{font-size:10px;color:var(--ink3);margin-top:2px;max-width:46ch}
+.vd-selbtns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.vd-selbtns select{padding:3px 6px}
+.vd-row{display:flex;gap:9px;align-items:flex-start;border-top:1px solid var(--bdr2);padding:7px 0;font-size:11px}
+.vd-check{margin-top:3px;flex-shrink:0;width:16px;height:16px}
+.vd-rowbody{flex:1;min-width:0}
+.vd-name{color:var(--ink);font-weight:600;overflow-wrap:anywhere}
+.vd-sub{color:var(--ink2)}
+.vd-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px}
+.vd-actions .vd-email{flex:1;min-width:130px;padding:5px 8px;font-size:11px}
+.vd-rowstatus{font-size:10px;margin-top:3px}
+.vd-badge{font-family:var(--fm);font-size:9px;border-radius:4px;padding:1px 5px;vertical-align:middle;border:1px solid var(--bdr2);color:var(--ink2);white-space:nowrap}
+.vd-tone-green{color:var(--green);border-color:rgba(60,110,70,.4)}
+.vd-tone-amber{color:var(--amber);border-color:rgba(160,110,0,.5);font-weight:700}
+.vd-modal{position:fixed;inset:0;background:rgba(20,18,14,.55);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;font-family:var(--fb);font-size:14px;line-height:1.4;color:var(--ink)}
+.vd-modal-box{background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r2);width:min(720px,100%);max-height:calc(100vh - 32px);overflow-y:auto;padding:20px;box-sizing:border-box}
+.vd-mh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.vd-mt{font-family:var(--fh);font-size:18px;font-weight:700;color:var(--ink)}
+.vd-list-plain{margin:0 0 12px;padding-left:18px;font-size:13px;line-height:1.55;color:var(--ink2)}
+.vd-mbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.vd-warn{border:1px solid var(--bdr3);border-left:4px solid var(--bdr3);background:var(--bg4);padding:9px 11px;font-size:12px;margin-bottom:10px;border-radius:6px;color:var(--ink)}
+.vd-bar{height:10px;background:var(--bg4);border:1px solid var(--bdr2);border-radius:6px;overflow:hidden;margin:6px 0 10px}
+.vd-barfill{height:100%;background:var(--ink2);transition:width .2s}
+.vd-revlist{max-height:280px;overflow-y:auto;border:1px solid var(--bdr2);border-radius:8px;margin-bottom:10px}
+.vd-rev{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border-top:1px solid var(--bdr);font-size:12px;cursor:pointer}
+.vd-rev:first-child{border-top:0}
+.vd-rev.ex{opacity:.55;cursor:default}
+.vd-rev input{margin-top:3px;flex-shrink:0;width:16px;height:16px}
+.vd-revtxt{min-width:0;overflow-wrap:anywhere}
+.vd-revtxt .sm{display:block;margin-top:1px}
+.vd-left{margin-bottom:10px;font-size:12px;color:var(--ink2)}
+.vd-left summary{cursor:pointer;font-family:var(--fm)}
+.vd-msglabel{display:block;font-family:var(--fm);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin:6px 0 4px}
+.vd-msg{width:100%;box-sizing:border-box;font-size:13px;line-height:1.5;resize:vertical}
+@media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.vd-selhint{max-width:none}}
 .vp-bar{display:flex;gap:6px;padding:9px 11px;border-top:1px solid var(--bdr);background:var(--bg4)}
 .vp-input{flex:1;background:var(--bg5);border:1px solid var(--bdr2);border-radius:16px;padding:7px 12px;font-family:var(--fb);font-size:14px;color:var(--ink);outline:none}
 .vp-input:focus{border-color:var(--bdr3)}
@@ -873,128 +923,7 @@ tbody tr:last-child td{border-bottom:none}
   <div class="sm" id="ven-s"></div>
   <div id="ppn-out"></div>
   <div class="sm" id="ppn-s"></div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">🏛️ Houston Architects, Interior Designers &amp; Landscape Architects</div><div class="ss">Real, currently-licensed design professionals in the Houston area, pulled directly from the Texas Board of Architectural Examiners' own public registry — not a generic business search. About a third of all TBAE registrants statewide opt out of publishing their city, so this can't reach literally everyone, only what the state itself makes public — roughly 930 architects, 370 interior designers, and 130 landscape architects are reachable this way.</div></div></div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-blue" id="tbae-arch-btn" onclick="loadTbaeList('architect',this)"><span class="spin" id="tbae-arch-spin"></span><span id="tbae-arch-lbl">Load Architects</span></button>
-      <button class="btn-ghost" id="tbae-id-btn" onclick="loadTbaeList('interior_designer',this)"><span class="spin" id="tbae-id-spin"></span><span id="tbae-id-lbl">Load Interior Designers</span></button>
-      <button class="btn-ghost" id="tbae-la-btn" onclick="loadTbaeList('landscape_architect',this)"><span class="spin" id="tbae-la-spin"></span><span id="tbae-la-lbl">Load Landscape Architects</span></button>
-    </div>
-    <div id="tbae-arch-out"></div>
-    <button class="btn-xs" id="tbae-arch-more" style="display:none;margin-top:6px" onclick="loadTbaeList('architect',null)">Load More Architects</button>
-    <div class="sm" id="tbae-arch-s"></div>
-    <div id="tbae-id-out" style="margin-top:10px"></div>
-    <button class="btn-xs" id="tbae-id-more" style="display:none;margin-top:6px" onclick="loadTbaeList('interior_designer',null)">Load More Interior Designers</button>
-    <div class="sm" id="tbae-id-s"></div>
-    <div id="tbae-la-out" style="margin-top:10px"></div>
-    <button class="btn-xs" id="tbae-la-more" style="display:none;margin-top:6px" onclick="loadTbaeList('landscape_architect',null)">Load More Landscape Architects</button>
-    <div class="sm" id="tbae-la-s"></div>
-  </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">⚡ Houston Trade Contractors (TDLR)</div><div class="ss">Real, currently-licensed contracting businesses in the Houston metro area, pulled directly from the Texas Department of Licensing and Regulation's own public dataset — including a real business phone number straight from the state, no lookup needed to get that part. About 2,000 electrical contractors, 3,800 A/C contractors, 130 water well drillers, 210 appliance installers, and 80 elevator contractors are currently active in the area. (Plumbers are licensed by a separate state board — see below. Texas has no state license for general contractors or roofers at all, so those categories aren't available this way.)</div></div></div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-blue" id="tdlr-ec-btn" onclick="loadTdlrList('Electrical Contractor',this)"><span class="spin" id="tdlr-ec-spin"></span><span id="tdlr-ec-lbl">Load Electricians</span></button>
-      <button class="btn-ghost" id="tdlr-ac-btn" onclick="loadTdlrList('A/C Contractor',this)"><span class="spin" id="tdlr-ac-spin"></span><span id="tdlr-ac-lbl">Load A/C Contractors</span></button>
-      <button class="btn-ghost" id="tdlr-ww-btn" onclick="loadTdlrList('Water Well Driller/Pump Installer',this)"><span class="spin" id="tdlr-ww-spin"></span><span id="tdlr-ww-lbl">Load Water Well Drillers</span></button>
-      <button class="btn-ghost" id="tdlr-ai-btn" onclick="loadTdlrList('Appliance Installation Contractor',this)"><span class="spin" id="tdlr-ai-spin"></span><span id="tdlr-ai-lbl">Load Appliance Installers</span></button>
-      <button class="btn-ghost" id="tdlr-el-btn" onclick="loadTdlrList('Elevator Contractor',this)"><span class="spin" id="tdlr-el-spin"></span><span id="tdlr-el-lbl">Load Elevator Contractors</span></button>
-    </div>
-    <div id="tdlr-ec-out"></div>
-    <button class="btn-xs" id="tdlr-ec-more" style="display:none;margin-top:6px" onclick="loadTdlrList('Electrical Contractor',null)">Load More Electricians</button>
-    <div class="sm" id="tdlr-ec-s"></div>
-    <div id="tdlr-ac-out" style="margin-top:10px"></div>
-    <button class="btn-xs" id="tdlr-ac-more" style="display:none;margin-top:6px" onclick="loadTdlrList('A/C Contractor',null)">Load More A/C Contractors</button>
-    <div class="sm" id="tdlr-ac-s"></div>
-    <div id="tdlr-ww-out" style="margin-top:10px"></div>
-    <button class="btn-xs" id="tdlr-ww-more" style="display:none;margin-top:6px" onclick="loadTdlrList('Water Well Driller/Pump Installer',null)">Load More Water Well Drillers</button>
-    <div class="sm" id="tdlr-ww-s"></div>
-    <div id="tdlr-ai-out" style="margin-top:10px"></div>
-    <button class="btn-xs" id="tdlr-ai-more" style="display:none;margin-top:6px" onclick="loadTdlrList('Appliance Installation Contractor',null)">Load More Appliance Installers</button>
-    <div class="sm" id="tdlr-ai-s"></div>
-    <div id="tdlr-el-out" style="margin-top:10px"></div>
-    <button class="btn-xs" id="tdlr-el-more" style="display:none;margin-top:6px" onclick="loadTdlrList('Elevator Contractor',null)">Load More Elevator Contractors</button>
-    <div class="sm" id="tdlr-el-s"></div>
-  </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">🔧 Houston Plumbers</div><div class="ss">Real, currently-licensed Responsible Master Plumbers in the Houston metro area — the plumbing license that means "licensed to run their own plumbing business," not an employee-level credential — pulled directly from the Texas State Board of Plumbing Examiners' own public dataset. Includes a real business phone number and, uniquely among these sources, whether their liability insurance is currently active — a genuine second quality signal beyond just having a license. About 1,560 are currently active in the area.</div></div></div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-blue" id="tsbpe-btn" onclick="loadTsbpeList(this)"><span class="spin" id="tsbpe-spin"></span><span id="tsbpe-lbl">Load Plumbers</span></button>
-    </div>
-    <div id="tsbpe-out"></div>
-    <button class="btn-xs" id="tsbpe-more" style="display:none;margin-top:6px" onclick="loadTsbpeList(null)">Load More Plumbers</button>
-    <div class="sm" id="tsbpe-s"></div>
-  </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">🏗️ Houston Engineering &amp; Surveying Firms</div><div class="ss">Real, currently-registered engineering and land-surveying firms in the Houston metro area, pulled directly from the Texas Board of Professional Engineers and Land Surveyors' own public firm roster — including a real business address and phone number straight from the state. About 2,310 firms are currently registered in the area.</div></div></div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-blue" id="tbpels-btn" onclick="loadTbpelsList(this)"><span class="spin" id="tbpels-spin"></span><span id="tbpels-lbl">Load Engineering Firms</span></button>
-    </div>
-    <div id="tbpels-out"></div>
-    <button class="btn-xs" id="tbpels-more" style="display:none;margin-top:6px" onclick="loadTbpelsList(null)">Load More Engineering Firms</button>
-    <div class="sm" id="tbpels-s"></div>
-  </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">🏘️ Houston Real Estate Brokers</div><div class="ss">Real, currently-active real estate brokerages and individual brokers in the Houston metro area, pulled directly from the Texas Real Estate Commission's own same-day-updated public dataset — a strong referral-partner category (they're often the ones fielding "who should I call for renovations" questions). TREC's data has no phone or address at all, so contact info here always comes from the Find &amp; Send lookup below, same as architects. About 3,100 broker companies and 7,900 individual brokers are currently active in the area.</div></div></div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-blue" id="trec-bc-btn" onclick="loadTrecList('Broker Company',this)"><span class="spin" id="trec-bc-spin"></span><span id="trec-bc-lbl">Load Brokerages</span></button>
-      <button class="btn-ghost" id="trec-bi-btn" onclick="loadTrecList('Broker Individual',this)"><span class="spin" id="trec-bi-spin"></span><span id="trec-bi-lbl">Load Individual Brokers</span></button>
-    </div>
-    <div id="trec-bc-out"></div>
-    <button class="btn-xs" id="trec-bc-more" style="display:none;margin-top:6px" onclick="loadTrecList('Broker Company',null)">Load More Brokerages</button>
-    <div class="sm" id="trec-bc-s"></div>
-    <div id="trec-bi-out" style="margin-top:10px"></div>
-    <button class="btn-xs" id="trec-bi-more" style="display:none;margin-top:6px" onclick="loadTrecList('Broker Individual',null)">Load More Individual Brokers</button>
-    <div class="sm" id="trec-bi-s"></div>
-  </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">📋 Houston Title &amp; Escrow Professionals</div><div class="ss">Real, currently-licensed escrow officers in the Houston metro area — the professionals who actually close real estate transactions at a title company — pulled directly from the Texas Department of Insurance's own public dataset. Honest limitation: TDI gives no business/title-company name or phone number at all, just a licensed individual's name, so the Find &amp; Send lookup below has to search Google by that name alone — expect a lower hit rate than the other panels here. About 1,390 are currently active in the area.</div></div></div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-blue" id="tdi-btn" onclick="loadTdiList(this)"><span class="spin" id="tdi-spin"></span><span id="tdi-lbl">Load Title &amp; Escrow Officers</span></button>
-    </div>
-    <div id="tdi-out"></div>
-    <button class="btn-xs" id="tdi-more" style="display:none;margin-top:6px" onclick="loadTdiList(null)">Load More Title &amp; Escrow Officers</button>
-    <div class="sm" id="tdi-s"></div>
-  </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">🐜 Houston Pest Control &amp; Termite Companies</div><div class="ss">Real, currently-licensed structural pest control businesses in the Houston metro area, pulled directly from the Texas Department of Agriculture's own public dataset — including whether their liability insurance is currently active, the same genuine second quality signal as the plumbers panel. About 820 are currently active in the area.</div></div></div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-blue" id="tda-btn" onclick="loadTdaList(this)"><span class="spin" id="tda-spin"></span><span id="tda-lbl">Load Pest Control Companies</span></button>
-    </div>
-    <div id="tda-out"></div>
-    <button class="btn-xs" id="tda-more" style="display:none;margin-top:6px" onclick="loadTdaList(null)">Load More Pest Control Companies</button>
-    <div class="sm" id="tda-s"></div>
-  </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">🛡️ Houston Insurance Agencies</div><div class="ss">Real, currently-licensed insurance agencies with a Houston-metro address, from the Texas Department of Insurance's own public agency data — general lines (commercial coverage, builders risk, bonding), specialty and surplus lines, and public adjuster firms, who are a natural referral source on storm and restoration jobs. About 3,800 are currently licensed in the area. TDI's data has no phone number and doesn't say which agencies write commercial or construction business, so Find &amp; Send looks the phone up on Google and you'll want to check what each agency actually writes.</div></div></div>
-    <div id="agency-btns" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-blue" onclick="dirLoad('agency','general')">General &amp; Personal Lines</button>
-      <button class="btn-ghost" onclick="dirLoad('agency','specialty')">Specialty, Surplus Lines &amp; MGAs</button>
-      <button class="btn-ghost" onclick="dirLoad('agency','adjuster')">Public Adjusters</button>
-    </div>
-    <div id="agency-out"></div>
-    <button class="btn-xs" id="agency-more" style="display:none;margin-top:6px" onclick="dirMore('agency')">Load More</button>
-    <div class="sm" id="agency-s"></div>
-  </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">🔨 Houston Trade Subcontractors</div><div class="ss">Houston-area specialty-trade businesses that <strong>no Texas board licenses</strong> — roofing, painting, flooring, drywall, concrete, masonry, framing, tile, glass, siding, excavation, and fencing/pools/decks — found through the state Comptroller's public sales-tax permit records by industry code. <strong>This is not a license and not a quality guarantee.</strong> It confirms a business holds an active state tax permit at a real address, and shows how long it has been operating. It only covers contractors who hold a sales-tax permit, so it's a partial list, and the industry code is self-selected. After Find &amp; Send, the business's Google rating and review count appear as a second signal — check both before hiring. About 2,100 businesses in the area.</div></div></div>
-    <div id="trade-btns" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-blue" onclick="dirLoad('trade','roofing')">Roofers</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','painting')">Painters</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','flooring')">Flooring</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','drywall')">Drywall &amp; Insulation</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','concrete')">Concrete</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','masonry')">Masonry</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','framing')">Framing</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','tile')">Tile</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','glass')">Glass &amp; Glazing</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','siding')">Siding</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','excavation')">Excavation &amp; Site Prep</button>
-      <button class="btn-ghost" onclick="dirLoad('trade','specialty')">Fencing, Pools, Decks &amp; Other</button>
-    </div>
-    <div id="trade-out"></div>
-    <button class="btn-xs" id="trade-more" style="display:none;margin-top:6px" onclick="dirMore('trade')">Load More</button>
-    <div class="sm" id="trade-s"></div>
-  </div>
+  <div id="vd-root"></div>
   <div class="section" style="margin-top:20px">
     <div class="sh"><div><div class="st">Outreach Generator</div><div class="ss">Write a message to one specific person you already know — pick who they are and how you want to reach them below, then click "Generate Messages."</div></div></div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:11px">
@@ -2561,795 +2490,611 @@ async function findAndSendVendorOutreach(btn,vendorName,website){
   }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
   btn.disabled=false;btn.textContent=orig;
 }
-// TBAE-verified architect/interior-designer directory — real state-board
-// registrants (migrations/..._tbae_registrants.js), distinct from the
-// generic Places search above. One shared, AI-drafted formal message per
-// profession (same "propose a time to meet" tone rule applied everywhere
-// else people-to-work-with outreach happens), reused for every real
-// registrant in that list, same way loadVendors()'s per-category message
-// is reused across all real vendors found for it.
-const TBAE_STATE={architect:{offset:0,total:0,message:''},interior_designer:{offset:0,total:0,message:''},landscape_architect:{offset:0,total:0,message:''}};
-const TBAE_IDS={architect:'arch',interior_designer:'id',landscape_architect:'la'};
-const TBAE_TITLES={architect:'architects',interior_designer:'interior designers',landscape_architect:'landscape architects'};
-const TBAE_LOAD_LABELS={architect:'Load Architects',interior_designer:'Load Interior Designers',landscape_architect:'Load Landscape Architects'};
-async function loadTbaeList(profession,btn){
-  const idp=TBAE_IDS[profession];
-  const st=TBAE_STATE[profession];
-  const out=document.getElementById('tbae-'+idp+'-out');
-  const s=document.getElementById('tbae-'+idp+'-s');
-  const spin=document.getElementById('tbae-'+idp+'-spin');
-  const lbl=document.getElementById('tbae-'+idp+'-lbl');
-  const moreBtn=document.getElementById('tbae-'+idp+'-more');
-  const mainBtn=document.getElementById('tbae-'+idp+'-btn');
-  if(mainBtn)mainBtn.disabled=true;if(moreBtn)moreBtn.disabled=true;
-  if(spin)spin.style.display='block';
-  try{
-    if(!st.message){
-      if(lbl)lbl.textContent='Drafting message...';
-      const p=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area ${TBAE_TITLES[profession]} firm — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward. Do not name a specific firm; this will be reused for many real firms.
-Return ONLY valid JSON: {"message":"the email text"}`,700);
-      st.message=(p.message||'').trim();
-    }
-    if(lbl)lbl.textContent='Loading...';
-    const r=await fetch(`/api/tbae/registrants?profession=${profession}&offset=${st.offset}&limit=40`);
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to load';s.style.color='var(--red)';return;}
-    st.total=d.total;
-    const rows=d.registrants||[];
-    // Order matters: backslashes first (so later-added escapes aren't
-    // themselves re-escaped), then newlines — a raw newline inside the
-    // onclick attribute's single-quoted JS string is a real SyntaxError,
-    // not just a display glitch, and the AI-drafted message can easily
-    // contain one (e.g. a "Best regards," line) — confirmed live.
-    const safeMsg=st.message.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/"/g,'&quot;');
-    const listHtml=rows.map(v=>`
-      <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-        <div style="color:var(--ink);font-weight:600">${escAttr(v.displayName)}${v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':''} <span style="font-family:var(--fm);font-size:8px;color:var(--green);border:1px solid rgba(60,180,90,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🏛️ TBAE VERIFIED · ACTIVE</span></div>
-        <div style="color:var(--ink2)">${escAttr(v.contactPerson||'')}${v.city?' · '+escAttr(v.city):''}</div>
-        ${v.website?`<a href="${escAttr(v.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>${v.phone?' · '+escAttr(v.phone):''}`:''}
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
-          <button class="btn-xs p" onclick="findAndSendTbaeOutreach(this,${v.id},'${escAttr(v.displayName)}','${safeMsg}')">🔍✉️ Find &amp; Send</button>
-          <input type="email" class="cred-input tbae-email-input" value="${escAttr(v.contactEmail||'')}" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Or type an email, then click again">
-        </div>
-        <div class="sm tbae-contact-s" style="font-size:10px;margin-top:3px"></div>
-      </div>`).join('');
-    if(st.offset===0)out.innerHTML=listHtml||'<div style="font-size:11px;color:var(--ink3);padding:10px 0">No real, published-firm registrants found.</div>';
-    else out.insertAdjacentHTML('beforeend',listHtml);
-    st.offset+=rows.length;
-    if(moreBtn)moreBtn.style.display=(st.offset<st.total)?'inline-block':'none';
-    s.textContent=`${st.offset} of ${st.total} Houston-area ${TBAE_TITLES[profession]} shown (state-verified, published-firm only)`;
-    s.style.color='var(--ink3)';
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  if(mainBtn)mainBtn.disabled=false;if(moreBtn)moreBtn.disabled=false;
-  if(spin)spin.style.display='none';
-  if(lbl)lbl.textContent=TBAE_LOAD_LABELS[profession];
-}
-// Same collapsed find-then-confirm-then-send flow as findAndSendVendorOutreach,
-// but the "find" step is a real Places+website lookup keyed to this exact
-// TBAE-registered firm (POST /api/tbae/registrants/:id/find-contact) rather
-// than a plain website-to-email lookup — the website itself isn't known yet.
-async function findAndSendTbaeOutreach(btn,id,displayName,message){
-  const row=btn.closest('.vc-real-row');
-  const input=row.querySelector('.tbae-email-input');
-  const s=row.querySelector('.tbae-contact-s');
-  let email=(input.value||'').trim();
-  btn.disabled=true;const orig=btn.textContent;
+/* ===== Verified vendor directories (Vendors tab) =====
+   Every verified-vendor source — architects, electricians, plumbers,
+   engineers, brokers, title/escrow, pest control, insurance agencies, trade
+   subcontractors — is one generated panel driven by
+   GET /api/vendor-directory/catalog, and every category in it gets the same
+   tools the Permits tab has: filters, per-row checkboxes, "Select Everything
+   Shown", "Pick Top N" (ranked within the active filters), and one guarded
+   bulk-email flow. Row data and messages live in JS state keyed by id —
+   never in inline onclick strings, which is where earlier quoting bugs
+   (apostrophes, newlines in AI-drafted text) came from. */
+const VD={sections:[],panels:{},bulk:null,lookupCost:0.035,searchTimer:null};
+const VD_TOPN=[10,25,50,75,100,150,200];
+const VD_SORT_LABEL={ready:'Email-ready first',tenure:'Longest established',rating:'Best Google rating',name:'A–Z'};
+const vdTitle=s=>String(s||'').toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
+const vdMoney=n=>'$'+n.toFixed(2);
+const vdQ=(src,sel)=>document.querySelector('#vd-'+src+' '+sel);
 
-  if(!email){
-    btn.textContent='Searching...';s.textContent='';
-    try{
-      const r=await fetch('/api/tbae/registrants/'+id+'/find-contact',{method:'POST'});
-      const d=await r.json();
-      if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-      if(d.website&&!row.querySelector('.tbae-website-link')){
-        const nameEl=row.querySelector('div[style*="font-weight:600"]');
-        if(nameEl)nameEl.insertAdjacentHTML('afterend',`<div class="tbae-website-link" style="color:var(--ink2)"><a href="${escAttr(d.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>${d.phone?' · '+escAttr(d.phone):''}</div>`);
-      }
-      if(d.email){
-        email=d.email;input.value=email;
-      }else{
-        s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';
-        btn.disabled=false;btn.textContent=orig;return;
-      }
-    }catch(e){
-      s.textContent='Network error: '+e.message;s.style.color='var(--red)';
-      btn.disabled=false;btn.textContent=orig;return;
-    }
+async function initVendorDirectories(){
+  const root=document.getElementById('vd-root');
+  if(!root||VD.sections.length)return;
+  try{
+    const r=await fetch('/api/vendor-directory/catalog');
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed to load');
+    VD.sections=d.sections;
+  }catch(e){
+    root.innerHTML='<div class="sm" style="margin-top:20px">Could not load the verified vendor directories: '+escAttr(e.message)+'</div>';
+    return;
   }
+  VD.sections.forEach(sec=>{
+    VD.panels[sec.key]={sec,cat:null,offset:0,total:0,rows:{},order:[],selected:new Map(),req:0,facets:null,messages:{},
+      f:{search:'',locations:new Set(),contact:'',minRating:'',hideEmailed:false,sort:sec.hasTenure?'tenure':'name'}};
+  });
+  root.innerHTML=VD.sections.map(vdSectionHtml).join('');
+  root.addEventListener('click',vdOnClick);
+  root.addEventListener('change',vdOnChange);
+  root.addEventListener('input',vdOnInput);
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.vd-locwrap'))document.querySelectorAll('.vd-locpanel').forEach(x=>{x.style.display='none';});
+  });
+}
 
-  if(!confirm(`Send this outreach email to ${displayName} <${email}>?\n\n${message}`)){
-    btn.disabled=false;btn.textContent=orig;return;
-  }
-  btn.textContent='Sending...';s.textContent='';
-  try{
-    const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName:displayName,message})});
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-    else{
-      s.textContent='✓ Sent to '+email;s.style.color='var(--green)';
-      const nameEl=row.querySelector('div[style*="font-weight:600"]');
-      if(nameEl&&!nameEl.querySelector('.b-new'))nameEl.insertAdjacentHTML('beforeend',' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>');
-    }
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  btn.disabled=false;btn.textContent=orig;
-}
-// TDLR-verified electrician/A-C-contractor directory — real state-license
-// data (migrations/..._tdlr_registrants.js), same pattern as the TBAE
-// panel above but with one difference: TDLR's own data already includes
-// a real business phone number, so it's shown immediately with the list
-// — "Find & Send" is only needed to locate an email (via a website found
-// through Places), not the phone itself.
-const TDLR_STATE={'Electrical Contractor':{offset:0,total:0,message:''},'A/C Contractor':{offset:0,total:0,message:''},'Water Well Driller/Pump Installer':{offset:0,total:0,message:''},'Appliance Installation Contractor':{offset:0,total:0,message:''},'Elevator Contractor':{offset:0,total:0,message:''}};
-const TDLR_IDS={'Electrical Contractor':'ec','A/C Contractor':'ac','Water Well Driller/Pump Installer':'ww','Appliance Installation Contractor':'ai','Elevator Contractor':'el'};
-const TDLR_TITLES={'Electrical Contractor':'electrical contractors','A/C Contractor':'A/C contractors','Water Well Driller/Pump Installer':'water well drillers','Appliance Installation Contractor':'appliance installation contractors','Elevator Contractor':'elevator contractors'};
-const TDLR_LOAD_LABELS={'Electrical Contractor':'Load Electricians','A/C Contractor':'Load A/C Contractors','Water Well Driller/Pump Installer':'Load Water Well Drillers','Appliance Installation Contractor':'Load Appliance Installers','Elevator Contractor':'Load Elevator Contractors'};
-async function loadTdlrList(licenseType,btn){
-  const idp=TDLR_IDS[licenseType];
-  const st=TDLR_STATE[licenseType];
-  const out=document.getElementById('tdlr-'+idp+'-out');
-  const s=document.getElementById('tdlr-'+idp+'-s');
-  const spin=document.getElementById('tdlr-'+idp+'-spin');
-  const lbl=document.getElementById('tdlr-'+idp+'-lbl');
-  const moreBtn=document.getElementById('tdlr-'+idp+'-more');
-  const mainBtn=document.getElementById('tdlr-'+idp+'-btn');
-  if(mainBtn)mainBtn.disabled=true;if(moreBtn)moreBtn.disabled=true;
-  if(spin)spin.style.display='block';
-  try{
-    if(!st.message){
-      if(lbl)lbl.textContent='Drafting message...';
-      const p=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area ${TDLR_TITLES[licenseType]} business — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward. Do not name a specific firm; this will be reused for many real firms.
-Return ONLY valid JSON: {"message":"the email text"}`,700);
-      st.message=(p.message||'').trim();
-    }
-    if(lbl)lbl.textContent='Loading...';
-    const r=await fetch(`/api/tdlr/registrants?licenseType=${encodeURIComponent(licenseType)}&offset=${st.offset}&limit=40`);
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to load';s.style.color='var(--red)';return;}
-    st.total=d.total;
-    const rows=d.registrants||[];
-    const safeMsg=st.message.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/"/g,'&quot;');
-    const listHtml=rows.map(v=>`
-      <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-        <div style="color:var(--ink);font-weight:600">${escAttr(v.displayName)}${v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':''} <span style="font-family:var(--fm);font-size:8px;color:var(--green);border:1px solid rgba(60,180,90,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">📋 TDLR VERIFIED · LICENSED</span></div>
-        <div style="color:var(--ink2)">${v.city?escAttr(v.city)+' · ':''}${v.phone?`<a href="tel:${escAttr(v.phone.replace(/[^0-9+]/g,''))}" style="color:var(--ink2)">${escAttr(v.phone)}</a>`:'no phone on file'}</div>
-        ${v.website?`<a href="${escAttr(v.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
-          <button class="btn-xs p" onclick="findAndSendTdlrOutreach(this,${v.id},'${escAttr(v.displayName)}','${safeMsg}')">🔍✉️ Find Email &amp; Send</button>
-          <input type="email" class="cred-input tdlr-email-input" value="${escAttr(v.contactEmail||'')}" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Or type an email, then click again">
+function vdSectionHtml(sec){
+  const cats=sec.categories.map((c,i)=>`<button class="${i===0?'btn btn-blue':'btn-ghost'} vd-catbtn" data-act="cat" data-src="${sec.key}" data-cat="${escAttr(c.key)}">${escAttr(c.label)}</button>`).join('');
+  const sorts=['ready',...(sec.hasTenure?['tenure']:[]),'rating','name'];
+  const sortOpts=sorts.map(s=>`<option value="${s}"${s===(sec.hasTenure?'tenure':'name')?' selected':''}>Rank: ${VD_SORT_LABEL[s]}</option>`).join('');
+  const topOpts=VD_TOPN.map(n=>`<option value="${n}">Top ${n}</option>`).join('');
+  return `<div class="section vd-sec" id="vd-${sec.key}" style="margin-top:20px" data-src="${sec.key}">
+    <div class="sh"><div><div class="st">${sec.icon} ${escAttr(sec.title)}</div><div class="ss">${escAttr(sec.blurb)}</div></div></div>
+    <div class="vd-cats">${cats}</div>
+    <div class="vd-body" style="display:none">
+      <div class="vd-filters">
+        <input type="text" class="cred-input vd-search" data-act="search" placeholder="Search by name…" aria-label="Search by name">
+        <div class="vd-locwrap">
+          <button class="btn-xs p vd-locbtn" data-act="locToggle" aria-haspopup="true">📍 <span class="vd-loclabel">Filter by ${escAttr(sec.locationLabel)}</span></button>
+          <div class="card vd-locpanel" style="display:none">
+            <input type="text" class="cred-input vd-locsearch" data-act="locSearch" placeholder="Search…" aria-label="Search ${escAttr(sec.locationLabel)}">
+            <div class="vd-locactions"><button class="btn-xs" data-act="locClear">Clear</button><span class="vd-loccount"></span></div>
+            <div class="vd-loclist"></div>
+          </div>
         </div>
-        <div class="sm tdlr-contact-s" style="font-size:10px;margin-top:3px"></div>
-      </div>`).join('');
-    if(st.offset===0)out.innerHTML=listHtml||'<div style="font-size:11px;color:var(--ink3);padding:10px 0">No real, currently-licensed registrants found.</div>';
-    else out.insertAdjacentHTML('beforeend',listHtml);
-    st.offset+=rows.length;
-    if(moreBtn)moreBtn.style.display=(st.offset<st.total)?'inline-block':'none';
-    s.textContent=`${st.offset} of ${st.total} Houston-area ${TDLR_TITLES[licenseType]} shown (TDLR-verified, currently licensed)`;
-    s.style.color='var(--ink3)';
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  if(mainBtn)mainBtn.disabled=false;if(moreBtn)moreBtn.disabled=false;
-  if(spin)spin.style.display='none';
-  if(lbl)lbl.textContent=TDLR_LOAD_LABELS[licenseType];
-}
-// Same collapsed find-then-confirm-then-send flow as findAndSendTbaeOutreach
-// — the phone number is already shown without any click needed here, so
-// this button's job is narrower: find a website (via Places) and check it
-// for a published email, then send only after a human confirms.
-async function findAndSendTdlrOutreach(btn,id,displayName,message){
-  const row=btn.closest('.vc-real-row');
-  const input=row.querySelector('.tdlr-email-input');
-  const s=row.querySelector('.tdlr-contact-s');
-  let email=(input.value||'').trim();
-  btn.disabled=true;const orig=btn.textContent;
-
-  if(!email){
-    btn.textContent='Searching...';s.textContent='';
-    try{
-      const r=await fetch('/api/tdlr/registrants/'+id+'/find-contact',{method:'POST'});
-      const d=await r.json();
-      if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-      if(d.website&&!row.querySelector('.tdlr-website-link')){
-        const nameEl=row.querySelector('div[style*="font-weight:600"]');
-        if(nameEl)nameEl.insertAdjacentHTML('afterend',`<div class="tdlr-website-link" style="color:var(--ink2)"><a href="${escAttr(d.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a></div>`);
-      }
-      if(d.email){
-        email=d.email;input.value=email;
-      }else{
-        s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';
-        btn.disabled=false;btn.textContent=orig;return;
-      }
-    }catch(e){
-      s.textContent='Network error: '+e.message;s.style.color='var(--red)';
-      btn.disabled=false;btn.textContent=orig;return;
-    }
-  }
-
-  if(!confirm(`Send this outreach email to ${displayName} <${email}>?\n\n${message}`)){
-    btn.disabled=false;btn.textContent=orig;return;
-  }
-  btn.textContent='Sending...';s.textContent='';
-  try{
-    const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName:displayName,message})});
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-    else{
-      s.textContent='✓ Sent to '+email;s.style.color='var(--green)';
-      const nameEl=row.querySelector('div[style*="font-weight:600"]');
-      if(nameEl&&!nameEl.querySelector('.b-new'))nameEl.insertAdjacentHTML('beforeend',' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>');
-    }
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  btn.disabled=false;btn.textContent=orig;
-}
-// TSBPE-verified plumber directory — real state-license data
-// (migrations/..._tsbpe_registrants.js), same pattern as the TDLR panel
-// above (phone already known, "Find & Send" only needs Places for an
-// email), plus one extra real signal TSBPE's own data provides: whether
-// the plumber's liability insurance is currently active.
-const TSBPE_STATE={offset:0,total:0,message:''};
-async function loadTsbpeList(btn){
-  const st=TSBPE_STATE;
-  const out=document.getElementById('tsbpe-out');
-  const s=document.getElementById('tsbpe-s');
-  const spin=document.getElementById('tsbpe-spin');
-  const lbl=document.getElementById('tsbpe-lbl');
-  const moreBtn=document.getElementById('tsbpe-more');
-  const mainBtn=document.getElementById('tsbpe-btn');
-  if(mainBtn)mainBtn.disabled=true;if(moreBtn)moreBtn.disabled=true;
-  if(spin)spin.style.display='block';
-  try{
-    if(!st.message){
-      if(lbl)lbl.textContent='Drafting message...';
-      const p=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area licensed plumbing business — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward. Do not name a specific firm; this will be reused for many real firms.
-Return ONLY valid JSON: {"message":"the email text"}`,700);
-      st.message=(p.message||'').trim();
-    }
-    if(lbl)lbl.textContent='Loading...';
-    const r=await fetch(`/api/tsbpe/registrants?offset=${st.offset}&limit=40`);
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to load';s.style.color='var(--red)';return;}
-    st.total=d.total;
-    const rows=d.registrants||[];
-    const safeMsg=st.message.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/"/g,'&quot;');
-    const listHtml=rows.map(v=>`
-      <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-        <div style="color:var(--ink);font-weight:600">${escAttr(v.displayName)}${v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':''} <span style="font-family:var(--fm);font-size:8px;color:var(--green);border:1px solid rgba(60,180,90,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🔧 TSBPE VERIFIED · LICENSED</span>${v.currentlyInsured?' <span style="font-family:var(--fm);font-size:8px;color:var(--blue2);border:1px solid rgba(60,120,220,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🛡️ INSURED</span>':''}</div>
-        <div style="color:var(--ink2)">${v.city?escAttr(v.city)+' · ':''}${v.phone?`<a href="tel:${escAttr(v.phone.replace(/[^0-9+]/g,''))}" style="color:var(--ink2)">${escAttr(v.phone)}</a>`:'no phone on file'}</div>
-        ${v.website?`<a href="${escAttr(v.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
-          <button class="btn-xs p" onclick="findAndSendTsbpeOutreach(this,${v.id},'${escAttr(v.displayName)}','${safeMsg}')">🔍✉️ Find Email &amp; Send</button>
-          <input type="email" class="cred-input tsbpe-email-input" value="${escAttr(v.contactEmail||'')}" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Or type an email, then click again">
-        </div>
-        <div class="sm tsbpe-contact-s" style="font-size:10px;margin-top:3px"></div>
-      </div>`).join('');
-    if(st.offset===0)out.innerHTML=listHtml||'<div style="font-size:11px;color:var(--ink3);padding:10px 0">No real, currently-licensed plumbers found.</div>';
-    else out.insertAdjacentHTML('beforeend',listHtml);
-    st.offset+=rows.length;
-    if(moreBtn)moreBtn.style.display=(st.offset<st.total)?'inline-block':'none';
-    s.textContent=`${st.offset} of ${st.total} Houston-area plumbers shown (TSBPE-verified, currently licensed)`;
-    s.style.color='var(--ink3)';
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  if(mainBtn)mainBtn.disabled=false;if(moreBtn)moreBtn.disabled=false;
-  if(spin)spin.style.display='none';
-  if(lbl)lbl.textContent='Load Plumbers';
-}
-async function findAndSendTsbpeOutreach(btn,id,displayName,message){
-  const row=btn.closest('.vc-real-row');
-  const input=row.querySelector('.tsbpe-email-input');
-  const s=row.querySelector('.tsbpe-contact-s');
-  let email=(input.value||'').trim();
-  btn.disabled=true;const orig=btn.textContent;
-
-  if(!email){
-    btn.textContent='Searching...';s.textContent='';
-    try{
-      const r=await fetch('/api/tsbpe/registrants/'+id+'/find-contact',{method:'POST'});
-      const d=await r.json();
-      if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-      if(d.website&&!row.querySelector('.tsbpe-website-link')){
-        const nameEl=row.querySelector('div[style*="font-weight:600"]');
-        if(nameEl)nameEl.insertAdjacentHTML('afterend',`<div class="tsbpe-website-link" style="color:var(--ink2)"><a href="${escAttr(d.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a></div>`);
-      }
-      if(d.email){
-        email=d.email;input.value=email;
-      }else{
-        s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';
-        btn.disabled=false;btn.textContent=orig;return;
-      }
-    }catch(e){
-      s.textContent='Network error: '+e.message;s.style.color='var(--red)';
-      btn.disabled=false;btn.textContent=orig;return;
-    }
-  }
-
-  if(!confirm(`Send this outreach email to ${displayName} <${email}>?\n\n${message}`)){
-    btn.disabled=false;btn.textContent=orig;return;
-  }
-  btn.textContent='Sending...';s.textContent='';
-  try{
-    const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName:displayName,message})});
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-    else{
-      s.textContent='✓ Sent to '+email;s.style.color='var(--green)';
-      const nameEl=row.querySelector('div[style*="font-weight:600"]');
-      if(nameEl&&!nameEl.querySelector('.b-new'))nameEl.insertAdjacentHTML('beforeend',' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>');
-    }
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  btn.disabled=false;btn.textContent=orig;
-}
-// TBPELS-verified engineering/surveying firm directory — real state data
-// including a real phone straight from the source, same pattern as TDLR/TSBPE.
-const TBPELS_STATE={offset:0,total:0,message:''};
-async function loadTbpelsList(btn){
-  const st=TBPELS_STATE;
-  const out=document.getElementById('tbpels-out');
-  const s=document.getElementById('tbpels-s');
-  const spin=document.getElementById('tbpels-spin');
-  const lbl=document.getElementById('tbpels-lbl');
-  const moreBtn=document.getElementById('tbpels-more');
-  const mainBtn=document.getElementById('tbpels-btn');
-  if(mainBtn)mainBtn.disabled=true;if(moreBtn)moreBtn.disabled=true;
-  if(spin)spin.style.display='block';
-  try{
-    if(!st.message){
-      if(lbl)lbl.textContent='Drafting message...';
-      const p=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area engineering or land-surveying firm — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward. Do not name a specific firm; this will be reused for many real firms.
-Return ONLY valid JSON: {"message":"the email text"}`,700);
-      st.message=(p.message||'').trim();
-    }
-    if(lbl)lbl.textContent='Loading...';
-    const r=await fetch(`/api/tbpels/registrants?offset=${st.offset}&limit=40`);
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to load';s.style.color='var(--red)';return;}
-    st.total=d.total;
-    const rows=d.registrants||[];
-    const safeMsg=st.message.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/"/g,'&quot;');
-    const listHtml=rows.map(v=>`
-      <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-        <div style="color:var(--ink);font-weight:600">${escAttr(v.displayName)}${v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':''} <span style="font-family:var(--fm);font-size:8px;color:var(--green);border:1px solid rgba(60,180,90,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🏗️ TBPELS VERIFIED · REGISTERED</span></div>
-        <div style="color:var(--ink2)">${v.city?escAttr(v.city)+' · ':''}${v.phone?`<a href="tel:${escAttr(v.phone.replace(/[^0-9+]/g,''))}" style="color:var(--ink2)">${escAttr(v.phone)}</a>`:'no phone on file'}</div>
-        ${v.website?`<a href="${escAttr(v.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
-          <button class="btn-xs p" onclick="findAndSendTbpelsOutreach(this,${v.id},'${escAttr(v.displayName)}','${safeMsg}')">🔍✉️ Find Email &amp; Send</button>
-          <input type="email" class="cred-input tbpels-email-input" value="${escAttr(v.contactEmail||'')}" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Or type an email, then click again">
-        </div>
-        <div class="sm tbpels-contact-s" style="font-size:10px;margin-top:3px"></div>
-      </div>`).join('');
-    if(st.offset===0)out.innerHTML=listHtml||'<div style="font-size:11px;color:var(--ink3);padding:10px 0">No real, currently-registered firms found.</div>';
-    else out.insertAdjacentHTML('beforeend',listHtml);
-    st.offset+=rows.length;
-    if(moreBtn)moreBtn.style.display=(st.offset<st.total)?'inline-block':'none';
-    s.textContent=`${st.offset} of ${st.total} Houston-area engineering/surveying firms shown (TBPELS-verified)`;
-    s.style.color='var(--ink3)';
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  if(mainBtn)mainBtn.disabled=false;if(moreBtn)moreBtn.disabled=false;
-  if(spin)spin.style.display='none';
-  if(lbl)lbl.textContent='Load Engineering Firms';
-}
-async function findAndSendTbpelsOutreach(btn,id,displayName,message){
-  const row=btn.closest('.vc-real-row');
-  const input=row.querySelector('.tbpels-email-input');
-  const s=row.querySelector('.tbpels-contact-s');
-  let email=(input.value||'').trim();
-  btn.disabled=true;const orig=btn.textContent;
-  if(!email){
-    btn.textContent='Searching...';s.textContent='';
-    try{
-      const r=await fetch('/api/tbpels/registrants/'+id+'/find-contact',{method:'POST'});
-      const d=await r.json();
-      if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-      if(d.website&&!row.querySelector('.tbpels-website-link')){
-        const nameEl=row.querySelector('div[style*="font-weight:600"]');
-        if(nameEl)nameEl.insertAdjacentHTML('afterend',`<div class="tbpels-website-link" style="color:var(--ink2)"><a href="${escAttr(d.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a></div>`);
-      }
-      if(d.email){email=d.email;input.value=email;}
-      else{s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';btn.disabled=false;btn.textContent=orig;return;}
-    }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-  }
-  if(!confirm(`Send this outreach email to ${displayName} <${email}>?\n\n${message}`)){btn.disabled=false;btn.textContent=orig;return;}
-  btn.textContent='Sending...';s.textContent='';
-  try{
-    const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName:displayName,message})});
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-    else{
-      s.textContent='✓ Sent to '+email;s.style.color='var(--green)';
-      const nameEl=row.querySelector('div[style*="font-weight:600"]');
-      if(nameEl&&!nameEl.querySelector('.b-new'))nameEl.insertAdjacentHTML('beforeend',' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>');
-    }
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  btn.disabled=false;btn.textContent=orig;
-}
-// TREC-verified real estate broker directory — no phone/address in the
-// source, so this mirrors loadTbaeList's Places-bridge-only pattern.
-const TREC_STATE={'Broker Company':{offset:0,total:0,message:''},'Broker Individual':{offset:0,total:0,message:''}};
-const TREC_IDS={'Broker Company':'bc','Broker Individual':'bi'};
-const TREC_LOAD_LABELS={'Broker Company':'Load Brokerages','Broker Individual':'Load Individual Brokers'};
-async function loadTrecList(licenseType,btn){
-  const idp=TREC_IDS[licenseType];
-  const st=TREC_STATE[licenseType];
-  const out=document.getElementById('trec-'+idp+'-out');
-  const s=document.getElementById('trec-'+idp+'-s');
-  const spin=document.getElementById('trec-'+idp+'-spin');
-  const lbl=document.getElementById('trec-'+idp+'-lbl');
-  const moreBtn=document.getElementById('trec-'+idp+'-more');
-  const mainBtn=document.getElementById('trec-'+idp+'-btn');
-  if(mainBtn)mainBtn.disabled=true;if(moreBtn)moreBtn.disabled=true;
-  if(spin)spin.style.display='block';
-  try{
-    if(!st.message){
-      if(lbl)lbl.textContent='Drafting message...';
-      const p=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area real estate broker — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward (e.g. referring clients who need renovation or construction work). Do not name a specific person or firm; this will be reused for many real contacts.
-Return ONLY valid JSON: {"message":"the email text"}`,700);
-      st.message=(p.message||'').trim();
-    }
-    if(lbl)lbl.textContent='Loading...';
-    const r=await fetch(`/api/trec/registrants?licenseType=${encodeURIComponent(licenseType)}&offset=${st.offset}&limit=40`);
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to load';s.style.color='var(--red)';return;}
-    st.total=d.total;
-    const rows=d.registrants||[];
-    const safeMsg=st.message.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/"/g,'&quot;');
-    const listHtml=rows.map(v=>`
-      <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-        <div style="color:var(--ink);font-weight:600">${escAttr(v.displayName)}${v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':''} <span style="font-family:var(--fm);font-size:8px;color:var(--green);border:1px solid rgba(60,180,90,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🏘️ TREC VERIFIED · ACTIVE</span></div>
-        <div style="color:var(--ink2)">${v.county?escAttr(v.county)+' County':''}</div>
-        ${v.website?`<a href="${escAttr(v.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
-          <button class="btn-xs p" onclick="findAndSendTrecOutreach(this,${v.id},'${escAttr(v.displayName)}','${safeMsg}')">🔍✉️ Find &amp; Send</button>
-          <input type="email" class="cred-input trec-email-input" value="${escAttr(v.contactEmail||'')}" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Or type an email, then click again">
-        </div>
-        <div class="sm trec-contact-s" style="font-size:10px;margin-top:3px"></div>
-      </div>`).join('');
-    if(st.offset===0)out.innerHTML=listHtml||'<div style="font-size:11px;color:var(--ink3);padding:10px 0">No real, currently-active brokers found.</div>';
-    else out.insertAdjacentHTML('beforeend',listHtml);
-    st.offset+=rows.length;
-    if(moreBtn)moreBtn.style.display=(st.offset<st.total)?'inline-block':'none';
-    s.textContent=`${st.offset} of ${st.total} Houston-area ${licenseType==='Broker Company'?'brokerages':'individual brokers'} shown (TREC-verified, active)`;
-    s.style.color='var(--ink3)';
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  if(mainBtn)mainBtn.disabled=false;if(moreBtn)moreBtn.disabled=false;
-  if(spin)spin.style.display='none';
-  if(lbl)lbl.textContent=TREC_LOAD_LABELS[licenseType];
-}
-async function findAndSendTrecOutreach(btn,id,displayName,message){
-  const row=btn.closest('.vc-real-row');
-  const input=row.querySelector('.trec-email-input');
-  const s=row.querySelector('.trec-contact-s');
-  let email=(input.value||'').trim();
-  btn.disabled=true;const orig=btn.textContent;
-  if(!email){
-    btn.textContent='Searching...';s.textContent='';
-    try{
-      const r=await fetch('/api/trec/registrants/'+id+'/find-contact',{method:'POST'});
-      const d=await r.json();
-      if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-      if(d.website&&!row.querySelector('.trec-website-link')){
-        const nameEl=row.querySelector('div[style*="font-weight:600"]');
-        if(nameEl)nameEl.insertAdjacentHTML('afterend',`<div class="trec-website-link" style="color:var(--ink2)"><a href="${escAttr(d.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a></div>`);
-      }
-      if(d.email){email=d.email;input.value=email;}
-      else{s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';btn.disabled=false;btn.textContent=orig;return;}
-    }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-  }
-  if(!confirm(`Send this outreach email to ${displayName} <${email}>?\n\n${message}`)){btn.disabled=false;btn.textContent=orig;return;}
-  btn.textContent='Sending...';s.textContent='';
-  try{
-    const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName:displayName,message})});
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-    else{
-      s.textContent='✓ Sent to '+email;s.style.color='var(--green)';
-      const nameEl=row.querySelector('div[style*="font-weight:600"]');
-      if(nameEl&&!nameEl.querySelector('.b-new'))nameEl.insertAdjacentHTML('beforeend',' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>');
-    }
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  btn.disabled=false;btn.textContent=orig;
-}
-// TDI-verified title/escrow officer directory — the thinnest source data
-// of any panel here (no business name, no phone), so hit rate on Find &
-// Send will genuinely be lower; the UI copy above already says so.
-const TDI_STATE={offset:0,total:0,message:''};
-async function loadTdiList(btn){
-  const st=TDI_STATE;
-  const out=document.getElementById('tdi-out');
-  const s=document.getElementById('tdi-s');
-  const spin=document.getElementById('tdi-spin');
-  const lbl=document.getElementById('tdi-lbl');
-  const moreBtn=document.getElementById('tdi-more');
-  const mainBtn=document.getElementById('tdi-btn');
-  if(mainBtn)mainBtn.disabled=true;if(moreBtn)moreBtn.disabled=true;
-  if(spin)spin.style.display='block';
-  try{
-    if(!st.message){
-      if(lbl)lbl.textContent='Drafting message...';
-      const p=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area title company escrow officer — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward. Do not name a specific person; this will be reused for many real contacts.
-Return ONLY valid JSON: {"message":"the email text"}`,700);
-      st.message=(p.message||'').trim();
-    }
-    if(lbl)lbl.textContent='Loading...';
-    const r=await fetch(`/api/tdi/registrants?offset=${st.offset}&limit=40`);
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to load';s.style.color='var(--red)';return;}
-    st.total=d.total;
-    const rows=d.registrants||[];
-    const safeMsg=st.message.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/"/g,'&quot;');
-    const listHtml=rows.map(v=>`
-      <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-        <div style="color:var(--ink);font-weight:600">${escAttr(v.displayName)}${v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':''} <span style="font-family:var(--fm);font-size:8px;color:var(--green);border:1px solid rgba(60,180,90,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">📋 TDI VERIFIED · LICENSED</span></div>
-        <div style="color:var(--ink2)">${v.city?escAttr(v.city):''}</div>
-        ${v.website?`<a href="${escAttr(v.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
-          <button class="btn-xs p" onclick="findAndSendTdiOutreach(this,${v.id},'${escAttr(v.displayName)}','${safeMsg}')">🔍✉️ Find &amp; Send</button>
-          <input type="email" class="cred-input tdi-email-input" value="${escAttr(v.contactEmail||'')}" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Or type an email, then click again">
-        </div>
-        <div class="sm tdi-contact-s" style="font-size:10px;margin-top:3px"></div>
-      </div>`).join('');
-    if(st.offset===0)out.innerHTML=listHtml||'<div style="font-size:11px;color:var(--ink3);padding:10px 0">No real, currently-licensed escrow officers found.</div>';
-    else out.insertAdjacentHTML('beforeend',listHtml);
-    st.offset+=rows.length;
-    if(moreBtn)moreBtn.style.display=(st.offset<st.total)?'inline-block':'none';
-    s.textContent=`${st.offset} of ${st.total} Houston-area title/escrow officers shown (TDI-verified, licensed)`;
-    s.style.color='var(--ink3)';
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  if(mainBtn)mainBtn.disabled=false;if(moreBtn)moreBtn.disabled=false;
-  if(spin)spin.style.display='none';
-  if(lbl)lbl.textContent='Load Title & Escrow Officers';
-}
-async function findAndSendTdiOutreach(btn,id,displayName,message){
-  const row=btn.closest('.vc-real-row');
-  const input=row.querySelector('.tdi-email-input');
-  const s=row.querySelector('.tdi-contact-s');
-  let email=(input.value||'').trim();
-  btn.disabled=true;const orig=btn.textContent;
-  if(!email){
-    btn.textContent='Searching...';s.textContent='';
-    try{
-      const r=await fetch('/api/tdi/registrants/'+id+'/find-contact',{method:'POST'});
-      const d=await r.json();
-      if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-      if(d.website&&!row.querySelector('.tdi-website-link')){
-        const nameEl=row.querySelector('div[style*="font-weight:600"]');
-        if(nameEl)nameEl.insertAdjacentHTML('afterend',`<div class="tdi-website-link" style="color:var(--ink2)"><a href="${escAttr(d.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a></div>`);
-      }
-      if(d.email){email=d.email;input.value=email;}
-      else{s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';btn.disabled=false;btn.textContent=orig;return;}
-    }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-  }
-  if(!confirm(`Send this outreach email to ${displayName} <${email}>?\n\n${message}`)){btn.disabled=false;btn.textContent=orig;return;}
-  btn.textContent='Sending...';s.textContent='';
-  try{
-    const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName:displayName,message})});
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-    else{
-      s.textContent='✓ Sent to '+email;s.style.color='var(--green)';
-      const nameEl=row.querySelector('div[style*="font-weight:600"]');
-      if(nameEl&&!nameEl.querySelector('.b-new'))nameEl.insertAdjacentHTML('beforeend',' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>');
-    }
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  btn.disabled=false;btn.textContent=orig;
-}
-// TDA-verified pest control/termite company directory — TDA gives no
-// phone in the source, so (unlike TDLR/TSBPE/TBPELS) the phone shown
-// comes from the Find & Send Places lookup too, once run.
-const TDA_STATE={offset:0,total:0,message:''};
-async function loadTdaList(btn){
-  const st=TDA_STATE;
-  const out=document.getElementById('tda-out');
-  const s=document.getElementById('tda-s');
-  const spin=document.getElementById('tda-spin');
-  const lbl=document.getElementById('tda-lbl');
-  const moreBtn=document.getElementById('tda-more');
-  const mainBtn=document.getElementById('tda-btn');
-  if(mainBtn)mainBtn.disabled=true;if(moreBtn)moreBtn.disabled=true;
-  if(spin)spin.style.display='block';
-  try{
-    if(!st.message){
-      if(lbl)lbl.textContent='Drafting message...';
-      const p=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area pest control/termite company — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward. Do not name a specific firm; this will be reused for many real firms.
-Return ONLY valid JSON: {"message":"the email text"}`,700);
-      st.message=(p.message||'').trim();
-    }
-    if(lbl)lbl.textContent='Loading...';
-    const r=await fetch(`/api/tda/registrants?offset=${st.offset}&limit=40`);
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to load';s.style.color='var(--red)';return;}
-    st.total=d.total;
-    const rows=d.registrants||[];
-    const safeMsg=st.message.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/"/g,'&quot;');
-    const listHtml=rows.map(v=>`
-      <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-        <div style="color:var(--ink);font-weight:600">${escAttr(v.displayName)}${v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':''} <span style="font-family:var(--fm);font-size:8px;color:var(--green);border:1px solid rgba(60,180,90,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🐜 TDA VERIFIED · LICENSED</span>${v.currentlyInsured?' <span style="font-family:var(--fm);font-size:8px;color:var(--blue2);border:1px solid rgba(60,120,220,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🛡️ INSURED</span>':''}</div>
-        <div style="color:var(--ink2)">${v.county?escAttr(v.county)+' County · ':''}${v.phone?`<a href="tel:${escAttr(v.phone.replace(/[^0-9+]/g,''))}" style="color:var(--ink2)">${escAttr(v.phone)}</a>`:'no phone on file'}</div>
-        ${v.website?`<a href="${escAttr(v.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>`:''}
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
-          <button class="btn-xs p" onclick="findAndSendTdaOutreach(this,${v.id},'${escAttr(v.displayName)}','${safeMsg}')">🔍✉️ Find &amp; Send</button>
-          <input type="email" class="cred-input tda-email-input" value="${escAttr(v.contactEmail||'')}" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Or type an email, then click again">
-        </div>
-        <div class="sm tda-contact-s" style="font-size:10px;margin-top:3px"></div>
-      </div>`).join('');
-    if(st.offset===0)out.innerHTML=listHtml||'<div style="font-size:11px;color:var(--ink3);padding:10px 0">No real, currently-licensed pest control companies found.</div>';
-    else out.insertAdjacentHTML('beforeend',listHtml);
-    st.offset+=rows.length;
-    if(moreBtn)moreBtn.style.display=(st.offset<st.total)?'inline-block':'none';
-    s.textContent=`${st.offset} of ${st.total} Houston-area pest control companies shown (TDA-verified, licensed)`;
-    s.style.color='var(--ink3)';
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  if(mainBtn)mainBtn.disabled=false;if(moreBtn)moreBtn.disabled=false;
-  if(spin)spin.style.display='none';
-  if(lbl)lbl.textContent='Load Pest Control Companies';
-}
-async function findAndSendTdaOutreach(btn,id,displayName,message){
-  const row=btn.closest('.vc-real-row');
-  const input=row.querySelector('.tda-email-input');
-  const s=row.querySelector('.tda-contact-s');
-  let email=(input.value||'').trim();
-  btn.disabled=true;const orig=btn.textContent;
-  if(!email){
-    btn.textContent='Searching...';s.textContent='';
-    try{
-      const r=await fetch('/api/tda/registrants/'+id+'/find-contact',{method:'POST'});
-      const d=await r.json();
-      if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-      if(d.website&&!row.querySelector('.tda-website-link')){
-        const nameEl=row.querySelector('div[style*="font-weight:600"]');
-        if(nameEl)nameEl.insertAdjacentHTML('afterend',`<div class="tda-website-link" style="color:var(--ink2)"><a href="${escAttr(d.website)}" target="_blank" style="color:var(--blue2)">Visit website ↗</a>${d.phone?' · '+escAttr(d.phone):''}</div>`);
-      }
-      if(d.email){email=d.email;input.value=email;}
-      else{s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';btn.disabled=false;btn.textContent=orig;return;}
-    }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-  }
-  if(!confirm(`Send this outreach email to ${displayName} <${email}>?\n\n${message}`)){btn.disabled=false;btn.textContent=orig;return;}
-  btn.textContent='Sending...';s.textContent='';
-  try{
-    const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName:displayName,message})});
-    const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-    else{
-      s.textContent='✓ Sent to '+email;s.style.color='var(--green)';
-      const nameEl=row.querySelector('div[style*="font-weight:600"]');
-      if(nameEl&&!nameEl.querySelector('.b-new'))nameEl.insertAdjacentHTML('beforeend',' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>');
-    }
-  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-  btn.disabled=false;btn.textContent=orig;
-}
-// ---- Generic verified-directory panel, used by Insurance Agencies and
-// Trade Subcontractors. Unlike the per-source panels above, the drafted
-// message and each row's data live in JS state (looked up by row id) —
-// never embedded in onclick attributes, which is where the earlier
-// newline/apostrophe quoting bugs came from.
-const DIR={};
-function dirLoad(ns,key){return DIR[ns].load(key,true);}
-function dirMore(ns){return DIR[ns].load(DIR[ns].currentKey(),false);}
-function dirFind(btn,ns,id){return DIR[ns].find(btn,id);}
-function dirMakePanel(cfg){
-  const st={key:null,offset:0,total:0,messages:{},rows:{}};
-  const el=id=>document.getElementById(cfg.ns+'-'+id);
-  const emailedBadge=' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>';
-  const bits=v=>{
-    const b=[];
-    if(v.phone)b.push(`<a href="tel:${escAttr(String(v.phone).replace(/[^0-9+]/g,''))}" style="color:var(--ink2)">${escAttr(v.phone)}</a>`);
-    if(v.googleRating!=null)b.push(`★ ${Number(v.googleRating).toFixed(1)}${v.googleReviewCount!=null?' ('+v.googleReviewCount+' Google reviews)':''}`);
-    return b;
-  };
-  const subHtml=v=>[...cfg.sub(v),...bits(v)].filter(Boolean).join(' · ');
-  const linksHtml=v=>[
-    v.website?`<a href="${escAttr(v.website)}" target="_blank" rel="noopener" style="color:var(--blue2)">Visit website ↗</a>`:'',
-    v.placesMatchedName?`<span style="color:var(--ink3)">Google listing: ${escAttr(v.placesMatchedName)}</span>`:''
-  ].filter(Boolean).join(' · ');
-  const rowHtml=v=>`
-    <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
-      <div class="dir-name" style="color:var(--ink);font-weight:600">${escAttr(v.displayName)}${v.emailed?emailedBadge:''} ${cfg.badge(v)}</div>
-      <div class="dir-sub" style="color:var(--ink2)">${subHtml(v)}</div>
-      <div class="dir-links">${linksHtml(v)}</div>
-      <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:5px">
-        <button class="btn-xs p" onclick="dirFind(this,'${cfg.ns}',${v.id})">🔍✉️ Find Email &amp; Send</button>
-        <input type="email" class="cred-input dir-email" value="${escAttr(v.contactEmail||'')}" style="flex:1;min-width:130px;padding:5px 8px;font-size:11px" placeholder="Or type an email, then click again">
+        <select class="btn-xs vd-contact" data-act="contact" aria-label="Contact status">
+          <option value="">Any contact status</option>
+          <option value="has_email">Has an email on file</option>
+          <option value="unchecked">Not looked up yet</option>
+          <option value="no_email">Looked up, no email found</option>
+        </select>
+        <select class="btn-xs vd-rating" data-act="rating" aria-label="Google rating">
+          <option value="">Any Google rating</option>
+          <option value="4.5">★ 4.5+ (looked-up only)</option>
+          <option value="4">★ 4.0+ (looked-up only)</option>
+          <option value="3.5">★ 3.5+ (looked-up only)</option>
+        </select>
+        <select class="btn-xs vd-sort" data-act="sort" aria-label="Rank by">${sortOpts}</select>
+        <label class="vd-hide"><input type="checkbox" data-act="hideEmailed"> Hide already emailed</label>
+        <button class="btn-xs vd-clearf" data-act="clearFilters" style="display:none;color:var(--red)">Clear filters ×</button>
       </div>
-      <div class="sm dir-status" style="font-size:10px;margin-top:3px"></div>
-    </div>`;
-  const refreshRow=(row,v)=>{
-    row.querySelector('.dir-sub').innerHTML=subHtml(v);
-    row.querySelector('.dir-links').innerHTML=linksHtml(v);
-  };
-  async function draft(key){
-    if(st.messages[key])return;
-    const g=cfg.groups[key];
-    const p=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area ${g.noun} — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward. Do not name a specific firm; this will be reused for many real firms.
-Return ONLY valid JSON: {"message":"the email text"}`,700);
-    st.messages[key]=(p.message||'').trim();
-  }
-  async function load(key,reset){
-    const out=el('out'),s=el('s'),more=el('more');
-    const btns=document.querySelectorAll('#'+cfg.ns+'-btns button');
-    btns.forEach(b=>b.disabled=true);if(more)more.disabled=true;
-    try{
-      if(reset||st.key!==key){st.key=key;st.offset=0;st.total=0;out.innerHTML='';if(more)more.style.display='none';}
-      s.textContent='Loading...';s.style.color='var(--ink3)';
-      await draft(key);
-      const r=await fetch(`${cfg.listPath}?${cfg.listParam}=${encodeURIComponent(key)}&offset=${st.offset}&limit=40`);
-      const d=await r.json();
-      if(!r.ok){s.textContent=d.error?.message||'Failed to load';s.style.color='var(--red)';return;}
-      st.total=d.total;
-      const rows=d.registrants||[];
-      rows.forEach(v=>{st.rows[v.id]=v;});
-      if(!rows.length&&st.offset===0)out.innerHTML='<div style="font-size:11px;color:var(--ink3);padding:10px 0">Nothing found for this category.</div>';
-      else out.insertAdjacentHTML('beforeend',rows.map(rowHtml).join(''));
-      st.offset+=rows.length;
-      if(more)more.style.display=(st.offset<st.total)?'inline-block':'none';
-      s.textContent=`${st.offset} of ${st.total} ${cfg.groups[key].label} shown (${cfg.source})`;
-      s.style.color='var(--ink3)';
-    }catch(e){s.textContent='Error: '+e.message;s.style.color='var(--red)';}
-    btns.forEach(b=>b.disabled=false);if(more)more.disabled=false;
-  }
-  async function find(btn,id){
-    const row=btn.closest('.vc-real-row');
-    const v=st.rows[id];
-    const input=row.querySelector('.dir-email');
-    const s=row.querySelector('.dir-status');
-    const message=st.messages[st.key]||'';
-    let email=(input.value||'').trim();
-    btn.disabled=true;const orig=btn.textContent;
-    if(!email){
-      btn.textContent='Searching...';s.textContent='';
-      try{
-        const r=await fetch(cfg.findPath+id+'/find-contact',{method:'POST'});
-        const d=await r.json();
-        if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-        Object.assign(v,{website:d.website,phone:d.phone||v.phone,placesMatchedName:d.matchedName,googleRating:d.rating,googleReviewCount:d.reviewCount});
-        refreshRow(row,v);
-        if(d.email){email=d.email;input.value=email;}
-        else{s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';btn.disabled=false;btn.textContent=orig;return;}
-      }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';btn.disabled=false;btn.textContent=orig;return;}
-    }
-    // A fuzzy name match can land on the wrong business, so the exact
-    // Google listing it matched to is part of what the human confirms.
-    const matched=v.placesMatchedName?`\n\nGoogle listing matched: ${v.placesMatchedName}${v.googleRating!=null?' (★ '+Number(v.googleRating).toFixed(1)+', '+(v.googleReviewCount||0)+' reviews)':''}`:'';
-    if(!confirm(`Send this outreach email to ${v.displayName} <${email}>?${matched}\n\n${message}`)){btn.disabled=false;btn.textContent=orig;return;}
-    btn.textContent='Sending...';s.textContent='';
-    try{
-      const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName:v.displayName,message})});
-      const d=await r.json();
-      if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
-      else{
-        s.textContent='✓ Sent to '+email;s.style.color='var(--green)';
-        const nameEl=row.querySelector('.dir-name');
-        if(nameEl&&!nameEl.querySelector('.b-new'))nameEl.insertAdjacentHTML('beforeend',emailedBadge);
-      }
-    }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
-    btn.disabled=false;btn.textContent=orig;
-  }
-  return {load,find,currentKey:()=>st.key};
+      <div class="card vd-selbar">
+        <div>
+          <span class="vd-selcount">0 selected</span>
+          <div class="vd-selhint">Tick businesses yourself, or pick the top N — ranked by the “Rank” choice above, within your current filters. Then email everyone selected in one reviewed step.</div>
+        </div>
+        <div class="vd-selbtns">
+          <button class="btn-xs" data-act="selShown">Select Everything Shown</button>
+          <button class="btn-xs" data-act="selClear">Clear My Selections</button>
+          <select class="btn-xs vd-topn" data-act="topn" aria-label="Pick the top N"><option value="">Pick the Top N…</option>${topOpts}</select>
+          <button class="btn-xs p vd-bulkbtn" data-act="bulk" disabled>✉️ Email Selected…</button>
+        </div>
+      </div>
+      <div class="sm vd-status"></div>
+      <div class="vd-list"></div>
+      <button class="btn-xs vd-more" data-act="more" style="display:none;margin-top:6px">Load More</button>
+    </div>
+  </div>`;
 }
-DIR.agency=dirMakePanel({
-  ns:'agency',listPath:'/api/tdi-agencies',listParam:'group',findPath:'/api/tdi-agencies/',source:'TDI-licensed',
-  groups:{
-    general:{label:'general & personal lines agencies',noun:'insurance agency'},
-    specialty:{label:'specialty, surplus lines & MGA agencies',noun:'specialty insurance agency or managing general agency'},
-    adjuster:{label:'public adjuster firms',noun:'public insurance adjuster firm'}
-  },
-  badge:v=>'<span style="font-family:var(--fm);font-size:8px;color:var(--green);border:1px solid rgba(60,180,90,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">📋 TDI LICENSED</span>',
-  sub:v=>[v.city?escAttr(v.city):'',escAttr(v.licenseType||'')]
-});
-DIR.trade=dirMakePanel({
-  ns:'trade',listPath:'/api/comptroller-trades',listParam:'trade',findPath:'/api/comptroller-trades/',source:'state tax-registered — not a license',
-  groups:{
-    roofing:{label:'roofers',noun:'roofing contractor'},
-    painting:{label:'painters',noun:'painting contractor'},
-    flooring:{label:'flooring contractors',noun:'flooring contractor'},
-    drywall:{label:'drywall & insulation contractors',noun:'drywall or insulation contractor'},
-    concrete:{label:'concrete contractors',noun:'concrete contractor'},
-    masonry:{label:'masonry contractors',noun:'masonry contractor'},
-    framing:{label:'framing contractors',noun:'framing contractor'},
-    tile:{label:'tile contractors',noun:'tile contractor'},
-    glass:{label:'glass & glazing contractors',noun:'glass and glazing contractor'},
-    siding:{label:'siding contractors',noun:'siding contractor'},
-    excavation:{label:'excavation & site prep contractors',noun:'excavation or site preparation contractor'},
-    specialty:{label:'fencing, pool, deck & other specialty contractors',noun:'specialty trade contractor (fencing, pools, decks, and similar)'}
-  },
-  badge:v=>'<span style="font-family:var(--fm);font-size:8px;color:var(--amber);border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🧾 STATE TAX-REGISTERED · NOT LICENSED</span>',
-  sub:v=>[[v.address?escAttr(v.address):'',v.city?escAttr(v.city):'',v.zip?escAttr(v.zip):''].filter(Boolean).join(', '),v.inBusinessSince?'Permitted since '+v.inBusinessSince:'']
-});
+
+/* ---------- events ---------- */
+function vdOnClick(e){
+  const t=e.target.closest('button[data-act]');
+  if(!t)return;
+  const sec=t.closest('.vd-sec');
+  const src=sec&&sec.dataset.src;
+  const act=t.dataset.act;
+  if(act==='cat')return vdSelectCategory(src,t.dataset.cat);
+  if(act==='locToggle'){const pn=sec.querySelector('.vd-locpanel');const open=pn.style.display==='none';pn.style.display=open?'block':'none';if(open){vdRenderLocList(src);sec.querySelector('.vd-locsearch').focus();}return;}
+  if(act==='locClear'){VD.panels[src].f.locations=new Set();vdRenderLocList(src);vdFiltersChanged(src);return;}
+  if(act==='clearFilters')return vdClearFilters(src);
+  if(act==='selShown'){const p=VD.panels[src];p.order.forEach(id=>p.selected.set(id,p.rows[id]));vdSyncChecks(src);vdUpdateSel(src);return;}
+  if(act==='selClear'){VD.panels[src].selected=new Map();vdSyncChecks(src);vdUpdateSel(src);return;}
+  if(act==='bulk')return vdBulkOpen(src);
+  if(act==='more')return vdLoad(src,false);
+  if(act==='find')return vdFind(src,parseInt(t.closest('.vd-row').dataset.id,10),t);
+}
+function vdOnChange(e){
+  const t=e.target.closest('[data-act]');
+  if(!t)return;
+  const sec=t.closest('.vd-sec');
+  const src=sec&&sec.dataset.src;
+  const p=VD.panels[src];
+  const act=t.dataset.act;
+  if(act==='sel'){const id=parseInt(t.closest('.vd-row').dataset.id,10);if(t.checked)p.selected.set(id,p.rows[id]);else p.selected.delete(id);return vdUpdateSel(src);}
+  if(act==='loc'){if(t.checked)p.f.locations.add(t.dataset.val);else p.f.locations.delete(t.dataset.val);vdRenderLocList(src);return vdFiltersChanged(src);}
+  if(act==='contact'){p.f.contact=t.value;return vdFiltersChanged(src);}
+  if(act==='rating'){p.f.minRating=t.value;return vdFiltersChanged(src);}
+  if(act==='sort'){p.f.sort=t.value;return vdFiltersChanged(src);}
+  if(act==='hideEmailed'){p.f.hideEmailed=t.checked;return vdFiltersChanged(src);}
+  if(act==='topn'&&t.value){const n=parseInt(t.value,10);t.value='';return vdTopN(src,n);}
+}
+function vdOnInput(e){
+  const t=e.target.closest('[data-act]');
+  if(!t)return;
+  const sec=t.closest('.vd-sec');
+  const src=sec&&sec.dataset.src;
+  if(t.dataset.act==='search'){
+    clearTimeout(VD.searchTimer);
+    VD.searchTimer=setTimeout(()=>{VD.panels[src].f.search=t.value.trim();vdFiltersChanged(src);},350);
+  }else if(t.dataset.act==='locSearch')vdRenderLocList(src);
+}
+
+/* ---------- category, filters, list ---------- */
+function vdFiltersActive(p){const f=p.f;return !!(f.search||f.locations.size||f.contact||f.minRating||f.hideEmailed);}
+function vdClearFilters(src){
+  const p=VD.panels[src];
+  p.f={...p.f,search:'',locations:new Set(),contact:'',minRating:'',hideEmailed:false};
+  const sec=document.getElementById('vd-'+src);
+  sec.querySelector('.vd-search').value='';sec.querySelector('.vd-contact').value='';
+  sec.querySelector('.vd-rating').value='';sec.querySelector('[data-act="hideEmailed"]').checked=false;
+  vdRenderLocList(src);vdFiltersChanged(src);
+}
+function vdFiltersChanged(src){
+  const p=VD.panels[src];
+  const n=p.f.locations.size;
+  vdQ(src,'.vd-loclabel').textContent=n?`${n} ${p.sec.locationLabel}${n===1?'':'s'} selected`:`Filter by ${p.sec.locationLabel}`;
+  vdQ(src,'.vd-clearf').style.display=vdFiltersActive(p)?'':'none';
+  vdLoad(src,true);
+}
+function vdParams(p,extra){
+  const u=new URLSearchParams();
+  if(p.f.search)u.set('search',p.f.search);
+  if(p.f.locations.size)u.set('locations',[...p.f.locations].join('|'));
+  if(p.f.contact)u.set('contact',p.f.contact);
+  if(p.f.minRating)u.set('minRating',p.f.minRating);
+  if(p.f.hideEmailed)u.set('hideEmailed','1');
+  u.set('sort',p.f.sort);
+  Object.entries(extra||{}).forEach(([k,v])=>u.set(k,v));
+  return u.toString();
+}
+async function vdSelectCategory(src,catKey){
+  const p=VD.panels[src];
+  const sec=document.getElementById('vd-'+src);
+  p.cat=catKey;p.selected=new Map();p.rows={};p.order=[];p.facets=null;
+  p.f={search:'',locations:new Set(),contact:'',minRating:'',hideEmailed:false,sort:p.sec.hasTenure?'tenure':'name'};
+  sec.querySelector('.vd-search').value='';sec.querySelector('.vd-contact').value='';sec.querySelector('.vd-rating').value='';
+  sec.querySelector('.vd-sort').value=p.f.sort;sec.querySelector('[data-act="hideEmailed"]').checked=false;
+  sec.querySelector('.vd-loclabel').textContent='Filter by '+p.sec.locationLabel;
+  sec.querySelector('.vd-clearf').style.display='none';
+  sec.querySelectorAll('.vd-catbtn').forEach(b=>{b.className=(b.dataset.cat===catKey?'btn btn-blue':'btn-ghost')+' vd-catbtn';});
+  sec.querySelector('.vd-body').style.display='';
+  vdUpdateSel(src);
+  fetch(`/api/vendor-directory/${src}/${catKey}/facets`).then(r=>r.json()).then(d=>{if(p.cat===catKey){p.facets=d;vdRenderLocList(src);}}).catch(()=>{});
+  vdLoad(src,true);
+}
+async function vdLoad(src,reset){
+  const p=VD.panels[src];
+  const list=vdQ(src,'.vd-list'),status=vdQ(src,'.vd-status'),more=vdQ(src,'.vd-more');
+  const catKey=p.cat;
+  if(reset){p.offset=0;p.order=[];list.innerHTML='';more.style.display='none';}
+  const my=++p.req;
+  status.textContent='Loading…';status.style.color='var(--ink3)';more.disabled=true;
+  try{
+    const r=await fetch(`/api/vendor-directory/${src}/${catKey}?${vdParams(p,{offset:p.offset,limit:40})}`);
+    const d=await r.json();
+    if(my!==p.req)return; // a newer filter change superseded this request
+    if(!r.ok){status.textContent=d.error?.message||'Failed to load';status.style.color='var(--red)';more.disabled=false;return;}
+    p.total=d.total;
+    d.rows.forEach(v=>{p.rows[v.id]=p.rows[v.id]||v;p.order.push(v.id);});
+    if(!d.rows.length&&p.offset===0)list.innerHTML='<div style="font-size:11px;color:var(--ink3);padding:10px 0">Nothing matches these filters.</div>';
+    else list.insertAdjacentHTML('beforeend',d.rows.map(v=>vdRowHtml(p,p.rows[v.id])).join(''));
+    p.offset+=d.rows.length;
+    more.style.display=p.offset<p.total?'inline-block':'none';more.disabled=false;
+    const catLabel=p.sec.categories.find(c=>c.key===catKey).label;
+    status.textContent=`${p.offset} of ${p.total} ${catLabel} shown${vdFiltersActive(p)?' (filtered)':''} · ranked: ${VD_SORT_LABEL[d.sort]||d.sort}`;
+  }catch(e){if(my===p.req){status.textContent='Error: '+e.message;status.style.color='var(--red)';more.disabled=false;}}
+}
+function vdRenderLocList(src){
+  const p=VD.panels[src],sec=document.getElementById('vd-'+src);
+  const listEl=sec.querySelector('.vd-loclist');
+  if(!p.facets){listEl.innerHTML='<div class="sm" style="padding:10px">Loading…</div>';return;}
+  const q=sec.querySelector('.vd-locsearch').value.trim().toLowerCase();
+  const items=p.facets.locations.filter(l=>!q||l.value.toLowerCase().includes(q));
+  sec.querySelector('.vd-loccount').textContent=p.f.locations.size+' selected';
+  listEl.innerHTML=items.length?items.map(l=>{
+    const on=p.f.locations.has(l.value);
+    return `<label class="pf-row${on?' on':''}"><input type="checkbox" data-act="loc" data-val="${escAttr(l.value)}"${on?' checked':''} style="flex-shrink:0"><span class="pf-row-name">${escAttr(vdTitle(l.value))}</span><span class="pf-row-count">${l.count}</span></label>`;
+  }).join(''):'<div class="sm" style="text-align:center;padding:12px">No matches</div>';
+}
+
+/* ---------- rows ---------- */
+const vdBadgeHtml=sec=>`<span class="vd-badge vd-tone-${sec.badge.tone}">${escAttr(sec.badge.text)}</span>`;
+function vdNameHtml(p,v){
+  return escAttr(v.name)
+    +(v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':'')
+    +(v.suppressed?' <span class="vd-badge vd-tone-amber">🚫 OPTED OUT</span>':'')
+    +' '+vdBadgeHtml(p.sec);
+}
+function vdSubHtml(p,v){
+  const sec=p.sec,b=[];
+  if(v.location)b.push(escAttr(vdTitle(v.location)));
+  if(v.sinceYear&&sec.sinceLabel)b.push(escAttr(sec.sinceLabel)+' '+v.sinceYear);
+  if(v.expires)b.push('Expires '+escAttr(v.expires));
+  if(v.extra)b.push(escAttr(v.extra));
+  if(v.insured===true)b.push('🛡️ Liability insured');
+  else if(v.insured===false)b.push('Liability insurance not current');
+  if(v.phone)b.push(`<a href="tel:${escAttr(String(v.phone).replace(/[^0-9+]/g,''))}" style="color:var(--ink2)">${escAttr(v.phone)}</a>`);
+  if(v.rating!=null)b.push(`★ ${Number(v.rating).toFixed(1)}${v.reviewCount!=null?' ('+v.reviewCount+' Google reviews)':''}`);
+  return b.join(' · ');
+}
+function vdLinksHtml(v){
+  return [
+    v.website?`<a href="${escAttr(v.website)}" target="_blank" rel="noopener" style="color:var(--blue2)">Visit website ↗</a>`:'',
+    v.matchedName?`<span style="color:var(--ink3)">Google listing: ${escAttr(v.matchedName)}</span>`:'',
+    v.legacyUnverified?'<span style="color:var(--red);font-weight:600">⚠ Email found before match-checking existed — not verified</span>':''
+  ].filter(Boolean).join(' · ');
+}
+function vdRowHtml(p,v){
+  return `<div class="vc-real-row vd-row" data-id="${v.id}">
+    <input type="checkbox" class="vd-check" data-act="sel" aria-label="Select ${escAttr(v.name)}"${p.selected.has(v.id)?' checked':''}>
+    <div class="vd-rowbody">
+      <div class="vd-name">${vdNameHtml(p,v)}</div>
+      <div class="vd-sub">${vdSubHtml(p,v)}</div>
+      <div class="vd-links">${vdLinksHtml(v)}</div>
+      <div class="vd-actions">
+        <button class="btn-xs p" data-act="find">🔍✉️ Find Email &amp; Send</button>
+        <input type="email" class="cred-input vd-email" value="${escAttr(v.contactEmail||'')}" placeholder="Or type an email, then click again">
+      </div>
+      <div class="sm vd-rowstatus"></div>
+    </div>
+  </div>`;
+}
+function vdRowEl(src,id){return vdQ(src,`.vd-row[data-id="${id}"]`);}
+function vdRefreshRow(src,id){
+  const p=VD.panels[src],v=p.rows[id],row=vdRowEl(src,id);
+  if(!row)return;
+  row.querySelector('.vd-name').innerHTML=vdNameHtml(p,v);
+  row.querySelector('.vd-sub').innerHTML=vdSubHtml(p,v);
+  row.querySelector('.vd-links').innerHTML=vdLinksHtml(v);
+  const input=row.querySelector('.vd-email');
+  if(!input.value&&v.contactEmail)input.value=v.contactEmail;
+}
+function vdSyncChecks(src){
+  const p=VD.panels[src];
+  document.querySelectorAll(`#vd-${src} .vd-row`).forEach(row=>{row.querySelector('.vd-check').checked=p.selected.has(parseInt(row.dataset.id,10));});
+}
+function vdUpdateSel(src){
+  const p=VD.panels[src],n=p.selected.size;
+  vdQ(src,'.vd-selcount').textContent=`${n} business${n===1?'':'es'} selected`;
+  const b=vdQ(src,'.vd-bulkbtn');
+  b.disabled=n===0;b.textContent=n?`✉️ Email ${n} Selected…`:'✉️ Email Selected…';
+}
+// Ranks server-side across the WHOLE filtered set (not just the rows loaded
+// so far) and selects the first N — same "rank within what's filtered"
+// behaviour as the Permits tab's Pick the Most Valuable Homes.
+async function vdTopN(src,n){
+  const p=VD.panels[src],status=vdQ(src,'.vd-status');
+  status.textContent=`Ranking the top ${n}…`;
+  try{
+    const r=await fetch(`/api/vendor-directory/${src}/${p.cat}?${vdParams(p,{offset:0,limit:n})}`);
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message||'Failed');
+    p.selected=new Map();
+    d.rows.forEach(v=>{p.rows[v.id]=p.rows[v.id]||v;p.selected.set(v.id,p.rows[v.id]);});
+    vdSyncChecks(src);vdUpdateSel(src);
+    const catLabel=p.sec.categories.find(c=>c.key===p.cat).label;
+    status.textContent=`${p.offset} of ${p.total} ${catLabel} shown${vdFiltersActive(p)?' (filtered)':''} · ranked: ${VD_SORT_LABEL[d.sort]||d.sort}`;
+    showNotif(`Selected top ${d.rows.length}`,`Ranked by ${(VD_SORT_LABEL[d.sort]||d.sort).toLowerCase()} ${vdFiltersActive(p)?'within your filters':'across the whole list'}`);
+  }catch(e){status.textContent='Error: '+e.message;}
+}
+
+/* ---------- drafting + single Find & Send ---------- */
+async function vdDraft(p){
+  if(p.messages[p.cat])return p.messages[p.cat];
+  const c=p.sec.categories.find(x=>x.key===p.cat);
+  const r=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area ${c.noun} — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward. Do not name a specific firm; this will be reused for many real firms.
+Return ONLY valid JSON: {"message":"the email text"}`,700);
+  // The model often opens with a "Subject: ..." line; the email's subject is
+  // set separately, so leaving it in would print it inside the message body.
+  p.messages[p.cat]=(r.message||'').replace(/^\s*subject:[^\n]*\n+/i,'').trim();
+  return p.messages[p.cat];
+}
+function vdApplyLookup(src,v,d){
+  Object.assign(v,{website:d.website||null,phone:d.phone||v.phone,address:d.address||null,matchedName:d.matchedName||null,
+    rating:d.rating??null,reviewCount:d.reviewCount??null,contactEmail:d.email||null,checked:true,
+    legacyUnverified:!!d.legacyUnverified,lookupReason:d.reason||null});
+  vdRefreshRow(src,v.id);
+}
+async function vdFind(src,id,btn){
+  const p=VD.panels[src],v=p.rows[id];
+  const row=vdRowEl(src,id),input=row.querySelector('.vd-email'),s=row.querySelector('.vd-rowstatus');
+  let email=(input.value||'').trim();
+  btn.disabled=true;const orig=btn.textContent;
+  const done=()=>{btn.disabled=false;btn.textContent=orig;};
+  let message;
+  try{message=await vdDraft(p);}catch(e){s.textContent='Could not draft a message: '+e.message;s.style.color='var(--red)';return done();}
+  if(!email){
+    btn.textContent='Searching...';s.textContent='';
+    try{
+      const r=await fetch(`/api/vendor-directory/${src}/${id}/find-contact`,{method:'POST'});
+      const d=await r.json();
+      if(!r.ok){s.textContent=d.error?.message||'Lookup failed';s.style.color='var(--red)';return done();}
+      vdApplyLookup(src,v,d);
+      if(d.email)email=d.email;
+      else{s.textContent=d.reason||'No email found — type one above, then click again.';s.style.color='var(--ink3)';return done();}
+    }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';return done();}
+  }
+  // A fuzzy name match can land on the wrong business, so the exact Google
+  // listing it matched to is part of what the human confirms.
+  const matched=v.matchedName?`\n\nGoogle listing matched: ${v.matchedName}${v.rating!=null?' (★ '+Number(v.rating).toFixed(1)+', '+(v.reviewCount||0)+' reviews)':''}`:'';
+  const unverified=v.legacyUnverified?'\n\n⚠ This email was found before match-checking existed, so it is not verified to belong to this business.':'';
+  if(!confirm(`Send this outreach email to ${v.name} <${email}>?${matched}${unverified}\n\n${message}`))return done();
+  btn.textContent='Sending...';s.textContent='';
+  try{
+    const r=await fetch('/api/vendors/outreach-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toEmail:email,vendorName:v.name,message})});
+    const d=await r.json();
+    if(!r.ok){s.textContent=d.error?.message||'Failed to send';s.style.color='var(--red)';}
+    else{s.textContent='✓ Sent to '+email;s.style.color='var(--green)';v.emailed=true;vdRefreshRow(src,id);if(typeof loadVendorOutreach==='function')loadVendorOutreach();}
+  }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
+  done();
+}
+
+/* ---------- bulk email: prepare -> (lookups) -> review -> send ----------
+   Nothing is sent until the human reviews the exact recipient list and
+   message and clicks through a final confirm(). Lookups cost real money, so
+   the cost is stated before they start; the server independently re-screens
+   every recipient (opted out, already emailed, duplicates, daily cap) at
+   send time and never trusts what the browser says. */
+function vdBuckets(b){
+  const o={ready:[],needLookup:[],noEmail:[],emailed:[],suppressed:[]};
+  b.rows.forEach(v=>{
+    if(v.suppressed)o.suppressed.push(v);
+    else if(v.emailed)o.emailed.push(v);
+    else if(v.contactEmail)o.ready.push(v);
+    else if(v.checked)o.noEmail.push(v);
+    else o.needLookup.push(v);
+  });
+  return o;
+}
+function vdModalEl(){
+  let m=document.getElementById('vd-modal');
+  if(!m){
+    m=document.createElement('div');m.id='vd-modal';m.className='vd-modal';
+    m.innerHTML='<div class="vd-modal-box" role="dialog" aria-modal="true" aria-label="Email selected businesses" tabindex="-1"></div>';
+    // Attached to <html>, not <body>: the app's theme puts filter:grayscale(1)
+    // on <body>, and any CSS filter turns the element into the containing
+    // block for position:fixed descendants — the overlay would be as tall as
+    // the whole page instead of the screen.
+    document.documentElement.appendChild(m);
+    m.addEventListener('click',vdBulkClick);
+    m.addEventListener('change',vdBulkChange);
+    m.addEventListener('input',e=>{if(e.target.matches('.vd-msg'))VD.bulk.message=e.target.value;});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&VD.bulk&&!['lookup','sending'].includes(VD.bulk.phase))vdBulkClose();});
+  }
+  return m;
+}
+async function vdBulkOpen(src){
+  const p=VD.panels[src];
+  const rows=[...p.selected.values()];
+  if(!rows.length)return;
+  VD.bulk={src,cat:p.cat,rows,phase:'prepare',message:'',status:null,picked:new Set(),excluded:{},progress:null,results:null,stop:false,draftError:''};
+  vdModalEl().style.display='flex';
+  vdBulkRender();
+  try{VD.bulk.message=await vdDraft(p);}
+  catch(e){VD.bulk.draftError='Could not draft a message automatically ('+e.message+') — write your own in the review step.';}
+  try{
+    const r=await fetch('/api/vendors/outreach-bulk/status');
+    const d=await r.json();
+    if(r.ok)VD.bulk.status=d;
+  }catch(e){/* shown as unknown limits in review */}
+  vdBulkRender();
+}
+function vdBulkClose(){
+  const m=document.getElementById('vd-modal');
+  if(m)m.style.display='none';
+  const b=VD.bulk;VD.bulk=null;
+  if(b){vdSyncChecks(b.src);vdUpdateSel(b.src);}
+}
+function vdBulkClick(e){
+  const b=VD.bulk;
+  if(!b)return;
+  if(e.target.id==='vd-modal'&&!['lookup','sending'].includes(b.phase))return vdBulkClose();
+  const t=e.target.closest('[data-bact]');
+  if(!t)return;
+  const a=t.dataset.bact;
+  if(a==='close')return vdBulkClose();
+  if(a==='lookup')return vdBulkLookup();
+  if(a==='stop'){b.stop=true;t.disabled=true;t.textContent='Stopping…';return;}
+  if(a==='review')return vdBulkToReview();
+  if(a==='back'){b.phase='prepare';return vdBulkRender();}
+  if(a==='send')return vdBulkSend();
+}
+function vdBulkChange(e){
+  const b=VD.bulk;
+  if(!b||!e.target.matches('.vd-pick'))return;
+  const id=parseInt(e.target.dataset.id,10);
+  if(e.target.checked)b.picked.add(id);else b.picked.delete(id);
+  vdBulkRender(true);
+}
+function vdBulkRender(keepScroll){
+  const b=VD.bulk;if(!b)return;
+  const box=document.querySelector('#vd-modal .vd-modal-box');
+  const top=box.scrollTop;
+  const p=VD.panels[b.src];
+  const cat=p.sec.categories.find(c=>c.key===b.cat);
+  const head=(title,sub)=>`<div class="vd-mh"><div><div class="vd-mt">${title}</div>${sub?`<div class="sm">${sub}</div>`:''}</div>${['lookup','sending'].includes(b.phase)?'':'<button class="btn-xs" data-bact="close" aria-label="Close">✕</button>'}</div>`;
+  let html='';
+  if(b.phase==='prepare'){
+    const k=vdBuckets(b);
+    const cost=k.needLookup.length*VD.lookupCost;
+    html=head(`Email ${b.rows.length} selected ${escAttr(cat.label.toLowerCase())}`,'Here is what happens next. Nothing is sent yet.')
+      +`<ul class="vd-list-plain">
+        <li><b>${k.ready.length}</b> already have an email on file</li>
+        <li><b>${k.needLookup.length}</b> still need a Google lookup${k.needLookup.length?` — about <b>${vdMoney(cost)}</b> in Google charges (${k.needLookup.length} lookups, counted against your monthly lookup limit). Each business is only ever looked up once; results are saved.`:''}</li>
+        ${k.noEmail.length?`<li><b>${k.noEmail.length}</b> were looked up before and no published email was found — they'll be left out</li>`:''}
+        ${k.emailed.length?`<li><b>${k.emailed.length}</b> you've already emailed — left out</li>`:''}
+        ${k.suppressed.length?`<li><b>${k.suppressed.length}</b> opted out of your emails — left out</li>`:''}
+      </ul>
+      ${b.draftError?`<div class="vd-warn">${escAttr(b.draftError)}</div>`:''}
+      <div class="vd-mbtns">
+        ${k.needLookup.length?`<button class="btn btn-blue" data-bact="lookup">Look up ${k.needLookup.length} business${k.needLookup.length===1?'':'es'} (≈ ${vdMoney(cost)})</button>`:''}
+        <button class="${k.needLookup.length?'btn-ghost':'btn btn-blue'}" data-bact="review"${k.ready.length?'':' disabled'}>${k.needLookup.length?'Skip lookups — review those with an email':'Continue to review'}</button>
+        <button class="btn-ghost" data-bact="close">Cancel</button>
+      </div>`;
+  }else if(b.phase==='lookup'){
+    const pr=b.progress;
+    html=head('Looking up contact info',`${pr.done} of ${pr.total} done — 3 at a time. Closing is disabled while this runs; use Stop to end early.`)
+      +`<div class="vd-bar"><div class="vd-barfill" style="width:${pr.total?Math.round(pr.done/pr.total*100):0}%"></div></div>
+      <div class="sm" id="vd-progress-note">${pr.errors?pr.errors+' lookup(s) errored. ':''}</div>
+      <div class="vd-mbtns"><button class="btn-ghost" data-bact="stop">Stop</button></div>`;
+  }else if(b.phase==='review'){
+    html=vdReviewHtml(b,cat);
+  }else if(b.phase==='sending'){
+    const pr=b.progress;
+    html=head('Sending',`${pr.done} of ${pr.total} processed. Please keep this window open.`)
+      +`<div class="vd-bar"><div class="vd-barfill" style="width:${pr.total?Math.round(pr.done/pr.total*100):0}%"></div></div>`;
+  }else if(b.phase==='done'){
+    const r=b.results;
+    const reasons={already_emailed:'already emailed',opted_out:'opted out',duplicate_in_batch:'duplicate address',invalid_email:'invalid address',daily_cap:'over today\'s send limit'};
+    const skippedBy={};r.skipped.forEach(x=>{const k=reasons[x.reason]||x.reason;skippedBy[k]=(skippedBy[k]||0)+1;});
+    html=head(r.sent?`✓ Sent ${r.sent} email${r.sent===1?'':'s'}`:'No emails were sent',r.stopMsg||'')
+      +`<ul class="vd-list-plain">
+        <li><b>${r.sent}</b> sent</li>
+        ${r.failed.length?`<li><b>${r.failed.length}</b> failed: ${r.failed.slice(0,5).map(x=>escAttr(x.name)+' ('+escAttr(x.error||'error')+')').join('; ')}${r.failed.length>5?'…':''}</li>`:''}
+        ${r.skipped.length?`<li><b>${r.skipped.length}</b> skipped: ${Object.entries(skippedBy).map(([k,n])=>n+' '+escAttr(k)).join(', ')}</li>`:''}
+      </ul>
+      ${r.sent?'<div class="sm">Replies appear in your outreach history. Anyone who unsubscribes is skipped automatically next time.</div>':''}
+      <div class="vd-mbtns"><button class="btn btn-blue" data-bact="close">Done</button></div>`;
+  }
+  box.innerHTML=html;
+  if(keepScroll)box.scrollTop=top;
+}
+function vdReviewHtml(b,cat){
+  const p=VD.panels[b.src];
+  const st=b.status;
+  const k=vdBuckets(b);
+  const eligible=k.ready;
+  const remaining=st?st.remaining:null;
+  const pickedRows=eligible.filter(v=>b.picked.has(v.id)&&!b.excluded[v.id]);
+  const rowsHtml=eligible.map(v=>{
+    const ex=b.excluded[v.id];
+    return `<label class="vd-rev${ex?' ex':''}"><input type="checkbox" class="vd-pick" data-id="${v.id}"${b.picked.has(v.id)&&!ex?' checked':''}${ex?' disabled':''}>
+      <span class="vd-revtxt"><b>${escAttr(v.name)}</b> &lt;${escAttr(v.contactEmail)}&gt;
+      <span class="sm">${v.matchedName?'Google listing: '+escAttr(v.matchedName)+(v.rating!=null?' · ★ '+Number(v.rating).toFixed(1)+' ('+(v.reviewCount||0)+')':''):'Email on file'}${v.legacyUnverified?' · <b style="color:var(--red)">⚠ not verified — found before match-checking existed</b>':''}${ex?' · <b>'+escAttr(ex)+'</b>':''}</span></span></label>`;
+  }).join('');
+  const left=[
+    ...k.noEmail.map(v=>[v,v.lookupReason||'no published email found']),
+    ...k.needLookup.map(v=>[v,'not looked up']),
+    ...k.emailed.map(v=>[v,'already emailed']),
+    ...k.suppressed.map(v=>[v,'opted out'])
+  ];
+  const problems=[];
+  if(st&&!st.configured)problems.push('Email sending is not configured on this server.');
+  if(st&&!st.hasAddress)problems.push('Add your business address in your profile first — commercial email must include one, and every email here carries it in the footer.');
+  if(st&&st.remaining===0)problems.push(`You've reached today's send limit (${st.dailyCap} per rolling 24 hours). Try again later.`);
+  const n=pickedRows.length;
+  const willSend=remaining!=null?Math.min(n,remaining):n;
+  const canSend=n>0&&!problems.length&&b.message.trim();
+  return `<div class="vd-mh"><div><div class="vd-mt">Review before sending</div><div class="sm">${eligible.length} ready to email · ${escAttr(cat.label.toLowerCase())}</div></div><button class="btn-xs" data-bact="close" aria-label="Close">✕</button></div>
+    ${b.stopMsg?`<div class="vd-warn">${escAttr(b.stopMsg)}</div>`:''}
+    ${problems.map(x=>`<div class="vd-warn">${escAttr(x)}</div>`).join('')}
+    <div class="vd-revlist">${rowsHtml||'<div class="sm" style="padding:12px">None of the selected businesses has an email to send to.</div>'}</div>
+    ${left.length?`<details class="vd-left"><summary>${left.length} left out</summary><ul class="vd-list-plain">${left.slice(0,60).map(([v,why])=>`<li>${escAttr(v.name)} — ${escAttr(why)}</li>`).join('')}${left.length>60?`<li>…and ${left.length-60} more</li>`:''}</ul></details>`:''}
+    <label class="vd-msglabel">Message (same text goes to everyone — edit it if you like)</label>
+    <textarea class="vd-msg cred-input" rows="9" placeholder="Write your message">${escAttr(b.message)}</textarea>
+    <div class="sm">${st?`Sent from your company name. Each email includes your business address and an unsubscribe link; opted-out and already-emailed addresses are skipped automatically. Limit: ${st.remaining} of ${st.dailyCap} left in the last 24 hours.`:'Sending limits could not be loaded.'}</div>
+    <div class="vd-mbtns">
+      <button class="btn btn-blue" data-bact="send"${canSend?'':' disabled'}>Send ${willSend} email${willSend===1?'':'s'}…</button>
+      <button class="btn-ghost" data-bact="back">Back</button>
+    </div>`;
+}
+async function vdBulkLookup(){
+  const b=VD.bulk,src=b.src,p=VD.panels[src];
+  const todo=vdBuckets(b).needLookup;
+  b.phase='lookup';b.stop=false;b.progress={done:0,total:todo.length,errors:0,capMsg:''};
+  vdBulkRender();
+  let i=0,capHit=false;
+  const worker=async()=>{
+    while(!b.stop&&!capHit){
+      const idx=i++;if(idx>=todo.length)return;
+      const v=todo[idx];
+      try{
+        const r=await fetch(`/api/vendor-directory/${src}/${v.id}/find-contact`,{method:'POST'});
+        const d=await r.json();
+        if(r.status===429&&d.error?.code==='lookup_cap'){capHit=true;b.progress.capMsg=d.error.message;return;}
+        if(!r.ok)b.progress.errors++;else vdApplyLookup(src,v,d);
+      }catch(e){b.progress.errors++;}
+      b.progress.done++;
+      if(VD.bulk===b&&b.phase==='lookup')vdBulkRender();
+    }
+  };
+  await Promise.all([worker(),worker(),worker()]);
+  if(VD.bulk!==b)return;
+  b.stopMsg=b.progress.capMsg?b.progress.capMsg+' The rest were not looked up.':(b.stop?'Lookups were stopped early — some businesses were not looked up.':'');
+  await vdBulkToReview();
+}
+async function vdBulkToReview(){
+  const b=VD.bulk;
+  const k=vdBuckets(b);
+  // Same address under two businesses (e.g. a brokerage and its agent):
+  // keep the first, flag the rest — the server would skip them anyway.
+  const seen=new Set();b.excluded={};
+  k.ready.forEach(v=>{const e=v.contactEmail.toLowerCase();if(seen.has(e))b.excluded[v.id]='same address as another selected business';else seen.add(e);});
+  try{
+    const r=await fetch('/api/vendors/outreach-bulk/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:k.ready.map(v=>({email:v.contactEmail,name:v.name}))})});
+    const d=await r.json();
+    if(r.ok){
+      const why={already_emailed:'already emailed',opted_out:'opted out',invalid_email:'invalid address'};
+      d.skipped.forEach(s=>{if(s.reason==='duplicate_in_batch')return;k.ready.forEach(v=>{if(v.contactEmail.toLowerCase()===s.email&&!b.excluded[v.id])b.excluded[v.id]=why[s.reason]||s.reason;});});
+    }
+  }catch(e){/* server re-screens at send time regardless */}
+  const st=await fetch('/api/vendors/outreach-bulk/status').then(r=>r.json()).catch(()=>null);
+  if(st&&!st.error)b.status=st;
+  b.picked=new Set(k.ready.filter(v=>!v.legacyUnverified&&!b.excluded[v.id]).map(v=>v.id));
+  b.phase='review';
+  vdBulkRender();
+}
+async function vdBulkSend(){
+  const b=VD.bulk,src=b.src,p=VD.panels[src];
+  const k=vdBuckets(b);
+  const rows=k.ready.filter(v=>b.picked.has(v.id)&&!b.excluded[v.id]);
+  const message=b.message.trim();
+  if(!rows.length||!message)return;
+  const lim=b.status?b.status.remaining:null;
+  const willSend=lim!=null?Math.min(rows.length,lim):rows.length;
+  const list=rows.slice(0,8).map(v=>`  • ${v.name} <${v.contactEmail}>`).join('\n')+(rows.length>8?`\n  …and ${rows.length-8} more`:'');
+  const capNote=lim!=null&&rows.length>lim?`\n\nOnly the first ${lim} will be sent (daily limit).`:'';
+  const unv=rows.filter(v=>v.legacyUnverified).length;
+  const unvNote=unv?`\n\n⚠ ${unv} of these have emails found before match-checking existed (not verified).`:'';
+  // The final human gate: exact recipients + exact message.
+  if(!confirm(`Send this email to ${willSend} business${willSend===1?'':'es'}?\n\n${list}${capNote}${unvNote}\n\nEach email includes your business address and an unsubscribe link.\n\nMessage:\n${message}`))return;
+  b.phase='sending';b.progress={done:0,total:rows.length};
+  vdBulkRender();
+  const res={sent:0,failed:[],skipped:[],stopMsg:''};
+  const CHUNK=10;
+  for(let i=0;i<rows.length;i+=CHUNK){
+    const chunk=rows.slice(i,i+CHUNK);
+    try{
+      const r=await fetch('/api/vendors/outreach-bulk/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:chunk.map(v=>({email:v.contactEmail,name:v.name})),message})});
+      const d=await r.json();
+      if(!r.ok){res.stopMsg=d.error?.message||'Sending stopped.';break;}
+      d.results.forEach(x=>{
+        if(x.status==='sent'){res.sent++;chunk.forEach(v=>{if(v.contactEmail.toLowerCase()===x.email){v.emailed=true;vdRefreshRow(src,v.id);}});}
+        else if(x.status==='failed')res.failed.push(x);
+        else res.skipped.push(x);
+      });
+      if(d.remaining===0&&i+CHUNK<rows.length){res.stopMsg="Stopped at today's send limit — the rest were not sent.";break;}
+    }catch(e){res.stopMsg='Network error — sending stopped: '+e.message;break;}
+    b.progress.done=Math.min(rows.length,i+CHUNK);
+    if(VD.bulk===b)vdBulkRender();
+  }
+  b.results=res;b.phase='done';
+  vdBulkRender();
+  if(typeof loadVendorOutreach==='function')loadVendorOutreach();
+  showNotif('Bulk send finished',`${res.sent} sent${res.failed.length?', '+res.failed.length+' failed':''}`);
+}
+
+initVendorDirectories();
 async function loadPartnerOutreach(){
   const el=document.getElementById('partner-outreach-list');if(!el)return;
   try{

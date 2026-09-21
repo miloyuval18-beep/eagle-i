@@ -3,7 +3,6 @@
 // generation pass whose output is cached in Postgres (business_profile.
 // generated_content) instead of being regenerated on every page load.
 const express = require('express');
-const crypto = require('crypto');
 const { query } = require('../db');
 const { requireAuth } = require('../auth');
 const { checkAndIncrementUsage, checkAndIncrementPlacesUsage, currentMonth } = require('../lib/usage');
@@ -14,8 +13,7 @@ const { detectRatingDrops } = require('../lib/competitorRatingAlerts');
 const { detectsHighValueFocus } = require('../lib/vendorTargeting');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
 const { findContactEmail } = require('../lib/vendorContactFinder');
-const { sendEmail, buildReplyToAddress } = require('../lib/email');
-const { escapeHtml } = require('../lib/landingPageTemplate');
+const { getSenderContext, sendOutreach } = require('../lib/vendorOutreach');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -508,13 +506,15 @@ router.get('/api/vendors/contact-email', requireAuth, async (req, res) => {
   }
 });
 
-// Sends one AI-drafted outreach message to one real vendor, only when the
-// tenant clicks Send for that specific vendor — deliberately not a bulk/
-// automatic blast (no consent from these businesses, and Resend's/CAN-SPAM's
-// rules on unsolicited commercial email don't allow one).
+// Sends one AI-drafted outreach message to one real vendor, when the
+// tenant clicks Send for that specific vendor. (Bulk sending to many
+// vendors at once is a separate, more heavily guarded flow —
+// POST /api/vendors/outreach-bulk/send in routes/vendorDirectory.js.)
 //
-// Persisted as a vendor_outreach row (id generated here, not by the DB
-// default) so a reply can be matched back to it — see
+// Goes through lib/vendorOutreach.js like the bulk path: opted-out
+// addresses are refused, and the message carries the sender's address and
+// an unsubscribe link. Persisted as a vendor_outreach row (id generated
+// there, not by the DB default) so a reply can be matched back to it — see
 // lib/email.js's buildReplyToAddress and routes/inboundEmail.js.
 router.post('/api/vendors/outreach-email', requireAuth, async (req, res) => {
   const { toEmail, vendorName, message } = req.body || {};
@@ -527,45 +527,16 @@ router.post('/api/vendors/outreach-email', requireAuth, async (req, res) => {
   if (!process.env.RESEND_API_KEY) {
     return res.status(503).json({ error: { message: 'Outreach emails are not configured on this server yet (missing RESEND_API_KEY).' } });
   }
-  const outreachId = crypto.randomUUID();
   try {
-    const tenantRes = await query('SELECT company_name FROM tenants WHERE id = $1', [req.tenantId]);
-    const profileRes = await query('SELECT founder_name, phone, email FROM business_profile WHERE tenant_id = $1', [req.tenantId]);
-    if (!tenantRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
-    const companyName = tenantRes.rows[0].company_name;
-    const profile = profileRes.rows[0] || {};
-
-    const signatureLine = [profile.founder_name || companyName, profile.phone, profile.email].filter(Boolean).map(escapeHtml).join(' · ');
-    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#12203a">
-${escapeHtml(message).split('\n').map(line => `<p>${line}</p>`).join('')}
-<p style="color:#5a7290;font-size:13px">${signatureLine}</p>
-</div>`;
-
-    // Reply-To is a reply+vendor-<id>@ address this app controls when
-    // inbound email is configured (RESEND_INBOUND_DOMAIN) — that's what
-    // lets a reply show up on the dashboard. Otherwise it falls back to
-    // the tenant's own email directly: still reaches them via normal
-    // email routing, just not captured/shown here. Only used when the
-    // profile email actually looks like one.
-    const validProfileEmail = profile.email && EMAIL_RE.test(profile.email) ? profile.email : undefined;
-    const replyTo = buildReplyToAddress('vendor', outreachId) || validProfileEmail;
-
-    let sent, sendError;
-    try {
-      sent = await sendEmail({ to: toEmail.trim(), subject: `Quick note from ${companyName}`, html, text: message, replyTo, fromName: companyName });
-    } catch (err) {
-      sendError = err;
+    const ctx = await getSenderContext(req.tenantId);
+    if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const result = await sendOutreach({ tenantId: req.tenantId, ctx, baseUrl, toEmail, vendorName, message });
+    if (!result.ok && result.reason === 'opted_out') {
+      return res.status(409).json({ error: { message: 'This address has opted out of your emails, so it was not sent.' } });
     }
-
-    await query(
-      `INSERT INTO vendor_outreach (id, tenant_id, vendor_name, to_email, message, status, error, resend_email_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [outreachId, req.tenantId, vendorName || toEmail.trim(), toEmail.trim(), message,
-       sendError ? 'failed' : 'sent', sendError ? sendError.message : null, sent && sent.id ? sent.id : null]
-    );
-
-    if (sendError) return res.status(502).json({ error: { message: 'Failed to send: ' + sendError.message } });
-    res.json({ ok: true, id: sent.id || null, vendorName: vendorName || null });
+    if (!result.ok) return res.status(502).json({ error: { message: 'Failed to send: ' + result.error } });
+    res.json({ ok: true, id: result.id, vendorName: vendorName || null });
   } catch (err) {
     res.status(502).json({ error: { message: 'Failed to send: ' + err.message } });
   }
