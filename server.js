@@ -31,6 +31,8 @@ const tbpelsRoutes = require('./routes/tbpelsRegistrants');
 const trecRoutes = require('./routes/trecRegistrants');
 const tdiRoutes = require('./routes/tdiRegistrants');
 const tdaRoutes = require('./routes/tdaRegistrants');
+const tdiAgenciesRoutes = require('./routes/tdiAgencies');
+const comptrollerTradesRoutes = require('./routes/comptrollerTrades');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -42,6 +44,8 @@ const { startTbpelsRosterWorker } = require('./lib/tbpelsRosterWorker');
 const { startTrecRosterWorker } = require('./lib/trecRosterWorker');
 const { startTdiRosterWorker } = require('./lib/tdiRosterWorker');
 const { startTdaRosterWorker } = require('./lib/tdaRosterWorker');
+const { startTdiAgenciesWorker } = require('./lib/tdiAgenciesWorker');
+const { startComptrollerTradesWorker } = require('./lib/comptrollerTradesWorker');
 
 // Last-resort safety net: anything that escapes every route's own try/catch
 // (a genuine bug, not a "service not configured" 4xx) gets emailed to the
@@ -112,6 +116,8 @@ app.use(tbpelsRoutes);
 app.use(trecRoutes);
 app.use(tdiRoutes);
 app.use(tdaRoutes);
+app.use(tdiAgenciesRoutes);
+app.use(comptrollerTradesRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
@@ -168,4 +174,6 @@ app.listen(PORT, () => {
   startTrecRosterWorker();
   startTdiRosterWorker();
   startTdaRosterWorker();
+  startTdiAgenciesWorker();
+  startComptrollerTradesWorker();
 });
