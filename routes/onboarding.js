@@ -14,6 +14,7 @@ const { detectsHighValueFocus } = require('../lib/vendorTargeting');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
 const { findContactEmail } = require('../lib/vendorContactFinder');
 const { getSenderContext, sendOutreach } = require('../lib/vendorOutreach');
+const { fillName, friendlyGreeting } = require('../lib/outreachTemplate');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -527,13 +528,24 @@ router.post('/api/vendors/outreach-email', requireAuth, async (req, res) => {
   if (!process.env.RESEND_API_KEY) {
     return res.status(503).json({ error: { message: 'Outreach emails are not configured on this server yet (missing RESEND_API_KEY).' } });
   }
+  // The vendor panel sends its message with {name} already filled in; this
+  // covers a message that still carries it, and refuses any other open token
+  // rather than emailing a real person a literal "{linkedin}".
+  const finalMessage = fillName(message, friendlyGreeting(vendorName, null));
+  const leftover = finalMessage.match(/\{[a-z_]+\}/);
+  if (leftover) {
+    return res.status(400).json({ error: { message: `The message still contains ${leftover[0]}. Remove it or fill it in before sending.` } });
+  }
   try {
     const ctx = await getSenderContext(req.tenantId);
     if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const result = await sendOutreach({ tenantId: req.tenantId, ctx, baseUrl, toEmail, vendorName, message });
+    const result = await sendOutreach({ tenantId: req.tenantId, ctx, baseUrl, toEmail, vendorName, message: finalMessage });
     if (!result.ok && result.reason === 'opted_out') {
       return res.status(409).json({ error: { message: 'This address has opted out of your emails, so it was not sent.' } });
+    }
+    if (!result.ok && result.reason === 'domain_cannot_receive_mail') {
+      return res.status(400).json({ error: { message: `${toEmail.split('@')[1]} can't receive email, so it was not sent.` } });
     }
     if (!result.ok) return res.status(502).json({ error: { message: 'Failed to send: ' + result.error } });
     res.json({ ok: true, id: result.id, vendorName: vendorName || null });

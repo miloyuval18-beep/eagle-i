@@ -2554,6 +2554,7 @@ function vdSectionHtml(sec){
         <select class="btn-xs vd-contact" data-act="contact" aria-label="Contact status">
           <option value="">Any contact status</option>
           <option value="has_email">Has an email on file</option>
+          <option value="verified">Has a verified email</option>
           <option value="unchecked">Not looked up yet</option>
           <option value="no_email">Looked up, no email found</option>
         </select>
@@ -2731,7 +2732,7 @@ function vdLinksHtml(v){
   return [
     v.website?`<a href="${escAttr(v.website)}" target="_blank" rel="noopener" style="color:var(--blue2)">Visit website ↗</a>`:'',
     v.matchedName?`<span style="color:var(--ink3)">Google listing: ${escAttr(v.matchedName)}</span>`:'',
-    v.legacyUnverified?'<span style="color:var(--red);font-weight:600">⚠ Email found before match-checking existed — not verified</span>':''
+    v.emailNote?`<span style="color:var(--red);font-weight:600">${escAttr(v.emailNote)}</span>`:''
   ].filter(Boolean).join(' · ');
 }
 function vdRowHtml(p,v){
@@ -2789,20 +2790,23 @@ async function vdTopN(src,n){
 }
 
 /* ---------- drafting + single Find & Send ---------- */
-async function vdDraft(p){
+// The message comes from the tenant's own template (server-side), filled with
+// their profile and this category. {name} stays open — it is filled per
+// recipient, here for a single send and on the server for a bulk send.
+async function vdTemplate(p){
   if(p.messages[p.cat])return p.messages[p.cat];
-  const c=p.sec.categories.find(x=>x.key===p.cat);
-  const r=await claude(`Write ONE formal, professional outreach email (3-4 sentences) from ${C.founder} at ${C.phone}, on behalf of ${C.name} (a ${ME?.industry||'construction'} business in ${C.community||'the Houston area'}), addressed to a Houston-area ${c.noun} — proposing they set up a time to meet and discuss opportunities to help each other's businesses going forward. Do not name a specific firm; this will be reused for many real firms.
-Return ONLY valid JSON: {"message":"the email text"}`,700);
-  // The model often opens with a "Subject: ..." line; the email's subject is
-  // set separately, so leaving it in would print it inside the message body.
-  p.messages[p.cat]=(r.message||'').replace(/^\s*subject:[^\n]*\n+/i,'').trim();
-  return p.messages[p.cat];
+  const r=await fetch(`/api/vendors/outreach-template?source=${encodeURIComponent(p.sec.key)}&category=${encodeURIComponent(p.cat)}`);
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.error?.message||'Failed to load the message');
+  p.messages[p.cat]=d;
+  return d;
 }
+const vdFill=(message,v)=>String(message).split('{name}').join(v.greeting||'there');
+const vdOpenToken=m=>{const t=String(m).replace(/\{name\}/g,'').match(/\{[a-z_]+\}/);return t?t[0]:null;};
 function vdApplyLookup(src,v,d){
   Object.assign(v,{website:d.website||null,phone:d.phone||v.phone,address:d.address||null,matchedName:d.matchedName||null,
     rating:d.rating??null,reviewCount:d.reviewCount??null,contactEmail:d.email||null,checked:true,
-    legacyUnverified:!!d.legacyUnverified,lookupReason:d.reason||null});
+    emailStatus:d.emailStatus||null,emailNote:d.emailNote||null,lookupReason:d.reason||null});
   vdRefreshRow(src,v.id);
 }
 async function vdFind(src,id,btn){
@@ -2812,7 +2816,9 @@ async function vdFind(src,id,btn){
   btn.disabled=true;const orig=btn.textContent;
   const done=()=>{btn.disabled=false;btn.textContent=orig;};
   let message;
-  try{message=await vdDraft(p);}catch(e){s.textContent='Could not draft a message: '+e.message;s.style.color='var(--red)';return done();}
+  try{message=vdFill((await vdTemplate(p)).message,v);}catch(e){s.textContent='Could not load the message: '+e.message;s.style.color='var(--red)';return done();}
+  const stray=vdOpenToken(message);
+  if(stray){s.textContent='The message still contains '+stray+' — fix it in the review dialog before sending.';s.style.color='var(--red)';return done();}
   if(!email){
     btn.textContent='Searching...';s.textContent='';
     try{
@@ -2827,7 +2833,7 @@ async function vdFind(src,id,btn){
   // A fuzzy name match can land on the wrong business, so the exact Google
   // listing it matched to is part of what the human confirms.
   const matched=v.matchedName?`\n\nGoogle listing matched: ${v.matchedName}${v.rating!=null?' (★ '+Number(v.rating).toFixed(1)+', '+(v.reviewCount||0)+' reviews)':''}`:'';
-  const unverified=v.legacyUnverified?'\n\n⚠ This email was found before match-checking existed, so it is not verified to belong to this business.':'';
+  const unverified=v.emailNote&&v.emailStatus!=='verified'?'\n\n'+v.emailNote:'';
   if(!confirm(`Send this outreach email to ${v.name} <${email}>?${matched}${unverified}\n\n${message}`))return done();
   btn.textContent='Sending...';s.textContent='';
   try{
@@ -2868,7 +2874,12 @@ function vdModalEl(){
     document.documentElement.appendChild(m);
     m.addEventListener('click',vdBulkClick);
     m.addEventListener('change',vdBulkChange);
-    m.addEventListener('input',e=>{if(e.target.matches('.vd-msg'))VD.bulk.message=e.target.value;});
+    m.addEventListener('input',e=>{
+      if(!VD.bulk)return;
+      if(e.target.matches('.vd-msg'))VD.bulk.message=e.target.value;
+      else if(e.target.matches('.vd-linkedin'))VD.bulk.settings.linkedin=e.target.value;
+      else if(e.target.matches('.vd-blurb'))VD.bulk.settings.blurb=e.target.value;
+    });
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&VD.bulk&&!['lookup','sending'].includes(VD.bulk.phase))vdBulkClose();});
   }
   return m;
@@ -2877,11 +2888,11 @@ async function vdBulkOpen(src){
   const p=VD.panels[src];
   const rows=[...p.selected.values()];
   if(!rows.length)return;
-  VD.bulk={src,cat:p.cat,rows,phase:'prepare',message:'',status:null,picked:new Set(),excluded:{},progress:null,results:null,stop:false,draftError:''};
+  VD.bulk={src,cat:p.cat,rows,phase:'prepare',message:'',settings:{linkedin:'',blurb:'',defaultBlurb:'',hasCustomTemplate:false},status:null,picked:new Set(),excluded:{},progress:null,results:null,stop:false,draftError:'',saveNote:''};
   vdModalEl().style.display='flex';
   vdBulkRender();
-  try{VD.bulk.message=await vdDraft(p);}
-  catch(e){VD.bulk.draftError='Could not draft a message automatically ('+e.message+') — write your own in the review step.';}
+  try{const t=await vdTemplate(p);VD.bulk.message=t.message;VD.bulk.settings=t.settings;}
+  catch(e){VD.bulk.draftError='Could not load your message ('+e.message+') — write one in the review step.';}
   try{
     const r=await fetch('/api/vendors/outreach-bulk/status');
     const d=await r.json();
@@ -2908,6 +2919,24 @@ function vdBulkClick(e){
   if(a==='review')return vdBulkToReview();
   if(a==='back'){b.phase='prepare';return vdBulkRender();}
   if(a==='send')return vdBulkSend();
+  if(['saveDetails','saveTemplate','resetTemplate'].includes(a))return vdSaveSettings(a);
+}
+async function vdSaveSettings(kind){
+  const b=VD.bulk,p=VD.panels[b.src];
+  const box=document.querySelector('#vd-modal .vd-modal-box');
+  const body={source:b.src,category:b.cat,linkedin:box.querySelector('.vd-linkedin').value.trim(),blurb:box.querySelector('.vd-blurb').value.trim()};
+  if(kind==='saveTemplate'){body.saveTemplate=true;body.message=b.message;}
+  if(kind==='resetTemplate')body.resetTemplate=true;
+  try{
+    const r=await fetch('/api/vendors/outreach-template',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(!r.ok){b.saveNote='Not saved: '+(d.error?.message||'failed');vdBulkRender(true);return;}
+    b.settings=d.settings;
+    if(kind!=='saveTemplate')b.message=d.message; // refreshed from the saved wording + details
+    p.messages={}; // other categories re-render with the new details/wording
+    b.saveNote='Saved.';
+  }catch(e){b.saveNote='Not saved: '+e.message;}
+  vdBulkRender(true);
 }
 function vdBulkChange(e){
   const b=VD.bulk;
@@ -2929,9 +2958,9 @@ function vdBulkRender(keepScroll){
     const cost=k.needLookup.length*VD.lookupCost;
     html=head(`Email ${b.rows.length} selected ${escAttr(cat.label.toLowerCase())}`,'Here is what happens next. Nothing is sent yet.')
       +`<ul class="vd-list-plain">
-        <li><b>${k.ready.length}</b> already have an email on file</li>
+        <li><b>${k.ready.length}</b> already have an email on file${k.ready.length?` — <b>${k.ready.filter(v=>v.emailStatus==='verified').length}</b> verified, ${k.ready.filter(v=>v.emailStatus!=='verified').length} to review`:''}</li>
         <li><b>${k.needLookup.length}</b> still need a Google lookup${k.needLookup.length?` — about <b>${vdMoney(cost)}</b> in Google charges (${k.needLookup.length} lookups, counted against your monthly lookup limit). Each business is only ever looked up once; results are saved.`:''}</li>
-        ${k.noEmail.length?`<li><b>${k.noEmail.length}</b> were looked up before and no published email was found — they'll be left out</li>`:''}
+        ${k.noEmail.length?`<li><b>${k.noEmail.length}</b> have no usable email (none published, or the address can't receive mail) — they'll be left out</li>`:''}
         ${k.emailed.length?`<li><b>${k.emailed.length}</b> you've already emailed — left out</li>`:''}
         ${k.suppressed.length?`<li><b>${k.suppressed.length}</b> opted out of your emails — left out</li>`:''}
       </ul>
@@ -2980,10 +3009,10 @@ function vdReviewHtml(b,cat){
     const ex=b.excluded[v.id];
     return `<label class="vd-rev${ex?' ex':''}"><input type="checkbox" class="vd-pick" data-id="${v.id}"${b.picked.has(v.id)&&!ex?' checked':''}${ex?' disabled':''}>
       <span class="vd-revtxt"><b>${escAttr(v.name)}</b> &lt;${escAttr(v.contactEmail)}&gt;
-      <span class="sm">${v.matchedName?'Google listing: '+escAttr(v.matchedName)+(v.rating!=null?' · ★ '+Number(v.rating).toFixed(1)+' ('+(v.reviewCount||0)+')':''):'Email on file'}${v.legacyUnverified?' · <b style="color:var(--red)">⚠ not verified — found before match-checking existed</b>':''}${ex?' · <b>'+escAttr(ex)+'</b>':''}</span></span></label>`;
+      <span class="sm">${v.matchedName?'Google listing: '+escAttr(v.matchedName)+(v.rating!=null?' · ★ '+Number(v.rating).toFixed(1)+' ('+(v.reviewCount||0)+')':''):'Email on file'}${v.emailStatus==='verified'?' · <b>✓ verified</b>':(v.emailNote?' · <b style="color:var(--red)">'+escAttr(v.emailNote)+'</b>':'')}${ex?' · <b>'+escAttr(ex)+'</b>':''}</span></span></label>`;
   }).join('');
   const left=[
-    ...k.noEmail.map(v=>[v,v.lookupReason||'no published email found']),
+    ...k.noEmail.map(v=>[v,v.lookupReason||v.emailNote||'no published email found']),
     ...k.needLookup.map(v=>[v,'not looked up']),
     ...k.emailed.map(v=>[v,'already emailed']),
     ...k.suppressed.map(v=>[v,'opted out'])
@@ -2994,14 +3023,32 @@ function vdReviewHtml(b,cat){
   if(st&&st.remaining===0)problems.push(`You've reached today's send limit (${st.dailyCap} per rolling 24 hours). Try again later.`);
   const n=pickedRows.length;
   const willSend=remaining!=null?Math.min(n,remaining):n;
+  const stray=vdOpenToken(b.message);
+  if(stray)problems.push(`The message still contains ${stray}. Remove it or fill it in before sending.`);
   const canSend=n>0&&!problems.length&&b.message.trim();
+  const eg=(pickedRows[0]||eligible[0]||{}).greeting;
+  const se=b.settings||{};
   return `<div class="vd-mh"><div><div class="vd-mt">Review before sending</div><div class="sm">${eligible.length} ready to email · ${escAttr(cat.label.toLowerCase())}</div></div><button class="btn-xs" data-bact="close" aria-label="Close">✕</button></div>
     ${b.stopMsg?`<div class="vd-warn">${escAttr(b.stopMsg)}</div>`:''}
     ${problems.map(x=>`<div class="vd-warn">${escAttr(x)}</div>`).join('')}
     <div class="vd-revlist">${rowsHtml||'<div class="sm" style="padding:12px">None of the selected businesses has an email to send to.</div>'}</div>
     ${left.length?`<details class="vd-left"><summary>${left.length} left out</summary><ul class="vd-list-plain">${left.slice(0,60).map(([v,why])=>`<li>${escAttr(v.name)} — ${escAttr(why)}</li>`).join('')}${left.length>60?`<li>…and ${left.length-60} more</li>`:''}</ul></details>`:''}
-    <label class="vd-msglabel">Message (same text goes to everyone — edit it if you like)</label>
-    <textarea class="vd-msg cred-input" rows="9" placeholder="Write your message">${escAttr(b.message)}</textarea>
+    <label class="vd-msglabel">Message — edit it if you like</label>
+    <textarea class="vd-msg cred-input" rows="14" placeholder="Write your message">${escAttr(b.message)}</textarea>
+    <div class="sm">${eg?`<b>{name}</b> is filled in for each business — for example “Hi ${escAttr(eg)},”. `:''}Built from ${(b.settings||{}).hasCustomTemplate?'your saved wording':'the standard wording'} for ${VD.panels[b.src].sec.categories.find(c=>c.key===b.cat).label.toLowerCase()}.</div>
+    <details class="vd-left" ${b.saveNote?'open':''}>
+      <summary>Sender details &amp; saved wording</summary>
+      <label class="vd-msglabel">Your LinkedIn profile link (optional)</label>
+      <input type="text" class="cred-input vd-linkedin" value="${escAttr(se.linkedin||'')}" placeholder="https://www.linkedin.com/in/your-name" style="width:100%;box-sizing:border-box">
+      <label class="vd-msglabel">About your company (one or two sentences, used in the message)</label>
+      <textarea class="cred-input vd-blurb" rows="3" placeholder="${escAttr(se.defaultBlurb||'')}" style="width:100%;box-sizing:border-box">${escAttr(se.blurb||'')}</textarea>
+      <div class="vd-mbtns" style="margin-top:8px">
+        <button class="btn-xs p" data-bact="saveDetails">Save &amp; refresh message</button>
+        <button class="btn-xs" data-bact="saveTemplate">Save this message as my default</button>
+        ${se.hasCustomTemplate?'<button class="btn-xs" data-bact="resetTemplate">Use the standard wording</button>':''}
+      </div>
+      <div class="sm">Saving details or wording applies to future emails for every category of this type; refreshing replaces the text above. ${escAttr(b.saveNote||'')}</div>
+    </details>
     <div class="sm">${st?`Sent from your company name. Each email includes your business address and an unsubscribe link; opted-out and already-emailed addresses are skipped automatically. Limit: ${st.remaining} of ${st.dailyCap} left in the last 24 hours.`:'Sending limits could not be loaded.'}</div>
     <div class="vd-mbtns">
       <button class="btn btn-blue" data-bact="send"${canSend?'':' disabled'}>Send ${willSend} email${willSend===1?'':'s'}…</button>
@@ -3050,7 +3097,7 @@ async function vdBulkToReview(){
   }catch(e){/* server re-screens at send time regardless */}
   const st=await fetch('/api/vendors/outreach-bulk/status').then(r=>r.json()).catch(()=>null);
   if(st&&!st.error)b.status=st;
-  b.picked=new Set(k.ready.filter(v=>!v.legacyUnverified&&!b.excluded[v.id]).map(v=>v.id));
+  b.picked=new Set(k.ready.filter(v=>v.emailStatus==='verified'&&!b.excluded[v.id]).map(v=>v.id));
   b.phase='review';
   vdBulkRender();
 }
@@ -3064,10 +3111,11 @@ async function vdBulkSend(){
   const willSend=lim!=null?Math.min(rows.length,lim):rows.length;
   const list=rows.slice(0,8).map(v=>`  • ${v.name} <${v.contactEmail}>`).join('\n')+(rows.length>8?`\n  …and ${rows.length-8} more`:'');
   const capNote=lim!=null&&rows.length>lim?`\n\nOnly the first ${lim} will be sent (daily limit).`:'';
-  const unv=rows.filter(v=>v.legacyUnverified).length;
-  const unvNote=unv?`\n\n⚠ ${unv} of these have emails found before match-checking existed (not verified).`:'';
+  const unv=rows.filter(v=>v.emailStatus!=='verified').length;
+  const unvNote=unv?`\n\n⚠ ${unv} of these have emails that are not verified to belong to the business.`:'';
+  const egv=rows[0];
   // The final human gate: exact recipients + exact message.
-  if(!confirm(`Send this email to ${willSend} business${willSend===1?'':'es'}?\n\n${list}${capNote}${unvNote}\n\nEach email includes your business address and an unsubscribe link.\n\nMessage:\n${message}`))return;
+  if(!confirm(`Send this email to ${willSend} business${willSend===1?'':'es'}?\n\n${list}${capNote}${unvNote}\n\nEach email includes your business address and an unsubscribe link.\n\nMessage (as it will read for ${egv.name}):\n${vdFill(message,egv)}`))return;
   b.phase='sending';b.progress={done:0,total:rows.length};
   vdBulkRender();
   const res={sent:0,failed:[],skipped:[],stopMsg:''};
@@ -3075,7 +3123,7 @@ async function vdBulkSend(){
   for(let i=0;i<rows.length;i+=CHUNK){
     const chunk=rows.slice(i,i+CHUNK);
     try{
-      const r=await fetch('/api/vendors/outreach-bulk/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:chunk.map(v=>({email:v.contactEmail,name:v.name})),message})});
+      const r=await fetch('/api/vendors/outreach-bulk/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:chunk.map(v=>({email:v.contactEmail,name:v.name,greeting:v.greeting})),message})});
       const d=await r.json();
       if(!r.ok){res.stopMsg=d.error?.message||'Sending stopped.';break;}
       d.results.forEach(x=>{

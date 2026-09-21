@@ -11,6 +11,9 @@ const { findContactEmail } = require('../lib/vendorContactFinder');
 const { stripLegalSuffix, isLikelySameBusiness } = require('../lib/placesMatch');
 const dir = require('../lib/vendorDirectories');
 const outreach = require('../lib/vendorOutreach');
+const { verifyEmail } = require('../lib/emailVerification');
+const tpl = require('../lib/outreachTemplate');
+const { query } = require('../db');
 
 const router = express.Router();
 
@@ -22,7 +25,7 @@ function parseFilters(q) {
   return {
     search: (q.search || '').toString().slice(0, 80),
     locations: (q.locations || '').toString().split('|').map(s => s.trim()).filter(Boolean).slice(0, 60),
-    contact: ['has_email', 'unchecked', 'no_email'].includes(q.contact) ? q.contact : '',
+    contact: ['has_email', 'verified', 'unchecked', 'no_email'].includes(q.contact) ? q.contact : '',
     minRating: [3.5, 4, 4.5].includes(Number(q.minRating)) ? Number(q.minRating) : null,
     hideEmailed: q.hideEmailed === '1' || q.hideEmailed === 'true'
   };
@@ -76,7 +79,9 @@ router.post('/api/vendor-directory/:source/:id/find-contact', requireAuth, async
         address: row.places_formatted_address, matchedName: row.places_matched_name,
         rating: row.google_rating !== null ? Number(row.google_rating) : null,
         reviewCount: row.google_review_count,
-        legacyUnverified: !!(row.contact_email && !row.places_matched_name),
+        ...(row.email_check_status === 'invalid' ? { email: null } : {}),
+        emailStatus: row.email_check_status || null,
+        emailNote: dir.emailNote(row),
         source: 'cache'
       });
     }
@@ -98,28 +103,123 @@ router.post('/api/vendor-directory/:source/:id/find-contact', requireAuth, async
     });
     const match = top && (agrees(row.name) || (row.alt_name && agrees(row.alt_name))) ? top : null;
 
-    let email = null;
+    let email = null, verification = null, droppedReason = null;
     if (match && match.website) {
       const contact = await findContactEmail(match.website);
       email = contact.email || null;
     }
+    // The Google match was validated above, so the site check isn't needed —
+    // but an address whose domain can't receive mail is never kept as usable.
+    if (email) {
+      verification = await verifyEmail({ email, website: match.website, businessName: row.name, checkSite: false });
+      if (verification.status === 'invalid') { droppedReason = `Found ${email} on their website, but ${verification.reason} — not used.`; email = null; verification = null; }
+    }
     await dir.saveContact(sourceKey, id, {
       website: match?.website, phone: match?.phone, contactEmail: email, address: match?.address,
-      matchedName: match?.name, rating: match?.rating, reviewCount: match?.reviewCount
+      matchedName: match?.name, rating: match?.rating, reviewCount: match?.reviewCount,
+      emailStatus: verification && verification.status, emailReason: verification && verification.reason
     });
 
     res.json({
       website: match?.website || null, phone: match?.phone ? dir.formatPhone(match.phone) : dir.formatPhone(row.phone), email,
       address: match?.address || null, matchedName: match?.name || null,
       rating: match?.rating ?? null, reviewCount: match?.reviewCount ?? null, source: 'live',
+      emailStatus: verification ? verification.status : null,
+      emailNote: email ? dir.emailNote({ contact_email: email, email_check_status: verification.status, email_check_reason: verification.reason }) : null,
       reason: match
-        ? (email ? null : 'No published email found on their website.')
+        ? (email ? null : (droppedReason || 'No published email found on their website.'))
         : (top
             ? `Closest Google result was "${top.name}" (${top.address || 'no address'}), which doesn't look like the same business — not used.`
             : 'No matching business found on Google.')
     });
   } catch (err) {
     res.status(500).json({ error: { message: 'Contact lookup failed: ' + err.message } });
+  }
+});
+
+// ---- Outreach message template ----------------------------------------
+// The message is built from a per-tenant template (lib/outreachTemplate.js)
+// filled with this tenant's profile and the category being emailed. {name}
+// is left open here and filled per recipient when it is sent.
+
+async function loadTemplateContext(tenantId) {
+  const t = await query('SELECT company_name FROM tenants WHERE id = $1', [tenantId]);
+  if (!t.rows.length) return null;
+  const p = await query('SELECT founder_name, phone, site, service_area, outreach_settings FROM business_profile WHERE tenant_id = $1', [tenantId]);
+  const profile = p.rows[0] || {};
+  return { tenant: t.rows[0], profile, settings: profile.outreach_settings || {} };
+}
+
+function resolveCategory(sourceKey, categoryKey) {
+  const source = dir.SOURCES[sourceKey];
+  const category = source && source.categories[categoryKey];
+  return source && category ? { source, category } : null;
+}
+
+const templateResponse = (ctx, source, category) => {
+  const vars = tpl.buildVariables({ ...ctx, source, category });
+  return {
+    intent: source.intent,
+    message: tpl.renderTemplate(tpl.templateFor(ctx.settings, source.intent), vars),
+    settings: {
+      linkedin: ctx.settings.linkedin || '',
+      blurb: ctx.settings.blurb || '',
+      defaultBlurb: `${ctx.tenant.company_name} serves ${(ctx.profile.service_area || '').trim() || 'the Houston area'}.`,
+      hasCustomTemplate: !!(ctx.settings.templates && ctx.settings.templates[source.intent])
+    }
+  };
+};
+
+router.get('/api/vendors/outreach-template', requireAuth, async (req, res) => {
+  const found = resolveCategory(req.query.source, req.query.category);
+  if (!found) return res.status(404).json({ error: { message: 'Unknown category.' } });
+  try {
+    const ctx = await loadTemplateContext(req.tenantId);
+    if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    res.json(templateResponse(ctx, found.source, found.category));
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to load the message: ' + err.message } });
+  }
+});
+
+// Saves sender details (LinkedIn link, company blurb) and/or the message as
+// this tenant's default wording for this relationship type.
+router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
+  const { source: sourceKey, category: categoryKey, message, linkedin, blurb, saveTemplate, resetTemplate } = req.body || {};
+  const found = resolveCategory(sourceKey, categoryKey);
+  if (!found) return res.status(404).json({ error: { message: 'Unknown category.' } });
+
+  let linkedinUrl;
+  if (linkedin !== undefined) {
+    linkedinUrl = tpl.normalizeLinkedin(linkedin);
+    if (linkedinUrl === null) return res.status(400).json({ error: { message: 'That should be a linkedin.com link.' } });
+  }
+  if (blurb !== undefined && String(blurb).length > 600) {
+    return res.status(400).json({ error: { message: 'The company description is limited to 600 characters.' } });
+  }
+  if (saveTemplate && (!message || String(message).length > tpl.MAX_TEMPLATE_CHARS)) {
+    return res.status(400).json({ error: { message: `Message must be 1–${tpl.MAX_TEMPLATE_CHARS} characters.` } });
+  }
+
+  try {
+    const ctx = await loadTemplateContext(req.tenantId);
+    if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    const settings = { ...ctx.settings, templates: { ...(ctx.settings.templates || {}) } };
+
+    // Turn the edited message back into a template using the values as they
+    // were when it was rendered, BEFORE applying any new LinkedIn/blurb.
+    if (saveTemplate) {
+      const vars = tpl.buildVariables({ ...ctx, source: found.source, category: found.category });
+      settings.templates[found.source.intent] = tpl.templatize(String(message), vars);
+    }
+    if (resetTemplate) delete settings.templates[found.source.intent];
+    if (linkedinUrl !== undefined) settings.linkedin = linkedinUrl;
+    if (blurb !== undefined) settings.blurb = String(blurb).trim();
+
+    await query('UPDATE business_profile SET outreach_settings = $1 WHERE tenant_id = $2', [JSON.stringify(settings), req.tenantId]);
+    res.json(templateResponse({ ...ctx, settings }, found.source, found.category));
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to save: ' + err.message } });
   }
 });
 
@@ -179,6 +279,18 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
     if ((ctx.profile.address || '').trim().length < 8) {
       return res.status(400).json({ error: { message: 'Add your business address in your profile before sending bulk email — it is required in the footer of commercial email.', code: 'address_required' } });
     }
+    // {name} is the only token allowed to be open; anything else still in the
+    // text (e.g. a hand-typed {linkedin}) would be sent to real people as-is.
+    const leftover = String(message).replace(/\{name\}/g, '').match(/\{[a-z_]+\}/);
+    if (leftover) {
+      return res.status(400).json({ error: { message: `The message still contains ${leftover[0]}. Remove it or fill it in before sending.`, code: 'unresolved_token' } });
+    }
+    // First occurrence of an address wins, matching how screening keeps the first.
+    const greetingFor = new Map();
+    for (const r of recipients) {
+      const key = outreach.normEmail(r && r.email);
+      if (!greetingFor.has(key)) greetingFor.set(key, (r && r.greeting) || tpl.friendlyGreeting(r && r.name, null));
+    }
     const { sendable, skipped } = await outreach.screenRecipients(req.tenantId, recipients);
     const used = await outreach.sentInLast24h(req.tenantId);
     const remaining = Math.max(0, outreach.BULK_DAILY_CAP - used);
@@ -190,7 +302,7 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
     for (let i = 0; i < toSend.length; i++) {
       if (i > 0) await sleep(outreach.SEND_SPACING_MS);
       const r = toSend[i];
-      const out = await outreach.sendOutreach({ tenantId: req.tenantId, ctx, baseUrl, toEmail: r.email, vendorName: r.name, message: String(message) });
+      const out = await outreach.sendOutreach({ tenantId: req.tenantId, ctx, baseUrl, toEmail: r.email, vendorName: r.name, message: tpl.fillName(String(message), greetingFor.get(r.email)) });
       results.push(out.ok
         ? { email: r.email, name: r.name, status: 'sent' }
         : { email: r.email, name: r.name, status: out.reason === 'opted_out' ? 'skipped' : 'failed', reason: out.reason, error: out.error });
