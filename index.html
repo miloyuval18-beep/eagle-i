@@ -135,6 +135,11 @@ body::before{content:none}
 .vd-left summary{cursor:pointer;font-family:var(--fm)}
 .vd-msglabel{display:block;font-family:var(--fm);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin:6px 0 4px}
 .vd-msg{width:100%;box-sizing:border-box;font-size:13px;line-height:1.5;resize:vertical}
+.vd-fu{border:1px solid var(--bdr2);border-radius:8px;padding:10px 12px;margin:10px 0;background:var(--bg4)}
+.vd-fu-line{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--ink);cursor:pointer;margin:0 0 6px}
+.vd-fu-line input[type=checkbox]{margin-top:3px;flex-shrink:0;width:16px;height:16px}
+.vd-fupanel{border:1px solid var(--bdr2);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:var(--bg4);font-size:12px}
+.vd-fuitem{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--bdr);font-size:12px}
 @media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.vd-selhint{max-width:none}}
 .vp-bar{display:flex;gap:6px;padding:9px 11px;border-top:1px solid var(--bdr);background:var(--bg4)}
 .vp-input{flex:1;background:var(--bg5);border:1px solid var(--bdr2);border-radius:16px;padding:7px 12px;font-family:var(--fb);font-size:14px;color:var(--ink);outline:none}
@@ -940,6 +945,7 @@ tbody tr:last-child td{border-bottom:none}
   </div>
   <div class="section" style="margin-top:20px">
     <div class="sh"><div><div class="st">Sent Outreach &amp; Replies</div><div class="ss">Every real "Find & Send" email you've sent from this page, and any reply you've gotten back.</div></div></div>
+    <div id="vendor-followups"></div>
     <div id="vendor-outreach-list" style="display:flex;flex-direction:column;gap:8px">
       <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">You haven't sent any outreach emails yet</div>
     </div>
@@ -2555,6 +2561,7 @@ function vdSectionHtml(sec){
           <option value="">Any contact status</option>
           <option value="has_email">Has an email on file</option>
           <option value="verified">Has a verified email</option>
+          <option value="mailable">No email — has a mailing address</option>
           <option value="unchecked">Not looked up yet</option>
           <option value="no_email">Looked up, no email found</option>
         </select>
@@ -2578,6 +2585,7 @@ function vdSectionHtml(sec){
           <button class="btn-xs" data-act="selClear">Clear My Selections</button>
           <select class="btn-xs vd-topn" data-act="topn" aria-label="Pick the top N"><option value="">Pick the Top N…</option>${topOpts}</select>
           <button class="btn-xs p vd-bulkbtn" data-act="bulk" disabled>✉️ Email Selected…</button>
+          <button class="btn-xs vd-letterbtn" data-act="letters" disabled>📬 Mail Letters…</button>
         </div>
       </div>
       <div class="sm vd-status"></div>
@@ -2601,6 +2609,7 @@ function vdOnClick(e){
   if(act==='selShown'){const p=VD.panels[src];p.order.forEach(id=>p.selected.set(id,p.rows[id]));vdSyncChecks(src);vdUpdateSel(src);return;}
   if(act==='selClear'){VD.panels[src].selected=new Map();vdSyncChecks(src);vdUpdateSel(src);return;}
   if(act==='bulk')return vdBulkOpen(src);
+  if(act==='letters')return vdLettersOpen(src);
   if(act==='more')return vdLoad(src,false);
   if(act==='find')return vdFind(src,parseInt(t.closest('.vd-row').dataset.id,10),t);
 }
@@ -2713,7 +2722,8 @@ const vdBadgeHtml=sec=>`<span class="vd-badge vd-tone-${sec.badge.tone}">${escAt
 function vdNameHtml(p,v){
   return escAttr(v.name)
     +(v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':'')
-    +(v.suppressed?' <span class="vd-badge vd-tone-amber">🚫 OPTED OUT</span>':'')
+    +(v.suppressed?` <span class="vd-badge vd-tone-amber">${v.suppressedReason==='bounced'?'🚫 BOUNCED':v.suppressedReason==='complained'?'🚫 SPAM COMPLAINT':'🚫 OPTED OUT'}</span>`:'')
+    +(v.letteredAt?` <span class="vd-badge">📬 LETTERED ${escAttr(new Date(v.letteredAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}))}</span>`:'')
     +' '+vdBadgeHtml(p.sec);
 }
 function vdSubHtml(p,v){
@@ -2732,7 +2742,8 @@ function vdLinksHtml(v){
   return [
     v.website?`<a href="${escAttr(v.website)}" target="_blank" rel="noopener" style="color:var(--blue2)">Visit website ↗</a>`:'',
     v.matchedName?`<span style="color:var(--ink3)">Google listing: ${escAttr(v.matchedName)}</span>`:'',
-    v.emailNote?`<span style="color:var(--red);font-weight:600">${escAttr(v.emailNote)}</span>`:''
+    v.emailNote?`<span style="color:var(--red);font-weight:600">${escAttr(v.emailNote)}</span>`:'',
+    !v.contactEmail&&v.mailable?'<span style="color:var(--ink3)">📬 Mailing address on file</span>':''
   ].filter(Boolean).join(' · ');
 }
 function vdRowHtml(p,v){
@@ -2769,6 +2780,7 @@ function vdUpdateSel(src){
   vdQ(src,'.vd-selcount').textContent=`${n} business${n===1?'':'es'} selected`;
   const b=vdQ(src,'.vd-bulkbtn');
   b.disabled=n===0;b.textContent=n?`✉️ Email ${n} Selected…`:'✉️ Email Selected…';
+  const lb=vdQ(src,'.vd-letterbtn');lb.disabled=n===0;lb.textContent=n?`📬 Mail ${n} Letters…`:'📬 Mail Letters…';
 }
 // Ranks server-side across the WHOLE filtered set (not just the rows loaded
 // so far) and selects the first N — same "rank within what's filtered"
@@ -2878,8 +2890,10 @@ function vdModalEl(){
       if(!VD.bulk)return;
       if(e.target.matches('.vd-msg'))VD.bulk.message=e.target.value;
       else if(e.target.matches('.vd-blurb'))VD.bulk.settings.blurb=e.target.value;
+      else if(e.target.matches('.vd-fu-msg'))VD.bulk.followUp.message=e.target.value;
+      else if(e.target.matches('.vd-letter-msg'))VD.bulk.message=e.target.value;
     });
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&VD.bulk&&!['lookup','sending'].includes(VD.bulk.phase))vdBulkClose();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&VD.bulk&&!['lookup','sending','letters-working'].includes(VD.bulk.phase))vdBulkClose();});
   }
   return m;
 }
@@ -2887,10 +2901,10 @@ async function vdBulkOpen(src){
   const p=VD.panels[src];
   const rows=[...p.selected.values()];
   if(!rows.length)return;
-  VD.bulk={src,cat:p.cat,rows,phase:'prepare',message:'',settings:{linkedin:'',blurb:'',defaultBlurb:'',hasCustomTemplate:false},status:null,picked:new Set(),excluded:{},progress:null,results:null,stop:false,draftError:'',saveNote:''};
+  VD.bulk={src,cat:p.cat,rows,phase:'prepare',message:'',followUp:{enabled:true,days:7,message:''},settings:{linkedin:'',blurb:'',defaultBlurb:'',hasCustomTemplate:false},status:null,picked:new Set(),excluded:{},progress:null,results:null,stop:false,draftError:'',saveNote:''};
   vdModalEl().style.display='flex';
   vdBulkRender();
-  try{const t=await vdTemplate(p);VD.bulk.message=t.message;VD.bulk.settings=t.settings;}
+  try{const t=await vdTemplate(p);VD.bulk.message=t.message;VD.bulk.settings=t.settings;VD.bulk.followUp={enabled:true,days:t.followUp.days,message:t.followUp.message};}
   catch(e){VD.bulk.draftError='Could not load your message ('+e.message+') — write one in the review step.';}
   try{
     const r=await fetch('/api/vendors/outreach-bulk/status');
@@ -2908,7 +2922,7 @@ function vdBulkClose(){
 function vdBulkClick(e){
   const b=VD.bulk;
   if(!b)return;
-  if(e.target.id==='vd-modal'&&!['lookup','sending'].includes(b.phase))return vdBulkClose();
+  if(e.target.id==='vd-modal'&&!['lookup','sending','letters-working'].includes(b.phase))return vdBulkClose();
   const t=e.target.closest('[data-bact]');
   if(!t)return;
   const a=t.dataset.bact;
@@ -2918,6 +2932,8 @@ function vdBulkClick(e){
   if(a==='review')return vdBulkToReview();
   if(a==='back'){b.phase='prepare';return vdBulkRender();}
   if(a==='send')return vdBulkSend();
+  if(a==='lettersDownload')return vdLettersGenerate('download');
+  if(a==='lettersPrint')return vdLettersGenerate('print');
   if(a==='openProfile'){
     vdBulkClose();
     goTo('account',document.getElementById('t-account'));
@@ -2931,14 +2947,14 @@ async function vdSaveSettings(kind){
   const b=VD.bulk,p=VD.panels[b.src];
   const box=document.querySelector('#vd-modal .vd-modal-box');
   const body={source:b.src,category:b.cat,blurb:box.querySelector('.vd-blurb').value.trim()};
-  if(kind==='saveTemplate'){body.saveTemplate=true;body.message=b.message;}
+  if(kind==='saveTemplate'){body.saveTemplate=true;body.message=b.message;if(b.followUp.message.trim())body.followupMessage=b.followUp.message;}
   if(kind==='resetTemplate')body.resetTemplate=true;
   try{
     const r=await fetch('/api/vendors/outreach-template',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();
     if(!r.ok){b.saveNote='Not saved: '+(d.error?.message||'failed');vdBulkRender(true);return;}
     b.settings=d.settings;
-    if(kind!=='saveTemplate')b.message=d.message; // refreshed from the saved wording + details
+    if(kind!=='saveTemplate'){b.message=d.message;b.followUp.message=d.followUp.message;} // refreshed from the saved wording + details
     p.messages={}; // other categories re-render with the new details/wording
     b.saveNote='Saved.';
   }catch(e){b.saveNote='Not saved: '+e.message;}
@@ -2946,7 +2962,12 @@ async function vdSaveSettings(kind){
 }
 function vdBulkChange(e){
   const b=VD.bulk;
-  if(!b||!e.target.matches('.vd-pick'))return;
+  if(!b)return;
+  if(e.target.matches('.vd-fu-on')){b.followUp.enabled=e.target.checked;return vdBulkRender(true);}
+  if(e.target.matches('.vd-fu-days')){b.followUp.days=parseInt(e.target.value,10);return;}
+  if(e.target.matches('.vd-inc-email')){b.includeWithEmail=e.target.checked;return vdBulkRender(true);}
+  if(e.target.matches('.vd-inc-recent')){b.includeRecent=e.target.checked;return vdBulkRender(true);}
+  if(!e.target.matches('.vd-pick'))return;
   const id=parseInt(e.target.dataset.id,10);
   if(e.target.checked)b.picked.add(id);else b.picked.delete(id);
   vdBulkRender(true);
@@ -2982,6 +3003,8 @@ function vdBulkRender(keepScroll){
       +`<div class="vd-bar"><div class="vd-barfill" style="width:${pr.total?Math.round(pr.done/pr.total*100):0}%"></div></div>
       <div class="sm" id="vd-progress-note">${pr.errors?pr.errors+' lookup(s) errored. ':''}</div>
       <div class="vd-mbtns"><button class="btn-ghost" data-bact="stop">Stop</button></div>`;
+  }else if(b.phase==='letters'||b.phase==='letters-working'||b.phase==='letters-done'){
+    html=vdLettersHtml(b,cat);
   }else if(b.phase==='review'){
     html=vdReviewHtml(b,cat);
   }else if(b.phase==='sending'){
@@ -2990,7 +3013,7 @@ function vdBulkRender(keepScroll){
       +`<div class="vd-bar"><div class="vd-barfill" style="width:${pr.total?Math.round(pr.done/pr.total*100):0}%"></div></div>`;
   }else if(b.phase==='done'){
     const r=b.results;
-    const reasons={already_emailed:'already emailed',opted_out:'opted out',duplicate_in_batch:'duplicate address',invalid_email:'invalid address',daily_cap:'over today\'s send limit'};
+    const reasons={already_emailed:'already emailed',opted_out:'opted out',bounced:'bounced before',complained:'reported a previous email as spam',domain_cannot_receive_mail:'address can\'t receive mail',duplicate_in_batch:'duplicate address',invalid_email:'invalid address',daily_cap:'over today\'s send limit'};
     const skippedBy={};r.skipped.forEach(x=>{const k=reasons[x.reason]||x.reason;skippedBy[k]=(skippedBy[k]||0)+1;});
     html=head(r.sent?`✓ Sent ${r.sent} email${r.sent===1?'':'s'}`:'No emails were sent',r.stopMsg||'')
       +`<ul class="vd-list-plain">
@@ -2998,6 +3021,7 @@ function vdBulkRender(keepScroll){
         ${r.failed.length?`<li><b>${r.failed.length}</b> failed: ${r.failed.slice(0,5).map(x=>escAttr(x.name)+' ('+escAttr(x.error||'error')+')').join('; ')}${r.failed.length>5?'…':''}</li>`:''}
         ${r.skipped.length?`<li><b>${r.skipped.length}</b> skipped: ${Object.entries(skippedBy).map(([k,n])=>n+' '+escAttr(k)).join(', ')}</li>`:''}
       </ul>
+      ${r.followUps?`<div class="sm">↻ <b>${r.followUps}</b> follow-up${r.followUps===1?'':'s'} scheduled for about ${r.followUpDays} days from now. They only go to people who haven't replied, and stop if anyone unsubscribes or bounces. Review or cancel them under “Sent Outreach &amp; Replies” below.</div>`:''}
       ${r.sent?'<div class="sm">Replies appear in your outreach history. Anyone who unsubscribes is skipped automatically next time.</div>':''}
       <div class="vd-mbtns"><button class="btn btn-blue" data-bact="close">Done</button></div>`;
   }
@@ -3029,8 +3053,10 @@ function vdReviewHtml(b,cat){
   if(st&&st.remaining===0)problems.push(`You've reached today's send limit (${st.dailyCap} per rolling 24 hours). Try again later.`);
   const n=pickedRows.length;
   const willSend=remaining!=null?Math.min(n,remaining):n;
-  const stray=vdOpenToken(b.message);
+  const fu=b.followUp;
+  const stray=vdOpenToken(b.message)||(fu.enabled?vdOpenToken(fu.message):null);
   if(stray)problems.push(`The message still contains ${stray}. Remove it or fill it in before sending.`);
+  if(fu.enabled&&!fu.message.trim())problems.push('The follow-up message is empty — write one or turn the follow-up off.');
   const canSend=n>0&&!problems.length&&b.message.trim();
   const eg=(pickedRows[0]||eligible[0]||{}).greeting;
   const se=b.settings||{};
@@ -3042,6 +3068,13 @@ function vdReviewHtml(b,cat){
     <label class="vd-msglabel">Message — edit it if you like</label>
     <textarea class="vd-msg cred-input" rows="14" placeholder="Write your message">${escAttr(b.message)}</textarea>
     <div class="sm">${eg?`<b>{name}</b> is filled in for each business — for example “Hi ${escAttr(eg)},”. `:''}Built from ${(b.settings||{}).hasCustomTemplate?'your saved wording':'the standard wording'} for ${VD.panels[b.src].sec.categories.find(c=>c.key===b.cat).label.toLowerCase()}.</div>
+    <div class="vd-fu">
+      <label class="vd-fu-line"><input type="checkbox" class="vd-fu-on"${fu.enabled?' checked':''}>
+        <span>Send <b>one</b> follow-up in <select class="btn-xs vd-fu-days" ${fu.enabled?'':'disabled'}>${[3,5,7,10,14,21].map(d=>`<option value="${d}"${d===fu.days?' selected':''}>${d} days</option>`).join('')}</select> to anyone who hasn't replied.</span></label>
+      <div class="sm">${fu.enabled?'It goes out on a weekday between 9am and 5pm Central, and is cancelled automatically if they reply, unsubscribe, bounce or report spam. You can review or cancel every scheduled follow-up under “Sent Outreach &amp; Replies”.':'No follow-up will be sent.'}</div>
+      ${fu.enabled?`<details class="vd-left"><summary>Follow-up message (sent exactly as written)</summary>
+        <textarea class="vd-fu-msg cred-input" rows="10" style="width:100%;box-sizing:border-box;font-size:13px;line-height:1.5;resize:vertical">${escAttr(fu.message)}</textarea></details>`:''}
+    </div>
     <details class="vd-left" ${b.saveNote?'open':''}>
       <summary>Company details &amp; saved wording</summary>
       <div class="sm" style="margin:6px 0 10px">Your LinkedIn link comes from your Company Profile: ${se.linkedin?'<b>'+escAttr(se.linkedin)+'</b>':'<b>not set</b> — the LinkedIn line is left out of the email'}. <button class="btn-xs" data-bact="openProfile">Edit in Company Profile</button></div>
@@ -3119,18 +3152,21 @@ async function vdBulkSend(){
   const unv=rows.filter(v=>v.emailStatus!=='verified').length;
   const unvNote=unv?`\n\n⚠ ${unv} of these have emails that are not verified to belong to the business.`:'';
   const egv=rows[0];
-  // The final human gate: exact recipients + exact message.
-  if(!confirm(`Send this email to ${willSend} business${willSend===1?'':'es'}?\n\n${list}${capNote}${unvNote}\n\nEach email includes your business address and an unsubscribe link.\n\nMessage (as it will read for ${egv.name}):\n${vdFill(message,egv)}`))return;
+  const fu=b.followUp,fuOn=fu.enabled&&fu.message.trim();
+  const fuNote=fuOn?`\n\nFOLLOW-UP: in ${fu.days} days, one follow-up goes automatically to anyone who hasn't replied (stopping if they reply, unsubscribe, bounce or report spam). It will read:\n${vdFill(fu.message,egv)}`:'\n\nNo follow-up will be sent.';
+  // The final human gate: exact recipients + exact message (+ the exact follow-up that will be sent later).
+  if(!confirm(`Send this email to ${willSend} business${willSend===1?'':'es'}?\n\n${list}${capNote}${unvNote}\n\nEach email includes your business address and an unsubscribe link.\n\nMessage (as it will read for ${egv.name}):\n${vdFill(message,egv)}${fuNote}`))return;
   b.phase='sending';b.progress={done:0,total:rows.length};
   vdBulkRender();
-  const res={sent:0,failed:[],skipped:[],stopMsg:''};
+  const res={sent:0,failed:[],skipped:[],stopMsg:'',followUps:0,followUpDays:null};
   const CHUNK=10;
   for(let i=0;i<rows.length;i+=CHUNK){
     const chunk=rows.slice(i,i+CHUNK);
     try{
-      const r=await fetch('/api/vendors/outreach-bulk/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:chunk.map(v=>({email:v.contactEmail,name:v.name,greeting:v.greeting})),message})});
+      const r=await fetch('/api/vendors/outreach-bulk/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:chunk.map(v=>({email:v.contactEmail,name:v.name,greeting:v.greeting})),message,followUp:fuOn?{enabled:true,days:fu.days,message:fu.message}:{enabled:false}})});
       const d=await r.json();
       if(!r.ok){res.stopMsg=d.error?.message||'Sending stopped.';break;}
+      res.followUps+=d.followUpsScheduled||0;if(d.followUpDays)res.followUpDays=d.followUpDays;
       d.results.forEach(x=>{
         if(x.status==='sent'){res.sent++;chunk.forEach(v=>{if(v.contactEmail.toLowerCase()===x.email){v.emailed=true;vdRefreshRow(src,v.id);}});}
         else if(x.status==='failed')res.failed.push(x);
@@ -3148,6 +3184,151 @@ async function vdBulkSend(){
 }
 
 initVendorDirectories();
+
+/* ---------- mailed letters ----------
+   For businesses with no usable email but a mailing address (from the state
+   record, or found by the Google lookup). The server picks who gets a letter
+   and fills each one in; this builds the PDF (jsPDF, same as the Permits
+   mailer). Nothing is sent — you print and mail them. */
+const VD_LETTER_RECENT_DAYS=90;
+function vdLetterBuckets(b){
+  const cutoff=Date.now()-VD_LETTER_RECENT_DAYS*864e5;
+  const o={go:[],hasEmail:[],noAddr:[],recent:[]};
+  b.rows.forEach(v=>{
+    const recent=v.letteredAt&&new Date(v.letteredAt).getTime()>cutoff;
+    if(v.contactEmail&&!b.includeWithEmail)o.hasEmail.push(v);
+    else if(!v.mailable)o.noAddr.push(v);
+    else if(recent&&!b.includeRecent)o.recent.push(v);
+    else o.go.push(v);
+  });
+  return o;
+}
+async function vdLettersOpen(src){
+  const p=VD.panels[src];
+  const rows=[...p.selected.values()];
+  if(!rows.length)return;
+  VD.bulk={src,cat:p.cat,rows,phase:'letters',mode:'letters',message:'',includeWithEmail:false,includeRecent:false,letterError:'',letterResult:null,draftError:'',status:null};
+  vdModalEl().style.display='flex';
+  vdBulkRender();
+  try{VD.bulk.message=(await vdTemplate(p)).letterMessage;}
+  catch(e){VD.bulk.draftError='Could not load the letter text ('+e.message+') — write it below.';}
+  vdBulkRender();
+}
+function vdLettersHtml(b,cat){
+  const head=(title,sub)=>`<div class="vd-mh"><div><div class="vd-mt">${title}</div>${sub?`<div class="sm">${sub}</div>`:''}</div>${b.phase==='letters-working'?'':'<button class="btn-xs" data-bact="close" aria-label="Close">✕</button>'}</div>`;
+  if(b.phase==='letters-working')return head('Preparing letters…','Building your PDF.');
+  if(b.phase==='letters-done'){
+    const r=b.letterResult;
+    const why={has_email:'have an email',no_address:'no mailing address',recently_lettered:'lettered in the last 90 days'};
+    const sk={};r.skipped.forEach(x=>{sk[why[x.reason]||x.reason]=(sk[why[x.reason]||x.reason]||0)+1;});
+    return head(`✓ ${r.made} letter${r.made===1?'':'s'} ready`,r.action==='print'?'Opened for printing.':'Your PDF was downloaded.')
+      +`<ul class="vd-list-plain"><li><b>${r.made}</b> letters, one page each, ready to print and mail</li>
+        ${r.skipped.length?`<li><b>${r.skipped.length}</b> left out: ${Object.entries(sk).map(([k,n])=>n+' '+escAttr(k)).join(', ')}</li>`:''}</ul>
+      <div class="sm">These businesses now show <b>📬 LETTERED</b> in the list, so you won't send the same one twice by accident. You mail the letters yourself.</div>
+      <div class="vd-mbtns"><button class="btn btn-blue" data-bact="close">Done</button></div>`;
+  }
+  const k=vdLetterBuckets(b);
+  const eg=k.go[0];
+  const example=eg?`${eg.name} — ${eg.greeting}`:'';
+  return head(`Mail ${b.rows.length} selected ${escAttr(cat.label.toLowerCase())}`,'Printable letters — nothing is emailed or sent.')
+    +`<ul class="vd-list-plain">
+      <li><b>${k.go.length}</b> will get a letter</li>
+      ${k.hasEmail.length?`<li><b>${k.hasEmail.length}</b> have an email on file — left out (email reaches them faster)</li>`:''}
+      ${k.noAddr.length?`<li><b>${k.noAddr.length}</b> have no mailing address yet — left out (a Google lookup can find one for some)</li>`:''}
+      ${k.recent.length?`<li><b>${k.recent.length}</b> were lettered in the last ${VD_LETTER_RECENT_DAYS} days — left out</li>`:''}
+    </ul>
+    ${b.draftError?`<div class="vd-warn">${escAttr(b.draftError)}</div>`:''}
+    ${b.letterError?`<div class="vd-warn">${escAttr(b.letterError)}</div>`:''}
+    <label class="vd-fu-line"><input type="checkbox" class="vd-inc-email"${b.includeWithEmail?' checked':''}> <span>Also mail the ones that have an email</span></label>
+    <label class="vd-fu-line"><input type="checkbox" class="vd-inc-recent"${b.includeRecent?' checked':''}> <span>Also mail ones lettered in the last ${VD_LETTER_RECENT_DAYS} days</span></label>
+    <label class="vd-msglabel">Letter text — edit it if you like</label>
+    <textarea class="vd-letter-msg cred-input" rows="14" placeholder="Write your letter" style="width:100%;box-sizing:border-box;font-size:13px;line-height:1.5;resize:vertical">${escAttr(b.message)}</textarea>
+    <div class="sm">Each letter has your return address and phone at the top, is addressed to the business, and is signed with your name. <b>{name}</b> is filled in for each${example?` — first one: ${escAttr(example)}`:''}.</div>
+    <div class="vd-mbtns">
+      <button class="btn btn-blue" data-bact="lettersDownload"${k.go.length&&b.message.trim()?'':' disabled'}>📄 Download PDF (${k.go.length})</button>
+      <button class="btn-ghost" data-bact="lettersPrint"${k.go.length&&b.message.trim()?'':' disabled'}>🖨️ Print now</button>
+      <button class="btn-ghost" data-bact="close">Cancel</button>
+    </div>`;
+}
+function vdBuildLettersDoc(d){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'pt',format:'letter'});
+  const mx=64,pw=612,ph=792,maxW=pw-mx*2,S=d.sender||{};
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  d.letters.forEach((L,i)=>{
+    if(i>0)doc.addPage();
+    let y=60;
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(S.company||'',mx,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120);
+    const contact=[S.phone,S.email].filter(Boolean).join(' · ');
+    if(contact)doc.text(contact,pw-mx,y,{align:'right'});
+    if(S.address){y+=13;doc.text(S.address,mx,y);}
+    doc.setTextColor(0);
+    y+=8;doc.setDrawColor(210);doc.line(mx,y,pw-mx,y);
+    y+=28;doc.setFontSize(10);
+    doc.text(today,mx,y);y+=26;
+    doc.text(L.name,mx,y);y+=14;
+    if(L.attn){doc.text('Attn: '+L.attn,mx,y);y+=14;}
+    L.addressLines.forEach(line=>{doc.text(line,mx,y);y+=14;});
+    y+=18;doc.setFontSize(11);
+    L.paragraphs.forEach((para,pi)=>{
+      if(pi>0)y+=8;
+      doc.splitTextToSize(para,maxW).forEach(line=>{
+        if(y>ph-110){doc.addPage();y=60;}
+        doc.text(line,mx,y);y+=16;
+      });
+    });
+    y+=14;if(y>ph-130){doc.addPage();y=60;}
+    doc.text('Sincerely,',mx,y);y+=34;
+    [S.founder||S.company,S.founder?S.company:''].filter(Boolean).forEach(line=>{doc.text(line,mx,y);y+=14;});
+    if(L.links&&L.links.length){y+=6;doc.setFontSize(10);doc.setTextColor(90);L.links.forEach(line=>{doc.text(line,mx,y);y+=13;});doc.setTextColor(0);}
+  });
+  return doc;
+}
+async function vdLettersGenerate(action){
+  const b=VD.bulk,src=b.src,p=VD.panels[src];
+  const k=vdLetterBuckets(b);
+  if(!k.go.length||!b.message.trim())return;
+  const stray=vdOpenToken(b.message);
+  if(stray){b.letterError=`The letter still contains ${stray}. Remove it or fill it in first.`;return vdBulkRender(true);}
+  b.letterError='';b.phase='letters-working';vdBulkRender();
+  try{
+    const r=await fetch(`/api/vendor-directory/${src}/mailer-letters`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      category:b.cat,ids:k.go.map(v=>v.id),message:b.message,includeWithEmail:b.includeWithEmail,includeRecentlyLettered:b.includeRecent})});
+    const d=await r.json();
+    if(!r.ok){b.letterError=d.error?.message||'Could not prepare the letters.';b.phase='letters';return vdBulkRender();}
+    if(!d.letters.length){b.letterError='No letters could be made from this selection.';b.phase='letters';return vdBulkRender();}
+    const doc=vdBuildLettersDoc(d);
+    if(action==='print'){doc.autoPrint();window.open(doc.output('bloburl'));}
+    else doc.save('vendor_letters_'+new Date().toISOString().slice(0,10)+'.pdf');
+    d.letters.forEach(l=>{const v=p.rows[l.id];if(v){v.letteredAt=new Date().toISOString();vdRefreshRow(src,l.id);}});
+    b.letterResult={made:d.letters.length,skipped:d.skipped,action};
+    b.phase='letters-done';vdBulkRender();
+    showNotif('Letters ready',`${d.letters.length} letter${d.letters.length===1?'':'s'} prepared`);
+  }catch(e){b.letterError='Network error: '+e.message;b.phase='letters';vdBulkRender();}
+}
+
+/* ---------- delivery status + scheduled follow-ups (Sent Outreach & Replies) ---------- */
+const VD_FU_CANCEL={replied:'they replied',opted_out:'they unsubscribed',bounced:'the address bounced',complained:'they reported spam',user:'you cancelled it',no_address:'no business address on file',domain:"the address can't receive mail"};
+const vdDate=iso=>new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+async function vdCancelFollowUp(id){
+  try{await fetch('/api/vendors/followups/'+id+'/cancel',{method:'POST'});}catch(e){}
+  loadVendorOutreach();
+}
+async function vdCancelAllFollowUps(){
+  if(!confirm('Cancel every scheduled follow-up? The people they were for will not be followed up.'))return;
+  try{await fetch('/api/vendors/followups/cancel-all',{method:'POST'});}catch(e){}
+  loadVendorOutreach();
+}
+function vdFollowUpsHtml(fd){
+  const n=(fd.pending||[]).length;
+  if(!n)return '';
+  return `<div class="vd-fupanel"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div><b>↻ ${n} follow-up${n===1?'':'s'} scheduled</b><div class="sm">Next: ${escapeHtmlClient(fd.pending[0].vendor_name)} on ${vdDate(fd.pending[0].due_at)}. Each is skipped if they've replied, unsubscribed or bounced by then.</div></div>
+      <button class="btn-xs" onclick="vdCancelAllFollowUps()">Cancel all</button></div>
+    <details class="vd-left"><summary>See who</summary>${fd.pending.map(f=>`<div class="vd-fuitem"><span>${escapeHtmlClient(f.vendor_name)} · ${vdDate(f.due_at)}</span><button class="btn-xs" onclick="vdCancelFollowUp('${f.id}')">Cancel</button></div>`).join('')}</details></div>`;
+}
+
 async function loadPartnerOutreach(){
   const el=document.getElementById('partner-outreach-list');if(!el)return;
   try{
@@ -3169,17 +3350,30 @@ async function loadPartnerOutreach(){
 async function loadVendorOutreach(){
   const el=document.getElementById('vendor-outreach-list');if(!el)return;
   try{
-    const r=await fetch('/api/vendors/outreach');
+    const [r,fr]=await Promise.all([fetch('/api/vendors/outreach'),fetch('/api/vendors/followups')]);
     const d=await r.json();
+    const fd=fr.ok?await fr.json():{pending:[]};
+    const fuEl=document.getElementById('vendor-followups');if(fuEl)fuEl.innerHTML=vdFollowUpsHtml(fd);
     const list=d.outreach||[];
     if(!list.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No outreach sent yet</div>';return;}
+    const delivery=o=>o.delivery_status==='bounced'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">✗ BOUNCED</span>'
+      :o.delivery_status==='complained'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">🚫 SPAM COMPLAINT</span>'
+      :o.delivery_status==='soft_bounce'?'<span style="color:var(--ink3);font-family:var(--fm);font-size:9px">⚠ DELAYED</span>'
+      :`<span style="color:${o.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${o.status==='sent'?'✓ SENT':'✗ FAILED'}</span>`;
+    const fu=o=>!o.followup_status?'':o.followup_status==='pending'?`↻ Follow-up scheduled for ${vdDate(o.followup_due_at)}`
+      :o.followup_status==='sending'?'↻ Follow-up sending now'
+      :o.followup_status==='sent'?'↻ Follow-up sent'
+      :o.followup_status==='failed'?'↻ Follow-up failed'
+      :`↻ Follow-up cancelled — ${VD_FU_CANCEL[o.followup_cancel_reason]||'cancelled'}`;
     el.innerHTML=list.slice(0,10).map(o=>`
       <div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
           <span>${escapeHtmlClient(o.vendor_name)} · ${escapeHtmlClient(o.to_email)}</span>
-          <span style="color:${o.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${o.status==='sent'?'✓ SENT':'✗ FAILED'}</span>
+          ${delivery(o)}
         </div>
-        ${o.reply_text?`<div style="margin-top:6px;padding:7px 9px;background:var(--bg3);border-left:2px solid var(--green);border-radius:var(--r);font-size:11px;color:var(--ink2)"><div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">↩ Replied</div>${escapeHtmlClient(o.reply_text).replace(/\n/g,'<br>')}</div>`:''}
+        ${o.delivery_detail&&o.delivery_status?`<div class="sm" style="margin-top:3px">${escapeHtmlClient(o.delivery_detail)}</div>`:''}
+        ${fu(o)?`<div class="sm" style="margin-top:3px">${escapeHtmlClient(fu(o))}</div>`:''}
+        ${o.reply_text?`<div style="margin-top:6px;padding:7px 9px;background:var(--bg3);border-left:2px solid var(--green);border-radius:var(--r);font-size:11px;color:var(--ink2)"><div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Reply${o.replied_at?' · '+vdDate(o.replied_at):''}</div>${escapeHtmlClient(o.reply_text).slice(0,600).replace(/\n/g,'<br>')}</div>`:''}
       </div>`).join('');
   }catch(e){/* leave existing content on transient failure */}
 }

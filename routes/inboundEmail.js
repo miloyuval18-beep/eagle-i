@@ -10,13 +10,17 @@
 //    record) — that domain goes in RESEND_INBOUND_DOMAIN.
 //  - A webhook for the email.received event, pointed at
 //    POST /api/webhooks/resend-inbound — its signing secret goes in
-//    RESEND_WEBHOOK_SECRET.
+//    RESEND_WEBHOOK_SECRET. Also tick email.bounced and email.complained on
+//    the same webhook: those keep dead and spam-reporting addresses from
+//    being emailed again (lib/deliveryEvents.js).
 // Without both, lib/email.js's buildReplyToAddress() returns null and
 // routes/onboarding.js / routes/reviews.js fall back to Reply-To pointing
 // straight at the tenant's own email (works, just isn't shown on the site).
 const { Webhook } = require('svix');
 const { query } = require('../db');
 const { getReceivedEmail, sendEmail } = require('../lib/email');
+const { processDeliveryEvent } = require('../lib/deliveryEvents');
+const { cancelFollowUpForOutreach } = require('../lib/followUps');
 
 // Matches only the reply+<kind>-<uuid>@... local-part this app generates
 // itself (lib/email.js's buildReplyToAddress) — an inbound address in any
@@ -58,6 +62,8 @@ async function processInboundEmail(data) {
       [full.text || null, full.html || null, id]
     );
     if (result.rows.length) {
+      // They answered, so the scheduled follow-up (if any) must not go out.
+      await cancelFollowUpForOutreach(id, 'replied');
       await forwardToTenant(result.rows[0].tenant_id, `${result.rows[0].vendor_name} replied`, full);
     }
   } else if (kind === 'review') {
@@ -108,9 +114,11 @@ async function handleInboundWebhook(req, res) {
   // the webhook itself failed and retry-storm us.
   res.json({ received: true });
 
-  if (event.type !== 'email.received') return;
   try {
-    await processInboundEmail(event.data);
+    if (event.type === 'email.received') await processInboundEmail(event.data);
+    // email.bounced / email.complained: see lib/deliveryEvents.js. Any other
+    // event type is acknowledged and ignored.
+    else await processDeliveryEvent(event);
   } catch (err) {
     console.error('[inboundEmail] processing failed:', err.message);
   }

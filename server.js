@@ -48,6 +48,7 @@ const { startTdiRosterWorker } = require('./lib/tdiRosterWorker');
 const { startTdaRosterWorker } = require('./lib/tdaRosterWorker');
 const { startTdiAgenciesWorker } = require('./lib/tdiAgenciesWorker');
 const { startComptrollerTradesWorker } = require('./lib/comptrollerTradesWorker');
+const { startFollowUpWorker } = require('./lib/followUpWorker');
 
 // Last-resort safety net: anything that escapes every route's own try/catch
 // (a genuine bug, not a "service not configured" 4xx) gets emailed to the
@@ -180,4 +181,5 @@ app.listen(PORT, () => {
   startTdaRosterWorker();
   startTdiAgenciesWorker();
   startComptrollerTradesWorker();
+  startFollowUpWorker();
 });

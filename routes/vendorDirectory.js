@@ -13,6 +13,8 @@ const dir = require('../lib/vendorDirectories');
 const outreach = require('../lib/vendorOutreach');
 const { verifyEmail } = require('../lib/emailVerification');
 const tpl = require('../lib/outreachTemplate');
+const followUps = require('../lib/followUps');
+const letters = require('../lib/vendorLetters');
 const { query } = require('../db');
 
 const router = express.Router();
@@ -25,7 +27,7 @@ function parseFilters(q) {
   return {
     search: (q.search || '').toString().slice(0, 80),
     locations: (q.locations || '').toString().split('|').map(s => s.trim()).filter(Boolean).slice(0, 60),
-    contact: ['has_email', 'verified', 'unchecked', 'no_email'].includes(q.contact) ? q.contact : '',
+    contact: ['has_email', 'verified', 'unchecked', 'no_email', 'mailable'].includes(q.contact) ? q.contact : '',
     minRating: [3.5, 4, 4.5].includes(Number(q.minRating)) ? Number(q.minRating) : null,
     hideEmailed: q.hideEmailed === '1' || q.hideEmailed === 'true'
   };
@@ -145,7 +147,7 @@ router.post('/api/vendor-directory/:source/:id/find-contact', requireAuth, async
 async function loadTemplateContext(tenantId) {
   const t = await query('SELECT company_name FROM tenants WHERE id = $1', [tenantId]);
   if (!t.rows.length) return null;
-  const p = await query('SELECT founder_name, phone, site, service_area, linkedin_url, outreach_settings FROM business_profile WHERE tenant_id = $1', [tenantId]);
+  const p = await query('SELECT founder_name, phone, email, site, service_area, linkedin_url, outreach_settings FROM business_profile WHERE tenant_id = $1', [tenantId]);
   const profile = p.rows[0] || {};
   return { tenant: t.rows[0], profile, settings: profile.outreach_settings || {} };
 }
@@ -158,9 +160,16 @@ function resolveCategory(sourceKey, categoryKey) {
 
 const templateResponse = (ctx, source, category) => {
   const vars = tpl.buildVariables({ ...ctx, source, category });
+  const message = tpl.renderTemplate(tpl.templateFor(ctx.settings, source.intent), vars);
   return {
     intent: source.intent,
-    message: tpl.renderTemplate(tpl.templateFor(ctx.settings, source.intent), vars),
+    message,
+    letterMessage: tpl.letterize(message, ctx.profile), // same wording, adapted for paper
+    followUp: {
+      message: tpl.renderTemplate(tpl.followUpFor(ctx.settings, source.intent), vars),
+      days: followUps.DEFAULT_DAYS,
+      hasCustom: !!(ctx.settings.followups && ctx.settings.followups[source.intent])
+    },
     settings: {
       linkedin: ctx.profile.linkedin_url || '', // from the company profile (Account Settings)
       blurb: ctx.settings.blurb || '',
@@ -186,7 +195,7 @@ router.get('/api/vendors/outreach-template', requireAuth, async (req, res) => {
 // wording for this relationship type. (The LinkedIn link is not saved here —
 // it lives on the company profile.)
 router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
-  const { source: sourceKey, category: categoryKey, message, blurb, saveTemplate, resetTemplate } = req.body || {};
+  const { source: sourceKey, category: categoryKey, message, followupMessage, blurb, saveTemplate, resetTemplate } = req.body || {};
   const found = resolveCategory(sourceKey, categoryKey);
   if (!found) return res.status(404).json({ error: { message: 'Unknown category.' } });
 
@@ -200,15 +209,18 @@ router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
   try {
     const ctx = await loadTemplateContext(req.tenantId);
     if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
-    const settings = { ...ctx.settings, templates: { ...(ctx.settings.templates || {}) } };
+    const settings = { ...ctx.settings, templates: { ...(ctx.settings.templates || {}) }, followups: { ...(ctx.settings.followups || {}) } };
 
     // Turn the edited message back into a template using the values as they
     // were when it was rendered, BEFORE applying any new LinkedIn/blurb.
     if (saveTemplate) {
       const vars = tpl.buildVariables({ ...ctx, source: found.source, category: found.category });
       settings.templates[found.source.intent] = tpl.templatize(String(message), vars);
+      if (followupMessage && String(followupMessage).length <= tpl.MAX_TEMPLATE_CHARS) {
+        settings.followups[found.source.intent] = tpl.templatize(String(followupMessage), vars);
+      }
     }
-    if (resetTemplate) delete settings.templates[found.source.intent];
+    if (resetTemplate) { delete settings.templates[found.source.intent]; delete settings.followups[found.source.intent]; }
     if (blurb !== undefined) settings.blurb = String(blurb).trim();
 
     await query('UPDATE business_profile SET outreach_settings = $1 WHERE tenant_id = $2', [JSON.stringify(settings), req.tenantId]);
@@ -258,7 +270,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 // At most 25 per call — the client sends a large batch as several calls, so
 // no single request runs long enough to hit a proxy timeout.
 router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => {
-  const { recipients, message } = req.body || {};
+  const { recipients, message, followUp } = req.body || {};
   if (!Array.isArray(recipients) || !recipients.length || recipients.length > 25) {
     return res.status(400).json({ error: { message: 'Send between 1 and 25 recipients per request.' } });
   }
@@ -281,6 +293,16 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
       return res.status(400).json({ error: { message: `The message still contains ${leftover[0]}. Remove it or fill it in before sending.`, code: 'unresolved_token' } });
     }
     // First occurrence of an address wins, matching how screening keeps the first.
+    // The follow-up wording is held to the same rules as the message, since it
+    // is sent to real people later without another look.
+    const fu = followUp && followUp.enabled ? { message: String(followUp.message || '').trim(), days: followUps.clampDays(followUp.days) } : null;
+    if (fu) {
+      if (!fu.message || fu.message.length > tpl.MAX_TEMPLATE_CHARS) {
+        return res.status(400).json({ error: { message: 'The follow-up message is empty or too long.', code: 'bad_followup' } });
+      }
+      const fuLeft = fu.message.replace(/\{name\}/g, '').match(/\{[a-z_]+\}/);
+      if (fuLeft) return res.status(400).json({ error: { message: `The follow-up still contains ${fuLeft[0]}. Remove it or fill it in before sending.`, code: 'unresolved_token' } });
+    }
     const greetingFor = new Map();
     for (const r of recipients) {
       const key = outreach.normEmail(r && r.email);
@@ -293,11 +315,21 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
     const capped = sendable.slice(remaining).map(r => ({ ...r, reason: 'daily_cap' }));
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
+    let followUpsScheduled = 0;
     const results = [...skipped, ...capped].map(r => ({ email: r.email, name: r.name, status: 'skipped', reason: r.reason }));
     for (let i = 0; i < toSend.length; i++) {
       if (i > 0) await sleep(outreach.SEND_SPACING_MS);
       const r = toSend[i];
       const out = await outreach.sendOutreach({ tenantId: req.tenantId, ctx, baseUrl, toEmail: r.email, vendorName: r.name, message: tpl.fillName(String(message), greetingFor.get(r.email)) });
+      if (out.ok && fu) {
+        try {
+          await followUps.scheduleFollowUp({
+            tenantId: req.tenantId, outreachId: out.outreachId, toEmail: r.email, vendorName: r.name,
+            message: tpl.fillName(fu.message, greetingFor.get(r.email)), days: fu.days, baseUrl
+          });
+          followUpsScheduled++;
+        } catch (err) { console.error('[followUps] scheduling failed:', err.message); }
+      }
       results.push(out.ok
         ? { email: r.email, name: r.name, status: 'sent' }
         : { email: r.email, name: r.name, status: out.reason === 'opted_out' ? 'skipped' : 'failed', reason: out.reason, error: out.error });
@@ -307,10 +339,77 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
       sent: results.filter(r => r.status === 'sent').length,
       failed: results.filter(r => r.status === 'failed').length,
       skipped: results.filter(r => r.status === 'skipped').length,
-      remaining: Math.max(0, remaining - toSend.length)
+      remaining: Math.max(0, remaining - toSend.length),
+      followUpsScheduled, followUpDays: fu ? fu.days : null
     });
   } catch (err) {
     res.status(500).json({ error: { message: 'Bulk send failed: ' + err.message } });
+  }
+});
+
+// ---- Mailed letters -----------------------------------------------------
+// Builds the letters for the selected businesses (see lib/vendorLetters.js).
+// Nothing is sent: the browser turns the result into a PDF the user prints and
+// mails. Recording the batch is what lets the panel show "lettered" later.
+router.post('/api/vendor-directory/:source/mailer-letters', requireAuth, async (req, res) => {
+  const { category, ids, message, includeWithEmail, includeRecentlyLettered } = req.body || {};
+  if (!Array.isArray(ids) || !ids.length || ids.length > letters.MAX_LETTERS) {
+    return res.status(400).json({ error: { message: `Select between 1 and ${letters.MAX_LETTERS} businesses.` } });
+  }
+  if (!message || !String(message).trim() || String(message).length > tpl.MAX_TEMPLATE_CHARS) {
+    return res.status(400).json({ error: { message: 'The letter text is empty or too long.' } });
+  }
+  const leftover = String(message).replace(/\{name\}/g, '').match(/\{[a-z_]+\}/);
+  if (leftover) return res.status(400).json({ error: { message: `The letter still contains ${leftover[0]}. Remove it or fill it in first.`, code: 'unresolved_token' } });
+  if (!resolveCategory(req.params.source, category)) return res.status(404).json({ error: { message: 'Unknown category.' } });
+
+  try {
+    const ctx = await outreach.getSenderContext(req.tenantId);
+    if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    // A letter needs a return address, the same way the email footer does.
+    if ((ctx.profile.address || '').trim().length < 8) {
+      return res.status(400).json({ error: { message: 'Add your business address in your profile first — it goes at the top of each letter.', code: 'address_required' } });
+    }
+    const built = await letters.buildLetters({
+      tenantId: req.tenantId, sourceKey: req.params.source, categoryKey: category, ids, message: String(message),
+      includeWithEmail: !!includeWithEmail, includeRecentlyLettered: !!includeRecentlyLettered
+    });
+    const t = await loadTemplateContext(req.tenantId);
+    res.json({
+      ...built,
+      sender: {
+        company: ctx.companyName, founder: ctx.profile.founder_name || '', phone: ctx.profile.phone || '',
+        email: ctx.profile.email || '', address: ctx.profile.address || '', site: tpl.cleanSite(t && t.profile.site)
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to prepare letters: ' + err.message } });
+  }
+});
+
+// ---- Scheduled follow-ups ---------------------------------------------
+router.get('/api/vendors/followups', requireAuth, async (req, res) => {
+  try {
+    res.json(await followUps.listFollowUps(req.tenantId));
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to load follow-ups: ' + err.message } });
+  }
+});
+router.post('/api/vendors/followups/cancel-all', requireAuth, async (req, res) => {
+  try {
+    res.json({ cancelled: await followUps.cancelAll(req.tenantId) });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to cancel: ' + err.message } });
+  }
+});
+router.post('/api/vendors/followups/:id/cancel', requireAuth, async (req, res) => {
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return res.status(400).json({ error: { message: 'Invalid id.' } });
+  try {
+    const n = await followUps.cancelOne(req.tenantId, req.params.id);
+    if (!n) return res.status(404).json({ error: { message: 'That follow-up is no longer pending.' } });
+    res.json({ cancelled: n });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to cancel: ' + err.message } });
   }
 });
 

@@ -570,8 +570,11 @@ router.post('/api/vendors/outreach-email', requireAuth, async (req, res) => {
 router.get('/api/vendors/outreach', requireAuth, async (req, res) => {
   try {
     const result = await query(
-      `SELECT id, vendor_name, to_email, message, status, error, reply_text, replied_at, created_at
-       FROM vendor_outreach WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 50`,
+      `SELECT vo.id, vo.vendor_name, vo.to_email, vo.message, vo.status, vo.error, vo.reply_text, vo.replied_at, vo.created_at,
+              vo.delivery_status, vo.delivery_detail,
+              f.status AS followup_status, f.due_at AS followup_due_at, f.cancel_reason AS followup_cancel_reason
+       FROM vendor_outreach vo LEFT JOIN outreach_followups f ON f.outreach_id = vo.id
+       WHERE vo.tenant_id = $1 ORDER BY vo.created_at DESC LIMIT 50`,
       [req.tenantId]
     );
     res.json({ outreach: result.rows });
