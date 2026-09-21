@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { query } = require('../db');
+const { sendLeadAlert } = require('../lib/leadAlerts');
 const { requireAuth } = require('../auth');
 const { checkAndIncrementUsage } = require('../lib/usage');
 const { generateJSON } = require('../lib/anthropic');
@@ -83,6 +84,11 @@ router.post('/lp/:slug/submit', async (req, res) => {
       [pageRes.rows[0].tenant_id, name.trim(), phone || null, email || null, message || null]
     );
     res.json({ ok: true });
+    // After the visitor has their answer, and never able to fail it: tell the owner.
+    sendLeadAlert({
+      tenantId: pageRes.rows[0].tenant_id, lead: { name, phone, email, message },
+      baseUrl: `${req.protocol}://${req.get('host')}`
+    }).catch(err => console.error('[leadAlert] failed:', err.message));
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to submit — please try again.' } });
   }

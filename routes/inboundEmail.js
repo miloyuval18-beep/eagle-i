@@ -20,7 +20,8 @@ const { Webhook } = require('svix');
 const { query } = require('../db');
 const { getReceivedEmail, sendEmail } = require('../lib/email');
 const { processDeliveryEvent } = require('../lib/deliveryEvents');
-const { cancelFollowUpForOutreach } = require('../lib/followUps');
+const { cancelFollowUpForOutreach, cancelFollowUps } = require('../lib/followUps');
+const { cancelQueued } = require('../lib/outreachQueue');
 
 // Matches only the reply+<kind>-<uuid>@... local-part this app generates
 // itself (lib/email.js's buildReplyToAddress) — an inbound address in any
@@ -58,12 +59,14 @@ async function processInboundEmail(data) {
   if (kind === 'vendor') {
     const result = await query(
       `UPDATE vendor_outreach SET reply_text = $1, reply_html = $2, replied_at = now()
-       WHERE id = $3 RETURNING tenant_id, vendor_name`,
+       WHERE id = $3 RETURNING tenant_id, vendor_name, to_email`,
       [full.text || null, full.html || null, id]
     );
     if (result.rows.length) {
-      // They answered, so the scheduled follow-up (if any) must not go out.
+      // They answered, so no scheduled follow-up (either step) or queued send may go out.
       await cancelFollowUpForOutreach(id, 'replied');
+      await cancelFollowUps(result.rows[0].tenant_id, result.rows[0].to_email, 'replied');
+      await cancelQueued(result.rows[0].tenant_id, result.rows[0].to_email, 'replied');
       await forwardToTenant(result.rows[0].tenant_id, `${result.rows[0].vendor_name} replied`, full);
     }
   } else if (kind === 'review') {

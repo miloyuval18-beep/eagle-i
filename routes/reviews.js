@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { query } = require('../db');
 const { requireAuth } = require('../auth');
 const { sendEmail, buildReplyToAddress } = require('../lib/email');
+const { REMINDER_DAYS } = require('../lib/reviewReminders');
 
 const router = express.Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -25,7 +26,7 @@ ${buttons}
 }
 
 router.post('/api/review-requests', requireAuth, async (req, res) => {
-  const { customerName, customerEmail } = req.body || {};
+  const { customerName, customerEmail, remind } = req.body || {};
   if (!customerName || !customerName.trim()) {
     return res.status(400).json({ error: { message: 'Customer name is required.' } });
   }
@@ -69,7 +70,17 @@ router.post('/api/review-requests', requireAuth, async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,'sent',$7) RETURNING *`,
         [reviewRequestId, req.tenantId, req.userId, customerName.trim(), customerEmail.trim(), JSON.stringify(includedPlatforms), sent.id || null]
       );
-      res.json({ ok: true, reviewRequest: row.rows[0] });
+      let reviewRequest = row.rows[0];
+      // One optional reminder if they don't reply (lib/reviewReminders.js).
+      if (remind) {
+        const upd = await query(
+          `UPDATE review_requests SET reminder_status = 'pending', reminder_due_at = now() + ($2 || ' days')::interval, reminder_base_url = $3
+           WHERE id = $1 RETURNING *`,
+          [reviewRequestId, String(REMINDER_DAYS), `${req.protocol}://${req.get('host')}`]
+        );
+        reviewRequest = upd.rows[0];
+      }
+      res.json({ ok: true, reviewRequest, reminderDays: remind ? REMINDER_DAYS : null });
     } catch (sendErr) {
       const row = await query(
         `INSERT INTO review_requests (id, tenant_id, sent_by, customer_name, customer_email, included_platforms, status, error)

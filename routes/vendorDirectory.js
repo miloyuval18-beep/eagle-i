@@ -15,6 +15,7 @@ const { verifyEmail } = require('../lib/emailVerification');
 const tpl = require('../lib/outreachTemplate');
 const followUps = require('../lib/followUps');
 const letters = require('../lib/vendorLetters');
+const queue = require('../lib/outreachQueue');
 const { query } = require('../db');
 
 const router = express.Router();
@@ -152,10 +153,16 @@ async function loadTemplateContext(tenantId) {
   return { tenant: t.rows[0], profile, settings: profile.outreach_settings || {} };
 }
 
+// A category can override its source's relationship type and phrasing (e.g.
+// landscapers do site work FOR a contractor, so they get the "capacity"
+// message even though they sit with suppliers).
 function resolveCategory(sourceKey, categoryKey) {
   const source = dir.SOURCES[sourceKey];
   const category = source && source.categories[categoryKey];
-  return source && category ? { source, category } : null;
+  if (!source || !category) return null;
+  const merged = { ...source };
+  for (const k of ['intent', 'ask', 'execute']) if (category[k]) merged[k] = category[k];
+  return { source: merged, category };
 }
 
 const templateResponse = (ctx, source, category) => {
@@ -165,6 +172,13 @@ const templateResponse = (ctx, source, category) => {
     intent: source.intent,
     message,
     letterMessage: tpl.letterize(message, ctx.profile), // same wording, adapted for paper
+    callScript: tpl.renderTemplate(tpl.DEFAULT_CALL_SCRIPTS[source.intent], vars),
+    linkedinNote: tpl.fitLinkedinNote(tpl.renderTemplate(tpl.DEFAULT_LINKEDIN_NOTES[source.intent], vars)),
+    followUp2: {
+      message: tpl.renderTemplate(tpl.followUp2For(ctx.settings, source.intent), vars),
+      days: followUps.DEFAULT_DAYS,
+      hasCustom: !!(ctx.settings.followups2 && ctx.settings.followups2[source.intent])
+    },
     followUp: {
       message: tpl.renderTemplate(tpl.followUpFor(ctx.settings, source.intent), vars),
       days: followUps.DEFAULT_DAYS,
@@ -195,7 +209,7 @@ router.get('/api/vendors/outreach-template', requireAuth, async (req, res) => {
 // wording for this relationship type. (The LinkedIn link is not saved here —
 // it lives on the company profile.)
 router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
-  const { source: sourceKey, category: categoryKey, message, followupMessage, blurb, saveTemplate, resetTemplate } = req.body || {};
+  const { source: sourceKey, category: categoryKey, message, followupMessage, followup2Message, blurb, saveTemplate, resetTemplate } = req.body || {};
   const found = resolveCategory(sourceKey, categoryKey);
   if (!found) return res.status(404).json({ error: { message: 'Unknown category.' } });
 
@@ -209,7 +223,7 @@ router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
   try {
     const ctx = await loadTemplateContext(req.tenantId);
     if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
-    const settings = { ...ctx.settings, templates: { ...(ctx.settings.templates || {}) }, followups: { ...(ctx.settings.followups || {}) } };
+    const settings = { ...ctx.settings, templates: { ...(ctx.settings.templates || {}) }, followups: { ...(ctx.settings.followups || {}) }, followups2: { ...(ctx.settings.followups2 || {}) } };
 
     // Turn the edited message back into a template using the values as they
     // were when it was rendered, BEFORE applying any new LinkedIn/blurb.
@@ -219,8 +233,11 @@ router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
       if (followupMessage && String(followupMessage).length <= tpl.MAX_TEMPLATE_CHARS) {
         settings.followups[found.source.intent] = tpl.templatize(String(followupMessage), vars);
       }
+      if (followup2Message && String(followup2Message).length <= tpl.MAX_TEMPLATE_CHARS) {
+        settings.followups2[found.source.intent] = tpl.templatize(String(followup2Message), vars);
+      }
     }
-    if (resetTemplate) { delete settings.templates[found.source.intent]; delete settings.followups[found.source.intent]; }
+    if (resetTemplate) { delete settings.templates[found.source.intent]; delete settings.followups[found.source.intent]; delete settings.followups2[found.source.intent]; }
     if (blurb !== undefined) settings.blurb = String(blurb).trim();
 
     await query('UPDATE business_profile SET outreach_settings = $1 WHERE tenant_id = $2', [JSON.stringify(settings), req.tenantId]);
@@ -229,6 +246,29 @@ router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
     res.status(500).json({ error: { message: 'Failed to save: ' + err.message } });
   }
 });
+
+// Validates the follow-up settings a bulk send or schedule request carries.
+// The wording is held to the same rules as the message itself, since it goes
+// to real people later without another look.
+function parseFollowUps(followUp) {
+  if (!followUp || !followUp.enabled) return { fu1: null, fu2: null };
+  const check = (raw, days, label) => {
+    const message = String(raw || '').trim();
+    if (!message || message.length > tpl.MAX_TEMPLATE_CHARS) return { error: { message: `The ${label} message is empty or too long.`, code: 'bad_followup' } };
+    const left = message.replace(/\{name\}/g, '').match(/\{[a-z_]+\}/);
+    if (left) return { error: { message: `The ${label} still contains ${left[0]}. Remove it or fill it in before sending.`, code: 'unresolved_token' } };
+    return { value: { message, days: followUps.clampDays(days) } };
+  };
+  const one = check(followUp.message, followUp.days, 'follow-up');
+  if (one.error) return { error: one.error };
+  let fu2 = null;
+  if (followUp.second && followUp.second.enabled) {
+    const two = check(followUp.second.message, followUp.second.days, 'second follow-up');
+    if (two.error) return { error: two.error };
+    fu2 = two.value;
+  }
+  return { fu1: one.value, fu2 };
+}
 
 // ---- Bulk outreach ---------------------------------------------------
 // Bulk send is deliberately a two-step flow the UI gates behind a human
@@ -292,17 +332,10 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
     if (leftover) {
       return res.status(400).json({ error: { message: `The message still contains ${leftover[0]}. Remove it or fill it in before sending.`, code: 'unresolved_token' } });
     }
+    const parsedFu = parseFollowUps(followUp);
+    if (parsedFu.error) return res.status(400).json({ error: parsedFu.error });
+    const fu = parsedFu.fu1, fu2 = parsedFu.fu2;
     // First occurrence of an address wins, matching how screening keeps the first.
-    // The follow-up wording is held to the same rules as the message, since it
-    // is sent to real people later without another look.
-    const fu = followUp && followUp.enabled ? { message: String(followUp.message || '').trim(), days: followUps.clampDays(followUp.days) } : null;
-    if (fu) {
-      if (!fu.message || fu.message.length > tpl.MAX_TEMPLATE_CHARS) {
-        return res.status(400).json({ error: { message: 'The follow-up message is empty or too long.', code: 'bad_followup' } });
-      }
-      const fuLeft = fu.message.replace(/\{name\}/g, '').match(/\{[a-z_]+\}/);
-      if (fuLeft) return res.status(400).json({ error: { message: `The follow-up still contains ${fuLeft[0]}. Remove it or fill it in before sending.`, code: 'unresolved_token' } });
-    }
     const greetingFor = new Map();
     for (const r of recipients) {
       const key = outreach.normEmail(r && r.email);
@@ -325,7 +358,8 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
         try {
           await followUps.scheduleFollowUp({
             tenantId: req.tenantId, outreachId: out.outreachId, toEmail: r.email, vendorName: r.name,
-            message: tpl.fillName(fu.message, greetingFor.get(r.email)), days: fu.days, baseUrl
+            message: tpl.fillName(fu.message, greetingFor.get(r.email)), days: fu.days, baseUrl,
+            step: 1, nextDays: fu2 ? fu2.days : null, nextMessage: fu2 ? tpl.fillName(fu2.message, greetingFor.get(r.email)) : null
           });
           followUpsScheduled++;
         } catch (err) { console.error('[followUps] scheduling failed:', err.message); }
@@ -340,7 +374,7 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
       failed: results.filter(r => r.status === 'failed').length,
       skipped: results.filter(r => r.status === 'skipped').length,
       remaining: Math.max(0, remaining - toSend.length),
-      followUpsScheduled, followUpDays: fu ? fu.days : null
+      followUpsScheduled, followUpDays: fu ? fu.days : null, secondFollowUpDays: fu2 ? fu2.days : null
     });
   } catch (err) {
     res.status(500).json({ error: { message: 'Bulk send failed: ' + err.message } });
@@ -352,7 +386,7 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
 // Nothing is sent: the browser turns the result into a PDF the user prints and
 // mails. Recording the batch is what lets the panel show "lettered" later.
 router.post('/api/vendor-directory/:source/mailer-letters', requireAuth, async (req, res) => {
-  const { category, ids, message, includeWithEmail, includeRecentlyLettered } = req.body || {};
+  const { category, ids, message, includeWithEmail, includeRecentlyLettered, record } = req.body || {};
   if (!Array.isArray(ids) || !ids.length || ids.length > letters.MAX_LETTERS) {
     return res.status(400).json({ error: { message: `Select between 1 and ${letters.MAX_LETTERS} businesses.` } });
   }
@@ -372,7 +406,7 @@ router.post('/api/vendor-directory/:source/mailer-letters', requireAuth, async (
     }
     const built = await letters.buildLetters({
       tenantId: req.tenantId, sourceKey: req.params.source, categoryKey: category, ids, message: String(message),
-      includeWithEmail: !!includeWithEmail, includeRecentlyLettered: !!includeRecentlyLettered
+      includeWithEmail: !!includeWithEmail, includeRecentlyLettered: !!includeRecentlyLettered, record: record !== false
     });
     const t = await loadTemplateContext(req.tenantId);
     res.json({
@@ -385,6 +419,142 @@ router.post('/api/vendor-directory/:source/mailer-letters', requireAuth, async (
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to prepare letters: ' + err.message } });
   }
+});
+
+// ---- Spread a batch over several business days -------------------------
+// Same confirmation as an immediate bulk send; instead of sending now, each
+// recipient is queued with a due time (lib/outreachQueue.js).
+router.post('/api/vendors/outreach-bulk/schedule', requireAuth, async (req, res) => {
+  const { recipients, message, followUp, spreadDays } = req.body || {};
+  if (!Array.isArray(recipients) || !recipients.length || recipients.length > 200) {
+    return res.status(400).json({ error: { message: 'Schedule between 1 and 200 recipients at a time.' } });
+  }
+  if (!message || !String(message).trim()) return res.status(400).json({ error: { message: 'Message text is required.' } });
+  if (!process.env.RESEND_API_KEY) {
+    return res.status(503).json({ error: { message: 'Outreach emails are not configured on this server yet (missing RESEND_API_KEY).' } });
+  }
+  try {
+    const ctx = await outreach.getSenderContext(req.tenantId);
+    if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    if ((ctx.profile.address || '').trim().length < 8) {
+      return res.status(400).json({ error: { message: 'Add your business address in your profile before sending bulk email — it is required in the footer of commercial email.', code: 'address_required' } });
+    }
+    const leftover = String(message).replace(/\{name\}/g, '').match(/\{[a-z_]+\}/);
+    if (leftover) return res.status(400).json({ error: { message: `The message still contains ${leftover[0]}. Remove it or fill it in before sending.`, code: 'unresolved_token' } });
+    const parsedFu = parseFollowUps(followUp);
+    if (parsedFu.error) return res.status(400).json({ error: parsedFu.error });
+
+    const greetingFor = new Map();
+    for (const r of recipients) {
+      const key = outreach.normEmail(r && r.email);
+      if (!greetingFor.has(key)) greetingFor.set(key, (r && r.greeting) || tpl.friendlyGreeting(r && r.name, null));
+    }
+    // Anyone already waiting in the queue counts as "already scheduled", not a fresh recipient.
+    const { sendable, skipped } = await outreach.screenRecipients(req.tenantId, recipients);
+    if ((await queue.pendingCount(req.tenantId)) + sendable.length > queue.MAX_PENDING_PER_TENANT) {
+      return res.status(400).json({ error: { message: `You can have at most ${queue.MAX_PENDING_PER_TENANT} emails scheduled at once. Cancel some, or wait for them to send.`, code: 'queue_full' } });
+    }
+    // Never plan more per day than the daily send cap allows.
+    const days = Math.min(queue.MAX_SPREAD_DAYS, Math.max(parseInt(spreadDays, 10) || 1, Math.ceil(sendable.length / outreach.BULK_DAILY_CAP)));
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const queued = await queue.enqueue({
+      tenantId: req.tenantId, baseUrl, days,
+      follow1Days: parsedFu.fu1 ? parsedFu.fu1.days : null, follow2Days: parsedFu.fu2 ? parsedFu.fu2.days : null,
+      recipients: sendable.map(r => {
+        const g = greetingFor.get(r.email);
+        return {
+          email: r.email, name: r.name, message: tpl.fillName(String(message), g),
+          follow1Message: parsedFu.fu1 ? tpl.fillName(parsedFu.fu1.message, g) : null,
+          follow2Message: parsedFu.fu2 ? tpl.fillName(parsedFu.fu2.message, g) : null
+        };
+      })
+    });
+    const already = sendable.filter(r => !queued.some(q => q.email === r.email)).map(r => ({ ...r, reason: 'already_scheduled' }));
+    const dues = queued.map(q => new Date(q.dueAt).getTime());
+    res.json({
+      scheduled: queued.length, skipped: [...skipped, ...already],
+      firstDue: dues.length ? new Date(Math.min(...dues)) : null, lastDue: dues.length ? new Date(Math.max(...dues)) : null,
+      spreadDays: days, perDay: Math.ceil(queued.length / days),
+      followUpDays: parsedFu.fu1 ? parsedFu.fu1.days : null, secondFollowUpDays: parsedFu.fu2 ? parsedFu.fu2.days : null
+    });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Scheduling failed: ' + err.message } });
+  }
+});
+
+router.get('/api/vendors/queue', requireAuth, async (req, res) => {
+  try { res.json(await queue.listQueue(req.tenantId)); }
+  catch (err) { res.status(500).json({ error: { message: 'Failed to load scheduled emails: ' + err.message } }); }
+});
+router.post('/api/vendors/queue/cancel-all', requireAuth, async (req, res) => {
+  try { res.json({ cancelled: await queue.cancelQueueAll(req.tenantId) }); }
+  catch (err) { res.status(500).json({ error: { message: 'Failed to cancel: ' + err.message } }); }
+});
+router.post('/api/vendors/queue/:id/cancel', requireAuth, async (req, res) => {
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return res.status(400).json({ error: { message: 'Invalid id.' } });
+  try {
+    const n = await queue.cancelQueueOne(req.tenantId, req.params.id);
+    if (!n) return res.status(404).json({ error: { message: 'That email is no longer scheduled.' } });
+    res.json({ cancelled: n });
+  } catch (err) { res.status(500).json({ error: { message: 'Failed to cancel: ' + err.message } }); }
+});
+
+// ---- LinkedIn to-do queue -----------------------------------------------
+// A hand-worked list: for each business, a LinkedIn search link and a short
+// connection note to paste. Nothing here talks to LinkedIn or automates it.
+router.post('/api/vendors/linkedin-queue', requireAuth, async (req, res) => {
+  const { source: sourceKey, category: categoryKey, ids } = req.body || {};
+  const found = resolveCategory(sourceKey, categoryKey);
+  if (!found) return res.status(404).json({ error: { message: 'Unknown category.' } });
+  if (!Array.isArray(ids) || !ids.length || ids.length > 100) return res.status(400).json({ error: { message: 'Add between 1 and 100 businesses at a time.' } });
+  try {
+    const ctx = await loadTemplateContext(req.tenantId);
+    if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
+    const vars = tpl.buildVariables({ ...ctx, source: found.source, category: found.category });
+    const tmpl = tpl.fitLinkedinNote(tpl.renderTemplate(tpl.DEFAULT_LINKEDIN_NOTES[found.source.intent], vars), 400); // fitted per person below
+    const rows = await dir.getNamesByIds(sourceKey, categoryKey, ids.map(n => parseInt(n, 10)).filter(Number.isFinite));
+    let added = 0;
+    for (const r of rows) {
+      if (!r.name) continue;
+      const note = tpl.fitLinkedinNote(tpl.fillName(tmpl, tpl.friendlyGreeting(r.name, r.greetFirst)));
+      const url = 'https://www.linkedin.com/search/results/all/?keywords=' + encodeURIComponent(tpl.properName(r.name) + ' Houston');
+      const ins = await query(
+        `INSERT INTO linkedin_tasks (tenant_id, source, source_id, vendor_name, search_url, message)
+         VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (tenant_id, source, source_id) DO NOTHING RETURNING id`,
+        [req.tenantId, sourceKey, r.id, tpl.properName(r.name), url, note]
+      );
+      if (ins.rows.length) added++;
+    }
+    res.json({ added, alreadyThere: rows.length - added });
+  } catch (err) { res.status(500).json({ error: { message: 'Failed to add to the LinkedIn list: ' + err.message } }); }
+});
+router.get('/api/vendors/linkedin-queue', requireAuth, async (req, res) => {
+  try {
+    const r = await query(
+      `SELECT id, vendor_name, search_url, message, done_at FROM linkedin_tasks
+       WHERE tenant_id = $1 ORDER BY (done_at IS NOT NULL), created_at DESC LIMIT 300`, [req.tenantId]);
+    // bigserial ids arrive from pg as strings; the page passes them back as numbers.
+    const tasks = r.rows.map(t => ({ ...t, id: Number(t.id) }));
+    res.json({ tasks, open: tasks.filter(t => !t.done_at).length });
+  } catch (err) { res.status(500).json({ error: { message: 'Failed to load the LinkedIn list: ' + err.message } }); }
+});
+router.post('/api/vendors/linkedin-queue/:id/done', requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: { message: 'Invalid id.' } });
+  try {
+    const done = req.body && req.body.done === false ? null : new Date();
+    const r = await query('UPDATE linkedin_tasks SET done_at = $1 WHERE id = $2 AND tenant_id = $3 RETURNING id', [done, id, req.tenantId]);
+    if (!r.rows.length) return res.status(404).json({ error: { message: 'Not found.' } });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: { message: 'Failed to update: ' + err.message } }); }
+});
+router.delete('/api/vendors/linkedin-queue/:id', requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: { message: 'Invalid id.' } });
+  try {
+    await query('DELETE FROM linkedin_tasks WHERE id = $1 AND tenant_id = $2', [id, req.tenantId]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: { message: 'Failed to remove: ' + err.message } }); }
 });
 
 // ---- Scheduled follow-ups ---------------------------------------------

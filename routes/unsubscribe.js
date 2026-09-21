@@ -10,6 +10,7 @@ const express = require('express');
 const { query } = require('../db');
 const { verifyUnsubscribeSig, normEmail } = require('../lib/vendorOutreach');
 const { cancelFollowUps } = require('../lib/followUps');
+const { cancelQueued } = require('../lib/outreachQueue');
 
 const router = express.Router();
 
@@ -40,6 +41,7 @@ router.post('/unsubscribe', async (req, res) => {
       [p.tenantId, p.email]
     );
     await cancelFollowUps(p.tenantId, p.email, 'opted_out');
+    await cancelQueued(p.tenantId, p.email, 'opted_out');
     res.send(page('Unsubscribed', `<h1>You're unsubscribed</h1><p>${esc(p.email)} won't receive further outreach emails from this sender.</p>`));
   } catch (err) {
     console.error('Unsubscribe failed:', err.message);
