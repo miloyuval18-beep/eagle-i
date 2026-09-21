@@ -2877,7 +2877,6 @@ function vdModalEl(){
     m.addEventListener('input',e=>{
       if(!VD.bulk)return;
       if(e.target.matches('.vd-msg'))VD.bulk.message=e.target.value;
-      else if(e.target.matches('.vd-linkedin'))VD.bulk.settings.linkedin=e.target.value;
       else if(e.target.matches('.vd-blurb'))VD.bulk.settings.blurb=e.target.value;
     });
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&VD.bulk&&!['lookup','sending'].includes(VD.bulk.phase))vdBulkClose();});
@@ -2919,12 +2918,19 @@ function vdBulkClick(e){
   if(a==='review')return vdBulkToReview();
   if(a==='back'){b.phase='prepare';return vdBulkRender();}
   if(a==='send')return vdBulkSend();
+  if(a==='openProfile'){
+    vdBulkClose();
+    goTo('account',document.getElementById('t-account'));
+    const f=document.getElementById('prof-linkedin');
+    if(f){f.scrollIntoView({block:'center'});f.focus();}
+    return;
+  }
   if(['saveDetails','saveTemplate','resetTemplate'].includes(a))return vdSaveSettings(a);
 }
 async function vdSaveSettings(kind){
   const b=VD.bulk,p=VD.panels[b.src];
   const box=document.querySelector('#vd-modal .vd-modal-box');
-  const body={source:b.src,category:b.cat,linkedin:box.querySelector('.vd-linkedin').value.trim(),blurb:box.querySelector('.vd-blurb').value.trim()};
+  const body={source:b.src,category:b.cat,blurb:box.querySelector('.vd-blurb').value.trim()};
   if(kind==='saveTemplate'){body.saveTemplate=true;body.message=b.message;}
   if(kind==='resetTemplate')body.resetTemplate=true;
   try{
@@ -3037,9 +3043,8 @@ function vdReviewHtml(b,cat){
     <textarea class="vd-msg cred-input" rows="14" placeholder="Write your message">${escAttr(b.message)}</textarea>
     <div class="sm">${eg?`<b>{name}</b> is filled in for each business — for example “Hi ${escAttr(eg)},”. `:''}Built from ${(b.settings||{}).hasCustomTemplate?'your saved wording':'the standard wording'} for ${VD.panels[b.src].sec.categories.find(c=>c.key===b.cat).label.toLowerCase()}.</div>
     <details class="vd-left" ${b.saveNote?'open':''}>
-      <summary>Sender details &amp; saved wording</summary>
-      <label class="vd-msglabel">Your LinkedIn profile link (optional)</label>
-      <input type="text" class="cred-input vd-linkedin" value="${escAttr(se.linkedin||'')}" placeholder="https://www.linkedin.com/in/your-name" style="width:100%;box-sizing:border-box">
+      <summary>Company details &amp; saved wording</summary>
+      <div class="sm" style="margin:6px 0 10px">Your LinkedIn link comes from your Company Profile: ${se.linkedin?'<b>'+escAttr(se.linkedin)+'</b>':'<b>not set</b> — the LinkedIn line is left out of the email'}. <button class="btn-xs" data-bact="openProfile">Edit in Company Profile</button></div>
       <label class="vd-msglabel">About your company (one or two sentences, used in the message)</label>
       <textarea class="cred-input vd-blurb" rows="3" placeholder="${escAttr(se.defaultBlurb||'')}" style="width:100%;box-sizing:border-box">${escAttr(se.blurb||'')}</textarea>
       <div class="vd-mbtns" style="margin-top:8px">
@@ -4569,6 +4574,7 @@ function fillCompanyProfileForm(){
   set('prof-email',ME.profile.email);
   set('prof-address',ME.profile.address);
   set('prof-site',ME.profile.site);
+  set('prof-linkedin',ME.profile.linkedinUrl);
   set('prof-service-area',ME.profile.serviceArea);
   set('prof-services',ME.profile.services);
   set('prof-differentiators',ME.profile.differentiators);
@@ -4612,17 +4618,17 @@ async function saveCompanyProfile(){
       companyName, industry:val('prof-industry'),
       founderName:val('prof-founder'), phone:val('prof-phone'), email:val('prof-email'), address:val('prof-address'),
       site:val('prof-site'), serviceArea:val('prof-service-area'), services, differentiators:val('prof-differentiators'),
-      voice:val('prof-voice'), logoDataUrl:profLogoDataUrl
+      voice:val('prof-voice'), logoDataUrl:profLogoDataUrl, linkedinUrl:val('prof-linkedin')
     })});
     const d=await r.json();
-    if(!r.ok){s.textContent=d.error?.message||'Failed to save';s.style.color='var(--red)';return;}
+    if(!r.ok){s.textContent=d.error?.message||'Failed to save';s.style.color='var(--red)';if(btn)btn.disabled=false;if(spin)spin.style.display='none';return;} // re-enable, or the button stays dead after a rejected save
     s.textContent='Saved';s.style.color='var(--green)';
     profLogoDataUrl=null;
     // Refresh cached name/industry/profile used throughout the dashboard
     // (topbar company name, industry-gated real-estate sections, etc.)
     // without a full page reload.
     ME.companyName=companyName;ME.industry=val('prof-industry');
-    Object.assign(ME.profile,{founderName:val('prof-founder'),phone:val('prof-phone'),email:val('prof-email'),address:val('prof-address'),site:val('prof-site'),serviceArea:val('prof-service-area'),services,differentiators:val('prof-differentiators'),voice:val('prof-voice')});
+    Object.assign(ME.profile,{linkedinUrl:d.linkedinUrl||'',founderName:val('prof-founder'),phone:val('prof-phone'),email:val('prof-email'),address:val('prof-address'),site:val('prof-site'),serviceArea:val('prof-service-area'),services,differentiators:val('prof-differentiators'),voice:val('prof-voice')});
     const nameEl=document.getElementById('topbar-company-name');if(nameEl)nameEl.textContent=companyName;
     ME.showRealEstateFeatures=(ME.industry==='home_services'||ME.industry==='real_estate');
     document.querySelectorAll('.real-estate-only').forEach(el=>{el.style.display=ME.showRealEstateFeatures?'':'none';});
@@ -5702,6 +5708,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       <div class="cred-row"><div class="cred-label">Website</div><input class="cred-input" type="text" id="prof-site" placeholder="yourcompany.com"></div>
       <div class="cred-row"><div class="cred-label">Service Area</div><input class="cred-input" type="text" id="prof-service-area" placeholder="e.g. Austin metro, or nationwide"></div>
     </div>
+    <div class="cred-row"><div class="cred-label">LinkedIn Profile <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink3)">(optional — shown in your outreach emails)</span></div><input class="cred-input" type="text" id="prof-linkedin" placeholder="https://www.linkedin.com/in/your-name"></div>
     <div class="cred-row"><div class="cred-label">Services Offered</div><textarea class="cred-input" id="prof-services" style="min-height:60px;resize:vertical" placeholder="What does this business actually do?"></textarea></div>
     <div class="cred-row"><div class="cred-label">Key Differentiators</div><textarea class="cred-input" id="prof-differentiators" style="min-height:60px;resize:vertical" placeholder="What makes this business different from competitors?"></textarea></div>
     <div class="cred-row"><div class="cred-label">Brand Voice</div><input class="cred-input" type="text" id="prof-voice" placeholder="e.g. warm and community-focused, or sharp and authoritative"></div>

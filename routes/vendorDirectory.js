@@ -145,7 +145,7 @@ router.post('/api/vendor-directory/:source/:id/find-contact', requireAuth, async
 async function loadTemplateContext(tenantId) {
   const t = await query('SELECT company_name FROM tenants WHERE id = $1', [tenantId]);
   if (!t.rows.length) return null;
-  const p = await query('SELECT founder_name, phone, site, service_area, outreach_settings FROM business_profile WHERE tenant_id = $1', [tenantId]);
+  const p = await query('SELECT founder_name, phone, site, service_area, linkedin_url, outreach_settings FROM business_profile WHERE tenant_id = $1', [tenantId]);
   const profile = p.rows[0] || {};
   return { tenant: t.rows[0], profile, settings: profile.outreach_settings || {} };
 }
@@ -162,7 +162,7 @@ const templateResponse = (ctx, source, category) => {
     intent: source.intent,
     message: tpl.renderTemplate(tpl.templateFor(ctx.settings, source.intent), vars),
     settings: {
-      linkedin: ctx.settings.linkedin || '',
+      linkedin: ctx.profile.linkedin_url || '', // from the company profile (Account Settings)
       blurb: ctx.settings.blurb || '',
       defaultBlurb: `${ctx.tenant.company_name} serves ${(ctx.profile.service_area || '').trim() || 'the Houston area'}.`,
       hasCustomTemplate: !!(ctx.settings.templates && ctx.settings.templates[source.intent])
@@ -182,18 +182,14 @@ router.get('/api/vendors/outreach-template', requireAuth, async (req, res) => {
   }
 });
 
-// Saves sender details (LinkedIn link, company blurb) and/or the message as
-// this tenant's default wording for this relationship type.
+// Saves the company blurb and/or the message as this tenant's default
+// wording for this relationship type. (The LinkedIn link is not saved here —
+// it lives on the company profile.)
 router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
-  const { source: sourceKey, category: categoryKey, message, linkedin, blurb, saveTemplate, resetTemplate } = req.body || {};
+  const { source: sourceKey, category: categoryKey, message, blurb, saveTemplate, resetTemplate } = req.body || {};
   const found = resolveCategory(sourceKey, categoryKey);
   if (!found) return res.status(404).json({ error: { message: 'Unknown category.' } });
 
-  let linkedinUrl;
-  if (linkedin !== undefined) {
-    linkedinUrl = tpl.normalizeLinkedin(linkedin);
-    if (linkedinUrl === null) return res.status(400).json({ error: { message: 'That should be a linkedin.com link.' } });
-  }
   if (blurb !== undefined && String(blurb).length > 600) {
     return res.status(400).json({ error: { message: 'The company description is limited to 600 characters.' } });
   }
@@ -213,7 +209,6 @@ router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
       settings.templates[found.source.intent] = tpl.templatize(String(message), vars);
     }
     if (resetTemplate) delete settings.templates[found.source.intent];
-    if (linkedinUrl !== undefined) settings.linkedin = linkedinUrl;
     if (blurb !== undefined) settings.blurb = String(blurb).trim();
 
     await query('UPDATE business_profile SET outreach_settings = $1 WHERE tenant_id = $2', [JSON.stringify(settings), req.tenantId]);

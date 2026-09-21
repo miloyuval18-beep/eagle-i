@@ -14,7 +14,7 @@ const { detectsHighValueFocus } = require('../lib/vendorTargeting');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
 const { findContactEmail } = require('../lib/vendorContactFinder');
 const { getSenderContext, sendOutreach } = require('../lib/vendorOutreach');
-const { fillName, friendlyGreeting } = require('../lib/outreachTemplate');
+const { fillName, friendlyGreeting, normalizeLinkedin } = require('../lib/outreachTemplate');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -129,6 +129,7 @@ router.get('/api/me', requireAuth, async (req, res) => {
         email: profile.email,
         address: profile.address,
         site: profile.site,
+        linkedinUrl: profile.linkedin_url,
         serviceArea: profile.service_area,
         services: profile.services,
         differentiators: profile.differentiators,
@@ -247,8 +248,17 @@ router.patch('/api/onboarding/profile', requireAuth, async (req, res) => {
   const {
     companyName, industry,
     founderName, phone, email, address, site,
-    serviceArea, services, differentiators, voice, logoDataUrl
+    serviceArea, services, differentiators, voice, logoDataUrl, linkedinUrl
   } = req.body || {};
+
+  // Optional. Only accepted as a real linkedin.com link, since it ends up in
+  // the body of outreach emails. Omitted entirely (undefined) leaves the saved
+  // value alone, so an older client that doesn't send it can't wipe it.
+  let linkedin;
+  if (linkedinUrl !== undefined) {
+    linkedin = normalizeLinkedin(linkedinUrl);
+    if (linkedin === null) return res.status(400).json({ error: { message: 'LinkedIn should be a linkedin.com link, like https://www.linkedin.com/in/your-name.' } });
+  }
 
   if (!companyName || !companyName.trim()) {
     return res.status(400).json({ error: { message: 'Company name is required.' } });
@@ -274,7 +284,10 @@ router.patch('/api/onboarding/profile', requireAuth, async (req, res) => {
        WHERE tenant_id = $11`,
       [founderName, phone, email, address, site, serviceArea, services, differentiators, voice, logoCheck.value, req.tenantId]
     );
-    res.json({ ok: true });
+    if (linkedin !== undefined) {
+      await query('UPDATE business_profile SET linkedin_url = $1 WHERE tenant_id = $2', [linkedin || null, req.tenantId]);
+    }
+    res.json({ ok: true, linkedinUrl: linkedin === undefined ? undefined : (linkedin || null) });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to save profile: ' + err.message } });
   }
