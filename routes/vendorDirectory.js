@@ -17,12 +17,22 @@ const followUps = require('../lib/followUps');
 const letters = require('../lib/vendorLetters');
 const queue = require('../lib/outreachQueue');
 const crypto = require('crypto');
+const markets = require('../lib/markets');
 const { query } = require('../db');
 
 const router = express.Router();
 
-router.get('/api/vendor-directory/catalog', requireAuth, (req, res) => {
-  res.json({ sections: dir.getCatalog(), sorts: dir.SORTS });
+// The metro area this company chose in its profile (Houston until changed).
+async function tenantMarket(tenantId) {
+  const r = await query('SELECT market FROM business_profile WHERE tenant_id = $1', [tenantId]);
+  return markets.getMarket(r.rows[0] && r.rows[0].market);
+}
+
+router.get('/api/vendor-directory/catalog', requireAuth, async (req, res) => {
+  try {
+    const mk = await tenantMarket(req.tenantId);
+    res.json({ sections: dir.getCatalog(mk), sorts: dir.SORTS, market: { key: mk.key, label: mk.label } });
+  } catch (err) { res.status(500).json({ error: { message: 'Failed to load the directories: ' + err.message } }); }
 });
 
 function parseFilters(q) {
@@ -38,7 +48,7 @@ function parseFilters(q) {
 
 router.get('/api/vendor-directory/:source/:category/facets', requireAuth, async (req, res) => {
   try {
-    res.json(await dir.getFacets({ source: req.params.source, category: req.params.category }));
+    res.json(await dir.getFacets({ source: req.params.source, category: req.params.category, market: await tenantMarket(req.tenantId) }));
   } catch (err) {
     const bad = /^Unknown/.test(err.message);
     res.status(bad ? 404 : 500).json({ error: { message: bad ? err.message : 'Failed to load filters: ' + err.message } });
@@ -54,7 +64,7 @@ router.get('/api/vendor-directory/:source/:category', requireAuth, async (req, r
     const { total, rows, sort, distanceNote } = await dir.listDirectory({
       source: req.params.source, category: req.params.category,
       filters: parseFilters(req.query), sort: (req.query.sort || '').toString(),
-      limit, offset, tenantId: req.tenantId
+      limit, offset, tenantId: req.tenantId, market: await tenantMarket(req.tenantId)
     });
     res.json({ total, sort, distanceNote, rows, hasMore: offset + rows.length < total });
   } catch (err) {
@@ -75,7 +85,8 @@ router.post('/api/vendor-directory/:source/:id/find-contact', requireAuth, async
   if (!Number.isFinite(id)) return res.status(400).json({ error: { message: 'Invalid id.' } });
 
   try {
-    const row = await dir.getRowForLookup(sourceKey, id);
+    const mk = await tenantMarket(req.tenantId);
+    const row = await dir.getRowForLookup(sourceKey, id, mk);
     if (!row) return res.status(404).json({ error: { message: 'Not found.' } });
 
     if (row.contact_checked_at && req.query.refresh !== 'true') {
@@ -104,7 +115,7 @@ router.post('/api/vendor-directory/:source/:id/find-contact', requireAuth, async
     const top = results[0];
     const agrees = (name) => top && isLikelySameBusiness({
       recordName: name, recordCity: row.city, recordZip: row.zip,
-      matchedName: top.name, matchedAddress: top.address, allowedCities: dir.METRO_CITIES
+      matchedName: top.name, matchedAddress: top.address, allowedCities: mk.cities || dir.METRO_CITIES
     });
     const match = top && (agrees(row.name) || (row.alt_name && agrees(row.alt_name))) ? top : null;
 
@@ -150,9 +161,9 @@ router.post('/api/vendor-directory/:source/:id/find-contact', requireAuth, async
 async function loadTemplateContext(tenantId) {
   const t = await query('SELECT company_name FROM tenants WHERE id = $1', [tenantId]);
   if (!t.rows.length) return null;
-  const p = await query('SELECT founder_name, phone, email, site, service_area, linkedin_url, outreach_settings FROM business_profile WHERE tenant_id = $1', [tenantId]);
+  const p = await query('SELECT founder_name, phone, email, site, service_area, linkedin_url, outreach_settings, market FROM business_profile WHERE tenant_id = $1', [tenantId]);
   const profile = p.rows[0] || {};
-  return { tenant: t.rows[0], profile, settings: profile.outreach_settings || {} };
+  return { tenant: t.rows[0], profile, settings: profile.outreach_settings || {}, market: markets.getMarket(profile.market) };
 }
 
 // A category can override its source's relationship type and phrasing (e.g.
@@ -192,7 +203,7 @@ const templateResponse = (ctx, source, category) => {
     settings: {
       linkedin: ctx.profile.linkedin_url || '', // from the company profile (Account Settings)
       blurb: ctx.settings.blurb || '',
-      defaultBlurb: `${ctx.tenant.company_name} serves ${(ctx.profile.service_area || '').trim() || 'the Houston area'}.`,
+      defaultBlurb: `${ctx.tenant.company_name} serves ${(ctx.profile.service_area || '').trim() || tpl.metroPhrase(ctx.market)}.`,
       hasCustomTemplate: !!(ctx.settings.templates && ctx.settings.templates[source.intent])
     }
   };
@@ -574,7 +585,7 @@ router.post('/api/vendors/linkedin-queue', requireAuth, async (req, res) => {
     for (const r of rows) {
       if (!r.name) continue;
       const note = tpl.fitLinkedinNote(tpl.fillName(tmpl, tpl.friendlyGreeting(r.name, r.greetFirst)));
-      const url = 'https://www.linkedin.com/search/results/all/?keywords=' + encodeURIComponent(tpl.properName(r.name) + ' Houston');
+      const url = 'https://www.linkedin.com/search/results/all/?keywords=' + encodeURIComponent(tpl.properName(r.name) + ' ' + ctx.market.short);
       const ins = await query(
         `INSERT INTO linkedin_tasks (tenant_id, source, source_id, vendor_name, search_url, message)
          VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (tenant_id, source, source_id) DO NOTHING RETURNING id`,

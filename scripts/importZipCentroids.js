@@ -5,8 +5,8 @@
 // interior point of each ZCTA). It only knows ZIPs, not city names, so a
 // city's location is derived from the vendor records themselves: the average
 // of the ZIP centroids seen for that city across the directories. That is
-// used only for businesses whose record has a city but no ZIP. Only Houston-area
-// (77xxx) ZIPs are used, and the median, so a record with a wrong ZIP can't skew a city.
+// used only for businesses whose record has a city but no ZIP. Only Texas
+// (75xxx-79xxx) ZIPs are used, and the median, so a record with a wrong ZIP can't skew a city.
 //
 // Run with the environment loaded:  set -a; . ./.env; set +a; node scripts/importZipCentroids.js
 const { execFileSync } = require('child_process');
@@ -15,6 +15,8 @@ const os = require('os');
 const path = require('path');
 const { query } = require('../db');
 const { SOURCES, METRO_CITIES } = require('../lib/vendorDirectories');
+const markets = require('../lib/markets');
+const ALL_CITIES = markets.union(METRO_CITIES, 'cities');
 
 const URL = 'https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2023_Gazetteer/2023_Gaz_zcta_national.zip';
 
@@ -56,8 +58,8 @@ async function buildCityCentroids(log) {
     const r = await query(
       `SELECT DISTINCT UPPER(TRIM(${s.lookup.city})) AS city, LEFT(${s.lookup.zip}, 5) AS zip
        FROM ${s.table}
-       WHERE UPPER(TRIM(${s.lookup.city})) = ANY($1) AND ${s.lookup.zip} IS NOT NULL AND LEFT(${s.lookup.zip}, 5) ~ '^77[0-9]{3}$'`,
-      [METRO_CITIES]);
+       WHERE UPPER(TRIM(${s.lookup.city})) = ANY($1) AND ${s.lookup.zip} IS NOT NULL AND LEFT(${s.lookup.zip}, 5) ~ '^7[5-9][0-9]{3}$'`,
+      [ALL_CITIES]);
     for (const row of r.rows) pairs.set(`${row.city}|${row.zip}`, [row.city, row.zip]);
   }
   const byCity = new Map();

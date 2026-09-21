@@ -1631,7 +1631,9 @@ function renderSignals(d){
   const alerts=d.weatherAlerts||[],spikes=d.permitSpikes||[];
   const recentAddresses=d.recentPermitAddresses||[];
   if(!alerts.length&&!spikes.length){
-    out.innerHTML='<div class="ib"><div class="ibb">No active storm alerts and no permit-volume spikes right now — this is real, live data, not a placeholder.</div></div>';
+    out.innerHTML=d.permitsAvailable===false
+      ?'<div class="ib"><div class="ibb">No active storm alerts for the '+escAttr((d.market&&d.market.label)||'')+' area right now — this is real, live National Weather Service data. Permit-volume signals are only available for Houston.</div></div>'
+      :'<div class="ib"><div class="ibb">No active storm alerts and no permit-volume spikes right now — this is real, live data, not a placeholder.</div></div>';
     return;
   }
   let html='<div class="g3">';
@@ -5180,6 +5182,7 @@ function fillCompanyProfileForm(){
   {const la=document.getElementById('prof-lead-alerts');if(la)la.checked=ME.profile.leadAlerts!==false;}
   {const mr=document.getElementById('prof-monthly-report');if(mr)mr.checked=ME.profile.monthlyReport!==false;}
   set('prof-service-area',ME.profile.serviceArea);
+  {const mk=document.getElementById('prof-market');if(mk)mk.value=ME.profile.market||'houston';}
   set('prof-services',ME.profile.services);
   set('prof-differentiators',ME.profile.differentiators);
   set('prof-voice',ME.profile.voice);
@@ -5221,7 +5224,7 @@ async function saveCompanyProfile(){
     const r=await fetch('/api/onboarding/profile',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       companyName, industry:val('prof-industry'),
       founderName:val('prof-founder'), phone:val('prof-phone'), email:val('prof-email'), address:val('prof-address'),
-      site:val('prof-site'), serviceArea:val('prof-service-area'), services, differentiators:val('prof-differentiators'),
+      site:val('prof-site'), serviceArea:val('prof-service-area'), market:document.getElementById('prof-market')?.value, services, differentiators:val('prof-differentiators'),
       voice:val('prof-voice'), logoDataUrl:profLogoDataUrl, linkedinUrl:val('prof-linkedin'), leadAlerts:!!document.getElementById('prof-lead-alerts')?.checked, monthlyReport:!!document.getElementById('prof-monthly-report')?.checked
     })});
     const d=await r.json();
@@ -5232,7 +5235,7 @@ async function saveCompanyProfile(){
     // (topbar company name, industry-gated real-estate sections, etc.)
     // without a full page reload.
     ME.companyName=companyName;ME.industry=val('prof-industry');
-    Object.assign(ME.profile,{leadAlerts:!!document.getElementById('prof-lead-alerts')?.checked,monthlyReport:!!document.getElementById('prof-monthly-report')?.checked,linkedinUrl:d.linkedinUrl||'',founderName:val('prof-founder'),phone:val('prof-phone'),email:val('prof-email'),address:val('prof-address'),site:val('prof-site'),serviceArea:val('prof-service-area'),services,differentiators:val('prof-differentiators'),voice:val('prof-voice')});
+    Object.assign(ME.profile,{market:document.getElementById('prof-market')?.value||'houston',leadAlerts:!!document.getElementById('prof-lead-alerts')?.checked,monthlyReport:!!document.getElementById('prof-monthly-report')?.checked,linkedinUrl:d.linkedinUrl||'',founderName:val('prof-founder'),phone:val('prof-phone'),email:val('prof-email'),address:val('prof-address'),site:val('prof-site'),serviceArea:val('prof-service-area'),services,differentiators:val('prof-differentiators'),voice:val('prof-voice')});
     const nameEl=document.getElementById('topbar-company-name');if(nameEl)nameEl.textContent=companyName;
     ME.showRealEstateFeatures=(ME.industry==='home_services'||ME.industry==='real_estate');
     document.querySelectorAll('.real-estate-only').forEach(el=>{el.style.display=ME.showRealEstateFeatures?'':'none';});
@@ -6312,6 +6315,11 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       <div class="cred-row"><div class="cred-label">Business Address</div><input class="cred-input" type="text" id="prof-address"></div>
       <div class="cred-row"><div class="cred-label">Website</div><input class="cred-input" type="text" id="prof-site" placeholder="yourcompany.com"></div>
       <div class="cred-row"><div class="cred-label">Service Area</div><input class="cred-input" type="text" id="prof-service-area" placeholder="e.g. Austin metro, or nationwide"></div>
+    <div class="cred-row"><div class="cred-label">Area for the vendor lists</div>
+      <select class="cred-input" id="prof-market" style="text-transform:none;font-weight:400;cursor:pointer">
+        <option value="houston">Houston</option><option value="dallas">Dallas–Fort Worth</option><option value="austin">Austin</option><option value="san_antonio">San Antonio</option>
+      </select>
+      <div class="sm">Which metro area the licensed-contractor, supplier, bank and other vendor lists cover. Permits and weather signals are still Houston only.</div></div>
     </div>
     <div class="cred-row"><div class="cred-label">LinkedIn Profile <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink3)">(optional — shown in your outreach emails)</span></div><input class="cred-input" type="text" id="prof-linkedin" placeholder="https://www.linkedin.com/in/your-name"></div>
     <div class="cred-row"><label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0"><input type="checkbox" id="prof-lead-alerts" checked style="width:16px;height:16px"> Email me the moment a new lead fills out my landing page form</label></div>

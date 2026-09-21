@@ -132,6 +132,7 @@ router.get('/api/me', requireAuth, async (req, res) => {
         linkedinUrl: profile.linkedin_url,
         leadAlerts: profile.lead_alerts_enabled !== false,
         monthlyReport: profile.monthly_report_enabled !== false,
+        market: profile.market || 'houston',
         serviceArea: profile.service_area,
         services: profile.services,
         differentiators: profile.differentiators,
@@ -250,7 +251,7 @@ router.patch('/api/onboarding/profile', requireAuth, async (req, res) => {
   const {
     companyName, industry,
     founderName, phone, email, address, site,
-    serviceArea, services, differentiators, voice, logoDataUrl, linkedinUrl, leadAlerts, monthlyReport
+    serviceArea, services, differentiators, voice, logoDataUrl, linkedinUrl, leadAlerts, monthlyReport, market
   } = req.body || {};
 
   // Optional. Only accepted as a real linkedin.com link, since it ends up in
@@ -288,6 +289,10 @@ router.patch('/api/onboarding/profile', requireAuth, async (req, res) => {
     );
     if (linkedin !== undefined) {
       await query('UPDATE business_profile SET linkedin_url = $1 WHERE tenant_id = $2', [linkedin || null, req.tenantId]);
+    }
+    if (market !== undefined) {
+      if (!require('../lib/markets').isMarketKey(market)) return res.status(400).json({ error: { message: 'Unknown area.' } });
+      await query('UPDATE business_profile SET market = $1 WHERE tenant_id = $2', [market, req.tenantId]);
     }
     if (typeof monthlyReport === 'boolean') {
       await query('UPDATE business_profile SET monthly_report_enabled = $1 WHERE tenant_id = $2', [monthlyReport, req.tenantId]);

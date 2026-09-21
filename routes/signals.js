@@ -22,6 +22,7 @@ const { getRealHcadZipStatsForZips } = require('../lib/hcadZipValues');
 const { generateJSON } = require('../lib/anthropic');
 const { checkAndIncrementUsage } = require('../lib/usage');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
+const markets = require('../lib/markets');
 
 const router = express.Router();
 
@@ -44,9 +45,15 @@ router.get('/api/signals', requireAuth, async (req, res) => {
     if (!tenant) return;
 
     const forceRefresh = req.query.refresh === 'true';
+    // Storm alerts follow the company's chosen metro. Permit data (and the
+    // county home values behind it) exists for Houston only, so other metros
+    // get weather alone rather than someone else's permits.
+    const mkRow = await query('SELECT market FROM business_profile WHERE tenant_id = $1', [req.tenantId]);
+    const mk = markets.getMarket(mkRow.rows[0] && mkRow.rows[0].market);
+    const permitsAvailable = mk.key === 'houston';
     const [weather, permitsData] = await Promise.all([
-      getActiveAlerts({ forceRefresh }).catch(err => ({ alerts: [], error: err.message })),
-      getRecentPermits({ weeksBack: 4, forceRefresh })
+      getActiveAlerts({ forceRefresh, point: mk.weatherPoint }).catch(err => ({ alerts: [], error: err.message })),
+      permitsAvailable ? getRecentPermits({ weeksBack: 4, forceRefresh }) : Promise.resolve({ records: [], fetchedAt: null })
     ]);
 
     const stormAlerts = (weather.alerts || []).filter(a => a.isStormTrigger);
@@ -89,7 +96,8 @@ router.get('/api/signals', requireAuth, async (req, res) => {
       weatherFetchedAt: weather.fetchedAt ? new Date(weather.fetchedAt).toISOString() : null,
       permitSpikes: spikes,
       permitsFetchedAt: permitsData.fetchedAt ? new Date(permitsData.fetchedAt).toISOString() : null,
-      recentPermitAddresses
+      recentPermitAddresses,
+      permitsAvailable, market: { key: mk.key, label: mk.label }
     });
   } catch (err) {
     res.status(502).json({ error: { message: 'Failed to load signals: ' + err.message } });
