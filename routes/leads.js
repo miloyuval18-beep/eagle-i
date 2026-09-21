@@ -6,6 +6,8 @@ const { requireAuth } = require('../auth');
 const { checkAndIncrementUsage } = require('../lib/usage');
 const { generateJSON } = require('../lib/anthropic');
 const { renderLandingPageHtml } = require('../lib/landingPageTemplate');
+const landingStats = require('../lib/landingStats');
+const leadSequence = require('../lib/leadSequence');
 
 const router = express.Router();
 
@@ -48,8 +50,16 @@ router.get('/lp/:slug', async (req, res) => {
       return res.status(404).send('Page not found.');
     }
     const page = result.rows[0];
-    const html = renderLandingPageHtml(page, page, page.company_name);
-    res.set('Content-Type', 'text/html').send(html);
+    const visit = landingStats.assignVisit({ page, cookieHeader: req.headers.cookie, userAgent: req.headers['user-agent'] });
+    // During a two-version test the visitor sees their assigned version.
+    const shown = visit.variant === 'B'
+      ? { ...page, headline: page.headline_b || page.headline, subheadline: page.subheadline_b || page.subheadline, cta_primary: page.cta_primary_b || page.cta_primary }
+      : page;
+    if (visit.setCookie) res.append('Set-Cookie', visit.setCookie);
+    if (visit.countView) landingStats.recordView(page.id, visit.variant).catch(err => console.error('[landingStats] view failed:', err.message));
+    const html = renderLandingPageHtml(shown, page, page.company_name);
+    // Different visitors can see different versions, so this page must not be cached and shared.
+    res.set({ 'Content-Type': 'text/html', 'Cache-Control': 'no-store', Vary: 'Cookie' }).send(html);
   } catch (err) {
     res.status(500).send('Failed to load page.');
   }
@@ -73,17 +83,28 @@ router.post('/lp/:slug/submit', async (req, res) => {
   }
   try {
     const pageRes = await query(
-      `SELECT tenant_id FROM landing_pages WHERE slug = $1 AND status = 'published'`,
+      `SELECT id, tenant_id FROM landing_pages WHERE slug = $1 AND status = 'published'`,
       [req.params.slug]
     );
     if (!pageRes.rows.length) {
       return res.status(404).json({ error: { message: 'Page not found.' } });
     }
-    await query(
-      `INSERT INTO leads (tenant_id, name, phone, email, message, source) VALUES ($1, $2, $3, $4, $5, 'landing_page')`,
-      [pageRes.rows[0].tenant_id, name.trim(), phone || null, email || null, message || null]
+    // The visitor's cookie says which version they were shown; a submission with no
+    // cookie (a script, not a browser that loaded the page) is not counted in the results.
+    const shownVariant = landingStats.readCookie(req.headers.cookie, landingStats.cookieName(pageRes.rows[0].id));
+    const variant = shownVariant === 'A' || shownVariant === 'B' ? shownVariant : null;
+    const inserted = await query(
+      `INSERT INTO leads (tenant_id, name, phone, email, message, source, landing_page_id, landing_variant)
+       VALUES ($1, $2, $3, $4, $5, 'landing_page', $6, $7) RETURNING id`,
+      [pageRes.rows[0].tenant_id, name.trim(), phone || null, email || null, message || null, pageRes.rows[0].id, variant]
     );
     res.json({ ok: true });
+    if (variant) landingStats.recordSubmission(pageRes.rows[0].id, variant).catch(err => console.error('[landingStats] submission failed:', err.message));
+    // The owner's optional automatic reply to the lead. Never able to fail the visitor's submission.
+    const leadId = inserted.rows[0].id;
+    leadSequence.scheduleForLead({ tenantId: pageRes.rows[0].tenant_id, leadId, email: email || '', baseUrl: `${req.protocol}://${req.get('host')}` })
+      .then(r => (r.scheduled ? leadSequence.processDueLeadSequence({ onlyLeadId: leadId }) : null))
+      .catch(err => console.error('[leadSequence] failed:', err.message));
     // After the visitor has their answer, and never able to fail it: tell the owner.
     sendLeadAlert({
       tenantId: pageRes.rows[0].tenant_id, lead: { name, phone, email, message },
@@ -121,6 +142,8 @@ router.patch('/api/leads/:id', requireAuth, async (req, res) => {
     if (!result.rows.length) {
       return res.status(404).json({ error: { message: 'Lead not found.' } });
     }
+    // Once the owner has picked a lead up, automatic emails to that person stop.
+    if (status !== 'new') leadSequence.cancelForLead(result.rows[0].id, 'lead_handled').catch(() => {});
     res.json({ ok: true, lead: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to update lead: ' + err.message } });
@@ -133,7 +156,7 @@ router.get('/api/landing-pages', requireAuth, async (req, res) => {
       `SELECT * FROM landing_pages WHERE tenant_id = $1 ORDER BY created_at DESC`,
       [req.tenantId]
     );
-    res.json({ pages: result.rows });
+    res.json({ pages: result.rows, stats: await landingStats.getStats(req.tenantId), minVisitorsPerVersion: landingStats.MIN_VISITORS_PER_VERSION });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to load landing pages: ' + err.message } });
   }
@@ -196,7 +219,7 @@ Return ONLY valid JSON: {"headline":"H1 headline","subheadline":"Supporting line
   }
 });
 
-const EDITABLE_FIELDS = ['headline', 'subheadline', 'offer', 'about_para', 'service_para', 'trust_para', 'cta_primary', 'cta_secondary', 'meta_title', 'meta_desc'];
+const EDITABLE_FIELDS = ['headline', 'subheadline', 'offer', 'about_para', 'service_para', 'trust_para', 'cta_primary', 'cta_secondary', 'meta_title', 'meta_desc', 'headline_b', 'subheadline_b', 'cta_primary_b'];
 
 router.put('/api/landing-page/:id', requireAuth, async (req, res) => {
   const sets = [];
@@ -210,6 +233,21 @@ router.put('/api/landing-page/:id', requireAuth, async (req, res) => {
   if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'targetLabel')) {
     values.push(req.body.targetLabel);
     sets.push(`target_label = $${values.length}`);
+  }
+  if (req.body && typeof req.body.abEnabled === 'boolean') {
+    if (req.body.abEnabled) {
+      // A test needs a real second version. Compare against what will be saved.
+      const cur = (await query('SELECT * FROM landing_pages WHERE id = $1 AND tenant_id = $2', [req.params.id, req.tenantId])).rows[0];
+      if (!cur) return res.status(404).json({ error: { message: 'Page not found.' } });
+      const pick = (f) => (Object.prototype.hasOwnProperty.call(req.body, f) ? req.body[f] : cur[f]);
+      const same = (a, b) => String(a || '').trim() === String(b || '').trim();
+      const hasB = ['headline_b', 'subheadline_b', 'cta_primary_b'].some(f => String(pick(f) || '').trim());
+      const differs = !same(pick('headline_b') || pick('headline'), pick('headline')) || !same(pick('subheadline_b') || pick('subheadline'), pick('subheadline')) || !same(pick('cta_primary_b') || pick('cta_primary'), pick('cta_primary'));
+      if (!hasB || !differs) return res.status(400).json({ error: { message: 'Write a different headline, subheading or button for version B first; otherwise there is nothing to compare.' } });
+      if (!cur.ab_enabled) { sets.push('ab_enabled = true'); sets.push('ab_started_at = now()'); }
+    } else {
+      sets.push('ab_enabled = false');
+    }
   }
   if (!sets.length) {
     return res.status(400).json({ error: { message: 'No editable fields provided.' } });
@@ -226,6 +264,24 @@ router.put('/api/landing-page/:id', requireAuth, async (req, res) => {
     res.json({ ok: true, page: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to save: ' + err.message } });
+  }
+});
+
+// Ends a two-version test. Choosing B makes B the page's wording; either way the test stops.
+router.post('/api/landing-page/:id/ab/finish', requireAuth, async (req, res) => {
+  const winner = req.body && req.body.winner;
+  if (winner !== 'A' && winner !== 'B') return res.status(400).json({ error: { message: 'Choose version A or B.' } });
+  try {
+    const result = winner === 'B'
+      ? await query(
+        `UPDATE landing_pages SET headline = COALESCE(NULLIF(headline_b, ''), headline), subheadline = COALESCE(NULLIF(subheadline_b, ''), subheadline),
+                cta_primary = COALESCE(NULLIF(cta_primary_b, ''), cta_primary), ab_enabled = false, updated_at = now()
+         WHERE id = $1 AND tenant_id = $2 RETURNING *`, [req.params.id, req.tenantId])
+      : await query('UPDATE landing_pages SET ab_enabled = false, updated_at = now() WHERE id = $1 AND tenant_id = $2 RETURNING *', [req.params.id, req.tenantId]);
+    if (!result.rows.length) return res.status(404).json({ error: { message: 'Page not found.' } });
+    res.json({ ok: true, page: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to finish the test: ' + err.message } });
   }
 });
 

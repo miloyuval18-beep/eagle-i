@@ -16,6 +16,7 @@ const tpl = require('../lib/outreachTemplate');
 const followUps = require('../lib/followUps');
 const letters = require('../lib/vendorLetters');
 const queue = require('../lib/outreachQueue');
+const crypto = require('crypto');
 const { query } = require('../db');
 
 const router = express.Router();
@@ -30,7 +31,8 @@ function parseFilters(q) {
     locations: (q.locations || '').toString().split('|').map(s => s.trim()).filter(Boolean).slice(0, 60),
     contact: ['has_email', 'verified', 'unchecked', 'no_email', 'mailable'].includes(q.contact) ? q.contact : '',
     minRating: [3.5, 4, 4.5].includes(Number(q.minRating)) ? Number(q.minRating) : null,
-    hideEmailed: q.hideEmailed === '1' || q.hideEmailed === 'true'
+    hideEmailed: q.hideEmailed === '1' || q.hideEmailed === 'true',
+    relationship: ['hide_mine', 'tracked'].includes(q.relationship) ? q.relationship : ''
   };
 }
 
@@ -49,12 +51,12 @@ router.get('/api/vendor-directory/:source/:category', requireAuth, async (req, r
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 40, 1), 200);
   const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
   try {
-    const { total, rows, sort } = await dir.listDirectory({
+    const { total, rows, sort, distanceNote } = await dir.listDirectory({
       source: req.params.source, category: req.params.category,
       filters: parseFilters(req.query), sort: (req.query.sort || '').toString(),
       limit, offset, tenantId: req.tenantId
     });
-    res.json({ total, sort, rows, hasMore: offset + rows.length < total });
+    res.json({ total, sort, distanceNote, rows, hasMore: offset + rows.length < total });
   } catch (err) {
     const bad = /^Unknown/.test(err.message);
     res.status(bad ? 404 : 500).json({ error: { message: bad ? err.message : 'Failed to load vendors: ' + err.message } });
@@ -168,9 +170,12 @@ function resolveCategory(sourceKey, categoryKey) {
 const templateResponse = (ctx, source, category) => {
   const vars = tpl.buildVariables({ ...ctx, source, category });
   const message = tpl.renderTemplate(tpl.templateFor(ctx.settings, source.intent), vars);
+  const savedSubject = ctx.settings.subjects && ctx.settings.subjects[source.intent];
   return {
     intent: source.intent,
     message,
+    subject: savedSubject || `Quick note from ${ctx.tenant.company_name}`,
+    hasCustomSubject: !!savedSubject,
     letterMessage: tpl.letterize(message, ctx.profile), // same wording, adapted for paper
     callScript: tpl.renderTemplate(tpl.DEFAULT_CALL_SCRIPTS[source.intent], vars),
     linkedinNote: tpl.fitLinkedinNote(tpl.renderTemplate(tpl.DEFAULT_LINKEDIN_NOTES[source.intent], vars)),
@@ -209,7 +214,7 @@ router.get('/api/vendors/outreach-template', requireAuth, async (req, res) => {
 // wording for this relationship type. (The LinkedIn link is not saved here —
 // it lives on the company profile.)
 router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
-  const { source: sourceKey, category: categoryKey, message, followupMessage, followup2Message, blurb, saveTemplate, resetTemplate } = req.body || {};
+  const { source: sourceKey, category: categoryKey, message, subject, followupMessage, followup2Message, blurb, saveTemplate, resetTemplate } = req.body || {};
   const found = resolveCategory(sourceKey, categoryKey);
   if (!found) return res.status(404).json({ error: { message: 'Unknown category.' } });
 
@@ -223,13 +228,15 @@ router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
   try {
     const ctx = await loadTemplateContext(req.tenantId);
     if (!ctx) return res.status(404).json({ error: { message: 'Tenant not found.' } });
-    const settings = { ...ctx.settings, templates: { ...(ctx.settings.templates || {}) }, followups: { ...(ctx.settings.followups || {}) }, followups2: { ...(ctx.settings.followups2 || {}) } };
+    const settings = { ...ctx.settings, subjects: { ...(ctx.settings.subjects || {}) }, templates: { ...(ctx.settings.templates || {}) }, followups: { ...(ctx.settings.followups || {}) }, followups2: { ...(ctx.settings.followups2 || {}) } };
 
     // Turn the edited message back into a template using the values as they
     // were when it was rendered, BEFORE applying any new LinkedIn/blurb.
     if (saveTemplate) {
       const vars = tpl.buildVariables({ ...ctx, source: found.source, category: found.category });
       settings.templates[found.source.intent] = tpl.templatize(String(message), vars);
+      const cleanedSubject = outreach.cleanSubject(subject);
+      if (cleanedSubject) settings.subjects[found.source.intent] = cleanedSubject;
       if (followupMessage && String(followupMessage).length <= tpl.MAX_TEMPLATE_CHARS) {
         settings.followups[found.source.intent] = tpl.templatize(String(followupMessage), vars);
       }
@@ -237,7 +244,7 @@ router.put('/api/vendors/outreach-template', requireAuth, async (req, res) => {
         settings.followups2[found.source.intent] = tpl.templatize(String(followup2Message), vars);
       }
     }
-    if (resetTemplate) { delete settings.templates[found.source.intent]; delete settings.followups[found.source.intent]; delete settings.followups2[found.source.intent]; }
+    if (resetTemplate) { delete settings.templates[found.source.intent]; delete settings.followups[found.source.intent]; delete settings.followups2[found.source.intent]; delete settings.subjects[found.source.intent]; }
     if (blurb !== undefined) settings.blurb = String(blurb).trim();
 
     await query('UPDATE business_profile SET outreach_settings = $1 WHERE tenant_id = $2', [JSON.stringify(settings), req.tenantId]);
@@ -268,6 +275,38 @@ function parseFollowUps(followUp) {
     fu2 = two.value;
   }
   return { fu1: one.value, fu2 };
+}
+
+// Subject line and optional second version for a two-version test. The client
+// assigns A/B alternately down the ranked list (so both halves get a similar mix
+// of strong and weak prospects); if it doesn't, the server alternates itself.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const shortText = (v, n) => (v == null ? null : String(v).slice(0, n) || null);
+function parseVariants({ message, subject, variantB, testId }) {
+  const subjectA = outreach.cleanSubject(subject) || null;
+  const meta = (r) => ({
+    categoryKey: shortText(r && r.categoryKey, 80), city: shortText(r && r.city, 80),
+    source: /^[a-z_]{1,20}$/.test((r && r.source) || '') ? r.source : null, sourceId: r && Number(r.sourceId) > 0 ? Number(r.sourceId) : null
+  });
+  if (!variantB || !variantB.message || !String(variantB.message).trim()) {
+    return { testId: null, pick: (r) => ({ message: String(message), subject: subjectA, variant: null, meta: meta(r) }) };
+  }
+  const messageB = String(variantB.message);
+  if (messageB.length > tpl.MAX_TEMPLATE_CHARS) return { error: { message: 'Version B is too long.', code: 'bad_variant' } };
+  const left = messageB.replace(/\{name\}/g, '').match(/\{[a-z_]+\}/);
+  if (left) return { error: { message: `Version B still contains ${left[0]}. Remove it or fill it in before sending.`, code: 'unresolved_token' } };
+  const subjectB = outreach.cleanSubject(variantB.subject) || null;
+  if (messageB.trim() === String(message).trim() && subjectB === subjectA) {
+    return { error: { message: 'Version B is identical to version A, so there is nothing to compare. Change the subject or the message.', code: 'bad_variant' } };
+  }
+  const id = UUID_RE.test(String(testId || '')) ? String(testId).toLowerCase() : crypto.randomUUID();
+  return {
+    testId: id,
+    pick: (r, i) => {
+      const v = r && (r.variant === 'A' || r.variant === 'B') ? r.variant : (i % 2 ? 'B' : 'A');
+      return v === 'B' ? { message: messageB, subject: subjectB, variant: 'B', meta: meta(r) } : { message: String(message), subject: subjectA, variant: 'A', meta: meta(r) };
+    }
+  };
 }
 
 // ---- Bulk outreach ---------------------------------------------------
@@ -335,6 +374,10 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
     const parsedFu = parseFollowUps(followUp);
     if (parsedFu.error) return res.status(400).json({ error: parsedFu.error });
     const fu = parsedFu.fu1, fu2 = parsedFu.fu2;
+    const vs = parseVariants(req.body);
+    if (vs.error) return res.status(400).json({ error: vs.error });
+    const origByEmail = new Map();
+    recipients.forEach((r, i) => { const k = outreach.normEmail(r && r.email); if (!origByEmail.has(k)) origByEmail.set(k, { r, i }); });
     // First occurrence of an address wins, matching how screening keeps the first.
     const greetingFor = new Map();
     for (const r of recipients) {
@@ -353,7 +396,13 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
     for (let i = 0; i < toSend.length; i++) {
       if (i > 0) await sleep(outreach.SEND_SPACING_MS);
       const r = toSend[i];
-      const out = await outreach.sendOutreach({ tenantId: req.tenantId, ctx, baseUrl, toEmail: r.email, vendorName: r.name, message: tpl.fillName(String(message), greetingFor.get(r.email)) });
+      const o = origByEmail.get(r.email) || { r: {}, i };
+      const v = vs.pick(o.r, o.i);
+      const out = await outreach.sendOutreach({
+        tenantId: req.tenantId, ctx, baseUrl, toEmail: r.email, vendorName: r.name,
+        message: tpl.fillName(v.message, greetingFor.get(r.email)), subject: v.subject || undefined,
+        meta: { kind: 'initial', variant: v.variant, testId: vs.testId, ...v.meta }
+      });
       if (out.ok && fu) {
         try {
           await followUps.scheduleFollowUp({
@@ -374,7 +423,8 @@ router.post('/api/vendors/outreach-bulk/send', requireAuth, async (req, res) => 
       failed: results.filter(r => r.status === 'failed').length,
       skipped: results.filter(r => r.status === 'skipped').length,
       remaining: Math.max(0, remaining - toSend.length),
-      followUpsScheduled, followUpDays: fu ? fu.days : null, secondFollowUpDays: fu2 ? fu2.days : null
+      followUpsScheduled, followUpDays: fu ? fu.days : null, secondFollowUpDays: fu2 ? fu2.days : null,
+      testId: vs.testId
     });
   } catch (err) {
     res.status(500).json({ error: { message: 'Bulk send failed: ' + err.message } });
@@ -443,6 +493,10 @@ router.post('/api/vendors/outreach-bulk/schedule', requireAuth, async (req, res)
     if (leftover) return res.status(400).json({ error: { message: `The message still contains ${leftover[0]}. Remove it or fill it in before sending.`, code: 'unresolved_token' } });
     const parsedFu = parseFollowUps(followUp);
     if (parsedFu.error) return res.status(400).json({ error: parsedFu.error });
+    const vs = parseVariants(req.body);
+    if (vs.error) return res.status(400).json({ error: vs.error });
+    const origByEmail = new Map();
+    recipients.forEach((r, i) => { const k = outreach.normEmail(r && r.email); if (!origByEmail.has(k)) origByEmail.set(k, { r, i }); });
 
     const greetingFor = new Map();
     for (const r of recipients) {
@@ -458,12 +512,14 @@ router.post('/api/vendors/outreach-bulk/schedule', requireAuth, async (req, res)
     const days = Math.min(queue.MAX_SPREAD_DAYS, Math.max(parseInt(spreadDays, 10) || 1, Math.ceil(sendable.length / outreach.BULK_DAILY_CAP)));
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const queued = await queue.enqueue({
-      tenantId: req.tenantId, baseUrl, days,
+      tenantId: req.tenantId, baseUrl, days, testId: vs.testId,
       follow1Days: parsedFu.fu1 ? parsedFu.fu1.days : null, follow2Days: parsedFu.fu2 ? parsedFu.fu2.days : null,
       recipients: sendable.map(r => {
         const g = greetingFor.get(r.email);
+        const o = origByEmail.get(r.email) || { r: {}, i: 0 };
+        const v = vs.pick(o.r, o.i);
         return {
-          email: r.email, name: r.name, message: tpl.fillName(String(message), g),
+          email: r.email, name: r.name, message: tpl.fillName(v.message, g), subject: v.subject, variant: v.variant, ...v.meta,
           follow1Message: parsedFu.fu1 ? tpl.fillName(parsedFu.fu1.message, g) : null,
           follow2Message: parsedFu.fu2 ? tpl.fillName(parsedFu.fu2.message, g) : null
         };
@@ -475,7 +531,8 @@ router.post('/api/vendors/outreach-bulk/schedule', requireAuth, async (req, res)
       scheduled: queued.length, skipped: [...skipped, ...already],
       firstDue: dues.length ? new Date(Math.min(...dues)) : null, lastDue: dues.length ? new Date(Math.max(...dues)) : null,
       spreadDays: days, perDay: Math.ceil(queued.length / days),
-      followUpDays: parsedFu.fu1 ? parsedFu.fu1.days : null, secondFollowUpDays: parsedFu.fu2 ? parsedFu.fu2.days : null
+      followUpDays: parsedFu.fu1 ? parsedFu.fu1.days : null, secondFollowUpDays: parsedFu.fu2 ? parsedFu.fu2.days : null,
+      testId: vs.testId
     });
   } catch (err) {
     res.status(500).json({ error: { message: 'Scheduling failed: ' + err.message } });

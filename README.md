@@ -250,6 +250,32 @@ Without either var, both flows still work exactly as before — Reply-To just
 falls back to the tenant's own business email directly, so a reply still
 reaches them via plain email routing, just not captured/shown here.
 
+### Reply sorting, results, sending domains, customers (outreach measurement)
+
+- **Replies are sorted** by `lib/replyClassifier.js` (plain rules, no AI): interested, not now,
+  unsubscribe, automatic reply, or "needs a look". An unsubscribe reply opts the address out at
+  once; an automatic out-of-office reply is stored but is not counted as a reply and does not stop
+  follow-ups. Owners can re-sort a reply by hand.
+- **Results** (`lib/outreachReport.js`): reply rate by category, city and subject line, and
+  two-version tests. Only first emails count. Winners are only named when a two-proportion test
+  says the gap is unlikely to be chance.
+- **Monthly report** (`lib/monthlyReport.js`) is viewable in the app, saved as a PDF, emailed on
+  request, and emailed automatically in the first week of each month (from 9am Central) to
+  companies that have it switched on and had activity.
+- **Sending domain** (`lib/sendingDomain.js`): a company can verify its own domain through Resend's
+  Domains API so mail goes out from hello@theirdomain.com. **`RESEND_API_KEY` must be a full-access
+  key** (a "sending access" key cannot create domains). Until Resend reports the domain verified,
+  mail keeps using the shared address.
+- **Past customers** (`lib/customers.js`): imported lists require a stored confirmation; every
+  email has an unsubscribe link and honours the same opt-out list; daily limit
+  `CUSTOMER_EMAIL_DAILY_CAP` (default 200). Bounces and spam complaints on these emails come through
+  the same Resend webhook as vendor outreach.
+- **Lead emails and landing-page tests**: `lib/leadSequence.js` (off until the owner switches it
+  on), `lib/landingStats.js` (one visitor cookie per browser; robots are not counted).
+- **Work with us** page (`lib/workWithUs.js`): public uploads are limited to PDF/JPG/PNG (checked by
+  file signature), 2.5 MB each, rate-limited, and only ever served back to the owner as downloads.
+- Distance ranking uses ZIP-code centres from the US Census (`scripts/importZipCentroids.js`).
+
 ## Instagram image hosting
 
 `routes/images.js` stores uploaded post images in Postgres (`post_images`, bytea) and

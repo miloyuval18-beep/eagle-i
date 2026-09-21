@@ -42,6 +42,7 @@ router.post('/unsubscribe', async (req, res) => {
     );
     await cancelFollowUps(p.tenantId, p.email, 'opted_out');
     await cancelQueued(p.tenantId, p.email, 'opted_out');
+    await require('../lib/leadSequence').cancelForEmail(p.tenantId, p.email, 'opted_out');
     res.send(page('Unsubscribed', `<h1>You're unsubscribed</h1><p>${esc(p.email)} won't receive further outreach emails from this sender.</p>`));
   } catch (err) {
     console.error('Unsubscribe failed:', err.message);

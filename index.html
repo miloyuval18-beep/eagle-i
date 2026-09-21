@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
 :root{
   /* Contrast pass — every text token below verified against every
@@ -146,6 +147,42 @@ body::before{content:none}
 .vd-ln-btns{display:flex;flex-wrap:wrap;gap:6px}
 .vd-ln-btns a{text-decoration:none;display:inline-block}
 .vd-fuitem{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--bdr);font-size:12px}
+.rel-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.rel-chip{padding:4px 10px!important;font-size:12px!important}
+.rel-card{border:1px solid var(--bdr2);border-radius:var(--r2);padding:12px 14px;background:var(--bg3);margin-top:8px}
+.rel-top{margin-bottom:8px;min-width:0}
+.rel-name{font-weight:600;font-size:14px;color:var(--ink);overflow-wrap:anywhere}
+.rel-ctl{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end}
+.rel-lab{display:flex;flex-direction:column;gap:3px;font-family:var(--fm);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3)}
+.rel-lab select,.rel-lab input[type=date],.rel-lab input[type=text]{text-transform:none;letter-spacing:0;font-family:var(--fb);font-size:13px}
+.rel-chk{flex-direction:row;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-family:var(--fb);font-size:13px;color:var(--ink)}
+.rel-due{margin-top:8px;font-size:12px;font-weight:600;color:var(--red)}
+.rel-notes{margin-top:8px;font-size:12px;color:var(--ink2);background:var(--bg4);border-radius:6px;padding:7px 9px;overflow-wrap:anywhere}
+.rel-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.rel-btns a.btn-xs{text-decoration:none;display:inline-block;overflow-wrap:anywhere}
+.rel-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rep-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.rep-tile{border:1px solid var(--bdr2);border-radius:var(--r2);padding:10px 12px;background:var(--bg3)}
+.rep-n{font-family:var(--fh);font-size:26px;font-weight:700;color:var(--ink);line-height:1.1}
+.rep-block{margin-top:14px}
+.rep-h{font-family:var(--fm);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.rep-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rep-t{border-collapse:collapse;width:100%;font-size:12px}
+.rep-t th,.rep-t td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--bdr);white-space:nowrap}
+.rep-t td:first-child{white-space:normal;min-width:110px}
+.rep-t th{font-family:var(--fm);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3)}
+.rep-abs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rep-ab{border:1px solid var(--bdr2);border-radius:var(--r2);padding:10px 12px;background:var(--bg3)}
+.wp-link{margin:8px 0;padding:10px 12px;border:1px solid var(--bdr2);border-radius:var(--r2);background:var(--bg4)}
+.wp-url{overflow-wrap:anywhere;font-size:13px;margin:2px 0 6px}
+.sd-status{padding:9px 11px;border-radius:6px;font-size:13px;border:1px solid var(--bdr2);background:var(--bg4)}
+.sd-status.ok{border-color:rgba(60,130,80,.5)}
+.sd-val{overflow-wrap:anywhere;font-size:13px}
+.cu-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--bdr);font-size:13px}
+.cu-frozen{border:1px solid var(--bdr2);border-radius:8px;padding:9px 11px;background:var(--bg4);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.mr-sec{margin-bottom:10px}
+.vd-dist{color:var(--ink2)}
+@media(max-width:600px){.rep-tiles{grid-template-columns:1fr 1fr}.rel-2,.rep-abs{grid-template-columns:1fr}}
 @media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.vd-selhint{max-width:none}}
 .vp-bar{display:flex;gap:6px;padding:9px 11px;border-top:1px solid var(--bdr);background:var(--bg4)}
 .vp-input{flex:1;background:var(--bg5);border:1px solid var(--bdr2);border-radius:16px;padding:7px 12px;font-family:var(--fb);font-size:14px;color:var(--ink);outline:none}
@@ -583,7 +620,7 @@ tbody tr:last-child td{border-bottom:none}
     <div class="tab" id="t-market" onclick="goTo('market',this)">📊 Market Intel</div>
     <div class="tab" id="t-competitors" onclick="goTo('competitors',this)">🏆 Competitors</div>
     <div class="tab" id="t-opps" onclick="goTo('opps',this)">🎯 Opportunities<span class="tbadge on" id="opp-badge">!</span></div>
-    <div class="tab" id="t-leads" onclick="goTo('leads',this)">🩺 Website Checkup</div>
+    <div class="tab" id="t-leads" onclick="goTo('leads',this)">🩺 Website &amp; Leads</div>
     <div class="tab" id="t-permits" onclick="goTo('permits',this)">📋 Permits<span class="tbadge on" id="perm-badge">0</span></div>
     <div class="tab" id="t-budgetads" onclick="goTo('budgetads',this)">💰 Budget &amp; Ads</div>
     <div class="tab" id="t-growth" onclick="goTo('growth',this)">🤝 Growth &amp; Partners</div>
@@ -767,6 +804,14 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 </div>
+<div class="wrap" id="mr-section">
+  <div class="section" style="margin-top:20px">
+    <div class="sh"><div><div class="st">Monthly Results</div><div class="ss">What Eagle I did for you and what came of it, from your real records. Nothing is estimated.</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><select id="mr-month" class="btn-xs" onchange="mrLoad()" aria-label="Month"></select>
+      <button class="btn-xs" onclick="mrPdf()">📄 Save as PDF</button><button class="btn-xs p" onclick="mrEmail(this)">✉️ Email me this</button></div></div>
+    <div id="mr-out"><div class="sm">Loading…</div></div>
+  </div>
+</div>
 </div>
 <div id="page-strategy" class="page">
 <div class="wrap">
@@ -842,21 +887,24 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== WEBSITE CHECKUP (real analysis of the business's own site) ==================== -->
 <div id="page-leads" class="page">
 <div class="wrap">
+  <div class="subtabs">
+    <div class="subtab active" onclick="goSub('leads','checkup',this)">🩺 Website Checkup</div>
+    <div class="subtab" onclick="goSub('leads','pages',this)">🚀 Landing Pages</div>
+    <div class="subtab" onclick="goSub('leads','inbox',this)">📥 Leads Inbox</div>
+    <div class="subtab" onclick="goSub('leads','customers',this)">👥 Past Customers</div>
+  </div>
+  <div class="subpage active" id="sub-leads-checkup">
   <div class="sh"><div><div class="st">Website Checkup</div><div class="ss">A real, automatic scan of your own website — not an estimate. Eagle I visits the site you listed in your Company Profile and checks it for the kinds of things that cost you visitors and customers: whether it works well on a phone, whether it's secure, whether there's a clear way to contact you, and more. Click "Check My Website" below to run it.</div></div><button class="btn btn-blue" id="wc-btn" onclick="runWebsiteCheckup()"><span class="spin" id="wc-spin"></span><span id="wc-lbl">Check My Website</span></button></div>
   <div id="wc-out"><div style="text-align:center;padding:32px;color:var(--ink3)"><div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;margin-bottom:4px">Click the black "Check My Website" button above</div><div style="font-size:12px">You'll get a plain-language list of anything worth fixing, and exactly why it matters</div></div></div>
   <div class="sm" id="wc-s"></div>
-
-  <!-- Old "publish a landing page + inbox" feature — kept fully working in
-       code (routes/leads.js, /lp/:slug, /api/leads), just no longer linked
-       from navigation now that Website Checkup covers this tab. Any page a
-       tenant already published stays live at its real URL. To bring this
-       UI back, remove display:none below and restore the subtabs bar. -->
-  <div id="legacy-leads-ui" style="display:none">
-  <div class="subtabs">
-    <div class="subtab active" onclick="goSub('leads','pages',this)">🚀 Landing Pages</div>
-    <div class="subtab" onclick="goSub('leads','inbox',this)">📥 Inbox</div>
   </div>
-  <div class="subpage active" id="sub-leads-pages">
+
+  <!-- Landing pages and the leads inbox (routes/leads.js, /lp/:slug, /api/leads).
+       They were hidden for a while behind Website Checkup; they are back as
+       sub-tabs so two-version tests, conversion results and automatic emails
+       to new leads have somewhere to live. -->
+  <div id="legacy-leads-ui">
+  <div class="subpage" id="sub-leads-pages">
   <div class="section" style="margin-bottom:16px">
     <div class="sh"><div><div class="st" style="font-size:15px">Your Pages</div></div><button class="btn-xs p" onclick="startNewLandingPage()">+ New Page</button></div>
     <div id="lp-list"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Loading your pages...</div></div>
@@ -896,6 +944,10 @@ tbody tr:last-child td{border-bottom:none}
   </div>
   </div>
   <div class="subpage" id="sub-leads-inbox">
+  <details class="section" id="ls-section" style="margin-bottom:16px">
+    <summary style="cursor:pointer;font-family:var(--fh);font-size:15px;font-weight:600">✉️ Automatic emails to new leads</summary>
+    <div id="ls-body" style="margin-top:10px"><div class="sm">Loading…</div></div>
+  </details>
   <div class="sh">
     <div><div class="ss">Everyone who has actually filled out the contact form on your published page — these are real people, not examples.</div></div>
     <select id="inbox-filter" onchange="loadInbox()" style="max-width:160px">
@@ -910,6 +962,28 @@ tbody tr:last-child td{border-bottom:none}
     <div style="text-align:center;padding:24px;color:var(--ink3);font-size:13px">Nothing here yet. Go to the "🚀 Landing Pages" tab above, create a page, and click "Make This Page Live" — once someone fills out that page's form, they'll show up here.</div>
   </div>
   </div>
+  </div>
+  <div class="subpage" id="sub-leads-customers">
+    <div class="sh"><div><div class="st">Past Customers</div><div class="ss">Keep in touch with people you have already worked with: check in, share a seasonal note, or ask for a referral. Import a list, review the exact email, and send it. Every email has your address and an unsubscribe link.</div></div></div>
+    <div class="section">
+      <div class="sh"><div><div class="st" style="font-size:15px">Your list</div><div class="ss" id="cu-summary">Loading…</div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><label class="btn-xs p" style="cursor:pointer">📄 Import a file (CSV)<input type="file" accept=".csv,.tsv,.txt,text/csv" style="display:none" onchange="cuPickFile(this)"></label><button class="btn-xs" onclick="cuFromLeads()">＋ Add my won leads</button><button class="btn-xs" style="color:var(--red)" onclick="cuDeleteAll()">Delete all</button></div></div>
+      <details class="vd-left"><summary>Or paste a list</summary>
+        <textarea id="cu-paste" class="cred-input" rows="5" placeholder="Name, email, phone (one person per line; a header row with “email” works too)" style="width:100%;box-sizing:border-box"></textarea>
+        <button class="btn-xs" onclick="cuPasteImport()" style="margin-top:6px">Preview import</button></details>
+      <input type="text" class="cred-input" placeholder="Search your list…" aria-label="Search your list" oninput="cuSearch(this.value)" style="margin:8px 0;width:100%;box-sizing:border-box">
+      <div id="cu-list"></div>
+      <button class="btn-xs" id="cu-more" style="display:none;margin-top:8px" onclick="cuLoad(false)">Load more</button>
+    </div>
+    <div class="section" style="margin-top:16px">
+      <div class="sh"><div><div class="st" style="font-size:15px">Email your customers</div><div class="ss">You see exactly who will get it and what it says before anything is sent.</div></div></div>
+      <select id="cu-tpl" class="btn-xs" onchange="cuUseTemplate(this.value)" aria-label="Start from a template"><option value="">Start from…</option></select>
+      <label class="vd-msglabel">Subject</label><input id="cu-subject" class="cred-input" maxlength="150" style="width:100%;box-sizing:border-box">
+      <label class="vd-msglabel">Message</label><textarea id="cu-message" class="cred-input" rows="9" maxlength="3000" style="width:100%;box-sizing:border-box;font-size:13px;line-height:1.5"></textarea>
+      <div class="sm">Use {name} for their first name; nothing else in curly braces is allowed. A daily limit applies, and anyone who unsubscribes is never emailed again.</div>
+      <div class="vd-mbtns"><button class="btn-xs" onclick="cuPreviewSend(this)">Send me a preview</button><button class="btn btn-blue" onclick="cuReview(this)">Review &amp; send…</button></div>
+      <div class="sm" id="cu-note"></div>
+    </div>
   </div>
 </div>
 </div>
@@ -953,12 +1027,27 @@ tbody tr:last-child td{border-bottom:none}
     <div class="sh"><div><div class="st">LinkedIn To-Do</div><div class="ss">Businesses you chose to reach on LinkedIn. Each has a search link and a short note ready to paste. You do the connecting yourself; nothing here automates LinkedIn.</div></div></div>
     <div id="vendor-linkedin"><div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">Loading…</div></div>
   </div>
+  <div class="section" style="margin-top:20px" id="rel-section">
+    <div class="sh"><div><div class="st">Vendor Relationships</div><div class="ss">Keep track of where each business stands: a stage, notes, and a date to follow up. Businesses you email are added automatically as “Contacted” and move to “Replied” when they answer. Anyone you mark “Already my vendor” is left out of cold emails.</div></div><button class="btn-xs p" onclick="relOpen()">+ Add a Business</button></div>
+    <div class="rel-chips" id="rel-filters"></div>
+    <div id="rel-list"><div class="sm" style="padding:12px 0">Loading…</div></div>
+  </div>
   <div class="section" style="margin-top:20px">
     <div class="sh"><div><div class="st">Sent Outreach &amp; Replies</div><div class="ss">Every real "Find & Send" email you've sent from this page, and any reply you've gotten back.</div></div></div>
     <div id="vendor-followups"></div>
     <div id="vendor-outreach-list" style="display:flex;flex-direction:column;gap:8px">
       <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">You haven't sent any outreach emails yet</div>
     </div>
+  </div>
+  <div class="section" style="margin-top:20px" id="rep-section">
+    <div class="sh"><div><div class="st">Outreach Results</div><div class="ss">How your emails are doing: reply rate by category and city, and which version won when you tested two.</div></div>
+      <select id="rep-days" class="btn-xs" onchange="repLoad()" aria-label="Time period"><option value="30">Last 30 days</option><option value="90" selected>Last 90 days</option><option value="365">Last year</option></select></div>
+    <div id="rep-out"><div class="sm">Loading…</div></div>
+  </div>
+  <div class="section" style="margin-top:20px" id="wp-section">
+    <div class="sh"><div><div class="st">Work With Us Page</div><div class="ss">A simple page where vendors send you their details, portfolio, license and insurance. Add its QR code to your mailed letters so they can scan it.</div></div></div>
+    <div id="wp-body"><div class="sm">Loading…</div></div>
+    <div id="wp-subs"></div>
   </div>
   </div>
 
@@ -1296,6 +1385,9 @@ function goSub(page,sub,btn){
   // Keywords used to auto-load on its own tab's first visit (kwLoaded
   // guards against refetching); now that trigger moves to its sub-tab.
   if(page==='social'&&sub==='keywords')loadKw(false);
+  if(page==='leads'&&sub==='pages')loadLandingPageState();
+  if(page==='leads'&&sub==='inbox'){loadInbox();lsLoad();}
+  if(page==='leads'&&sub==='customers'){cuLoad();cuLoadTemplates();}
 }
 // Keywords now lives as a Social HQ sub-tab — dash quick-links that used to
 // jump straight to a standalone Keywords tab go through this instead.
@@ -2227,6 +2319,7 @@ async function loadLandingPageState(){
     const r=await fetch('/api/landing-pages');
     const d=await r.json();
     landingPages=d.pages||[];
+    landingPageStats=d.stats||{};lpMinVisitors=d.minVisitorsPerVersion||100;
     renderLpList();
   }catch(e){/* leave existing content on transient failure */}
 }
@@ -2239,8 +2332,9 @@ function renderLpList(){
   el.innerHTML=landingPages.map(p=>`
     <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--bdr2)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;color:var(--ink);font-weight:600">${p.target_label||p.headline||'Untitled page'}</div>
-        <div style="font-size:11px;color:var(--ink3)">${p.status==='published'?'🟢 Live at /lp/'+p.slug:'⚪ Draft'} · ${new Date(p.updated_at||p.created_at).toLocaleDateString()}</div>
+        <div style="font-size:13px;color:var(--ink);font-weight:600;overflow-wrap:anywhere">${uxEsc(p.target_label||p.headline||'Untitled page')}</div>
+        <div style="font-size:11px;color:var(--ink3)">${p.status==='published'?'🟢 Live at /lp/'+uxEsc(p.slug):'⚪ Draft'} · ${new Date(p.updated_at||p.created_at).toLocaleDateString()}</div>
+        ${lpStatLine(p)?`<div style="font-size:11px;color:var(--ink2)">${uxEsc(lpStatLine(p))}</div>`:''}
       </div>
       <button class="btn-xs" onclick="editLandingPage('${p.id}')">Edit</button>
       ${p.status==='published'?`<button class="btn-xs" onclick="window.open('/lp/${p.slug}','_blank')">View</button>`:''}
@@ -2329,7 +2423,8 @@ function renderLpEditor(p){
       <textarea id="lp-f-trust_para" rows="2" style="width:100%;margin-bottom:8px">${p.trust_para||''}</textarea>
       <label style="display:block;font-size:11px;color:var(--ink2);margin-bottom:3px">Main Button Text (what the big button says, e.g. "Call Now")</label>
       <input id="lp-f-cta_primary" value="${(p.cta_primary||'').replace(/"/g,'&quot;')}" style="width:100%">
-    </div>`;
+    </div>
+    ${lpAbHtml(p)}`;
   document.getElementById('lp-save-btn').style.display='';
   document.getElementById('lp-publish-btn').style.display='';
   document.getElementById('lp-publish-btn').textContent=p.status==='published'?'🔄 Update My Live Page':'🚀 Make This Page Live';
@@ -2518,7 +2613,8 @@ async function findAndSendVendorOutreach(btn,vendorName,website){
    (apostrophes, newlines in AI-drafted text) came from. */
 const VD={sections:[],panels:{},bulk:null,lookupCost:0.035,searchTimer:null};
 const VD_TOPN=[10,25,50,75,100,150,200];
-const VD_SORT_LABEL={ready:'Email-ready first',tenure:'Longest established',rating:'Best Google rating',name:'A–Z'};
+const VD_SORT_LABEL={ready:'Email-ready first',tenure:'Longest established',rating:'Best Google rating',name:'A–Z',distance:'Nearest to my job sites'};
+const VD_REL_LABEL={new:'TRACKED',contacted:'CONTACTED',replied:'REPLIED',meeting:'MEETING SET',working:'WORKING TOGETHER',passed:'NOT A FIT'};
 const vdTitle=s=>String(s||'').toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
 const vdMoney=n=>'$'+n.toFixed(2);
 const vdQ=(src,sel)=>document.querySelector('#vd-'+src+' '+sel);
@@ -2537,7 +2633,7 @@ async function initVendorDirectories(){
   }
   VD.sections.forEach(sec=>{
     VD.panels[sec.key]={sec,cat:null,offset:0,total:0,rows:{},order:[],selected:new Map(),req:0,facets:null,messages:{},
-      f:{search:'',locations:new Set(),contact:'',minRating:'',hideEmailed:false,sort:sec.hasTenure?'tenure':'name'}};
+      f:{search:'',locations:new Set(),contact:'',minRating:'',hideEmailed:false,hideMine:false,sort:sec.hasTenure?'tenure':'name'}};
   });
   root.innerHTML=VD.sections.map(vdSectionHtml).join('');
   root.addEventListener('click',vdOnClick);
@@ -2550,7 +2646,7 @@ async function initVendorDirectories(){
 
 function vdSectionHtml(sec){
   const cats=sec.categories.map((c,i)=>`<button class="${i===0?'btn btn-blue':'btn-ghost'} vd-catbtn" data-act="cat" data-src="${sec.key}" data-cat="${escAttr(c.key)}">${escAttr(c.label)}</button>`).join('');
-  const sorts=['ready',...(sec.hasTenure?['tenure']:[]),'rating','name'];
+  const sorts=['ready',...(sec.hasTenure?['tenure']:[]),'rating','name','distance'];
   const sortOpts=sorts.map(s=>`<option value="${s}"${s===(sec.hasTenure?'tenure':'name')?' selected':''}>Rank: ${VD_SORT_LABEL[s]}</option>`).join('');
   const topOpts=VD_TOPN.map(n=>`<option value="${n}">Top ${n}</option>`).join('');
   return `<div class="section vd-sec" id="vd-${sec.key}" style="margin-top:20px" data-src="${sec.key}">
@@ -2583,6 +2679,7 @@ function vdSectionHtml(sec){
         </select>
         <select class="btn-xs vd-sort" data-act="sort" aria-label="Rank by">${sortOpts}</select>
         <label class="vd-hide"><input type="checkbox" data-act="hideEmailed"> Hide already emailed</label>
+        <label class="vd-hide"><input type="checkbox" data-act="hideMine"> Hide my vendors</label>
         <button class="btn-xs vd-clearf" data-act="clearFilters" style="display:none;color:var(--red)">Clear filters ×</button>
       </div>
       <div class="card vd-selbar">
@@ -2625,6 +2722,7 @@ function vdOnClick(e){
   if(act==='callsheet')return vdCallOpen(src);
   if(act==='linkedin')return vdLinkedinAdd(src);
   if(act==='more')return vdLoad(src,false);
+  if(act==='track')return relOpenForRow(src,parseInt(t.closest('.vd-row').dataset.id,10));
   if(act==='find')return vdFind(src,parseInt(t.closest('.vd-row').dataset.id,10),t);
 }
 function vdOnChange(e){
@@ -2640,6 +2738,7 @@ function vdOnChange(e){
   if(act==='rating'){p.f.minRating=t.value;return vdFiltersChanged(src);}
   if(act==='sort'){p.f.sort=t.value;return vdFiltersChanged(src);}
   if(act==='hideEmailed'){p.f.hideEmailed=t.checked;return vdFiltersChanged(src);}
+  if(act==='hideMine'){p.f.hideMine=t.checked;return vdFiltersChanged(src);}
   if(act==='topn'&&t.value){const n=parseInt(t.value,10);t.value='';return vdTopN(src,n);}
 }
 function vdOnInput(e){
@@ -2654,13 +2753,13 @@ function vdOnInput(e){
 }
 
 /* ---------- category, filters, list ---------- */
-function vdFiltersActive(p){const f=p.f;return !!(f.search||f.locations.size||f.contact||f.minRating||f.hideEmailed);}
+function vdFiltersActive(p){const f=p.f;return !!(f.search||f.locations.size||f.contact||f.minRating||f.hideEmailed||f.hideMine);}
 function vdClearFilters(src){
   const p=VD.panels[src];
-  p.f={...p.f,search:'',locations:new Set(),contact:'',minRating:'',hideEmailed:false};
+  p.f={...p.f,search:'',locations:new Set(),contact:'',minRating:'',hideEmailed:false,hideMine:false};
   const sec=document.getElementById('vd-'+src);
   sec.querySelector('.vd-search').value='';sec.querySelector('.vd-contact').value='';
-  sec.querySelector('.vd-rating').value='';sec.querySelector('[data-act="hideEmailed"]').checked=false;
+  sec.querySelector('.vd-rating').value='';sec.querySelector('[data-act="hideEmailed"]').checked=false;sec.querySelector('[data-act="hideMine"]').checked=false;
   vdRenderLocList(src);vdFiltersChanged(src);
 }
 function vdFiltersChanged(src){
@@ -2677,6 +2776,7 @@ function vdParams(p,extra){
   if(p.f.contact)u.set('contact',p.f.contact);
   if(p.f.minRating)u.set('minRating',p.f.minRating);
   if(p.f.hideEmailed)u.set('hideEmailed','1');
+  if(p.f.hideMine)u.set('relationship','hide_mine');
   u.set('sort',p.f.sort);
   Object.entries(extra||{}).forEach(([k,v])=>u.set(k,v));
   return u.toString();
@@ -2685,9 +2785,9 @@ async function vdSelectCategory(src,catKey){
   const p=VD.panels[src];
   const sec=document.getElementById('vd-'+src);
   p.cat=catKey;p.selected=new Map();p.rows={};p.order=[];p.facets=null;
-  p.f={search:'',locations:new Set(),contact:'',minRating:'',hideEmailed:false,sort:p.sec.hasTenure?'tenure':'name'};
+  p.f={search:'',locations:new Set(),contact:'',minRating:'',hideEmailed:false,hideMine:false,sort:p.sec.hasTenure?'tenure':'name'};
   sec.querySelector('.vd-search').value='';sec.querySelector('.vd-contact').value='';sec.querySelector('.vd-rating').value='';
-  sec.querySelector('.vd-sort').value=p.f.sort;sec.querySelector('[data-act="hideEmailed"]').checked=false;
+  sec.querySelector('.vd-sort').value=p.f.sort;sec.querySelector('[data-act="hideEmailed"]').checked=false;sec.querySelector('[data-act="hideMine"]').checked=false;
   sec.querySelector('.vd-loclabel').textContent='Filter by '+p.sec.locationLabel;
   sec.querySelector('.vd-clearf').style.display='none';
   sec.querySelectorAll('.vd-catbtn').forEach(b=>{b.className=(b.dataset.cat===catKey?'btn btn-blue':'btn-ghost')+' vd-catbtn';});
@@ -2716,6 +2816,8 @@ async function vdLoad(src,reset){
     more.style.display=p.offset<p.total?'inline-block':'none';more.disabled=false;
     const catLabel=p.sec.categories.find(c=>c.key===catKey).label;
     status.textContent=`${p.offset} of ${p.total} ${catLabel} shown${vdFiltersActive(p)?' (filtered)':''} · ranked: ${VD_SORT_LABEL[d.sort]||d.sort}`;
+    if(d.distanceNote==='no_jobs')status.textContent+=' — you asked for nearest first, but you have no active job sites yet. Add one under Budget & Ads → Ad Generator → Job Sites.';
+    else if(d.sort==='distance')status.textContent+=' (approximate, by ZIP code)';
   }catch(e){if(my===p.req){status.textContent='Error: '+e.message;status.style.color='var(--red)';more.disabled=false;}}
 }
 function vdRenderLocList(src){
@@ -2738,7 +2840,9 @@ function vdNameHtml(p,v){
     +(v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':'')
     +(v.suppressed?` <span class="vd-badge vd-tone-amber">${v.suppressedReason==='bounced'?'🚫 BOUNCED':v.suppressedReason==='complained'?'🚫 SPAM COMPLAINT':'🚫 OPTED OUT'}</span>`:'')
     +(v.letteredAt?` <span class="vd-badge">📬 LETTERED ${escAttr(new Date(v.letteredAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}))}</span>`:'')
-    +' '+vdBadgeHtml(p.sec);
+    +' '+vdBadgeHtml(p.sec)
+    +(v.relationship?` <span class="vd-badge">📋 ${VD_REL_LABEL[v.relationship.stage]||'TRACKED'}</span>`:'')
+    +(v.relationship&&v.relationship.isMyVendor?' <span class="vd-badge vd-tone-green">⭐ MY VENDOR</span>':'');
 }
 function vdSubHtml(p,v){
   const sec=p.sec,b=[];
@@ -2750,6 +2854,7 @@ function vdSubHtml(p,v){
   else if(v.insured===false)b.push('Liability insurance not current');
   if(v.phone)b.push(`<a href="tel:${escAttr(String(v.phone).replace(/[^0-9+]/g,''))}" style="color:var(--ink2)">${escAttr(v.phone)}</a>`);
   if(v.rating!=null)b.push(`★ ${Number(v.rating).toFixed(1)}${v.reviewCount!=null?' ('+v.reviewCount+' Google reviews)':''}`);
+  if(v.distanceMiles!=null)b.push(`<span class="vd-dist">📍 ${v.distanceMiles<1?'under 1':'about '+v.distanceMiles} mi from your nearest job site</span>`);
   return b.join(' · ');
 }
 function vdLinksHtml(v){
@@ -2769,6 +2874,7 @@ function vdRowHtml(p,v){
       <div class="vd-links">${vdLinksHtml(v)}</div>
       <div class="vd-actions">
         <button class="btn-xs p" data-act="find">🔍✉️ Find Email &amp; Send</button>
+        <button class="btn-xs" data-act="track" title="Keep notes and a follow-up date for this business">📋 Track</button>
         <input type="email" class="cred-input vd-email" value="${escAttr(v.contactEmail||'')}" placeholder="Or type an email, then click again">
       </div>
       <div class="sm vd-rowstatus"></div>
@@ -2879,9 +2985,10 @@ async function vdFind(src,id,btn){
    every recipient (opted out, already emailed, duplicates, daily cap) at
    send time and never trusts what the browser says. */
 function vdBuckets(b){
-  const o={ready:[],needLookup:[],noEmail:[],emailed:[],suppressed:[]};
+  const o={ready:[],needLookup:[],noEmail:[],emailed:[],suppressed:[],mine:[]};
   b.rows.forEach(v=>{
     if(v.suppressed)o.suppressed.push(v);
+    else if(v.relationship&&v.relationship.isMyVendor)o.mine.push(v);
     else if(v.emailed)o.emailed.push(v);
     else if(v.contactEmail)o.ready.push(v);
     else if(v.checked)o.noEmail.push(v);
@@ -2903,7 +3010,10 @@ function vdModalEl(){
     m.addEventListener('change',vdBulkChange);
     m.addEventListener('input',e=>{
       if(!VD.bulk)return;
-      if(e.target.matches('.vd-msg'))VD.bulk.message=e.target.value;
+      if(e.target.matches('.vd-subject'))VD.bulk.subject=e.target.value;
+      else if(e.target.matches('.vd-b-subject'))VD.bulk.ab.subject=e.target.value;
+      else if(e.target.matches('.vd-b-msg'))VD.bulk.ab.message=e.target.value;
+      else if(e.target.matches('.vd-msg'))VD.bulk.message=e.target.value;
       else if(e.target.matches('.vd-blurb'))VD.bulk.settings.blurb=e.target.value;
       else if(e.target.matches('.vd-fu-msg'))VD.bulk.followUp.message=e.target.value;
       else if(e.target.matches('.vd-fu2-msg'))VD.bulk.followUp.second.message=e.target.value;
@@ -2917,10 +3027,10 @@ async function vdBulkOpen(src){
   const p=VD.panels[src];
   const rows=[...p.selected.values()];
   if(!rows.length)return;
-  VD.bulk={src,cat:p.cat,rows,phase:'prepare',message:'',followUp:{enabled:true,days:7,message:'',second:{enabled:false,days:4,message:''}},spread:0,settings:{linkedin:'',blurb:'',defaultBlurb:'',hasCustomTemplate:false},status:null,picked:new Set(),excluded:{},progress:null,results:null,stop:false,draftError:'',saveNote:''};
+  VD.bulk={src,cat:p.cat,rows,phase:'prepare',message:'',subject:'',ab:{on:false,subject:'',message:''},followUp:{enabled:true,days:7,message:'',second:{enabled:false,days:4,message:''}},spread:0,settings:{linkedin:'',blurb:'',defaultBlurb:'',hasCustomTemplate:false},status:null,picked:new Set(),excluded:{},progress:null,results:null,stop:false,draftError:'',saveNote:''};
   vdModalEl().style.display='flex';
   vdBulkRender();
-  try{const t=await vdTemplate(p);VD.bulk.message=t.message;VD.bulk.settings=t.settings;VD.bulk.followUp={enabled:true,days:t.followUp.days,message:t.followUp.message,second:{enabled:false,days:4,message:t.followUp2.message}};}
+  try{const t=await vdTemplate(p);VD.bulk.message=t.message;VD.bulk.subject=t.subject||'';VD.bulk.settings=t.settings;VD.bulk.followUp={enabled:true,days:t.followUp.days,message:t.followUp.message,second:{enabled:false,days:4,message:t.followUp2.message}};}
   catch(e){VD.bulk.draftError='Could not load your message ('+e.message+') — write one in the review step.';}
   try{
     const r=await fetch('/api/vendors/outreach-bulk/status');
@@ -2967,7 +3077,7 @@ async function vdSaveSettings(kind){
   const b=VD.bulk,p=VD.panels[b.src];
   const box=document.querySelector('#vd-modal .vd-modal-box');
   const body={source:b.src,category:b.cat,blurb:box.querySelector('.vd-blurb').value.trim()};
-  if(kind==='saveTemplate'){body.saveTemplate=true;body.message=b.message;if(b.followUp.message.trim())body.followupMessage=b.followUp.message;if(b.followUp.second.message.trim())body.followup2Message=b.followUp.second.message;}
+  if(kind==='saveTemplate'){body.saveTemplate=true;body.message=b.message;body.subject=b.subject;if(b.followUp.message.trim())body.followupMessage=b.followUp.message;if(b.followUp.second.message.trim())body.followup2Message=b.followUp.second.message;}
   if(kind==='resetTemplate')body.resetTemplate=true;
   try{
     const r=await fetch('/api/vendors/outreach-template',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -2983,6 +3093,10 @@ async function vdSaveSettings(kind){
 function vdBulkChange(e){
   const b=VD.bulk;
   if(!b)return;
+  // Re-render once an edit is committed (on blur), so the warnings and the Send button reflect what was typed.
+  if(e.target.matches('.vd-subject,.vd-b-subject,.vd-b-msg,.vd-msg')&&b.phase==='review')return vdBulkRender(true);
+  if(e.target.matches('.vd-ab-on')){b.ab.on=e.target.checked;if(b.ab.on&&!b.ab.message){b.ab.message=b.message;b.ab.subject=b.subject;}return vdBulkRender(true);}
+  if(e.target.matches('.vd-qr-on')){b.includeQr=e.target.checked;return;}
   if(e.target.matches('.vd-fu-on')){b.followUp.enabled=e.target.checked;return vdBulkRender(true);}
   if(e.target.matches('.vd-fu-days')){b.followUp.days=parseInt(e.target.value,10);return;}
   if(e.target.matches('.vd-fu2-on')){b.followUp.second.enabled=e.target.checked;return vdBulkRender(true);}
@@ -3013,6 +3127,7 @@ function vdBulkRender(keepScroll){
         ${k.noEmail.length?`<li><b>${k.noEmail.length}</b> have no usable email (none published, or the address can't receive mail) — they'll be left out</li>`:''}
         ${k.emailed.length?`<li><b>${k.emailed.length}</b> you've already emailed — left out</li>`:''}
         ${k.suppressed.length?`<li><b>${k.suppressed.length}</b> opted out of your emails — left out</li>`:''}
+        ${k.mine.length?`<li><b>${k.mine.length}</b> ${k.mine.length===1?'is':'are'} already your vendor${k.mine.length===1?'':'s'} — left out</li>`:''}
       </ul>
       ${b.draftError?`<div class="vd-warn">${escAttr(b.draftError)}</div>`:''}
       <div class="vd-mbtns">
@@ -3038,7 +3153,7 @@ function vdBulkRender(keepScroll){
       +`<div class="vd-bar"><div class="vd-barfill" style="width:${pr.total?Math.round(pr.done/pr.total*100):0}%"></div></div>`;
   }else if(b.phase==='done'){
     const r=b.results;
-    const reasons={already_emailed:'already emailed',opted_out:'opted out',bounced:'bounced before',complained:'reported a previous email as spam',domain_cannot_receive_mail:'address can\'t receive mail',duplicate_in_batch:'duplicate address',invalid_email:'invalid address',daily_cap:'over today\'s send limit'};
+    const reasons={already_my_vendor:'already your vendor',already_emailed:'already emailed',opted_out:'opted out',bounced:'bounced before',complained:'reported a previous email as spam',domain_cannot_receive_mail:'address can\'t receive mail',duplicate_in_batch:'duplicate address',invalid_email:'invalid address',daily_cap:'over today\'s send limit'};
     const skippedBy={};r.skipped.forEach(x=>{const k=reasons[x.reason]||x.reason;skippedBy[k]=(skippedBy[k]||0)+1;});
     html=(r.scheduled!=null?head(r.scheduled?`✓ ${r.scheduled} email${r.scheduled===1?'':'s'} scheduled`:'Nothing was scheduled',r.stopMsg||(r.scheduled?`From ${new Date(r.firstDue).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} to ${new Date(r.lastDue).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} — about ${r.perDay} a day.`:''))
       :head(r.sent?`✓ Sent ${r.sent} email${r.sent===1?'':'s'}`:'No emails were sent',r.stopMsg||''))
@@ -3072,7 +3187,8 @@ function vdReviewHtml(b,cat){
     ...k.noEmail.map(v=>[v,v.lookupReason||v.emailNote||'no published email found']),
     ...k.needLookup.map(v=>[v,'not looked up']),
     ...k.emailed.map(v=>[v,'already emailed']),
-    ...k.suppressed.map(v=>[v,'opted out'])
+    ...k.suppressed.map(v=>[v,'opted out']),
+    ...k.mine.map(v=>[v,'already your vendor'])
   ];
   const problems=[];
   if(st&&!st.configured)problems.push('Email sending is not configured on this server.');
@@ -3081,8 +3197,11 @@ function vdReviewHtml(b,cat){
   const n=pickedRows.length;
   const willSend=remaining!=null?Math.min(n,remaining):n;
   const fu=b.followUp;
-  const stray=vdOpenToken(b.message)||(fu.enabled?vdOpenToken(fu.message):null)||(fu.enabled&&fu.second.enabled?vdOpenToken(fu.second.message):null);
+  const stray=vdOpenToken(b.message)||(b.ab.on?vdOpenToken(b.ab.message):null)||vdOpenToken(b.subject)||(fu.enabled?vdOpenToken(fu.message):null)||(fu.enabled&&fu.second.enabled?vdOpenToken(fu.second.message):null);
   if(stray)problems.push(`The message still contains ${stray}. Remove it or fill it in before sending.`);
+  if(b.ab.on&&!b.ab.message.trim())problems.push('Version B has no message. Write one or turn the test off.');
+  else if(b.ab.on&&b.ab.message.trim()===b.message.trim()&&(b.ab.subject||'').trim()===(b.subject||'').trim())problems.push('Version B is the same as version A. Change the subject or the message, or turn the test off.');
+  else if(b.ab.on&&n<2)problems.push('A two-version test needs at least 2 recipients.');
   if(fu.enabled&&!fu.message.trim())problems.push('The follow-up message is empty — write one or turn the follow-up off.');
   if(fu.enabled&&fu.second.enabled&&!fu.second.message.trim())problems.push('The second follow-up message is empty — write one or turn it off.');
   const canSend=n>0&&!problems.length&&b.message.trim();
@@ -3093,9 +3212,19 @@ function vdReviewHtml(b,cat){
     ${problems.map(x=>`<div class="vd-warn">${escAttr(x)}</div>`).join('')}
     <div class="vd-revlist">${rowsHtml||'<div class="sm" style="padding:12px">None of the selected businesses has an email to send to.</div>'}</div>
     ${left.length?`<details class="vd-left"><summary>${left.length} left out</summary><ul class="vd-list-plain">${left.slice(0,60).map(([v,why])=>`<li>${escAttr(v.name)} — ${escAttr(why)}</li>`).join('')}${left.length>60?`<li>…and ${left.length-60} more</li>`:''}</ul></details>`:''}
+    <label class="vd-msglabel">Subject line</label>
+    <input class="vd-subject cred-input" maxlength="150" value="${escAttr(b.subject)}" placeholder="Quick note from your company" style="width:100%;box-sizing:border-box">
     <label class="vd-msglabel">Message — edit it if you like</label>
     <textarea class="vd-msg cred-input" rows="14" placeholder="Write your message">${escAttr(b.message)}</textarea>
     <div class="sm">${eg?`<b>{name}</b> is filled in for each business — for example “Hi ${escAttr(eg)},”. `:''}Built from ${(b.settings||{}).hasCustomTemplate?'your saved wording':'the standard wording'} for ${VD.panels[b.src].sec.categories.find(c=>c.key===b.cat).label.toLowerCase()}.</div>
+    <div class="vd-fu">
+      <label class="vd-fu-line"><input type="checkbox" class="vd-ab-on"${b.ab.on?' checked':''}><span>Test a <b>second version</b> of this email</span></label>
+      ${b.ab.on?`<div class="sm">Recipients are split evenly and alternately down your ranked list, so both versions reach a similar mix of businesses. Once people reply, the winner shows under “Outreach Results” below.</div>
+        <label class="vd-msglabel">Version B subject line</label>
+        <input class="vd-b-subject cred-input" maxlength="150" value="${escAttr(b.ab.subject)}" style="width:100%;box-sizing:border-box">
+        <label class="vd-msglabel">Version B message</label>
+        <textarea class="vd-b-msg cred-input" rows="10" style="width:100%;box-sizing:border-box;font-size:13px;line-height:1.5;resize:vertical">${escAttr(b.ab.message)}</textarea>`:'<div class="sm">Send two different subject lines or messages, and find out which one gets more replies.</div>'}
+    </div>
     <div class="vd-fu">
       <label class="vd-msglabel" style="margin-top:0">When to send</label>
       <select class="btn-xs vd-spread" aria-label="When to send">${[[0,'Send now'],[2,'Spread over 2 business days'],[3,'Spread over 3 business days'],[5,'Spread over 5 business days'],[10,'Spread over 10 business days']].map(([v,l])=>`<option value="${v}"${v===(b.spread||0)?' selected':''}>${l}</option>`).join('')}</select>
@@ -3163,10 +3292,10 @@ async function vdBulkToReview(){
   const seen=new Set();b.excluded={};
   k.ready.forEach(v=>{const e=v.contactEmail.toLowerCase();if(seen.has(e))b.excluded[v.id]='same address as another selected business';else seen.add(e);});
   try{
-    const r=await fetch('/api/vendors/outreach-bulk/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:k.ready.map(v=>({email:v.contactEmail,name:v.name}))})});
+    const r=await fetch('/api/vendors/outreach-bulk/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:k.ready.map(v=>({email:v.contactEmail,name:v.name,source:src,sourceId:v.id}))})});
     const d=await r.json();
     if(r.ok){
-      const why={already_emailed:'already emailed',opted_out:'opted out',invalid_email:'invalid address'};
+      const why={already_emailed:'already emailed',opted_out:'opted out',invalid_email:'invalid address',already_my_vendor:'already your vendor'};
       d.skipped.forEach(s=>{if(s.reason==='duplicate_in_batch')return;k.ready.forEach(v=>{if(v.contactEmail.toLowerCase()===s.email&&!b.excluded[v.id])b.excluded[v.id]=why[s.reason]||s.reason;});});
     }
   }catch(e){/* server re-screens at send time regardless */}
@@ -3191,17 +3320,22 @@ async function vdBulkSend(){
   const egv=rows[0];
   const fu=b.followUp,fuOn=fu.enabled&&fu.message.trim(),fu2On=fuOn&&fu.second.enabled&&fu.second.message.trim();
   const spread=b.spread||0;
+  const abOn=b.ab.on&&b.ab.message.trim();
+  const testId=abOn&&window.crypto&&crypto.randomUUID?crypto.randomUUID():undefined;
+  const recPayload=(v,i)=>({email:v.contactEmail,name:v.name,greeting:v.greeting,categoryKey:b.src+':'+b.cat,city:v.location||'',source:b.src,sourceId:v.id,...(abOn?{variant:i%2?'B':'A'}:{})});
+  const extra={subject:(b.subject||'').trim()||undefined,...(abOn?{variantB:{message:b.ab.message.trim(),subject:(b.ab.subject||'').trim()||undefined},testId}:{})};
+  const abNote=abOn?`\n\nTWO-VERSION TEST: every other business (in the order listed) gets version B instead:\nSubject: ${(b.ab.subject||'').trim()||'(standard subject)'}\n${vdFill(b.ab.message.trim(),egv)}`:'';
   const fuNote=(fuOn?`\n\nFOLLOW-UP: ${fu.days} days after each email, one follow-up goes automatically to anyone who hasn't replied (stopping if they reply, unsubscribe, bounce or report spam). It will read:\n${vdFill(fu.message,egv)}`:'\n\nNo follow-up will be sent.')
     +(fu2On?`\n\nSECOND FOLLOW-UP: ${fu.second.days} days after the first, one final note goes to anyone still silent. It will read:\n${vdFill(fu.second.message,egv)}`:'');
   const head=spread?`Schedule this email for ${rows.length} business${rows.length===1?'':'es'}, spread over ${spread} business days (weekdays 9:30am–4:30pm Central)? NOTHING is sent right now.`:`Send this email to ${willSend} business${willSend===1?'':'es'}?`;
   // The final human gate: exact recipients + exact message (+ the exact follow-ups that will be sent later).
-  if(!confirm(`${head}\n\n${list}${spread?'':capNote}${unvNote}\n\nEach email includes your business address and an unsubscribe link.\n\nMessage (as it will read for ${egv.name}):\n${vdFill(message,egv)}${fuNote}`))return;
+  if(!confirm(`${head}\n\n${list}${spread?'':capNote}${unvNote}\n\nEach email includes your business address and an unsubscribe link.\n\nSubject: ${(b.subject||'').trim()||'(standard subject)'}\nMessage (as it will read for ${egv.name}):\n${vdFill(message,egv)}${abNote}${fuNote}`))return;
   const followPayload=fuOn?{enabled:true,days:fu.days,message:fu.message,second:fu2On?{enabled:true,days:fu.second.days,message:fu.second.message}:{enabled:false}}:{enabled:false};
   if(spread){
     b.phase='sending';b.progress={done:0,total:rows.length};vdBulkRender();
     const res={sent:0,failed:[],skipped:[],stopMsg:'',followUps:0,scheduled:0};
     try{
-      const r=await fetch('/api/vendors/outreach-bulk/schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:rows.map(v=>({email:v.contactEmail,name:v.name,greeting:v.greeting})),message,spreadDays:spread,followUp:followPayload})});
+      const r=await fetch('/api/vendors/outreach-bulk/schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:rows.map(recPayload),message,spreadDays:spread,followUp:followPayload,...extra})});
       const d=await r.json();
       if(!r.ok)res.stopMsg=d.error?.message||'Scheduling failed.';
       else{res.scheduled=d.scheduled;res.skipped=d.skipped||[];res.firstDue=d.firstDue;res.lastDue=d.lastDue;res.spreadDays=d.spreadDays;res.perDay=d.perDay;res.followUpDays=d.followUpDays;res.secondFollowUpDays=d.secondFollowUpDays;}
@@ -3218,7 +3352,7 @@ async function vdBulkSend(){
   for(let i=0;i<rows.length;i+=CHUNK){
     const chunk=rows.slice(i,i+CHUNK);
     try{
-      const r=await fetch('/api/vendors/outreach-bulk/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:chunk.map(v=>({email:v.contactEmail,name:v.name,greeting:v.greeting})),message,followUp:followPayload})});
+      const r=await fetch('/api/vendors/outreach-bulk/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:chunk.map((v,ci)=>recPayload(v,i+ci)),message,followUp:followPayload,...extra})});
       const d=await r.json();
       if(!r.ok){res.stopMsg=d.error?.message||'Sending stopped.';break;}
       res.followUps+=d.followUpsScheduled||0;if(d.followUpDays)res.followUpDays=d.followUpDays;if(d.secondFollowUpDays)res.secondFollowUpDays=d.secondFollowUpDays;
@@ -3263,7 +3397,7 @@ async function vdLettersOpen(src){
   const p=VD.panels[src];
   const rows=[...p.selected.values()];
   if(!rows.length)return;
-  VD.bulk={src,cat:p.cat,rows,phase:'letters',mode:'letters',message:'',includeWithEmail:false,includeRecent:false,letterError:'',letterResult:null,draftError:'',status:null};
+  VD.bulk={src,cat:p.cat,rows,phase:'letters',mode:'letters',message:'',includeQr:true,includeWithEmail:false,includeRecent:false,letterError:'',letterResult:null,draftError:'',status:null};
   vdModalEl().style.display='flex';
   vdBulkRender();
   try{VD.bulk.message=(await vdTemplate(p)).letterMessage;}
@@ -3303,6 +3437,7 @@ function vdLettersHtml(b,cat){
     ${b.letterError?`<div class="vd-warn">${escAttr(b.letterError)}</div>`:''}
     <label class="vd-fu-line"><input type="checkbox" class="vd-inc-email"${b.includeWithEmail?' checked':''}> <span>Also mail the ones that have an email</span></label>
     <label class="vd-fu-line"><input type="checkbox" class="vd-inc-recent"${b.includeRecent?' checked':''}> <span>Also mail ones lettered in the last ${VD_LETTER_RECENT_DAYS} days</span></label>
+    ${(typeof UX!=='undefined'&&UX.workPage&&UX.workPage.enabled)?`<label class="vd-fu-line"><input type="checkbox" class="vd-qr-on"${b.includeQr?' checked':''}> <span>Add a QR code to my Work With Us page, so vendors can send their portfolio, license and insurance</span></label>`:''}
     <label class="vd-msglabel">Letter text — edit it if you like</label>
     <textarea class="vd-letter-msg cred-input" rows="14" placeholder="Write your letter" style="width:100%;box-sizing:border-box;font-size:13px;line-height:1.5;resize:vertical">${escAttr(b.message)}</textarea>
     <div class="sm">Each letter has your return address and phone at the top, is addressed to the business, and is signed with your name. <b>{name}</b> is filled in for each${example?` — first one: ${escAttr(example)}`:''}.</div>
@@ -3346,6 +3481,15 @@ function vdBuildLettersDoc(d){
     doc.text('Sincerely,',mx,y);y+=34;
     [S.founder||S.company,S.founder?S.company:''].filter(Boolean).forEach(line=>{doc.text(line,mx,y);y+=14;});
     if(L.links&&L.links.length){y+=6;doc.setFontSize(10);doc.setTextColor(90);L.links.forEach(line=>{doc.text(line,mx,y);y+=13;});doc.setTextColor(0);}
+    if(d.qrUrl){
+      y+=20;if(y>ph-110){doc.addPage();y=60;}
+      if(uxQrPdf(doc,d.qrUrl,mx,y,64)){
+        doc.setFontSize(9);doc.setTextColor(90);
+        doc.text('Send us your portfolio, license and proof of insurance.',mx+76,y+18);
+        doc.splitTextToSize('Scan the code, or visit '+d.qrUrl.replace(/^https?:\/\//,'').replace(/\?src=qr$/,''),maxW-76).forEach((line,li)=>doc.text(line,mx+76,y+32+li*11));
+        doc.setTextColor(0);
+      }
+    }
   });
   return doc;
 }
@@ -3370,6 +3514,7 @@ async function vdLettersGenerate(action){
     const day=new Date().toISOString().slice(0,10);
     if(isEnv){vdBuildEnvelopesDoc(d).save('envelopes_'+day+'.pdf');b.letterNote=`${d.letters.length} envelope${d.letters.length===1?'':'s'} downloaded.`;b.phase=back;return vdBulkRender();}
     if(isLab){vdBuildLabelsDoc(d).save('address_labels_'+day+'.pdf');b.letterNote=`${d.letters.length} label${d.letters.length===1?'':'s'} downloaded (Avery 5160).`;b.phase=back;return vdBulkRender();}
+    d.qrUrl=(b.includeQr&&typeof UX!=='undefined'&&UX.workPage&&UX.workPage.enabled&&UX.workPage.qrUrl)?UX.workPage.qrUrl:null;
     const doc=vdBuildLettersDoc(d);
     if(action==='print'){doc.autoPrint();window.open(doc.output('bloburl'));}
     else doc.save('vendor_letters_'+day+'.pdf');
@@ -3635,28 +3780,9 @@ async function loadVendorOutreach(){
     const fd=fr.ok?await fr.json():{pending:[]};
     const qd=qr.ok?await qr.json():null;
     const fuEl=document.getElementById('vendor-followups');if(fuEl)fuEl.innerHTML=vdQueueHtml(qd)+vdFollowUpsHtml(fd);
-    const list=d.outreach||[];
-    if(!list.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No outreach sent yet</div>';return;}
-    const delivery=o=>o.delivery_status==='bounced'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">✗ BOUNCED</span>'
-      :o.delivery_status==='complained'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">🚫 SPAM COMPLAINT</span>'
-      :o.delivery_status==='soft_bounce'?'<span style="color:var(--ink3);font-family:var(--fm);font-size:9px">⚠ DELAYED</span>'
-      :`<span style="color:${o.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${o.status==='sent'?'✓ SENT':'✗ FAILED'}</span>`;
-    const fu=o=>{if(!o.followup_status)return '';const nm=o.followup_step===2?'Second follow-up':'Follow-up';
-      return o.followup_status==='pending'?`↻ ${nm} scheduled for ${vdDate(o.followup_due_at)}`
-      :o.followup_status==='sending'?`↻ ${nm} sending now`
-      :o.followup_status==='sent'?`↻ ${nm} sent`
-      :o.followup_status==='failed'?`↻ ${nm} failed`
-      :`↻ ${nm} cancelled — ${VD_FU_CANCEL[o.followup_cancel_reason]||'cancelled'}`;};
-    el.innerHTML=list.slice(0,10).map(o=>`
-      <div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-          <span>${escapeHtmlClient(o.vendor_name)} · ${escapeHtmlClient(o.to_email)}</span>
-          ${delivery(o)}
-        </div>
-        ${o.delivery_detail&&o.delivery_status?`<div class="sm" style="margin-top:3px">${escapeHtmlClient(o.delivery_detail)}</div>`:''}
-        ${fu(o)?`<div class="sm" style="margin-top:3px">${escapeHtmlClient(fu(o))}</div>`:''}
-        ${o.reply_text?`<div style="margin-top:6px;padding:7px 9px;background:var(--bg3);border-left:2px solid var(--green);border-radius:var(--r);font-size:11px;color:var(--ink2)"><div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Reply${o.replied_at?' · '+vdDate(o.replied_at):''}</div>${escapeHtmlClient(o.reply_text).slice(0,600).replace(/\n/g,'<br>')}</div>`:''}
-      </div>`).join('');
+    UX.voRows=d.outreach||[];
+    voRender(); // reply sorting, filters and re-sorting live in the results script below
+    if(typeof repLoad==='function')repLoad();
   }catch(e){/* leave existing content on transient failure */}
 }
 
@@ -5052,6 +5178,7 @@ function fillCompanyProfileForm(){
   set('prof-site',ME.profile.site);
   set('prof-linkedin',ME.profile.linkedinUrl);
   {const la=document.getElementById('prof-lead-alerts');if(la)la.checked=ME.profile.leadAlerts!==false;}
+  {const mr=document.getElementById('prof-monthly-report');if(mr)mr.checked=ME.profile.monthlyReport!==false;}
   set('prof-service-area',ME.profile.serviceArea);
   set('prof-services',ME.profile.services);
   set('prof-differentiators',ME.profile.differentiators);
@@ -5095,7 +5222,7 @@ async function saveCompanyProfile(){
       companyName, industry:val('prof-industry'),
       founderName:val('prof-founder'), phone:val('prof-phone'), email:val('prof-email'), address:val('prof-address'),
       site:val('prof-site'), serviceArea:val('prof-service-area'), services, differentiators:val('prof-differentiators'),
-      voice:val('prof-voice'), logoDataUrl:profLogoDataUrl, linkedinUrl:val('prof-linkedin'), leadAlerts:!!document.getElementById('prof-lead-alerts')?.checked
+      voice:val('prof-voice'), logoDataUrl:profLogoDataUrl, linkedinUrl:val('prof-linkedin'), leadAlerts:!!document.getElementById('prof-lead-alerts')?.checked, monthlyReport:!!document.getElementById('prof-monthly-report')?.checked
     })});
     const d=await r.json();
     if(!r.ok){s.textContent=d.error?.message||'Failed to save';s.style.color='var(--red)';if(btn)btn.disabled=false;if(spin)spin.style.display='none';return;} // re-enable, or the button stays dead after a rejected save
@@ -5105,7 +5232,7 @@ async function saveCompanyProfile(){
     // (topbar company name, industry-gated real-estate sections, etc.)
     // without a full page reload.
     ME.companyName=companyName;ME.industry=val('prof-industry');
-    Object.assign(ME.profile,{leadAlerts:!!document.getElementById('prof-lead-alerts')?.checked,linkedinUrl:d.linkedinUrl||'',founderName:val('prof-founder'),phone:val('prof-phone'),email:val('prof-email'),address:val('prof-address'),site:val('prof-site'),serviceArea:val('prof-service-area'),services,differentiators:val('prof-differentiators'),voice:val('prof-voice')});
+    Object.assign(ME.profile,{leadAlerts:!!document.getElementById('prof-lead-alerts')?.checked,monthlyReport:!!document.getElementById('prof-monthly-report')?.checked,linkedinUrl:d.linkedinUrl||'',founderName:val('prof-founder'),phone:val('prof-phone'),email:val('prof-email'),address:val('prof-address'),site:val('prof-site'),serviceArea:val('prof-service-area'),services,differentiators:val('prof-differentiators'),voice:val('prof-voice')});
     const nameEl=document.getElementById('topbar-company-name');if(nameEl)nameEl.textContent=companyName;
     ME.showRealEstateFeatures=(ME.industry==='home_services'||ME.industry==='real_estate');
     document.querySelectorAll('.real-estate-only').forEach(el=>{el.style.display=ME.showRealEstateFeatures?'':'none';});
@@ -5483,11 +5610,11 @@ function renderInboxLeads(){
   el.innerHTML=inboxLeads.map(l=>`
     <div style="border:1px solid var(--bdr2);border-radius:var(--r2);padding:12px 14px;background:var(--bg3)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <strong style="color:var(--ink);font-size:14px">${l.name}</strong>
+        <strong style="color:var(--ink);font-size:14px">${uxEsc(l.name)}</strong>
         <span style="font-family:var(--fm);font-size:8px;color:var(--ink3)">${new Date(l.created_at).toLocaleString()}</span>
       </div>
-      <div style="font-size:12px;color:var(--ink2);margin-bottom:6px">${[l.phone,l.email].filter(Boolean).join(' · ')||'No contact info'}</div>
-      ${l.message?`<div style="font-size:12px;color:var(--ink);margin-bottom:8px;white-space:pre-wrap">${l.message}</div>`:''}
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:6px;overflow-wrap:anywhere">${[l.phone,l.email].filter(Boolean).map(uxEsc).join(' · ')||'No contact info'}</div>
+      ${l.message?`<div style="font-size:12px;color:var(--ink);margin-bottom:8px;white-space:pre-wrap;overflow-wrap:anywhere">${uxEsc(l.message)}</div>`:''}
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
         <span style="font-family:var(--fm);font-size:8px;color:${statusColor[l.status]||'var(--ink3)'};letter-spacing:1px;text-transform:uppercase">● ${l.status}</span>
         <select onchange="updateLeadStatus('${l.id}',this.value)" style="margin-left:auto;font-size:11px;padding:3px 6px">
@@ -6188,6 +6315,7 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
     </div>
     <div class="cred-row"><div class="cred-label">LinkedIn Profile <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink3)">(optional — shown in your outreach emails)</span></div><input class="cred-input" type="text" id="prof-linkedin" placeholder="https://www.linkedin.com/in/your-name"></div>
     <div class="cred-row"><label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0"><input type="checkbox" id="prof-lead-alerts" checked style="width:16px;height:16px"> Email me the moment a new lead fills out my landing page form</label></div>
+    <div class="cred-row"><label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0"><input type="checkbox" id="prof-monthly-report" checked style="width:16px;height:16px"> Email me a results report in the first week of each month</label></div>
     <div class="cred-row"><div class="cred-label">Services Offered</div><textarea class="cred-input" id="prof-services" style="min-height:60px;resize:vertical" placeholder="What does this business actually do?"></textarea></div>
     <div class="cred-row"><div class="cred-label">Key Differentiators</div><textarea class="cred-input" id="prof-differentiators" style="min-height:60px;resize:vertical" placeholder="What makes this business different from competitors?"></textarea></div>
     <div class="cred-row"><div class="cred-label">Brand Voice</div><input class="cred-input" type="text" id="prof-voice" placeholder="e.g. warm and community-focused, or sharp and authoritative"></div>
@@ -6198,6 +6326,11 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
     </div>
     <button class="btn btn-blue" id="prof-save-btn" onclick="saveCompanyProfile()" style="margin-top:10px"><span class="spin" id="prof-spin"></span>Save Company Profile</button>
     <div class="sm" id="prof-s"></div>
+  </div>
+
+  <div class="platform-card" style="margin-bottom:16px" id="sd-card">
+    <div class="platform-name" style="margin-bottom:12px">Sending Domain</div>
+    <div id="sd-body"><div class="sm">Loading…</div></div>
   </div>
 
   <div class="g2">
@@ -6342,6 +6475,646 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
 
 <script>
 loadSocialAnalytics();
+</script>
+<script>
+/* ===== Outreach results, reply sorting, vendor relationships, "work with us",
+   past customers, lead replies, monthly report, sending domain =====
+   Same conventions as the vendor panels above: state lives in JS keyed by id,
+   and handlers get only numeric ids or UUIDs, never free text. Everything
+   that comes from a person outside the company (lead, vendor, reply) is
+   escaped with uxEsc before it is shown. */
+const UX={rel:{filter:'',rows:[],summary:null,stages:[]},voFilter:'',voLimit:10,voRows:[],workPage:null,relEdit:null,relCtx:null,
+  cust:{rows:[],offset:0,total:0,search:'',info:null,draft:null,templates:[]},ls:null,lsBusy:false,report:null,sd:null};
+const uxEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+async function uxJson(url,opts){const r=await fetch(url,opts);let d={};try{d=await r.json();}catch(e){/* empty body */}if(!r.ok)throw new Error((d.error&&d.error.message)||('Request failed ('+r.status+')'));return d;}
+const uxSend=(url,body,method)=>uxJson(url,{method:method||'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+const uxDay=iso=>iso?new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+const uxTitle=s=>String(s||'').toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
+const uxPct=n=>n==null?'—':n+'%';
+const uxToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+function uxCopy(text,label){
+  const done=()=>showNotif('Copied',label||'');
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done).catch(()=>showNotif('Could not copy','Select the text and copy it yourself'));}
+  else showNotif('Could not copy','Select the text and copy it yourself');
+}
+
+/* ---------- dialog ---------- */
+function uxModalEl(){
+  let m=document.getElementById('ux-modal');
+  if(!m){
+    m=document.createElement('div');m.id='ux-modal';m.className='vd-modal';
+    m.innerHTML='<div class="vd-modal-box" role="dialog" aria-modal="true" tabindex="-1"></div>';
+    document.documentElement.appendChild(m); // on <html>: body has a CSS filter, which breaks position:fixed
+    m.addEventListener('click',e=>{if(e.target.id==='ux-modal'&&!UX.modalLocked)uxClose();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&m.style.display==='flex'&&!UX.modalLocked)uxClose();});
+  }
+  return m;
+}
+function uxOpen(html){const m=uxModalEl();const box=m.querySelector('.vd-modal-box');box.innerHTML=html;m.style.display='flex';box.scrollTop=0;return box;}
+function uxBox(){const m=document.getElementById('ux-modal');return m?m.querySelector('.vd-modal-box'):null;}
+function uxClose(){const m=document.getElementById('ux-modal');if(m)m.style.display='none';UX.modalLocked=false;}
+const uxHead=(title,sub)=>`<div class="vd-mh"><div><div class="vd-mt">${title}</div>${sub?`<div class="sm">${sub}</div>`:''}</div>${UX.modalLocked?'':'<button class="btn-xs" onclick="uxClose()" aria-label="Close">✕</button>'}</div>`;
+
+/* ---------- QR codes (for mailed letters and the work-with-us page) ---------- */
+function uxQr(text){
+  if(typeof qrcode!=='function')return null;
+  try{const q=qrcode(0,'M');q.addData(String(text));q.make();return q;}catch(e){return null;}
+}
+function uxQrSvg(text,px){
+  const q=uxQr(text);if(!q)return '';
+  const n=q.getModuleCount(),cell=px/(n+8);let d='';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))d+=`M${((c+4)*cell).toFixed(2)} ${((r+4)*cell).toFixed(2)}h${cell.toFixed(2)}v${cell.toFixed(2)}h-${cell.toFixed(2)}z`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${px} ${px}" width="${px}" height="${px}" role="img" aria-label="QR code" style="background:#fff;border-radius:6px"><path d="${d}" fill="#000"/></svg>`;
+}
+function uxQrPdf(doc,text,x,y,size){
+  const q=uxQr(text);if(!q)return false;
+  const n=q.getModuleCount(),cell=size/n;
+  doc.setFillColor(0,0,0);
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))doc.rect(x+c*cell,y+r*cell,cell+0.15,cell+0.15,'F');
+  return true;
+}
+
+/* ---------- vendor relationships ---------- */
+const REL_TONE={replied:'green',meeting:'green',working:'green',passed:'amber'};
+async function relLoad(){
+  const el=document.getElementById('rel-list');if(!el)return;
+  const f=UX.rel.filter;
+  try{
+    const d=await uxJson('/api/relationships'+(f==='due'?'?due=1':f?'?stage='+encodeURIComponent(f):''));
+    UX.rel.rows=d.relationships;UX.rel.summary=d.summary;UX.rel.stages=d.stages;
+    relRender();
+  }catch(e){el.innerHTML='<div class="sm" style="color:var(--red)">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+function relFilter(k){UX.rel.filter=k;relLoad();}
+function relRender(){
+  const s=UX.rel.summary||{byStage:{},dueToday:0,mine:0};
+  const chips=[['','All'],['due','Follow up now'+(s.dueToday?' ('+s.dueToday+')':'')],...UX.rel.stages.map(x=>[x.key,x.label+(s.byStage[x.key]?' ('+s.byStage[x.key]+')':'')]),['mine','My vendors'+(s.mine?' ('+s.mine+')':'')]];
+  document.getElementById('rel-filters').innerHTML=chips.map(([k,l])=>`<button class="${UX.rel.filter===k?'btn btn-blue':'btn-ghost'} rel-chip" onclick="relFilter('${k}')">${uxEsc(l)}</button>`).join('');
+  const el=document.getElementById('rel-list');
+  if(!UX.rel.rows.length){
+    el.innerHTML='<div class="sm" style="padding:14px 0">'+(UX.rel.filter?'Nothing here.':'No one yet. Businesses you email appear here automatically as “Contacted”, and move to “Replied” when they answer. You can also press 📋 Track on any business in the lists above, or add one yourself.')+'</div>';
+    return;
+  }
+  const today=uxToday();
+  el.innerHTML=UX.rel.rows.map(r=>{
+    const overdue=r.nextFollowUp&&r.nextFollowUp<=today&&r.stage!=='passed';
+    return `<div class="rel-card">
+      <div class="rel-top"><div class="rel-name">${uxEsc(r.name)}${r.isMyVendor?' <span class="vd-badge vd-tone-green">⭐ MY VENDOR</span>':''}${r.source==='inbound'?' <span class="vd-badge">📥 SENT US DETAILS</span>':''}</div>
+        <div class="sm">${[r.email,r.phone].filter(Boolean).map(uxEsc).join(' · ')}</div></div>
+      <div class="rel-ctl">
+        <label class="rel-lab">Stage<select class="btn-xs" onchange="relPatch(${r.id},{stage:this.value})">${UX.rel.stages.map(x=>`<option value="${x.key}"${x.key===r.stage?' selected':''}>${uxEsc(x.label)}</option>`).join('')}</select></label>
+        <label class="rel-lab">Next follow-up<input type="date" class="btn-xs" value="${r.nextFollowUp||''}" onchange="relPatch(${r.id},{nextFollowUp:this.value||null})"></label>
+        <label class="rel-lab rel-chk"><input type="checkbox"${r.isMyVendor?' checked':''} onchange="relPatch(${r.id},{isMyVendor:this.checked})"> Already my vendor</label>
+      </div>
+      ${overdue?'<div class="rel-due">⏰ Follow-up date has arrived</div>':''}
+      ${r.notes?`<div class="rel-notes">${uxEsc(r.notes).replace(/\n/g,'<br>')}</div>`:''}
+      <div class="rel-btns"><button class="btn-xs" onclick="relOpen(${r.id})">✎ Notes &amp; details</button></div>
+    </div>`;
+  }).join('');
+}
+async function relPatch(id,patch){
+  try{await uxSend('/api/relationships/'+id,patch,'PATCH');relLoad();}
+  catch(e){showNotif('Could not save',e.message);relLoad();}
+}
+function relOpen(id){
+  const rec=typeof id==='object'&&id?id:(UX.rel.rows.find(x=>x.id===id)||{id:null,source:'manual',sourceId:null,name:'',email:'',phone:'',stage:'new',notes:'',nextFollowUp:'',isMyVendor:false});
+  UX.relEdit=rec;
+  if(typeof id!=='object')UX.relCtx=null;
+  const stages=UX.rel.stages.length?UX.rel.stages:[{key:'new',label:'Not contacted'},{key:'contacted',label:'Contacted'},{key:'replied',label:'Replied'},{key:'meeting',label:'Meeting set'},{key:'working',label:'Working together'},{key:'passed',label:'Not a fit'}];
+  uxOpen(uxHead(rec.id?'Vendor details':'Track a business','Keep notes and a reminder date. Only you see this.')
+    +`<label class="vd-msglabel">Business name</label><input id="rel-f-name" class="cred-input" maxlength="200" value="${uxEsc(rec.name)}" style="width:100%;box-sizing:border-box">
+    <div class="rel-2"><div><label class="vd-msglabel">Email</label><input id="rel-f-email" class="cred-input" maxlength="200" value="${uxEsc(rec.email||'')}" style="width:100%;box-sizing:border-box"></div>
+    <div><label class="vd-msglabel">Phone</label><input id="rel-f-phone" class="cred-input" maxlength="40" value="${uxEsc(rec.phone||'')}" style="width:100%;box-sizing:border-box"></div></div>
+    <div class="rel-2"><div><label class="vd-msglabel">Stage</label><select id="rel-f-stage" class="cred-input">${stages.map(x=>`<option value="${x.key}"${x.key===(rec.stage||'new')?' selected':''}>${uxEsc(x.label)}</option>`).join('')}</select></div>
+    <div><label class="vd-msglabel">Next follow-up</label><input id="rel-f-date" type="date" class="cred-input" value="${rec.nextFollowUp||''}" style="width:100%;box-sizing:border-box"></div></div>
+    <label class="vd-fu-line" style="margin-top:10px"><input type="checkbox" id="rel-f-mine"${rec.isMyVendor?' checked':''}> <span>Already my vendor <span class="sm">(they are left out of cold emails)</span></span></label>
+    <label class="vd-msglabel">Notes</label><textarea id="rel-f-notes" class="cred-input" rows="6" maxlength="4000" style="width:100%;box-sizing:border-box" placeholder="Who you spoke with, what they do well, what was agreed…">${uxEsc(rec.notes||'')}</textarea>
+    <div class="sm" id="rel-f-err" style="color:var(--red)"></div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="relSave()">Save</button><button class="btn-ghost" onclick="uxClose()">Cancel</button>${rec.id?'<button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="relRemove()">Remove from my list</button>':''}</div>`);
+}
+async function relOpenForRow(src,id){
+  const v=VD.panels[src].rows[id];if(!v)return;
+  let existing=null;
+  if(v.relationship){try{const d=await uxJson('/api/relationships');existing=d.relationships.find(x=>x.id===v.relationship.id)||null;}catch(e){/* open blank below */}}
+  UX.relCtx={src,rowId:id};
+  relOpen(existing||{id:null,source:src,sourceId:id,name:v.name,email:v.contactEmail||'',phone:v.phone||'',stage:'new',notes:'',nextFollowUp:'',isMyVendor:false});
+  UX.relCtx={src,rowId:id};
+}
+async function relSave(){
+  const rec=UX.relEdit;if(!rec)return;
+  const g=id=>document.getElementById(id);
+  const body={name:g('rel-f-name').value,email:g('rel-f-email').value,phone:g('rel-f-phone').value,stage:g('rel-f-stage').value,nextFollowUp:g('rel-f-date').value||null,isMyVendor:g('rel-f-mine').checked,notes:g('rel-f-notes').value};
+  try{
+    const d=rec.id?await uxSend('/api/relationships/'+rec.id,body,'PATCH'):await uxSend('/api/relationships',{...body,source:rec.source||'manual',sourceId:rec.sourceId||null});
+    const r=d.relationship;
+    if(UX.relCtx){const v=VD.panels[UX.relCtx.src].rows[UX.relCtx.rowId];if(v){v.relationship={id:r.id,stage:r.stage,isMyVendor:r.isMyVendor,nextFollowUp:r.nextFollowUp};vdRefreshRow(UX.relCtx.src,UX.relCtx.rowId);}}
+    UX.relCtx=null;uxClose();relLoad();
+  }catch(e){g('rel-f-err').textContent=e.message;}
+}
+async function relRemove(){
+  const rec=UX.relEdit;if(!rec||!rec.id)return;
+  if(!confirm('Remove '+rec.name+' from your list? Your notes about them will be deleted.'))return;
+  try{
+    await uxSend('/api/relationships/'+rec.id,null,'DELETE');
+    if(UX.relCtx){const v=VD.panels[UX.relCtx.src].rows[UX.relCtx.rowId];if(v){v.relationship=null;vdRefreshRow(UX.relCtx.src,UX.relCtx.rowId);}}
+    UX.relCtx=null;uxClose();relLoad();
+  }catch(e){document.getElementById('rel-f-err').textContent=e.message;}
+}
+
+/* ---------- sent outreach + reply sorting ---------- */
+const UX_REPLY={interested:['Interested','green'],not_now:['Not now / not interested','amber'],unsubscribe:['Asked to unsubscribe','red'],auto_reply:['Automatic reply',''],other:['Needs a look','blue']};
+const UX_REPLY_ORDER=['interested','not_now','unsubscribe','auto_reply','other'];
+function voSetFilter(v){UX.voFilter=v;UX.voLimit=10;voRender();}
+function voMore(){UX.voLimit+=20;voRender();}
+async function voSetCategory(id,cat){
+  try{await uxSend('/api/vendors/outreach/'+id+'/reply-category',{category:cat},'PATCH');showNotif('Reply re-sorted',UX_REPLY[cat][0]+(cat==='unsubscribe'?' — they will not be emailed again':''));}
+  catch(e){showNotif('Could not save',e.message);}
+  loadVendorOutreach();
+}
+function voRender(){
+  const el=document.getElementById('vendor-outreach-list');if(!el)return;
+  const all=UX.voRows;
+  if(!all.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No outreach sent yet</div>';return;}
+  const hasReply=o=>!!(o.reply_text&&o.reply_category!=='auto_reply');
+  const counts={all:all.length,replies:all.filter(hasReply).length,interested:all.filter(o=>o.reply_category==='interested'&&hasReply(o)).length,review:all.filter(o=>o.reply_category==='other'&&hasReply(o)).length};
+  const f=UX.voFilter;
+  let list=all;
+  if(f==='replies')list=all.filter(hasReply);else if(f==='interested')list=all.filter(o=>o.reply_category==='interested'&&hasReply(o));else if(f==='review')list=all.filter(o=>o.reply_category==='other'&&hasReply(o));
+  const delivery=o=>o.delivery_status==='bounced'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">✗ BOUNCED</span>'
+    :o.delivery_status==='complained'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">🚫 SPAM COMPLAINT</span>'
+    :o.delivery_status==='soft_bounce'?'<span style="color:var(--ink3);font-family:var(--fm);font-size:9px">⚠ DELAYED</span>'
+    :`<span style="color:${o.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${o.status==='sent'?'✓ SENT':'✗ FAILED'}</span>`;
+  const fu=o=>{if(!o.followup_status)return '';const nm=o.followup_step===2?'Second follow-up':'Follow-up';
+    return o.followup_status==='pending'?`↻ ${nm} scheduled for ${vdDate(o.followup_due_at)}`
+    :o.followup_status==='sending'?`↻ ${nm} sending now`
+    :o.followup_status==='sent'?`↻ ${nm} sent`
+    :o.followup_status==='failed'?`↻ ${nm} failed`
+    :`↻ ${nm} cancelled — ${VD_FU_CANCEL[o.followup_cancel_reason]||'cancelled'}`;};
+  const chip=(k,l,n)=>`<button class="${f===k?'btn btn-blue':'btn-ghost'} rel-chip" onclick="voSetFilter('${k}')">${l} (${n})</button>`;
+  const shown=list.slice(0,UX.voLimit);
+  el.innerHTML=`<div class="rel-chips">${chip('','All',counts.all)}${chip('replies','Replies',counts.replies)}${chip('interested','Interested',counts.interested)}${chip('review','Needs a look',counts.review)}</div>`
+    +(shown.length?shown.map(o=>{
+      const rc=o.reply_text?(UX_REPLY[o.reply_category]||UX_REPLY.other):null;
+      return `<div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span style="min-width:0;overflow-wrap:anywhere">${uxEsc(o.vendor_name)} · ${uxEsc(o.to_email)}${o.kind&&o.kind!=='initial'?' <span class="vd-badge">'+(o.kind==='followup2'?'FINAL FOLLOW-UP':'FOLLOW-UP')+'</span>':''}${o.variant?' <span class="vd-badge">VERSION '+uxEsc(o.variant)+'</span>':''}</span>
+          ${delivery(o)}
+        </div>
+        ${o.subject?`<div class="sm" style="margin-top:2px">Subject: ${uxEsc(o.subject)}</div>`:''}
+        ${o.delivery_detail&&o.delivery_status?`<div class="sm" style="margin-top:3px">${uxEsc(o.delivery_detail)}</div>`:''}
+        ${fu(o)?`<div class="sm" style="margin-top:3px">${uxEsc(fu(o))}</div>`:''}
+        ${o.reply_text?`<div style="margin-top:6px;padding:7px 9px;background:var(--bg3);border-left:2px solid ${rc[1]==='red'?'var(--red)':rc[1]==='amber'?'var(--amber)':'var(--green)'};border-radius:var(--r);font-size:11px;color:var(--ink2)">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:3px"><span style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px">${o.reply_category==='auto_reply'?'Automatic reply':'Reply'}${o.replied_at?' · '+vdDate(o.replied_at):''}</span>
+          <label class="sm" style="display:flex;gap:5px;align-items:center">Sorted as <select class="btn-xs" onchange="voSetCategory('${o.id}',this.value)" aria-label="Sort this reply">${UX_REPLY_ORDER.map(k=>`<option value="${k}"${k===(o.reply_category||'other')?' selected':''}>${uxEsc(UX_REPLY[k][0])}</option>`).join('')}</select></label></div>
+          ${uxEsc(o.reply_text).slice(0,600).replace(/\n/g,'<br>')}</div>`:''}
+      </div>`;}).join(''):'<div class="sm" style="padding:10px">Nothing in this view.</div>')
+    +(list.length>UX.voLimit?`<button class="btn-xs" onclick="voMore()" style="align-self:flex-start">Show ${Math.min(20,list.length-UX.voLimit)} more</button>`:'');
+}
+
+/* ---------- results report ---------- */
+function repTable(title,firstCol,rows,keyFn){
+  if(!rows.length)return '';
+  return `<div class="rep-block"><div class="rep-h">${title}</div><div class="rep-scroll"><table class="rep-t"><thead><tr><th>${firstCol}</th><th>Sent</th><th>Replies</th><th>Reply rate</th><th>Interested</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${uxEsc(keyFn(r))}</td><td>${r.sent}</td><td>${r.replies}</td><td>${uxPct(r.replyRate)}</td><td>${r.interested}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+async function repLoad(){
+  const el=document.getElementById('rep-out');if(!el)return;
+  const days=(document.getElementById('rep-days')||{}).value||'90';
+  el.innerHTML='<div class="sm" style="padding:10px">Loading…</div>';
+  try{
+    const d=await uxJson('/api/vendors/outreach-report?days='+encodeURIComponent(days));
+    const o=d.overall;
+    if(!o.sent){el.innerHTML='<div class="sm" style="padding:10px">No first emails sent in this period yet. Results appear here after you send some.</div>';return;}
+    const tile=(n,l)=>`<div class="rep-tile"><div class="rep-n">${n}</div><div class="sm">${l}</div></div>`;
+    const tests=d.abTests.map(t=>{
+      const col=(v,x)=>`<div class="rep-ab"><div class="rep-h">Version ${v}</div><div class="sm">“${uxEsc(x.subject||'(default subject)')}”</div><div class="rep-n" style="font-size:20px">${uxPct(x.replyRate)}</div><div class="sm">${x.replies} ${x.replies===1?'reply':'replies'} from ${x.delivered} delivered${x.interested?' · '+x.interested+' interested':''}</div></div>`;
+      return `<div class="rep-block"><div class="rep-h">Two-version test · started ${uxDay(t.started)}</div><div class="rep-abs">${col('A',t.A)}${col('B',t.B)}</div><div class="vd-warn" style="margin:8px 0 0">${uxEsc(t.result.text)}</div></div>`;
+    }).join('');
+    el.innerHTML=`<div class="rep-tiles">${tile(o.sent,'first emails sent')}${tile(o.replies,'replies'+(o.bounced?' ('+o.bounced+' bounced)':''))}${tile(uxPct(o.replyRate),'reply rate')}${tile(o.interested,'interested')}</div>
+      <div class="sm">Reply rate is replies divided by emails that were delivered. Replies keep arriving for days, so recent emails always look worse than they will end up. Follow-ups and automatic out-of-office replies are not counted.</div>
+      ${tests}
+      ${repTable('By category','Category',d.byCategory,r=>r.label)}
+      ${repTable('By city','City',d.byCity,r=>uxTitle(r.city))}
+      ${repTable('By subject line','Subject',d.bySubject,r=>r.subject)}
+      ${!d.byCategory.length&&!d.byCity.length?'<div class="sm">Category and city breakdowns cover emails sent from now on.</div>':''}`;
+  }catch(e){el.innerHTML='<div class="sm" style="color:var(--red);padding:10px">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+
+/* ---------- "work with us" page ---------- */
+async function wpLoad(){
+  const el=document.getElementById('wp-body');if(!el)return;
+  try{UX.workPage=await uxJson('/api/work-page');wpRender();wpLoadSubs();}
+  catch(e){el.innerHTML='<div class="sm" style="color:var(--red)">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+function wpRender(){
+  const w=UX.workPage,el=document.getElementById('wp-body');if(!w||!el)return;
+  el.innerHTML=`<label class="vd-fu-line"><input type="checkbox" id="wp-on"${w.enabled?' checked':''} onchange="wpToggle(this.checked)"> <span><b>Turn on my “Work with us” page</b></span></label>
+    ${w.enabled&&w.url?`<div class="wp-link"><div class="sm">Your page (share it anywhere):</div>
+      <div class="wp-url"><a href="${uxEsc(w.url)}" target="_blank" rel="noopener">${uxEsc(w.url)}</a></div>
+      <div class="rel-btns"><button class="btn-xs" onclick="uxCopy(UX.workPage.url,'Page link copied')">📋 Copy link</button><button class="btn-xs" onclick="wpShowQr()">🔳 Show QR code</button></div>
+      <div id="wp-qr"></div></div>
+      <label class="vd-msglabel">Message at the top of the page (optional)</label>
+      <textarea id="wp-intro" class="cred-input" rows="4" maxlength="800" style="width:100%;box-sizing:border-box" placeholder="${uxEsc(w.defaultIntro)}">${uxEsc(w.intro||'')}</textarea>
+      <div class="rel-btns"><button class="btn-xs p" onclick="wpSaveIntro()">Save message</button></div>`:'<div class="sm">Vendors can send you their details, portfolio, license and insurance from a simple page. It also gives your mailed letters a QR code to scan. You are emailed when someone submits, and each one is added to your vendor relationships.</div>'}`;
+}
+function wpShowQr(){
+  const w=UX.workPage;if(!w||!w.qrUrl)return;
+  const svg=uxQrSvg(w.qrUrl,220);
+  document.getElementById('wp-qr').innerHTML=svg?`<div style="margin:10px 0">${svg}</div><div class="sm">Scanning this opens your page and marks the visit as coming from a mailed letter. Letters you make from the vendor lists can include it automatically.</div>`:'<div class="sm">The QR code library did not load. Reload the page and try again.</div>';
+}
+async function wpToggle(on){
+  try{UX.workPage=await uxSend('/api/work-page',{enabled:on},'PUT');wpRender();showNotif(on?'Page is on':'Page is off',on?'Vendors can now send you their details':'The page is no longer public');}
+  catch(e){showNotif('Could not save',e.message);wpLoad();}
+}
+async function wpSaveIntro(){
+  try{UX.workPage=await uxSend('/api/work-page',{intro:document.getElementById('wp-intro').value},'PUT');showNotif('Saved','Your page message was updated');wpRender();}
+  catch(e){showNotif('Could not save',e.message);}
+}
+const WP_KIND={portfolio:'Portfolio',license:'License',insurance:'Insurance'};
+async function wpLoadSubs(){
+  const el=document.getElementById('wp-subs');if(!el)return;
+  try{
+    const d=await uxJson('/api/work-page/submissions');
+    if(!d.submissions.length){el.innerHTML='';return;}
+    el.innerHTML='<div class="rep-h" style="margin-top:14px">Sent to you</div>'+d.submissions.map(s=>`<div class="rel-card">
+      <div class="rel-top"><div class="rel-name">${uxEsc(s.companyName)}${s.status==='new'?' <span class="vd-badge vd-tone-amber">NEW</span>':''}${s.via==='qr'?' <span class="vd-badge">📬 FROM A LETTER</span>':''}</div>
+        <div class="sm">${[s.contactName,s.email,s.phone,s.trade].filter(Boolean).map(uxEsc).join(' · ')}${s.website?' · '+uxEsc(s.website):''} · ${uxEsc(uxDay(s.createdAt))}</div></div>
+      ${s.message?`<div class="rel-notes">${uxEsc(s.message).replace(/\n/g,'<br>')}</div>`:''}
+      ${s.files.length?`<div class="rel-btns">${s.files.map(f=>`<a class="btn-xs" href="/api/work-page/submissions/${s.id}/files/${f.id}" download>⬇ ${uxEsc(WP_KIND[f.kind]||f.kind)}: ${uxEsc(f.filename)} (${Math.max(1,Math.round(f.size/1024))} KB)</a>`).join('')}</div>`:''}
+      <div class="rel-btns"><button class="btn-xs" onclick="wpSetStatus(${s.id},'reviewed')">Mark reviewed</button><button class="btn-xs" onclick="wpSetStatus(${s.id},'declined')">Not a fit</button><button class="btn-xs" style="color:var(--red)" onclick="wpDelete(${s.id})">Delete</button></div>
+    </div>`).join('');
+  }catch(e){el.innerHTML='';}
+}
+async function wpSetStatus(id,status){try{await uxSend('/api/work-page/submissions/'+id,{status},'PATCH');wpLoadSubs();}catch(e){showNotif('Could not save',e.message);}}
+async function wpDelete(id){
+  if(!confirm('Delete this submission and its files?'))return;
+  try{await uxSend('/api/work-page/submissions/'+id,null,'DELETE');wpLoadSubs();relLoad();}catch(e){showNotif('Could not delete',e.message);}
+}
+
+/* ---------- monthly results ---------- */
+function mrMonths(){
+  const out=[],d=new Date();d.setDate(1);
+  for(let i=0;i<13;i++){out.push({key:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),label:d.toLocaleDateString('en-US',{month:'long',year:'numeric'})});d.setMonth(d.getMonth()-1);}
+  return out;
+}
+function mrInit(){
+  const sel=document.getElementById('mr-month');if(!sel||sel.options.length)return;
+  const ms=mrMonths();
+  sel.innerHTML=ms.map((m,i)=>`<option value="${m.key}"${i===1?' selected':''}>${m.label}${i===0?' (so far)':''}</option>`).join('');
+  mrLoad();
+}
+async function mrLoad(){
+  const el=document.getElementById('mr-out');if(!el)return;
+  const month=document.getElementById('mr-month').value;
+  el.innerHTML='<div class="sm">Loading…</div>';
+  try{
+    const d=await uxJson('/api/reports/monthly?month='+encodeURIComponent(month));
+    UX.report=d;
+    el.innerHTML=d.sections.length?d.sections.map(s=>`<div class="mr-sec"><div class="rep-h">${uxEsc(s.title)}</div><ul class="vd-list-plain">${s.rows.map(r=>`<li>${uxEsc(r)}</li>`).join('')}</ul></div>`).join('')
+      :'<div class="sm">Nothing was recorded for this month.</div>';
+  }catch(e){UX.report=null;el.innerHTML='<div class="sm" style="color:var(--red)">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+function mrPdf(){
+  const d=UX.report;if(!d||!window.jspdf){showNotif('Nothing to save','Load a month first');return;}
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'pt',format:'letter'});
+  let y=64;const mx=64;
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text(d.report.label+' results',mx,y);y+=22;
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(110);doc.text(d.companyName||'',mx,y);doc.setTextColor(0);y+=30;
+  if(!d.sections.length){doc.text('Nothing was recorded for this month.',mx,y);}
+  d.sections.forEach(s=>{
+    if(y>700){doc.addPage();y=64;}
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(s.title,mx,y);y+=18;
+    doc.setFont('helvetica','normal');doc.setFontSize(11);
+    s.rows.forEach(r=>{doc.splitTextToSize('•  '+r,612-mx*2).forEach(line=>{if(y>730){doc.addPage();y=64;}doc.text(line,mx,y);y+=15;});});
+    y+=12;
+  });
+  doc.setFontSize(9);doc.setTextColor(130);doc.text('Counts come from your Eagle I records. Eagle I cannot see whether a customer posted a review.',mx,760);
+  doc.save('results_'+d.report.month+'.pdf');
+}
+async function mrEmail(btn){
+  const month=document.getElementById('mr-month').value;
+  btn.disabled=true;
+  try{const d=await uxSend('/api/reports/monthly/email',{month});showNotif('Report emailed','Sent to '+d.to);}
+  catch(e){showNotif('Could not email',e.message);}
+  btn.disabled=false;
+}
+
+/* ---------- sending domain ---------- */
+async function sdLoad(){
+  const el=document.getElementById('sd-body');if(!el)return;
+  try{UX.sd=await uxJson('/api/sending-domain');sdRender();}
+  catch(e){el.innerHTML='<div class="sm" style="color:var(--red)">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+function sdRender(){
+  const el=document.getElementById('sd-body');if(!el||!UX.sd)return;
+  const d=UX.sd.domain;
+  if(!d){
+    el.innerHTML=`<div class="sm" style="margin-bottom:8px">Send email from your own address (for example hello@yourcompany.com) instead of the shared Eagle I address. It looks more trustworthy, is more likely to reach the inbox, and one company's mistakes cannot affect another's. You will add a few records where your domain is hosted; this takes about five minutes, and can take up to a day to be recognised.</div>
+      <div class="rel-2"><div><div class="cred-label">Your domain</div><input class="cred-input" id="sd-domain" placeholder="yourcompany.com" autocomplete="off"></div>
+      <div><div class="cred-label">Name before the @</div><input class="cred-input" id="sd-local" value="hello" autocomplete="off"></div></div>
+      <button class="btn btn-blue" style="margin-top:10px" onclick="sdAdd(this)">Connect my domain</button><div class="sm" id="sd-err" style="color:var(--red)"></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="sd-status ${d.verified?'ok':'wait'}">${d.verified?'✓ Verified. Your email now goes out from <b>'+uxEsc(d.fromAddress)+'</b>.':'⏳ Waiting for your domain records. Until they are verified, email keeps going out from the shared address.'}</div>
+    <div class="sm" style="margin:8px 0">Domain: <b>${uxEsc(d.domain)}</b> · Status: ${uxEsc(d.status)}${d.lastCheckedAt?' · last checked '+uxEsc(uxDay(d.lastCheckedAt)):''}</div>
+    ${d.verified?'':`<div class="sm">Add these records at the company that hosts your domain (GoDaddy, Squarespace, Google Domains, Cloudflare…). Copy each value exactly.</div>
+    ${d.records.map((r,i)=>`<div class="rel-card"><div class="rep-h">Record ${i+1} · ${uxEsc(r.type||'')}${r.priority==null?'':' · priority '+uxEsc(r.priority)}${r.status?' · '+uxEsc(r.status):''}</div>
+      <div class="sm">Name</div><div class="sd-val">${uxEsc(r.name||'')} <button class="btn-xs" onclick="uxCopy(UX.sd.domain.records[${i}].name,'Name copied')">Copy</button></div>
+      <div class="sm" style="margin-top:6px">Value</div><div class="sd-val">${uxEsc(r.value||'')} <button class="btn-xs" onclick="uxCopy(UX.sd.domain.records[${i}].value,'Value copied')">Copy</button></div></div>`).join('')}`}
+    <div class="rel-btns" style="margin-top:10px">${d.verified?'':'<button class="btn btn-blue" onclick="sdVerify(this)">Check now</button>'}
+      <label class="rel-lab">Name before the @<input class="btn-xs" id="sd-local2" value="${uxEsc(d.fromLocal)}" maxlength="40" onchange="sdSetLocal(this.value)"></label>
+      <button class="btn-xs" style="color:var(--red)" onclick="sdRemove()">Remove domain</button></div><div class="sm" id="sd-err" style="color:var(--red)"></div>
+    <div class="sm">Replies still reach the email address in your Company Profile.</div>`;
+}
+async function sdAdd(btn){
+  btn.disabled=true;
+  try{const d=await uxSend('/api/sending-domain',{domain:document.getElementById('sd-domain').value,fromLocal:document.getElementById('sd-local').value});UX.sd.domain=d.domain;sdRender();}
+  catch(e){document.getElementById('sd-err').textContent=e.message;btn.disabled=false;}
+}
+async function sdVerify(btn){
+  btn.disabled=true;
+  try{const d=await uxSend('/api/sending-domain/verify');UX.sd.domain=d.domain;sdRender();showNotif(d.domain.verified?'Domain verified':'Not verified yet',d.domain.verified?'Email now goes out from '+d.domain.fromAddress:'DNS changes can take a few hours. Try again later; Eagle I also re-checks by itself.');}
+  catch(e){document.getElementById('sd-err').textContent=e.message;btn.disabled=false;}
+}
+async function sdSetLocal(v){
+  try{const d=await uxSend('/api/sending-domain',{fromLocal:v},'PATCH');UX.sd.domain=d.domain;sdRender();}
+  catch(e){document.getElementById('sd-err').textContent=e.message;}
+}
+async function sdRemove(){
+  if(!confirm('Remove this sending domain? Email will go back to the shared address.'))return;
+  try{await uxSend('/api/sending-domain',null,'DELETE');UX.sd.domain=null;sdRender();}
+  catch(e){document.getElementById('sd-err').textContent=e.message;}
+}
+
+/* ---------- landing pages: results and two-version tests ---------- */
+let landingPageStats={},lpMinVisitors=100;
+function lpStatLine(p){
+  const s=landingPageStats[p.id];
+  if(!s)return '';
+  if(!s.views&&!s.submissions)return p.status==='published'?'No visitors yet':'';
+  return `${s.views} visitor${s.views===1?'':'s'} · ${s.submissions} lead${s.submissions===1?'':'s'}${s.rate!=null?' · '+s.rate+'% filled out the form':''}${s.ab?' · 🧪 testing two versions':''}`;
+}
+function lpAbHtml(p){
+  const s=landingPageStats[p.id]||{},ab=s.ab;
+  const on=!!p.ab_enabled;
+  const inp=(id,val,label,ph)=>`<label style="display:block;font-size:11px;color:var(--ink2);margin:8px 0 3px">${label}</label><input id="${id}" value="${uxEsc(val||'')}" placeholder="${uxEsc(ph||'')}" style="width:100%;box-sizing:border-box" ${on?'':''}>`;
+  return `<div class="lp-edit" style="margin-top:14px;background:var(--bg4);border:1px solid var(--bdr2);border-radius:var(--r2);padding:16px">
+    <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Test two versions of this page</div>
+    <div class="sm">Half of new visitors see your page as written above (version A); the other half see the wording you write here (version B). Each visitor keeps seeing the same one. After enough visitors, Eagle I tells you which brings in more leads. The contact form and everything else stay the same.</div>
+    ${inp('lp-b-headline',p.headline_b,'Version B headline',p.headline||'')}
+    ${inp('lp-b-subheadline',p.subheadline_b,'Version B smaller text under the headline',p.subheadline||'')}
+    ${inp('lp-b-cta',p.cta_primary_b,'Version B button text',p.cta_primary||'')}
+    <div class="sm" style="margin-top:6px">Leave a box empty to keep version A's wording for that part. ${p.status==='published'?'':'The page must be live before anyone sees it.'}</div>
+    ${on&&ab?`<div class="rep-abs" style="margin-top:10px">${['A','B'].map(v=>`<div class="rep-ab"><div class="rep-h">Version ${v}</div><div class="rep-n" style="font-size:20px">${ab[v].rate==null?'—':ab[v].rate+'%'}</div><div class="sm">${ab[v].submissions} lead${ab[v].submissions===1?'':'s'} from ${ab[v].views} visitor${ab[v].views===1?'':'s'}</div></div>`).join('')}</div>
+      <div class="vd-warn" style="margin:8px 0 0">${uxEsc(ab.result.text)}</div>`:''}
+    <div class="vd-mbtns">
+      ${on?`<button class="btn-xs" onclick="lpAbFinish('A')">Keep version A, end the test</button><button class="btn-xs p" onclick="lpAbFinish('B')">Use version B, end the test</button>`:'<button class="btn btn-blue" onclick="lpAbStart()">Start the test</button>'}
+      ${on?'<button class="btn-xs" onclick="lpAbStart(true)">Save version B changes</button>':''}
+    </div><div class="sm" id="lp-ab-err" style="color:var(--red)"></div></div>`;
+}
+function lpAbBody(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  return {headline_b:g('lp-b-headline'),subheadline_b:g('lp-b-subheadline'),cta_primary_b:g('lp-b-cta')};
+}
+async function lpAbStart(keepOn){
+  if(!currentLpPage||!currentLpPage.id)return;
+  try{
+    const d=await uxSend('/api/landing-page/'+currentLpPage.id,{...lpAbBody(),abEnabled:true},'PUT');
+    currentLpPage=d.page;showNotif(keepOn?'Saved':'Test started',keepOn?'Version B was updated':'Visitors are now split between the two versions');
+    await loadLandingPageState();renderLpEditor(d.page);
+  }catch(e){const el=document.getElementById('lp-ab-err');if(el)el.textContent=e.message;}
+}
+async function lpAbFinish(winner){
+  if(!currentLpPage||!currentLpPage.id)return;
+  if(!confirm(winner==='B'?'Make version B the page for everyone and end the test?':'Keep version A for everyone and end the test?'))return;
+  try{
+    const d=await uxSend('/api/landing-page/'+currentLpPage.id+'/ab/finish',{winner});
+    currentLpPage=d.page;showNotif('Test ended',winner==='B'?'Version B is now your page':'Version A stays');
+    await loadLandingPageState();renderLpEditor(d.page);
+  }catch(e){const el=document.getElementById('lp-ab-err');if(el)el.textContent=e.message;}
+}
+
+/* ---------- automatic replies to new leads ---------- */
+async function lsLoad(){
+  const el=document.getElementById('ls-body');if(!el)return;
+  try{UX.ls=await uxJson('/api/lead-sequence');lsRender();}
+  catch(e){el.innerHTML='<div class="sm" style="color:var(--red)">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+function lsRender(){
+  const s=UX.ls,el=document.getElementById('ls-body');if(!s||!el)return;
+  el.innerHTML=`<label class="vd-fu-line"><input type="checkbox" id="ls-on"${s.enabled?' checked':''}> <span><b>Email new leads automatically</b> <span class="sm">(only leads who typed an email address)</span></span></label>
+    <div class="sm" style="margin-bottom:8px">When someone fills out your landing page form, this sends them the first email right away, then up to two follow-ups. It stops the moment you change the lead's status in your inbox (Contacted, Won or Lost), or if they unsubscribe. Follow-ups go out on weekdays between 9am and 5pm Central. Every email carries your business address and an unsubscribe link, and replies come to your email. ${s.stats?`So far: ${s.stats.sent} sent, ${s.stats.waiting} waiting.`:''}</div>
+    ${s.steps.map((st,i)=>`<div class="vd-fu" data-step="${i}">
+      <div class="rep-h">Email ${i+1}${i===0?' · sent right away':` · sent <select class="btn-xs ls-days">${Array.from({length:14},(_,k)=>k+1).map(d=>`<option value="${d}"${d===st.days?' selected':''}>${d} day${d===1?'':'s'}</option>`).join('')}</select> after they contact you`}</div>
+      <label class="vd-msglabel">Subject</label><input class="cred-input ls-subject" maxlength="150" value="${uxEsc(st.subject)}" style="width:100%;box-sizing:border-box">
+      <label class="vd-msglabel">Message</label><textarea class="cred-input ls-message" rows="7" maxlength="1500" style="width:100%;box-sizing:border-box;font-size:13px;line-height:1.5">${uxEsc(st.message)}</textarea>
+      <div class="rel-btns"><button class="btn-xs" onclick="lsPreview(${i+1},this)">Send me a preview of this one</button></div></div>`).join('')}
+    <div class="sm">You can use {name} (their first name), {company}, {phone}, {email} and {founder}. Anything else in curly braces is refused.</div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="lsSave(this)">Save</button><button class="btn-ghost" onclick="lsDefaults()">Restore the standard wording</button></div>
+    <div class="sm" id="ls-note"></div>`;
+}
+function lsCollect(){
+  const steps=[...document.querySelectorAll('#ls-body .vd-fu[data-step]')].map((box,i)=>({days:i===0?0:parseInt(box.querySelector('.ls-days').value,10),subject:box.querySelector('.ls-subject').value,message:box.querySelector('.ls-message').value}));
+  return {enabled:document.getElementById('ls-on').checked,steps};
+}
+async function lsSave(btn){
+  const note=document.getElementById('ls-note');
+  if(btn)btn.disabled=true;
+  try{
+    const body=lsCollect();
+    if(body.enabled&&!confirm('Turn on automatic emails to new leads? From now on, anyone who fills out your form with an email address gets these emails exactly as written above.'))return;
+    await uxSend('/api/lead-sequence',body,'PUT');
+    showNotif('Saved',body.enabled?'New leads will get these emails':'Automatic emails are off');
+    await lsLoad();
+    const n2=document.getElementById('ls-note');if(n2){n2.style.color='var(--green)';n2.textContent='Saved.';}
+  }catch(e){note.style.color='var(--red)';note.textContent=e.message;}
+  finally{if(btn)btn.disabled=false;}
+}
+async function lsPreview(step,btn){
+  const note=document.getElementById('ls-note');
+  btn.disabled=true;
+  try{
+    const body=lsCollect();
+    await uxSend('/api/lead-sequence',{...body,enabled:UX.ls.enabled},'PUT'); // preview shows what is saved, so save first (keeps the on/off setting as it was)
+    const d=await uxSend('/api/lead-sequence/preview',{step});
+    note.style.color='var(--green)';note.textContent='Preview sent to '+d.to+'. It shows your saved wording.';
+  }catch(e){note.style.color='var(--red)';note.textContent=e.message;}
+  btn.disabled=false;
+}
+function lsDefaults(){if(!UX.ls)return;UX.ls.steps=UX.ls.defaults.map(x=>({...x}));lsRender();}
+
+/* ---------- past customers ---------- */
+function cuParseCsv(text){
+  const rows=[];let row=[],cur='',q=false;
+  let t=String(text);if(t.charCodeAt(0)===0xFEFF)t=t.slice(1);
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}
+    else if(c==='"')q=true;
+    else if(c===','||c==='\t'||c===';'){row.push(cur);cur='';}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(cur);cur='';if(row.some(x=>x.trim()))rows.push(row);row=[];}
+    else cur+=c;
+  }
+  row.push(cur);if(row.some(x=>x.trim()))rows.push(row);
+  return rows;
+}
+function cuRowsFromCsv(text){
+  const grid=cuParseCsv(text);
+  if(!grid.length)return [];
+  const isEmail=s=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s).trim());
+  const head=grid[0].map(h=>h.trim().toLowerCase());
+  let body=grid,ci={email:-1,name:-1,first:-1,last:-1,phone:-1};
+  const hasHeader=!grid[0].some(isEmail);
+  if(hasHeader){
+    body=grid.slice(1);
+    head.forEach((h,i)=>{
+      if(ci.email<0&&/e-?mail/.test(h))ci.email=i;
+      else if(ci.first<0&&/^(first|given)/.test(h))ci.first=i;
+      else if(ci.last<0&&/^(last|sur|family)/.test(h))ci.last=i;
+      else if(ci.name<0&&/(^name$|full ?name|customer|contact|client)/.test(h))ci.name=i;
+      else if(ci.phone<0&&/(phone|mobile|cell|tel)/.test(h))ci.phone=i;
+    });
+  }
+  if(ci.email<0){ci.email=grid[hasHeader?1:0]?grid[hasHeader?1:0].findIndex(isEmail):-1;}
+  if(ci.email<0)return [];
+  return body.map(r=>{
+    const name=ci.name>=0?r[ci.name]:[ci.first>=0?r[ci.first]:'',ci.last>=0?r[ci.last]:''].join(' ').trim()||(hasHeader?'':(r[ci.email===0?1:0]||''));
+    return {name:(name||'').trim(),email:(r[ci.email]||'').trim(),phone:ci.phone>=0?(r[ci.phone]||'').trim():''};
+  }).filter(x=>x.email);
+}
+async function cuLoad(reset){
+  const el=document.getElementById('cu-list');if(!el)return;
+  if(reset!==false){UX.cust.offset=0;UX.cust.rows=[];}
+  try{
+    const d=await uxJson('/api/customers?limit=50&offset='+UX.cust.offset+'&search='+encodeURIComponent(UX.cust.search));
+    UX.cust.info=d;UX.cust.total=d.matching;
+    UX.cust.rows=UX.cust.rows.concat(d.customers);UX.cust.offset+=d.customers.length;
+    cuRender();
+  }catch(e){el.innerHTML='<div class="sm" style="color:var(--red)">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+function cuRender(){
+  const d=UX.cust.info,el=document.getElementById('cu-list'),sum=document.getElementById('cu-summary');if(!d||!el)return;
+  sum.innerHTML=d.total?`<b>${d.total}</b> people · <b>${d.emailable}</b> can be emailed${d.optedOut?` · ${d.optedOut} opted out, bounced or reported spam (never emailed)`:''}`:'No customers yet.';
+  el.innerHTML=UX.cust.rows.length?UX.cust.rows.map(c=>`<div class="cu-row"><div style="min-width:0"><b>${uxEsc(c.name)}</b>${c.suppressed?` <span class="vd-badge vd-tone-amber">${c.suppressed==='bounced'?'🚫 BOUNCED':c.suppressed==='complained'?'🚫 SPAM COMPLAINT':'🚫 OPTED OUT'}</span>`:''}
+      <div class="sm" style="overflow-wrap:anywhere">${[c.email,c.phone].filter(Boolean).map(uxEsc).join(' · ')}${c.lastEmailed?' · last emailed '+uxEsc(uxDay(c.lastEmailed)):''}</div></div>
+      <button class="btn-xs" style="color:var(--red)" onclick="cuDelete(${c.id})" aria-label="Remove ${uxEsc(c.name)}">✕</button></div>`).join('')
+    :'<div class="sm" style="padding:10px 0">'+(UX.cust.search?'No one matches that search.':'Import a list to get started.')+'</div>';
+  const more=document.getElementById('cu-more');if(more)more.style.display=UX.cust.offset<UX.cust.total?'':'none';
+}
+let cuSearchTimer=null;
+function cuSearch(v){clearTimeout(cuSearchTimer);cuSearchTimer=setTimeout(()=>{UX.cust.search=v.trim();cuLoad();},300);}
+async function cuDelete(id){
+  if(!confirm('Remove this person from your list?'))return;
+  try{await uxSend('/api/customers/delete',{ids:[id]});cuLoad();}catch(e){showNotif('Could not remove',e.message);}
+}
+async function cuDeleteAll(){
+  if(!confirm('Delete your whole customer list? This cannot be undone. (People who unsubscribed stay blocked from being emailed.)'))return;
+  try{await uxSend('/api/customers/delete',{all:true});cuLoad();}catch(e){showNotif('Could not delete',e.message);}
+}
+async function cuFromLeads(){
+  try{const d=await uxSend('/api/customers/from-leads');showNotif('Customers added',d.found?`${d.added} added from ${d.found} won lead${d.found===1?'':'s'}`:'You have no won leads with an email yet');cuLoad();}
+  catch(e){showNotif('Could not add',e.message);}
+}
+function cuPickFile(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  if(f.size>5*1024*1024){showNotif('That file is too large','Keep it under 5 MB');input.value='';return;}
+  const r=new FileReader();r.onload=()=>{cuPreviewImport(cuRowsFromCsv(String(r.result)));input.value='';};r.readAsText(f);
+}
+function cuPasteImport(){
+  const t=document.getElementById('cu-paste').value;
+  cuPreviewImport(cuRowsFromCsv(t));
+}
+function cuPreviewImport(rows){
+  if(!rows.length){showNotif('No emails found','The file needs a column with email addresses. Names and phone numbers are optional.');return;}
+  UX.cust.draft=rows;
+  const valid=rows.filter(r=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)).length;
+  const att=(UX.cust.info&&UX.cust.info.attestation)||'I confirm these are people who have done business with my company or who asked to hear from it.';
+  uxOpen(uxHead('Import '+rows.length+' people',valid+' look like valid email addresses.')
+    +`<div class="rep-scroll"><table class="rep-t"><thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead><tbody>${rows.slice(0,6).map(r=>`<tr><td>${uxEsc(r.name)}</td><td>${uxEsc(r.email)}</td><td>${uxEsc(r.phone)}</td></tr>`).join('')}</tbody></table></div>
+    ${rows.length>6?`<div class="sm">…and ${rows.length-6} more.</div>`:''}
+    <label class="vd-fu-line" style="margin-top:12px"><input type="checkbox" id="cu-attest"> <span>${uxEsc(att)}</span></label>
+    <div class="sm">Email to people who never dealt with you can get your emails marked as spam, which hurts everyone who uses Eagle I. Duplicates are skipped.</div>
+    <div class="sm" id="cu-imp-err" style="color:var(--red)"></div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="cuDoImport(this)">Import</button><button class="btn-ghost" onclick="uxClose()">Cancel</button></div>`);
+}
+async function cuDoImport(btn){
+  if(!document.getElementById('cu-attest').checked){document.getElementById('cu-imp-err').textContent='Please tick the confirmation first.';return;}
+  btn.disabled=true;
+  try{
+    const d=await uxSend('/api/customers/import',{rows:UX.cust.draft,attested:true});
+    uxClose();showNotif('Imported',`${d.added} added${d.duplicates?', '+d.duplicates+' already on your list':''}${d.invalid?', '+d.invalid+' skipped (not an email)':''}`);
+    const pe=document.getElementById('cu-paste');if(pe)pe.value='';
+    cuLoad();
+  }catch(e){document.getElementById('cu-imp-err').textContent=e.message;btn.disabled=false;}
+}
+async function cuLoadTemplates(){
+  if(UX.cust.templates.length)return;
+  try{UX.cust.templates=(await uxJson('/api/customers/templates')).templates;}catch(e){UX.cust.templates=[];}
+  const sel=document.getElementById('cu-tpl');
+  if(sel)sel.innerHTML='<option value="">Start from…</option>'+UX.cust.templates.map((t,i)=>`<option value="${i}">${uxEsc(t.label)}</option>`).join('');
+}
+function cuUseTemplate(i){
+  const t=UX.cust.templates[parseInt(i,10)];if(!t)return;
+  document.getElementById('cu-subject').value=t.subject;document.getElementById('cu-message').value=t.message;
+}
+function cuCompose(){return {subject:document.getElementById('cu-subject').value,message:document.getElementById('cu-message').value};}
+async function cuPreviewSend(btn){
+  const note=document.getElementById('cu-note');btn.disabled=true;
+  try{const d=await uxSend('/api/customers/campaign/test',cuCompose());note.style.color='var(--green)';note.textContent='Preview sent to '+d.to+'.';}
+  catch(e){note.style.color='var(--red)';note.textContent=e.message;}
+  btn.disabled=false;
+}
+async function cuReview(btn){
+  const note=document.getElementById('cu-note');note.textContent='';btn.disabled=true;
+  const c=cuCompose();
+  try{
+    const d=await uxSend('/api/customers/campaign/preview',{});
+    const why={opted_out:'opted out',bounced:'bounced before',complained:'reported spam',invalid_email:'invalid address',domain_cannot_receive_mail:"address can't receive mail"};
+    const sk={};d.skipped.forEach(x=>{const k=why[x.reason]||x.reason;sk[k]=(sk[k]||0)+1;});
+    UX.cust.campaign={ids:d.sendable.map(x=>x.id),subject:c.subject,message:c.message};
+    const n=d.sendable.length,will=Math.min(n,d.remaining);
+    const eg=d.sendable[0];
+    uxOpen(uxHead('Review before sending',n+' people can be emailed')
+      +(!n?'<div class="vd-warn">There is no one to email yet.</div>':'')
+      +`<ul class="vd-list-plain"><li><b>${will}</b> will be sent${will<n?` (today's limit is ${d.dailyCap} per 24 hours; the rest are left out)`:''}</li>${d.skipped.length?`<li><b>${d.skipped.length}</b> left out: ${Object.entries(sk).map(([k,x])=>x+' '+uxEsc(k)).join(', ')}</li>`:''}</ul>
+      <label class="vd-msglabel">Subject</label><div class="cu-frozen">${uxEsc(c.subject)}</div>
+      <label class="vd-msglabel">Message${eg?' (for '+uxEsc(eg.name)+')':''}</label><div class="cu-frozen">${uxEsc(c.message.split('{name}').join(eg?cuFirst(eg.name):'there')).replace(/\n/g,'<br>')}</div>
+      <div class="sm">Each email includes your business address and an unsubscribe link. Sent from your company name, and replies come to your email.</div>
+      <div class="vd-mbtns"><button class="btn btn-blue" id="cu-go" onclick="cuSendAll()"${n&&will?'':' disabled'}>Send ${will} email${will===1?'':'s'}…</button><button class="btn-ghost" onclick="uxClose()">Back</button></div>`);
+  }catch(e){note.style.color='var(--red)';note.textContent=e.message;}
+  btn.disabled=false;
+}
+function cuFirst(name){
+  const f=String(name||'').trim().split(/\s+/)[0]||'';
+  if(!f||f.length>30||/[0-9@]/.test(f))return 'there';
+  return (f===f.toLowerCase()||f===f.toUpperCase())?f.toLowerCase().replace(/(^|[-'])([a-z])/g,(m,a,b)=>a+b.toUpperCase()):f;
+}
+async function cuSendAll(){
+  const c=UX.cust.campaign;if(!c||!c.ids.length)return;
+  if(!confirm('Send this email to up to '+c.ids.length+' people?\n\nSubject: '+c.subject+'\n\n'+c.message.split('{name}').join('[first name]')+'\n\nThis cannot be undone.'))return;
+  UX.modalLocked=true;
+  const res={sent:0,failed:0,skipped:0,stop:''};
+  const CH=20;let campaignId=null;
+  for(let i=0;i<c.ids.length;i+=CH){
+    uxOpen(uxHead('Sending…',`${Math.min(i,c.ids.length)} of ${c.ids.length} processed. Please keep this window open.`)+`<div class="vd-bar"><div class="vd-barfill" style="width:${Math.round(i/c.ids.length*100)}%"></div></div>`);
+    try{
+      const d=await uxSend('/api/customers/campaign/send',{ids:c.ids.slice(i,i+CH),subject:c.subject,message:c.message,campaignId});
+      campaignId=d.campaignId;res.sent+=d.sent;res.failed+=d.failed;res.skipped+=d.skipped;
+      if(d.remaining===0&&i+CH<c.ids.length){res.stop="Stopped at today's send limit. The rest were not sent.";break;}
+    }catch(e){res.stop=e.message;break;}
+  }
+  UX.modalLocked=false;
+  uxOpen(uxHead(res.sent?`✓ Sent ${res.sent} email${res.sent===1?'':'s'}`:'No emails were sent',res.stop||'')
+    +`<ul class="vd-list-plain"><li><b>${res.sent}</b> sent</li>${res.failed?`<li><b>${res.failed}</b> failed</li>`:''}${res.skipped?`<li><b>${res.skipped}</b> skipped (opted out, over today's limit, or unreachable)</li>`:''}</ul>
+    <div class="sm">Anyone who unsubscribes is never emailed again.</div><div class="vd-mbtns"><button class="btn btn-blue" onclick="uxClose()">Done</button></div>`);
+  cuLoad();
+}
+
+/* ---------- wiring ---------- */
+function uxInit(){
+  relLoad();wpLoad();repLoad();sdLoad();mrInit();
+  cuLoadTemplates();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(uxInit,0));else setTimeout(uxInit,0);
 </script>
 </body>
 </html>

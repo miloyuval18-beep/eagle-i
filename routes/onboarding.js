@@ -131,6 +131,7 @@ router.get('/api/me', requireAuth, async (req, res) => {
         site: profile.site,
         linkedinUrl: profile.linkedin_url,
         leadAlerts: profile.lead_alerts_enabled !== false,
+        monthlyReport: profile.monthly_report_enabled !== false,
         serviceArea: profile.service_area,
         services: profile.services,
         differentiators: profile.differentiators,
@@ -249,7 +250,7 @@ router.patch('/api/onboarding/profile', requireAuth, async (req, res) => {
   const {
     companyName, industry,
     founderName, phone, email, address, site,
-    serviceArea, services, differentiators, voice, logoDataUrl, linkedinUrl, leadAlerts
+    serviceArea, services, differentiators, voice, logoDataUrl, linkedinUrl, leadAlerts, monthlyReport
   } = req.body || {};
 
   // Optional. Only accepted as a real linkedin.com link, since it ends up in
@@ -287,6 +288,9 @@ router.patch('/api/onboarding/profile', requireAuth, async (req, res) => {
     );
     if (linkedin !== undefined) {
       await query('UPDATE business_profile SET linkedin_url = $1 WHERE tenant_id = $2', [linkedin || null, req.tenantId]);
+    }
+    if (typeof monthlyReport === 'boolean') {
+      await query('UPDATE business_profile SET monthly_report_enabled = $1 WHERE tenant_id = $2', [monthlyReport, req.tenantId]);
     }
     if (typeof leadAlerts === 'boolean') {
       await query('UPDATE business_profile SET lead_alerts_enabled = $1 WHERE tenant_id = $2', [leadAlerts, req.tenantId]);
@@ -575,7 +579,7 @@ router.get('/api/vendors/outreach', requireAuth, async (req, res) => {
   try {
     const result = await query(
       `SELECT vo.id, vo.vendor_name, vo.to_email, vo.message, vo.status, vo.error, vo.reply_text, vo.replied_at, vo.created_at,
-              vo.delivery_status, vo.delivery_detail,
+              vo.delivery_status, vo.delivery_detail, vo.subject, vo.kind, vo.variant, vo.reply_category, vo.category_key,
               f.status AS followup_status, f.due_at AS followup_due_at, f.cancel_reason AS followup_cancel_reason, f.step AS followup_step
        FROM vendor_outreach vo
        LEFT JOIN LATERAL (SELECT status, due_at, cancel_reason, step FROM outreach_followups WHERE outreach_id = vo.id ORDER BY step DESC LIMIT 1) f ON true

@@ -22,6 +22,8 @@ const { getReceivedEmail, sendEmail } = require('../lib/email');
 const { processDeliveryEvent } = require('../lib/deliveryEvents');
 const { cancelFollowUpForOutreach, cancelFollowUps } = require('../lib/followUps');
 const { cancelQueued } = require('../lib/outreachQueue');
+const { classifyReply, senderAddress } = require('../lib/replyClassifier');
+const relationships = require('../lib/relationships');
 
 // Matches only the reply+<kind>-<uuid>@... local-part this app generates
 // itself (lib/email.js's buildReplyToAddress) — an inbound address in any
@@ -44,6 +46,25 @@ async function forwardToTenant(tenantId, subjectPrefix, full) {
   }
 }
 
+const htmlToText = (html) => String(html || '').replace(/<(style|script)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>|<\/p>|<\/div>/gi, '\n').replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+
+// What each kind of reply is called in the alert email the owner receives.
+const ALERT_PREFIX = {
+  interested: (name) => `Interested: ${name} replied`,
+  not_now: (name) => `Not now: ${name} replied`,
+  unsubscribe: (name) => `${name} asked to be removed (done, they will not be emailed again)`,
+  other: (name) => `${name} replied`
+};
+
+async function suppress(tenantId, email) {
+  await query(
+    `INSERT INTO outreach_suppressions (tenant_id, email, reason) VALUES ($1, $2, 'unsubscribed')
+     ON CONFLICT (tenant_id, lower(email)) DO NOTHING`, [tenantId, email]);
+  await cancelFollowUps(tenantId, email, 'opted_out');
+  await cancelQueued(tenantId, email, 'opted_out');
+}
+
 async function processInboundEmail(data) {
   const toAddresses = Array.isArray(data.to) ? data.to : [data.to].filter(Boolean);
   let match = null;
@@ -57,17 +78,39 @@ async function processInboundEmail(data) {
   const full = await getReceivedEmail(data.email_id);
 
   if (kind === 'vendor') {
+    const text = full.text || htmlToText(full.html);
+    const cls = classifyReply({ subject: full.subject, text });
+
+    // Out-of-office and other automatic replies are recorded, but they are not
+    // a reply from a person: they don't stop follow-ups, don't alert the owner,
+    // and never overwrite a real reply already on file.
+    if (cls.category === 'auto_reply') {
+      await query(
+        `UPDATE vendor_outreach SET reply_text = $1, reply_html = $2, reply_category = 'auto_reply', reply_category_by = 'auto'
+         WHERE id = $3 AND replied_at IS NULL`, [full.text || null, full.html || null, id]);
+      return;
+    }
+
     const result = await query(
-      `UPDATE vendor_outreach SET reply_text = $1, reply_html = $2, replied_at = now()
-       WHERE id = $3 RETURNING tenant_id, vendor_name, to_email`,
-      [full.text || null, full.html || null, id]
+      `UPDATE vendor_outreach SET reply_text = $1, reply_html = $2, replied_at = now(), reply_category = $4, reply_category_by = 'auto'
+       WHERE id = $3 RETURNING tenant_id, vendor_name, to_email, source, source_id`,
+      [full.text || null, full.html || null, id, cls.category]
     );
     if (result.rows.length) {
+      const row = result.rows[0];
       // They answered, so no scheduled follow-up (either step) or queued send may go out.
       await cancelFollowUpForOutreach(id, 'replied');
-      await cancelFollowUps(result.rows[0].tenant_id, result.rows[0].to_email, 'replied');
-      await cancelQueued(result.rows[0].tenant_id, result.rows[0].to_email, 'replied');
-      await forwardToTenant(result.rows[0].tenant_id, `${result.rows[0].vendor_name} replied`, full);
+      await cancelFollowUps(row.tenant_id, row.to_email, 'replied');
+      await cancelQueued(row.tenant_id, row.to_email, 'replied');
+      if (cls.category === 'unsubscribe') {
+        // Honour it at once — for the address we wrote to and for whoever actually replied.
+        await suppress(row.tenant_id, row.to_email);
+        const from = senderAddress(full.from);
+        if (from && from !== String(row.to_email).toLowerCase()) await suppress(row.tenant_id, from);
+      }
+      relationships.noteReply({ tenantId: row.tenant_id, source: row.source, sourceId: row.source_id ? Number(row.source_id) : null })
+        .catch(err => console.error('[inboundEmail] relationship update failed:', err.message));
+      await forwardToTenant(row.tenant_id, (ALERT_PREFIX[cls.category] || ALERT_PREFIX.other)(row.vendor_name), full);
     }
   } else if (kind === 'review') {
     const result = await query(
@@ -127,4 +170,4 @@ async function handleInboundWebhook(req, res) {
   }
 }
 
-module.exports = { handleInboundWebhook, REPLY_ADDRESS_RE };
+module.exports = { handleInboundWebhook, processInboundEmail, REPLY_ADDRESS_RE };
