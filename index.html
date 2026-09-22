@@ -1033,10 +1033,16 @@ tbody tr:last-child td{border-bottom:none}
     <div id="rel-list"><div class="sm" style="padding:12px 0">Loading…</div></div>
   </div>
   <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">Sent Outreach &amp; Replies</div><div class="ss">Every real "Find & Send" email you've sent from this page, and any reply you've gotten back.</div></div></div>
+    <div class="sh"><div><div class="st">Sent Emails</div><div class="ss">Every real "Find & Send" email you've sent from this page.</div></div></div>
     <div id="vendor-followups"></div>
-    <div id="vendor-outreach-list" style="display:flex;flex-direction:column;gap:8px">
+    <div id="vendor-sent-list" style="display:flex;flex-direction:column;gap:8px">
       <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">You haven't sent any outreach emails yet</div>
+    </div>
+  </div>
+  <div class="section" style="margin-top:20px">
+    <div class="sh"><div><div class="st">Replies</div><div class="ss">Real replies you've gotten back to those emails, sorted by category.</div></div></div>
+    <div id="vendor-replies-list" style="display:flex;flex-direction:column;gap:8px">
+      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No replies yet</div>
     </div>
   </div>
   <div class="section" style="margin-top:20px" id="rep-section">
@@ -3775,7 +3781,7 @@ async function loadPartnerOutreach(){
   }catch(e){/* leave existing content on transient failure */}
 }
 async function loadVendorOutreach(){
-  const el=document.getElementById('vendor-outreach-list');if(!el)return;
+  const el=document.getElementById('vendor-sent-list');if(!el)return;
   try{
     const [r,fr,qr]=await Promise.all([fetch('/api/vendors/outreach'),fetch('/api/vendors/followups'),fetch('/api/vendors/queue')]);
     const d=await r.json();
@@ -3783,7 +3789,7 @@ async function loadVendorOutreach(){
     const qd=qr.ok?await qr.json():null;
     const fuEl=document.getElementById('vendor-followups');if(fuEl)fuEl.innerHTML=vdQueueHtml(qd)+vdFollowUpsHtml(fd);
     UX.voRows=d.outreach||[];
-    voRender(); // reply sorting, filters and re-sorting live in the results script below
+    voRenderSent();voRenderReplies(); // reply sorting, filters and re-sorting live in the results script below
     if(typeof repLoad==='function')repLoad();
   }catch(e){/* leave existing content on transient failure */}
 }
@@ -6491,7 +6497,7 @@ loadSocialAnalytics();
    and handlers get only numeric ids or UUIDs, never free text. Everything
    that comes from a person outside the company (lead, vendor, reply) is
    escaped with uxEsc before it is shown. */
-const UX={rel:{filter:'',rows:[],summary:null,stages:[]},voFilter:'',voLimit:10,voRows:[],workPage:null,relEdit:null,relCtx:null,
+const UX={rel:{filter:'',rows:[],summary:null,stages:[]},voFilter:'',voSentLimit:10,voReplyLimit:10,voRows:[],workPage:null,relEdit:null,relCtx:null,
   cust:{rows:[],offset:0,total:0,search:'',info:null,draft:null,templates:[]},ls:null,lsBusy:false,report:null,sd:null};
 const uxEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 async function uxJson(url,opts){const r=await fetch(url,opts);let d={};try{d=await r.json();}catch(e){/* empty body */}if(!r.ok)throw new Error((d.error&&d.error.message)||('Request failed ('+r.status+')'));return d;}
@@ -6632,51 +6638,65 @@ async function relRemove(){
 /* ---------- sent outreach + reply sorting ---------- */
 const UX_REPLY={interested:['Interested','green'],not_now:['Not now / not interested','amber'],unsubscribe:['Asked to unsubscribe','red'],auto_reply:['Automatic reply',''],other:['Needs a look','blue']};
 const UX_REPLY_ORDER=['interested','not_now','unsubscribe','auto_reply','other'];
-function voSetFilter(v){UX.voFilter=v;UX.voLimit=10;voRender();}
-function voMore(){UX.voLimit+=20;voRender();}
+function voSetFilter(v){UX.voFilter=v;UX.voReplyLimit=10;voRenderReplies();}
+function voMoreSent(){UX.voSentLimit+=20;voRenderSent();}
+function voMoreReplies(){UX.voReplyLimit+=20;voRenderReplies();}
 async function voSetCategory(id,cat){
   try{await uxSend('/api/vendors/outreach/'+id+'/reply-category',{category:cat},'PATCH');showNotif('Reply re-sorted',UX_REPLY[cat][0]+(cat==='unsubscribe'?' — they will not be emailed again':''));}
   catch(e){showNotif('Could not save',e.message);}
   loadVendorOutreach();
 }
-function voRender(){
-  const el=document.getElementById('vendor-outreach-list');if(!el)return;
+const voHasReply=o=>!!(o.reply_text&&o.reply_category!=='auto_reply');
+const voDelivery=o=>o.delivery_status==='bounced'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">✗ BOUNCED</span>'
+  :o.delivery_status==='complained'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">🚫 SPAM COMPLAINT</span>'
+  :o.delivery_status==='soft_bounce'?'<span style="color:var(--ink3);font-family:var(--fm);font-size:9px">⚠ DELAYED</span>'
+  :`<span style="color:${o.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${o.status==='sent'?'✓ SENT':'✗ FAILED'}</span>`;
+const voFu=o=>{if(!o.followup_status)return '';const nm=o.followup_step===2?'Second follow-up':'Follow-up';
+  return o.followup_status==='pending'?`↻ ${nm} scheduled for ${vdDate(o.followup_due_at)}`
+  :o.followup_status==='sending'?`↻ ${nm} sending now`
+  :o.followup_status==='sent'?`↻ ${nm} sent`
+  :o.followup_status==='failed'?`↻ ${nm} failed`
+  :`↻ ${nm} cancelled — ${VD_FU_CANCEL[o.followup_cancel_reason]||'cancelled'}`;};
+const voHeaderHtml=o=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+    <span style="min-width:0;overflow-wrap:anywhere">${uxEsc(o.vendor_name)} · ${uxEsc(o.to_email)}${o.kind&&o.kind!=='initial'?' <span class="vd-badge">'+(o.kind==='followup2'?'FINAL FOLLOW-UP':'FOLLOW-UP')+'</span>':''}${o.variant?' <span class="vd-badge">VERSION '+uxEsc(o.variant)+'</span>':''}</span>
+    ${voDelivery(o)}
+  </div>
+  ${o.subject?`<div class="sm" style="margin-top:2px">Subject: ${uxEsc(o.subject)}</div>`:''}
+  ${o.delivery_detail&&o.delivery_status?`<div class="sm" style="margin-top:3px">${uxEsc(o.delivery_detail)}</div>`:''}
+  ${voFu(o)?`<div class="sm" style="margin-top:3px">${uxEsc(voFu(o))}</div>`:''}`;
+
+// Every email actually sent — no reply content here, just the send itself.
+function voRenderSent(){
+  const el=document.getElementById('vendor-sent-list');if(!el)return;
   const all=UX.voRows;
-  if(!all.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No outreach sent yet</div>';return;}
-  const hasReply=o=>!!(o.reply_text&&o.reply_category!=='auto_reply');
-  const counts={all:all.length,replies:all.filter(hasReply).length,interested:all.filter(o=>o.reply_category==='interested'&&hasReply(o)).length,review:all.filter(o=>o.reply_category==='other'&&hasReply(o)).length};
+  if(!all.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">You haven\'t sent any outreach emails yet</div>';return;}
+  const shown=all.slice(0,UX.voSentLimit);
+  el.innerHTML=shown.map(o=>`<div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px">${voHeaderHtml(o)}</div>`).join('')
+    +(all.length>UX.voSentLimit?`<button class="btn-xs" onclick="voMoreSent()" style="align-self:flex-start">Show ${Math.min(20,all.length-UX.voSentLimit)} more</button>`:'');
+}
+
+// Only rows with a real reply (not an auto-reply) — same filter chips as before, minus "Sent Emails" now living in its own section.
+function voRenderReplies(){
+  const el=document.getElementById('vendor-replies-list');if(!el)return;
+  const replied=UX.voRows.filter(voHasReply);
+  if(!replied.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No replies yet</div>';return;}
+  const counts={all:replied.length,interested:replied.filter(o=>o.reply_category==='interested').length,review:replied.filter(o=>o.reply_category==='other').length};
   const f=UX.voFilter;
-  let list=all;
-  if(f==='replies')list=all.filter(hasReply);else if(f==='interested')list=all.filter(o=>o.reply_category==='interested'&&hasReply(o));else if(f==='review')list=all.filter(o=>o.reply_category==='other'&&hasReply(o));
-  const delivery=o=>o.delivery_status==='bounced'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">✗ BOUNCED</span>'
-    :o.delivery_status==='complained'?'<span style="color:var(--red);font-family:var(--fm);font-size:9px">🚫 SPAM COMPLAINT</span>'
-    :o.delivery_status==='soft_bounce'?'<span style="color:var(--ink3);font-family:var(--fm);font-size:9px">⚠ DELAYED</span>'
-    :`<span style="color:${o.status==='sent'?'var(--green)':'var(--red)'};font-family:var(--fm);font-size:9px">${o.status==='sent'?'✓ SENT':'✗ FAILED'}</span>`;
-  const fu=o=>{if(!o.followup_status)return '';const nm=o.followup_step===2?'Second follow-up':'Follow-up';
-    return o.followup_status==='pending'?`↻ ${nm} scheduled for ${vdDate(o.followup_due_at)}`
-    :o.followup_status==='sending'?`↻ ${nm} sending now`
-    :o.followup_status==='sent'?`↻ ${nm} sent`
-    :o.followup_status==='failed'?`↻ ${nm} failed`
-    :`↻ ${nm} cancelled — ${VD_FU_CANCEL[o.followup_cancel_reason]||'cancelled'}`;};
+  let list=replied;
+  if(f==='interested')list=replied.filter(o=>o.reply_category==='interested');else if(f==='review')list=replied.filter(o=>o.reply_category==='other');
   const chip=(k,l,n)=>`<button class="${f===k?'btn btn-blue':'btn-ghost'} rel-chip" onclick="voSetFilter('${k}')">${l} (${n})</button>`;
-  const shown=list.slice(0,UX.voLimit);
-  el.innerHTML=`<div class="rel-chips">${chip('','All',counts.all)}${chip('replies','Replies',counts.replies)}${chip('interested','Interested',counts.interested)}${chip('review','Needs a look',counts.review)}</div>`
+  const shown=list.slice(0,UX.voReplyLimit);
+  el.innerHTML=`<div class="rel-chips">${chip('','All',counts.all)}${chip('interested','Interested',counts.interested)}${chip('review','Needs a look',counts.review)}</div>`
     +(shown.length?shown.map(o=>{
-      const rc=o.reply_text?(UX_REPLY[o.reply_category]||UX_REPLY.other):null;
+      const rc=UX_REPLY[o.reply_category]||UX_REPLY.other;
       return `<div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-          <span style="min-width:0;overflow-wrap:anywhere">${uxEsc(o.vendor_name)} · ${uxEsc(o.to_email)}${o.kind&&o.kind!=='initial'?' <span class="vd-badge">'+(o.kind==='followup2'?'FINAL FOLLOW-UP':'FOLLOW-UP')+'</span>':''}${o.variant?' <span class="vd-badge">VERSION '+uxEsc(o.variant)+'</span>':''}</span>
-          ${delivery(o)}
-        </div>
-        ${o.subject?`<div class="sm" style="margin-top:2px">Subject: ${uxEsc(o.subject)}</div>`:''}
-        ${o.delivery_detail&&o.delivery_status?`<div class="sm" style="margin-top:3px">${uxEsc(o.delivery_detail)}</div>`:''}
-        ${fu(o)?`<div class="sm" style="margin-top:3px">${uxEsc(fu(o))}</div>`:''}
-        ${o.reply_text?`<div style="margin-top:6px;padding:7px 9px;background:var(--bg3);border-left:2px solid ${rc[1]==='red'?'var(--red)':rc[1]==='amber'?'var(--amber)':'var(--green)'};border-radius:var(--r);font-size:11px;color:var(--ink2)">
+        ${voHeaderHtml(o)}
+        <div style="margin-top:6px;padding:7px 9px;background:var(--bg3);border-left:2px solid ${rc[1]==='red'?'var(--red)':rc[1]==='amber'?'var(--amber)':'var(--green)'};border-radius:var(--r);font-size:11px;color:var(--ink2)">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:3px"><span style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px">${o.reply_category==='auto_reply'?'Automatic reply':'Reply'}${o.replied_at?' · '+vdDate(o.replied_at):''}</span>
           <label class="sm" style="display:flex;gap:5px;align-items:center">Sorted as <select class="btn-xs" onchange="voSetCategory('${o.id}',this.value)" aria-label="Sort this reply">${UX_REPLY_ORDER.map(k=>`<option value="${k}"${k===(o.reply_category||'other')?' selected':''}>${uxEsc(UX_REPLY[k][0])}</option>`).join('')}</select></label></div>
-          ${uxEsc(o.reply_text).slice(0,600).replace(/\n/g,'<br>')}</div>`:''}
+          ${uxEsc(o.reply_text).slice(0,600).replace(/\n/g,'<br>')}</div>
       </div>`;}).join(''):'<div class="sm" style="padding:10px">Nothing in this view.</div>')
-    +(list.length>UX.voLimit?`<button class="btn-xs" onclick="voMore()" style="align-self:flex-start">Show ${Math.min(20,list.length-UX.voLimit)} more</button>`:'');
+    +(list.length>UX.voReplyLimit?`<button class="btn-xs" onclick="voMoreReplies()" style="align-self:flex-start">Show ${Math.min(20,list.length-UX.voReplyLimit)} more</button>`:'');
 }
 
 /* ---------- results report ---------- */
