@@ -82,7 +82,13 @@ const PROVIDERS={
     redirectOnSuccess:'/?sc_connected=1'
   }
 };
-const provider=PROVIDERS[new URLSearchParams(window.location.search).get('provider')]||PROVIDERS.meta;
+const qs=new URLSearchParams(window.location.search);
+const provider=PROVIDERS[qs.get('provider')]||PROVIDERS.meta;
+// Search Console's flow is stateless (no session dependency across the
+// Google redirect round-trip — see routes/searchConsole.js) — it passes
+// its own `state` value through this page's URL instead. Other providers
+// don't set this, so it's a no-op for them.
+const flowState=qs.get('state');
 
 async function load(){
   document.getElementById('title').textContent=provider.title;
@@ -90,7 +96,8 @@ async function load(){
   const wrap=document.getElementById('rows');
   const err=document.getElementById('err');
   try{
-    const r=await fetch(provider.listUrl);
+    const listUrl=flowState?provider.listUrl+'?state='+encodeURIComponent(flowState):provider.listUrl;
+    const r=await fetch(listUrl);
     const d=await r.json();
     const items=d[provider.listKey]||[];
     if(!items.length){
@@ -114,7 +121,8 @@ async function choose(key){
   const err=document.getElementById('err');
   err.style.display='none';
   try{
-    const r=await fetch(provider.selectUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(provider.selectBody(key))});
+    const body=Object.assign(provider.selectBody(key),flowState?{state:flowState}:{});
+    const r=await fetch(provider.selectUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();
     if(!r.ok){
       err.textContent=d.error?.message||'Connection failed';

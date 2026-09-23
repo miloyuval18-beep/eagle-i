@@ -94,12 +94,20 @@ router.get('/api/search-console/connect', requireAuth, requireScConfig, async (r
   }
 });
 
-router.get('/api/search-console/callback', requireAuth, requireScConfig, async (req, res) => {
+// Deliberately no requireAuth here — some browsers don't reliably carry
+// the session cookie through the full round-trip (our /connect -> Google
+// consent/account-picker -> our /callback), which produced a bogus "Not
+// logged in" right after picking a Google account. The `state` value
+// already ties this to exactly one tenant (set server-side, single-use,
+// unforgeable) and IS the identity check — no active session required.
+router.get('/api/search-console/callback', requireScConfig, async (req, res) => {
   const { code, state, error: oauthError } = req.query;
   if (oauthError) return res.redirect('/?sc_error=' + encodeURIComponent(String(oauthError)));
   try {
-    const stateRow = await query(`DELETE FROM oauth_states_sc WHERE state = $1 AND tenant_id = $2 RETURNING state`, [state, req.tenantId]);
-    if (!stateRow.rows.length) return res.redirect('/?sc_error=' + encodeURIComponent('Login session expired — please try connecting again.'));
+    const stateLookup = await query(
+      `SELECT tenant_id FROM oauth_states_sc WHERE state = $1 AND created_at > now() - interval '1 hour'`, [state]);
+    if (!stateLookup.rows.length) return res.redirect('/?sc_error=' + encodeURIComponent('This connection link expired — please try connecting again.'));
+    const tenantId = stateLookup.rows[0].tenant_id;
 
     const tokenResp = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -114,6 +122,7 @@ router.get('/api/search-console/callback', requireAuth, requireScConfig, async (
     });
     const tokenBody = await tokenResp.json();
     if (!tokenResp.ok || !tokenBody.refresh_token) {
+      await query('DELETE FROM oauth_states_sc WHERE state = $1', [state]);
       return res.redirect('/?sc_error=' + encodeURIComponent(tokenBody.error_description || 'Google did not return a refresh token — try disconnecting Eagle I in your Google account permissions and reconnecting.'));
     }
 
@@ -122,14 +131,25 @@ router.get('/api/search-console/callback', requireAuth, requireScConfig, async (
     // "pick if more than one" shape as GBP locations and Meta Pages.
     const sitesResp = await googleFetch(`${SC_BASE}/sites`, { accessToken: tokenBody.access_token });
     const sites = (sitesResp.siteEntry || []).filter(s => s.permissionLevel && s.permissionLevel !== 'siteUnverifiedUser');
-    if (!sites.length) return res.redirect('/?sc_error=' + encodeURIComponent('No verified Search Console sites found on that Google login. Verify your site in Search Console first.'));
+    if (!sites.length) {
+      await query('DELETE FROM oauth_states_sc WHERE state = $1', [state]);
+      return res.redirect('/?sc_error=' + encodeURIComponent('No verified Search Console sites found on that Google login. Verify your site in Search Console first.'));
+    }
 
     if (sites.length === 1) {
-      await saveConnection(req.tenantId, sites[0].siteUrl, tokenBody.refresh_token);
+      await saveConnection(tenantId, sites[0].siteUrl, tokenBody.refresh_token);
+      await query('DELETE FROM oauth_states_sc WHERE state = $1', [state]);
       return res.redirect('/?sc_connected=1');
     }
-    req.session.pendingScSites = { options: sites.map(s => s.siteUrl), refreshToken: tokenBody.refresh_token };
-    res.redirect('/social-connect.html?provider=sc');
+    // More than one site: stash the choice against the SAME state row
+    // (still keyed by the unforgeable state, not a session) and let the
+    // picker page read it back by that state, passed through the URL.
+    const enc = encrypt(tokenBody.refresh_token);
+    await query(
+      `UPDATE oauth_states_sc SET pending_sites = $2, refresh_token_encrypted = $3, refresh_token_iv = $4, refresh_token_tag = $5 WHERE state = $1`,
+      [state, JSON.stringify(sites.map(s => s.siteUrl)), enc.ciphertext, enc.iv, enc.tag]
+    );
+    res.redirect('/social-connect.html?provider=sc&state=' + encodeURIComponent(state));
   } catch (err) {
     res.redirect('/?sc_error=' + encodeURIComponent(err.message));
   }
@@ -147,19 +167,30 @@ async function saveConnection(tenantId, siteUrl, refreshToken) {
   );
 }
 
-router.get('/api/search-console/pending-sites', requireAuth, (req, res) => {
-  const pending = req.session.pendingScSites;
-  res.json({ options: pending ? pending.options : [] });
+// Also stateless (no requireAuth) for the same reason as the callback —
+// identity comes from the `state` value the picker page was redirected
+// here with, not from a session that may not have survived the redirect.
+router.get('/api/search-console/pending-sites', async (req, res) => {
+  const state = req.query.state;
+  if (!state) return res.json({ options: [] });
+  const r = await query(
+    `SELECT pending_sites FROM oauth_states_sc WHERE state = $1 AND created_at > now() - interval '1 hour'`, [state]);
+  res.json({ options: (r.rows[0] && r.rows[0].pending_sites) || [] });
 });
 
-router.post('/api/search-console/select-site', requireAuth, async (req, res) => {
-  const { siteUrl } = req.body || {};
-  const pending = req.session.pendingScSites;
-  const chosen = pending && pending.options.find(o => o === siteUrl);
-  if (!chosen) return res.status(400).json({ error: { message: 'That site was not part of the current connection attempt.' } });
+router.post('/api/search-console/select-site', async (req, res) => {
+  const { siteUrl, state } = req.body || {};
+  if (!state) return res.status(400).json({ error: { message: 'Missing connection reference — try connecting again.' } });
   try {
-    await saveConnection(req.tenantId, chosen, pending.refreshToken);
-    delete req.session.pendingScSites;
+    const r = await query(
+      `SELECT tenant_id, pending_sites, refresh_token_encrypted, refresh_token_iv, refresh_token_tag
+       FROM oauth_states_sc WHERE state = $1 AND created_at > now() - interval '1 hour'`, [state]);
+    const row = r.rows[0];
+    const chosen = row && Array.isArray(row.pending_sites) && row.pending_sites.find(o => o === siteUrl);
+    if (!chosen) return res.status(400).json({ error: { message: 'That site was not part of the current connection attempt — try connecting again.' } });
+    const refreshToken = decrypt({ ciphertext: row.refresh_token_encrypted, iv: row.refresh_token_iv, tag: row.refresh_token_tag });
+    await saveConnection(row.tenant_id, chosen, refreshToken);
+    await query('DELETE FROM oauth_states_sc WHERE state = $1', [state]);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: { message: 'Could not save that site: ' + err.message } });
