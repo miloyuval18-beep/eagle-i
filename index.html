@@ -624,6 +624,7 @@ tbody tr:last-child td{border-bottom:none}
     <div class="tab" id="t-permits" onclick="goTo('permits',this)">📋 Permits<span class="tbadge on" id="perm-badge">0</span></div>
     <div class="tab" id="t-budgetads" onclick="goTo('budgetads',this)">💰 Budget &amp; Ads</div>
     <div class="tab" id="t-growth" onclick="goTo('growth',this)">🤝 Growth &amp; Partners</div>
+    <div class="tab" id="t-emailtracking" onclick="goTo('emailtracking',this)">📧 Email Tracking</div>
     <div class="tab" id="t-social"  onclick="goTo('social',this)">📱 Social HQ<span class="tbadge on" id="social-badge">!</span></div>
     <div class="tab" id="t-inprogress" onclick="goTo('inprogress',this)">🚧 In Progress</div>
   </nav>
@@ -1032,19 +1033,6 @@ tbody tr:last-child td{border-bottom:none}
     <div class="rel-chips" id="rel-filters"></div>
     <div id="rel-list"><div class="sm" style="padding:12px 0">Loading…</div></div>
   </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">Sent Emails</div><div class="ss">Every real "Find & Send" email you've sent from this page.</div></div></div>
-    <div id="vendor-followups"></div>
-    <div id="vendor-sent-list" style="display:flex;flex-direction:column;gap:8px">
-      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">You haven't sent any outreach emails yet</div>
-    </div>
-  </div>
-  <div class="section" style="margin-top:20px">
-    <div class="sh"><div><div class="st">Replies</div><div class="ss">Real replies you've gotten back to those emails, sorted by category.</div></div></div>
-    <div id="vendor-replies-list" style="display:flex;flex-direction:column;gap:8px">
-      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No replies yet</div>
-    </div>
-  </div>
   <div class="section" style="margin-top:20px" id="rep-section">
     <div class="sh"><div><div class="st">Outreach Results</div><div class="ss">How your emails are doing: reply rate by category and city, and which version won when you tested two.</div></div>
       <select id="rep-days" class="btn-xs" onchange="repLoad()" aria-label="Time period"><option value="30">Last 30 days</option><option value="90" selected>Last 90 days</option><option value="365">Last year</option></select></div>
@@ -1174,6 +1162,26 @@ tbody tr:last-child td{border-bottom:none}
   <div class="sm" id="pr-s"></div>
   <div id="pr-award-out" style="margin-top:14px;display:none"></div>
   <div class="sm" id="pr-award-s"></div>
+  </div>
+</div>
+</div>
+
+<!-- ==================== EMAIL TRACKING ==================== -->
+<div id="page-emailtracking" class="page">
+<div class="wrap">
+  <div class="sh"><div><div class="st">Email Tracking</div><div class="ss">Every real outreach email sent from Eagle I, and every reply that's come back — in one place, separate from where each one was sent from.</div></div></div>
+  <div class="section">
+    <div class="sh"><div><div class="st">Sent</div><div class="ss">Every real outreach email that's actually gone out.</div></div></div>
+    <div id="vendor-followups"></div>
+    <div id="vendor-sent-list" style="display:flex;flex-direction:column;gap:8px">
+      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">You haven't sent any outreach emails yet</div>
+    </div>
+  </div>
+  <div class="section" style="margin-top:20px">
+    <div class="sh"><div><div class="st">Received</div><div class="ss">Real replies you've gotten back, sorted by category.</div></div></div>
+    <div id="vendor-replies-list" style="display:flex;flex-direction:column;gap:8px">
+      <div style="text-align:center;padding:16px;color:var(--ink3);font-size:12px">No replies yet</div>
+    </div>
   </div>
 </div>
 </div>
@@ -1352,6 +1360,7 @@ function goTo(id,btn){
   if(btn)btn.classList.add('active');
   if(id==='budgetads')renderBudget(10000);
   if(id==='social'){loadAdsStatus();loadScheduledPosts();}
+  if(id==='emailtracking'&&typeof loadVendorOutreach==='function')loadVendorOutreach();
   tcTab=id;
   if(typeof TAB_CONTEXTS!=='undefined'){
     var ctx=TAB_CONTEXTS[id]||TAB_CONTEXTS['dash'];
