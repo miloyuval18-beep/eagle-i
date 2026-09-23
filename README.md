@@ -180,6 +180,26 @@ manual request at [Google's Basic API Access form](https://support.google.com/bu
 7–10 business days, reported as ranging up to several weeks) — not something this app
 can obtain on a tenant's behalf.
 
+## Real search rankings (Google Search Console)
+
+`routes/searchConsole.js` shows a tenant's actual Google ranking positions,
+impressions and clicks per keyword — real numbers, not the AI-estimated
+"Hottest Keywords" table it sits next to. Unlike Google Ads or Business
+Profile, there's **no developer-token or manual-review gate** — it's a
+plain OAuth connection, same setup effort as Business Profile.
+
+Needs `GOOGLE_SC_CLIENT_ID`, `GOOGLE_SC_CLIENT_SECRET`, `GOOGLE_SC_REDIRECT_URI`
+(a Google Cloud OAuth client with the `webmasters.readonly` scope — can reuse
+the same Cloud project as Places/Ads/GBP, with its own OAuth client and
+redirect URI, e.g. `https://<your-domain>/api/search-console/callback`).
+The tenant's Google login also needs to already have **verified ownership
+of their site in Search Console** (search.google.com/search-console) — a
+separate, one-time step on Google's own site, not something this app can
+do on their behalf. A brand-new or very low-traffic site may show no rows
+at all — Search Console only reports on keywords it's actually recorded
+real search impressions for, which is an honest limit of the data, not a
+bug here.
+
 ## Scheduled posts
 
 The Social HQ composer can queue a post for a future time instead of publishing

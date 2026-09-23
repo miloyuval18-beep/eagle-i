@@ -73,6 +73,13 @@ const PROVIDERS={
     rowLabel:o=>o.locationName||o.locationId, rowKey:o=>o.locationId,
     selectUrl:'/api/gbp/select-location', selectBody:id=>({locationId:id}),
     redirectOnSuccess:'/?gbp_connected=1'
+  },
+  sc:{
+    title:'Which site is yours?', sub:'Your Google login has Search Console access to more than one site — click the one that belongs to your business below.',
+    listUrl:'/api/search-console/pending-sites', listKey:'options',
+    rowLabel:o=>o, rowKey:o=>o,
+    selectUrl:'/api/search-console/select-site', selectBody:id=>({siteUrl:id}),
+    redirectOnSuccess:'/?sc_connected=1'
   }
 };
 const provider=PROVIDERS[new URLSearchParams(window.location.search).get('provider')]||PROVIDERS.meta;

@@ -1399,7 +1399,7 @@ function goSub(page,sub,btn){
   if(btn)btn.classList.add('active');
   // Keywords used to auto-load on its own tab's first visit (kwLoaded
   // guards against refetching); now that trigger moves to its sub-tab.
-  if(page==='social'&&sub==='keywords')loadKw(false);
+  if(page==='social'&&sub==='keywords'){loadKw(false);scLoad();}
   if(page==='leads'&&sub==='pages')loadLandingPageState();
   if(page==='leads'&&sub==='inbox'){loadInbox();lsLoad();}
   if(page==='leads'&&sub==='customers'){cuLoad();cuLoadTemplates();}
@@ -4989,6 +4989,32 @@ async function disconnectGbp(){
   }catch(e){showNotif('Disconnect failed',e.message);}
   loadGbpConnection();
 }
+/* ---------- real search console rankings ---------- */
+async function scLoad(){
+  const el=document.getElementById('sc-out');if(!el)return;
+  try{
+    const status=await uxJson('/api/search-console/status');
+    if(!status.configured){el.innerHTML='<div class="sm">Not configured on this server yet.</div>';return;}
+    if(!status.connected){
+      el.innerHTML=`<div class="sm" style="margin-bottom:10px">Connect Search Console to see your real rankings.</div>
+        <button class="btn btn-blue p" onclick="window.location.href='/api/search-console/connect'">Connect Search Console</button>`;
+      return;
+    }
+    el.innerHTML=`<div class="sm" style="margin-bottom:10px">Connected to <b>${uxEsc(status.siteUrl)}</b> · <button class="btn-xs" onclick="scDisconnect()">Disconnect</button></div><div id="sc-rankings"><div class="sm">Loading real rankings…</div></div>`;
+    const d=await uxJson('/api/search-console/rankings');
+    const rEl=document.getElementById('sc-rankings');if(!rEl)return;
+    if(!d.rankings.length){rEl.innerHTML='<div class="sm" style="padding:10px">No real search traffic recorded yet for this site in the last 28 days — check back once Google has indexed some activity.</div>';return;}
+    rEl.innerHTML=`<div class="sm" style="margin-bottom:6px">${uxEsc(d.startDate)} to ${uxEsc(d.endDate)}</div>
+      <div class="tbl-wrap"><table><thead><tr><th>Keyword</th><th class="r">Avg Position</th><th class="r">Impressions</th><th class="r">Clicks</th><th class="r">CTR</th></tr></thead><tbody>
+      ${d.rankings.map(r=>`<tr><td>${uxEsc(r.keyword)}</td><td class="r">${r.position}</td><td class="r">${r.impressions.toLocaleString()}</td><td class="r">${r.clicks.toLocaleString()}</td><td class="r">${(r.ctr*100).toFixed(1)}%</td></tr>`).join('')}
+      </tbody></table></div>`;
+  }catch(e){el.innerHTML='<div class="sm">Failed to load: '+uxEsc(e.message)+'</div>';}
+}
+async function scDisconnect(){
+  if(!confirm('Disconnect Search Console?'))return;
+  try{await fetch('/api/search-console',{method:'DELETE'});showNotif('Disconnected','Search Console access removed');}catch(e){showNotif('Disconnect failed',e.message);}
+  scLoad();
+}
 function handleSocialRedirectParams(){
   const params=new URLSearchParams(window.location.search);
   // Every OAuth callback in this app (organic Meta, Meta Ads, Google Ads,
@@ -5001,7 +5027,9 @@ function handleSocialRedirectParams(){
     ['ads_connected',v=>'Ads connected',v=>(v==='meta'?'Meta':'Google')+' Ads is now connected'],
     ['ads_error',null,v=>v],
     ['gbp_connected',()=>'Connected','Google Business Profile is now connected'],
-    ['gbp_error',null,v=>v]
+    ['gbp_error',null,v=>v],
+    ['sc_connected',()=>'Connected','Search Console is now connected'],
+    ['sc_error',null,v=>v]
   ];
   let touched=false;
   for(const [key,titleFn,bodyFn] of pairs){
@@ -5015,7 +5043,7 @@ function handleSocialRedirectParams(){
   if(touched){
     const qs=params.toString();
     window.history.replaceState({},'',window.location.pathname+(qs?'?'+qs:''));
-    loadAdsStatus();loadGbpConnection();loadSocialConnections();
+    loadAdsStatus();loadGbpConnection();loadSocialConnections();scLoad();
   }
 }
 async function sendReviewRequest(){
@@ -6424,6 +6452,10 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   </div>
 
   <div class="subpage" id="sub-social-keywords">
+  <div class="section" style="margin-bottom:20px">
+    <div class="sh"><div><div class="st" style="font-size:18px">Real Search Rankings</div><div class="ss">Where you actually rank on Google right now — real positions, impressions and clicks from Google Search Console, not an estimate. Only shows keywords your site has actually gotten real search traffic for.</div></div></div>
+    <div id="sc-out"><div class="sm">Loading…</div></div>
+  </div>
   <div class="sh"><div><div class="st">Hottest Keywords</div><div class="ss">AI's best guess at which search words and phrases are most valuable for your business right now. This is an estimate, not real, live data pulled from Google.</div></div><button class="btn btn-blue" id="kw-btn" onclick="loadKw(true)"><span class="spin" id="kw-spin"></span>Refresh</button></div>
   <div id="kw-prog" class="scan-prog"><div class="sp-bar"><div class="sp-fill"></div></div><span class="sp-lbl">Scanning your keyword market...</span></div>
   <div id="kw-insight" class="ib" style="margin-bottom:15px;display:none"></div>
