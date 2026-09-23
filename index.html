@@ -4752,6 +4752,7 @@ async function bootstrap(){
   loadInbox();
   loadLandingPageState();
   loadReviewRequests();
+  rvLoadMine();
   loadScheduledPosts();
   loadVendorOutreach();
   loadPartnerOutreach();
@@ -5042,6 +5043,93 @@ async function saveReviewLinks(){
     await fetch('/api/onboarding/review-links',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({googleReviewUrl,yelpReviewUrl})});
     showNotif('Saved','Review links updated');
   }catch(e){showNotif('Network error',e.message);}
+}
+
+/* ---------- own reviews + AI reply drafts ---------- */
+async function rvLoadMine(){
+  const el=document.getElementById('rv-mine-out');if(!el)return;
+  try{
+    const d=await uxJson('/api/reviews/mine');
+    UX.rv=d;
+    rvRenderMine();
+  }catch(e){el.innerHTML='<div class="sm">Failed to load: '+uxEsc(e.message)+'</div>';}
+}
+function rvRenderMine(){
+  const el=document.getElementById('rv-mine-out');if(!el)return;
+  const d=UX.rv;
+  if(!d||!d.ownPlaceId){
+    el.innerHTML=`<div class="sm" style="margin-bottom:10px">Find your business on Google first, so this only ever shows YOUR real reviews.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-blue" id="rv-find-btn" onclick="rvFindMyPlace()"><span class="spin" id="rv-find-spin"></span>Find My Business</button>
+      </div>
+      <div id="rv-candidates" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
+      <div class="sm" id="rv-find-s"></div>`;
+    return;
+  }
+  const reviews=d.reviews||[];
+  el.innerHTML=`<div class="sm" style="margin-bottom:10px">Showing reviews for <b>${uxEsc(d.ownPlaceName||'your business')}</b>. <button class="btn-xs" id="rv-refresh-btn" onclick="rvRefresh()"><span class="spin" id="rv-refresh-spin"></span>↻ Refresh from Google</button></div>
+    <div id="rv-refresh-s" class="sm"></div>
+    ${!reviews.length?'<div class="sm" style="padding:10px">No reviews pulled yet — click "Refresh from Google" above.</div>':
+      reviews.map(rv=>`<div style="padding:10px;background:var(--bg4);border-radius:var(--r);font-size:12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span><b>${uxEsc(rv.author_name||'A Google user')}</b> ${'★'.repeat(rv.rating||0)}${'☆'.repeat(5-(rv.rating||0))}</span>
+          <span class="sm">${uxEsc(rv.published_at||'')}</span>
+        </div>
+        <div style="margin-top:5px;color:var(--ink2)">${uxEsc(rv.text||'')}</div>
+        ${rv.reply_draft?`<div style="margin-top:8px;padding:8px;background:var(--bg3);border-left:2px solid var(--blue);border-radius:var(--r)">
+          <div class="sm" style="margin-bottom:4px">Suggested reply</div>
+          <textarea id="rv-draft-${rv.id}" style="width:100%;min-height:60px;font-size:12px" onclick="this.select()">${uxEsc(rv.reply_draft)}</textarea>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn-xs p" onclick="rvCopyDraft(${rv.id})">Copy</button>
+            <button class="btn-xs" onclick="rvDraftReply(${rv.id},this)"><span class="spin"></span>Regenerate</button>
+          </div>
+        </div>`:`<button class="btn-xs p" style="margin-top:8px" onclick="rvDraftReply(${rv.id},this)"><span class="spin"></span>✨ Suggest a Reply</button>`}
+      </div>`).join('')}`;
+}
+async function rvFindMyPlace(){
+  const btn=document.getElementById('rv-find-btn'),spin=document.getElementById('rv-find-spin'),s=document.getElementById('rv-find-s');
+  if(btn)btn.disabled=true;if(spin)spin.style.display='inline-block';if(s)s.textContent='';
+  try{
+    const d=await uxSend('/api/reviews/my-place/search',{});
+    const cEl=document.getElementById('rv-candidates');
+    if(!d.candidates||!d.candidates.length){if(s)s.textContent='No matches found on Google. Check your business name/address in Account Settings.';}
+    else if(cEl)cEl.innerHTML=d.candidates.map((c,i)=>`<div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <span>${uxEsc(c.name)}${c.address?' — '+uxEsc(c.address):''}${c.rating?` (${c.rating}★, ${c.reviewCount||0} reviews)`:''}</span>
+      <button class="btn-xs p" onclick='rvConfirmMyPlace(${JSON.stringify(c.placeId)},${JSON.stringify(c.name)},${JSON.stringify(c.address)})'>This is me</button>
+    </div>`).join('');
+  }catch(e){if(s){s.textContent=e.message;s.style.color='var(--red)';}}
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';
+}
+async function rvConfirmMyPlace(placeId,name,address){
+  try{
+    await uxSend('/api/reviews/my-place/confirm',{placeId,name,address});
+    showNotif('Confirmed',name+' is now tracked for review replies');
+    await rvLoadMine();
+    await rvRefresh();
+  }catch(e){showNotif('Failed',e.message);}
+}
+async function rvRefresh(){
+  const btn=document.getElementById('rv-refresh-btn'),spin=document.getElementById('rv-refresh-spin'),s=document.getElementById('rv-refresh-s');
+  if(btn)btn.disabled=true;if(spin)spin.style.display='inline-block';
+  try{
+    const d=await uxSend('/api/reviews/refresh',{});
+    if(s)s.textContent=`Pulled ${d.fetched} review${d.fetched===1?'':'s'}. ${d.note}`;
+    await rvLoadMine();
+  }catch(e){if(s){s.textContent=e.message;s.style.color='var(--red)';}}
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';
+}
+async function rvDraftReply(id,btn){
+  if(btn)btn.disabled=true;
+  try{
+    await uxSend('/api/reviews/'+id+'/draft-reply',{},'POST');
+    await rvLoadMine();
+  }catch(e){showNotif('Draft failed',e.message);}
+  if(btn)btn.disabled=false;
+}
+function rvCopyDraft(id){
+  const ta=document.getElementById('rv-draft-'+id);if(!ta)return;
+  ta.select();
+  try{document.execCommand('copy');showNotif('Copied','Paste it into your Google Business reply box');}catch(e){showNotif('Select & copy manually','');}
 }
 // Command Center snapshot combining the two real-email flows in the app —
 // review requests (Social HQ) and vendor outreach (Growth & Partners) —
@@ -6181,6 +6269,10 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       </details>
       <div id="review-requests-list" style="display:flex;flex-direction:column;gap:6px;margin-top:12px"></div>
     </div>
+  </div>
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:18px">Reply to Your Reviews</div><div class="ss">Your real Google reviews, with an AI-drafted reply for each — grounded only in what the review actually says. Copy it into your Google Business Profile yourself; this app can't post a reply there directly (that needs a separate Google connection this app doesn't have).</div></div></div>
+    <div id="rv-mine-out"><div class="sm">Loading…</div></div>
   </div>
   <div class="section">
     <div class="composer" id="post-composer">
