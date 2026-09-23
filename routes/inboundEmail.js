@@ -30,7 +30,13 @@ const relationships = require('../lib/relationships');
 // other shape is ignored rather than trusted.
 const REPLY_ADDRESS_RE = /^reply\+(vendor|review|partner)-([0-9a-f-]{36})@/i;
 
-async function forwardToTenant(tenantId, subjectPrefix, full) {
+// replyToEmail is whoever actually sent the reply (not necessarily the
+// address Eagle I originally wrote to — a reply can come from a different
+// address than the one on file). Set as Reply-To so that hitting "reply" on
+// this notification in the tenant's own inbox goes straight back to them,
+// instead of to Eagle I's own default sending address (a dead end nobody
+// reads).
+async function forwardToTenant(tenantId, subjectPrefix, full, replyToEmail) {
   try {
     const profileRes = await query('SELECT email FROM business_profile WHERE tenant_id = $1', [tenantId]);
     const tenantEmail = profileRes.rows[0] && profileRes.rows[0].email;
@@ -39,7 +45,8 @@ async function forwardToTenant(tenantId, subjectPrefix, full) {
       to: tenantEmail,
       subject: `${subjectPrefix}: ${full.subject || '(no subject)'}`,
       html: full.html || `<pre>${String(full.text || '').replace(/</g, '&lt;')}</pre>`,
-      text: full.text || full.html || ''
+      text: full.text || full.html || '',
+      replyTo: replyToEmail || undefined
     });
   } catch (err) {
     console.error('[inboundEmail] forwarding to tenant failed:', err.message);
@@ -110,25 +117,27 @@ async function processInboundEmail(data) {
       }
       relationships.noteReply({ tenantId: row.tenant_id, source: row.source, sourceId: row.source_id ? Number(row.source_id) : null })
         .catch(err => console.error('[inboundEmail] relationship update failed:', err.message));
-      await forwardToTenant(row.tenant_id, (ALERT_PREFIX[cls.category] || ALERT_PREFIX.other)(row.vendor_name), full);
+      await forwardToTenant(row.tenant_id, (ALERT_PREFIX[cls.category] || ALERT_PREFIX.other)(row.vendor_name), full, senderAddress(full.from) || row.to_email);
     }
   } else if (kind === 'review') {
     const result = await query(
       `UPDATE review_requests SET reply_text = $1, reply_html = $2, replied_at = now()
-       WHERE id = $3 RETURNING tenant_id, customer_name`,
+       WHERE id = $3 RETURNING tenant_id, customer_name, customer_email`,
       [full.text || null, full.html || null, id]
     );
     if (result.rows.length) {
-      await forwardToTenant(result.rows[0].tenant_id, `${result.rows[0].customer_name} replied`, full);
+      const row = result.rows[0];
+      await forwardToTenant(row.tenant_id, `${row.customer_name} replied`, full, senderAddress(full.from) || row.customer_email);
     }
   } else if (kind === 'partner') {
     const result = await query(
       `UPDATE partner_outreach SET reply_text = $1, reply_html = $2, replied_at = now()
-       WHERE id = $3 RETURNING tenant_id, recipient_name`,
+       WHERE id = $3 RETURNING tenant_id, recipient_name, to_email`,
       [full.text || null, full.html || null, id]
     );
     if (result.rows.length) {
-      await forwardToTenant(result.rows[0].tenant_id, `${result.rows[0].recipient_name} replied`, full);
+      const row = result.rows[0];
+      await forwardToTenant(row.tenant_id, `${row.recipient_name} replied`, full, senderAddress(full.from) || row.to_email);
     }
   }
 }
