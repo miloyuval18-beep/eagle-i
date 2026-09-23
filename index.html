@@ -1359,7 +1359,7 @@ function goTo(id,btn){
   var pg=document.getElementById('page-'+id); if(pg)pg.classList.add('active');
   if(btn)btn.classList.add('active');
   if(id==='budgetads')renderBudget(10000);
-  if(id==='social'){loadAdsStatus();loadScheduledPosts();}
+  if(id==='social'){loadAdsStatus();loadScheduledPosts();lsaLoad();}
   if(id==='emailtracking'&&typeof loadVendorOutreach==='function')loadVendorOutreach();
   tcTab=id;
   if(typeof TAB_CONTEXTS!=='undefined'){
@@ -6098,6 +6098,102 @@ async function adCreateGoogleCampaign(){
   }
 }
 
+/* ---------- Local Services Ads readiness ---------- */
+async function lsaLoad(){
+  const el=document.getElementById('lsa-out');if(!el)return;
+  try{
+    const d=await uxJson('/api/lsa/status');
+    UX.lsa=d;
+    lsaRender();
+  }catch(e){el.innerHTML='<div class="sm">Failed to load: '+uxEsc(e.message)+'</div>';}
+}
+function lsaRender(){
+  const el=document.getElementById('lsa-out');if(!el)return;
+  const d=UX.lsa;if(!d)return;
+  const check=(ok,label)=>`<div style="display:flex;align-items:center;gap:7px;padding:5px 0"><span style="color:${ok?'var(--green)':'var(--ink3)'}">${ok?'✓':'○'}</span><span style="font-size:13px;color:${ok?'var(--ink)':'var(--ink3)'}">${label}</span></div>`;
+  el.innerHTML=`
+    <div class="sm" style="margin-bottom:8px;font-family:var(--fm);font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink3)">Checklist</div>
+    ${check(d.hasAddress,'Business address on file')}
+    ${check(d.hasPhone,'Business phone on file')}
+    ${check(d.hasServiceArea,'Service area on file')}
+    ${check(d.hasOwnerName,'Owner name on file')}
+    <div style="display:flex;align-items:center;gap:7px;padding:5px 0">
+      <input type="checkbox" id="lsa-insurance" ${d.hasInsurance?'checked':''} onchange="lsaSaveChecklist()">
+      <label for="lsa-insurance" style="font-size:13px;cursor:pointer">I currently have general liability insurance</label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <input id="lsa-years" placeholder="Years in business (e.g. 5)" value="${uxEsc(d.yearsInBusiness)}" style="flex:1;min-width:160px" onblur="lsaSaveChecklist()">
+      <input id="lsa-categories" placeholder="Service categories (e.g. Roofing, Kitchen Remodeling)" value="${uxEsc(d.serviceCategories)}" style="flex:2;min-width:220px" onblur="lsaSaveChecklist()">
+    </div>
+    <div class="sm" id="lsa-checklist-s" style="margin-top:4px"></div>
+
+    <div class="sm" style="margin:16px 0 8px;font-family:var(--fm);font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink3)">Documents Google Will Ask For</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      ${['license','insurance'].map(kind=>`
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:5px;text-transform:capitalize">${kind}</div>
+          ${d.documents.filter(f=>f.kind===kind).map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:5px 8px;background:var(--bg4);border-radius:var(--r);font-size:11px;margin-bottom:4px">
+            <a href="/api/lsa/documents/${f.id}" target="_blank" rel="noopener">${uxEsc(f.filename)}</a>
+            <button class="btn-xs" onclick="lsaRemoveDoc(${f.id})" aria-label="Remove">✕</button>
+          </div>`).join('')}
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" id="lsa-file-${kind}" style="font-size:11px" onchange="lsaUploadDoc('${kind}',this)">
+        </div>`).join('')}
+    </div>
+    <div class="sm" id="lsa-doc-s" style="margin-top:4px"></div>
+
+    <div class="sm" style="margin:16px 0 8px;font-family:var(--fm);font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink3)">Profile Description (for Google's "About" field)</div>
+    ${d.bio?`<textarea id="lsa-bio" style="width:100%;min-height:70px;font-size:12px" onclick="this.select()">${uxEsc(d.bio)}</textarea>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn-xs p" onclick="lsaCopyBio()">Copy</button>
+        <button class="btn-xs" id="lsa-bio-btn" onclick="lsaGenerateBio()"><span class="spin" id="lsa-bio-spin"></span>Regenerate</button>
+      </div>`:
+      `<button class="btn-xs p" id="lsa-bio-btn" onclick="lsaGenerateBio()"><span class="spin" id="lsa-bio-spin"></span>✨ Draft My Profile Description</button>`}
+    <div class="sm" id="lsa-bio-s" style="margin-top:4px"></div>
+
+    <div style="margin-top:16px">
+      <a href="https://ads.google.com/local-services-ads/" target="_blank" rel="noopener" class="btn btn-blue" style="display:inline-block;text-decoration:none">Start Your Application on Google ↗</a>
+      <div class="sm" style="margin-top:5px">This opens Google's own signup — the license/insurance/background checks happen there, not in Eagle I.</div>
+    </div>`;
+}
+async function lsaSaveChecklist(){
+  const s=document.getElementById('lsa-checklist-s');
+  try{
+    await uxSend('/api/lsa/checklist',{
+      hasInsurance:document.getElementById('lsa-insurance').checked,
+      yearsInBusiness:document.getElementById('lsa-years').value,
+      serviceCategories:document.getElementById('lsa-categories').value
+    },'PATCH');
+    if(s){s.textContent='Saved';s.style.color='var(--green)';setTimeout(()=>{if(s)s.textContent='';},1500);}
+  }catch(e){if(s){s.textContent=e.message;s.style.color='var(--red)';}}
+}
+async function lsaUploadDoc(kind,input){
+  const file=input.files[0];if(!file)return;
+  const s=document.getElementById('lsa-doc-s');if(s)s.textContent='Uploading…';
+  try{
+    const data=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    await uxSend('/api/lsa/documents',{kind,name:file.name,data});
+    if(s){s.textContent='Uploaded';s.style.color='var(--green)';}
+    lsaLoad();
+  }catch(e){if(s){s.textContent=e.message;s.style.color='var(--red)';}}
+}
+async function lsaRemoveDoc(id){
+  try{await fetch('/api/lsa/documents/'+id,{method:'DELETE'});lsaLoad();}catch(e){showNotif('Failed',e.message);}
+}
+async function lsaGenerateBio(){
+  const btn=document.getElementById('lsa-bio-btn'),spin=document.getElementById('lsa-bio-spin'),s=document.getElementById('lsa-bio-s');
+  if(btn)btn.disabled=true;if(spin)spin.style.display='inline-block';
+  try{
+    await uxSend('/api/lsa/generate-bio',{});
+    lsaLoad();
+  }catch(e){if(s){s.textContent=e.message;s.style.color='var(--red)';}}
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';
+}
+function lsaCopyBio(){
+  const ta=document.getElementById('lsa-bio');if(!ta)return;
+  ta.select();
+  try{document.execCommand('copy');showNotif('Copied','Paste it into your Local Services Ads profile');}catch(e){showNotif('Select & copy manually','');}
+}
+
 /* ---------- NETWORKING EVENTS ---------- */
 async function loadTargetGroups(){
   const btn=document.getElementById('net-btn'),spin=document.getElementById('net-spin'),lbl=document.getElementById('net-lbl');
@@ -6429,6 +6525,11 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       </div>
     </div>
     <div id="ads-result" style="margin-top:11px"></div>
+  </div>
+
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:18px">📋 Google Local Services Ads — Get Ready to Apply</div><div class="ss">Local Services Ads (the "Google Guaranteed" badge) has no API to create or launch a campaign — Google requires its own manual verification (license, insurance, background check) done on their site. This gets you ready: the checklist, documents and profile text Google will ask for, so the real application takes minutes instead of a scramble.</div></div></div>
+    <div id="lsa-out"><div class="sm">Loading…</div></div>
   </div>
 
   <div class="g2">
