@@ -840,6 +840,21 @@ tbody tr:last-child td{border-bottom:none}
     <div id="signals-out"></div>
     <div class="sm" id="sig-s"></div>
   </div>
+  <div class="section" id="reddit-leads-section" style="display:none">
+    <div class="sh"><div><div class="st">💬 Reddit Leads</div><div class="ss">Real public Reddit posts matching keywords you choose, in subreddits you choose — not AI-estimated. Eagle I never posts or replies on Reddit for you; use the link on each post to reply from your own account.</div></div><button class="btn-ghost" id="rl-btn" onclick="loadRedditLeads(true)"><span class="spin" id="rl-spin"></span>Refresh</button></div>
+    <div class="card" style="max-width:520px;margin-bottom:12px">
+      <div class="ce" style="margin-bottom:6px">Search Settings</div>
+      <div style="font-size:11px;color:var(--ink2);margin-bottom:8px">Comma-separated. Example keywords: "need a roofer, recommend a contractor". Example subreddits: "houston, HomeImprovement". Checked about once a day.</div>
+      <label style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px">Keywords</label>
+      <input id="rl-keywords" placeholder="need a roofer, recommend a contractor" style="width:100%;margin:4px 0 8px;box-sizing:border-box">
+      <label style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px">Subreddits</label>
+      <input id="rl-subreddits" placeholder="houston, HomeImprovement" style="width:100%;margin:4px 0 8px;box-sizing:border-box">
+      <button class="btn-xs p" onclick="saveRedditSettings()">Save Settings</button>
+      <div class="sm" id="rl-settings-s"></div>
+    </div>
+    <div id="reddit-leads-out"></div>
+    <div class="sm" id="rl-s"></div>
+  </div>
   <div class="section">
     <div class="sh"><div><div class="st">Weather Trigger Protocols</div><div class="ss">AI-written suggestions for what to say and do when certain weather hits your service area — for example, what to post to social media right after a big storm.</div></div></div>
     <div class="g3" id="wx-grid"><div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--ink3)">Click the "See Full Weather Report" button above to see these suggestions</div></div>
@@ -1694,6 +1709,74 @@ function renderSignals(d){
 function goToRecentPermitTargets(){
   goTo('permits',document.getElementById('t-permits'));
   loadPerms(true);
+}
+
+/* REDDIT LEADS — real public Reddit posts matching tenant-chosen keywords
+   and subreddits (routes/redditLeads.js, lib/redditPollWorker.js). Eagle I
+   never posts or replies on Reddit; every card links to the real post so
+   the tenant replies from their own account. */
+let rlSettingsLoaded=false;
+async function loadRedditLeadSettings(){
+  try{
+    const r=await fetch('/api/reddit-leads/settings');
+    const d=await r.json();
+    if(!r.ok)return;
+    const kEl=document.getElementById('rl-keywords'),sEl=document.getElementById('rl-subreddits');
+    if(kEl)kEl.value=d.keywords||'';
+    if(sEl)sEl.value=d.subreddits||'';
+    const s=document.getElementById('rl-settings-s');
+    if(s)s.innerHTML=d.configured?'':'<span style="color:var(--amber)">Reddit lead-listening isn\'t configured on this server yet.</span>';
+    rlSettingsLoaded=true;
+  }catch(e){}
+}
+async function saveRedditSettings(){
+  const keywords=document.getElementById('rl-keywords')?.value||'';
+  const subreddits=document.getElementById('rl-subreddits')?.value||'';
+  const s=document.getElementById('rl-settings-s');
+  try{
+    const r=await fetch('/api/reddit-leads/settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({keywords,subreddits})});
+    const d=await r.json();
+    if(!r.ok){if(s){s.textContent=d.error?.message||'Failed to save';s.style.color='var(--red)';}return;}
+    if(s){s.textContent='Saved — checked about once a day';s.style.color='var(--ink3)';}
+  }catch(e){if(s){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}}
+}
+async function loadRedditLeads(force){
+  if(!rlSettingsLoaded)loadRedditLeadSettings();
+  const btn=document.getElementById('rl-btn'),spin=document.getElementById('rl-spin'),out=document.getElementById('reddit-leads-out'),s=document.getElementById('rl-s');
+  if(!out)return;
+  if(btn)btn.disabled=true;if(spin)spin.style.display='block';
+  try{
+    const r=await fetch('/api/reddit-leads');
+    const d=await r.json();
+    if(!r.ok){out.innerHTML=`<div class="ib"><div class="ibb" style="color:var(--red)">${d.error?.message||'Failed to load'}</div></div>`;return;}
+    renderRedditLeads(d.leads||[]);
+    if(s)s.textContent=(d.leads||[]).length+' post(s) found so far';
+  }catch(e){out.innerHTML=`<div class="ib"><div class="ibb" style="color:var(--red)">Network error: ${e.message}</div></div>`;}
+  if(btn)btn.disabled=false;if(spin)spin.style.display='none';
+}
+function renderRedditLeads(leads){
+  const out=document.getElementById('reddit-leads-out');if(!out)return;
+  const active=leads.filter(l=>l.status!=='dismissed');
+  if(!active.length){out.innerHTML='<div class="ib"><div class="ibb">No matching Reddit posts yet. Set your keywords and subreddits above — Eagle I checks about once a day.</div></div>';return;}
+  out.innerHTML='<div class="g3">'+active.map(l=>`
+    <div class="card">
+      <span class="badge b-blue" style="font-size:8px">💬 r/${escAttr(l.subreddit)}</span>
+      <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 3px"><a href="${escAttr(l.permalink)}" target="_blank" rel="noopener" style="color:inherit">${(l.title||'').slice(0,140)}</a></div>
+      ${l.snippet?`<div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:6px">${l.snippet}</div>`:''}
+      <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);margin-bottom:8px">Matched "${escAttr(l.matched_keyword||'')}"${l.posted_at?' · '+new Date(l.posted_at).toLocaleDateString():''}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <a class="btn-xs p" href="${escAttr(l.permalink)}" target="_blank" rel="noopener">Reply on Reddit</a>
+        <button class="btn-xs" onclick="dismissRedditLead(${l.id},this)">Dismiss</button>
+      </div>
+    </div>`).join('')+'</div>';
+}
+async function dismissRedditLead(id,btn){
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/reddit-leads/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'dismissed'})});
+    if(r.ok){const card=btn.closest('.card');if(card)card.remove();}
+  }catch(e){}
+  if(btn)btn.disabled=false;
 }
 // Drafts still come from /api/signals/draft-outreach (routes/signals.js) —
 // that endpoint's own comment is explicit that it "deliberately does NOT
@@ -4707,6 +4790,8 @@ async function bootstrap(){
     if(jobsSection){jobsSection.style.display=ME.showPermitsTab?'':'none';if(ME.showPermitsTab)loadJobs();}
     const signalsSection=document.getElementById('signals-section');
     if(signalsSection)signalsSection.style.display=ME.showPermitsTab?'':'none';
+    const rlSection=document.getElementById('reddit-leads-section');
+    if(rlSection){rlSection.style.display=ME.showPermitsTab?'':'none';if(ME.showPermitsTab){loadRedditLeadSettings();loadRedditLeads();}}
 
     // Render cached content — generated once at onboarding, free to display now
     const gc=ME.generatedContent||{};
@@ -5422,6 +5507,8 @@ async function saveCompanyProfile(){
     if(jobsSection){jobsSection.style.display=ME.showPermitsTab?'':'none';if(ME.showPermitsTab)loadJobs();}
     const signalsSection=document.getElementById('signals-section');
     if(signalsSection)signalsSection.style.display=ME.showPermitsTab?'':'none';
+    const rlSection=document.getElementById('reddit-leads-section');
+    if(rlSection){rlSection.style.display=ME.showPermitsTab?'':'none';if(ME.showPermitsTab){loadRedditLeadSettings();loadRedditLeads();}}
   }catch(e){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}
   if(btn)btn.disabled=false;if(spin)spin.style.display='none';
 }

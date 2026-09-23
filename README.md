@@ -200,6 +200,33 @@ at all — Search Console only reports on keywords it's actually recorded
 real search impressions for, which is an honest limit of the data, not a
 bug here.
 
+## Reddit lead-listening
+
+`routes/redditLeads.js` + `lib/redditPollWorker.js` search Reddit once a
+day, per tenant, for real public posts matching keywords/subreddits the
+tenant sets themselves (Social HQ → Market Intelligence → "Reddit Leads").
+No AI relevance filtering — what's shown is exactly what Reddit's own
+search returned for the tenant's own keywords, honestly labeled as
+"posts matching your keywords," not "confirmed leads." Eagle I never
+posts or replies on Reddit on a tenant's behalf; every card links to the
+real post so the tenant replies manually, from their own Reddit account.
+
+Needs `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET` — register one app (script
+or web app type) at reddit.com/prefs/apps; this is a single app-level
+credential for the whole product, not per-tenant, since it only ever reads
+public posts (OAuth2 client_credentials grant, no Reddit login involved).
+Without these two vars the feature silently no-ops — the poller never
+starts and the settings box just shows "not configured yet"; nothing else
+in the app is affected.
+
+**Commercial-use note**: Reddit's free API tier is licensed for
+non-commercial use; a paid product using it is technically "commercial
+use," which normally needs Reddit's separate paid approval. This is
+running on the free tier at deliberately small scale (one search cycle
+per tenant per day, `tenants.monthly_reddit_search_cap`) as an accepted
+risk rather than a resolved one — worth revisiting if usage grows or
+Reddit objects.
+
 ## Scheduled posts
 
 The Social HQ composer can queue a post for a future time instead of publishing

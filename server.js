@@ -43,10 +43,12 @@ const customersRoutes = require('./routes/customers');
 const workWithUsRoutes = require('./routes/workWithUs');
 const sendingDomainRoutes = require('./routes/sendingDomain');
 const photoRequestsRoutes = require('./routes/photoRequests');
+const redditLeadsRoutes = require('./routes/redditLeads');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
 const { startCompetitorRatingWorker } = require('./lib/competitorRatingWorker');
+const { startRedditPollWorker } = require('./lib/redditPollWorker');
 const { startTbaeRosterWorker } = require('./lib/tbaeRosterWorker');
 const { startTdlrRosterWorker } = require('./lib/tdlrRosterWorker');
 const { startTsbpeRosterWorker } = require('./lib/tsbpeRosterWorker');
@@ -140,6 +142,7 @@ app.use(customersRoutes);
 app.use(workWithUsRoutes);
 app.use(sendingDomainRoutes);
 app.use(photoRequestsRoutes);
+app.use(redditLeadsRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
@@ -189,6 +192,7 @@ app.listen(PORT, () => {
   startWeatherSignalPoller();
   startScheduledPostsWorker();
   startCompetitorRatingWorker();
+  startRedditPollWorker();
   startTbaeRosterWorker();
   startTdlrRosterWorker();
   startTsbpeRosterWorker();
