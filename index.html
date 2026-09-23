@@ -3783,12 +3783,13 @@ async function loadPartnerOutreach(){
 async function loadVendorOutreach(){
   const el=document.getElementById('vendor-sent-list');if(!el)return;
   try{
-    const [r,fr,qr]=await Promise.all([fetch('/api/vendors/outreach'),fetch('/api/vendors/followups'),fetch('/api/vendors/queue')]);
+    const [r,fr,qr]=await Promise.all([fetch('/api/vendors/outreach?limit='+UX.voFetchLimit),fetch('/api/vendors/followups'),fetch('/api/vendors/queue')]);
     const d=await r.json();
     const fd=fr.ok?await fr.json():{pending:[]};
     const qd=qr.ok?await qr.json():null;
     const fuEl=document.getElementById('vendor-followups');if(fuEl)fuEl.innerHTML=vdQueueHtml(qd)+vdFollowUpsHtml(fd);
     UX.voRows=d.outreach||[];
+    UX.voTotal=d.total||UX.voRows.length;
     voRenderSent();voRenderReplies(); // reply sorting, filters and re-sorting live in the results script below
     if(typeof repLoad==='function')repLoad();
   }catch(e){/* leave existing content on transient failure */}
@@ -6497,7 +6498,7 @@ loadSocialAnalytics();
    and handlers get only numeric ids or UUIDs, never free text. Everything
    that comes from a person outside the company (lead, vendor, reply) is
    escaped with uxEsc before it is shown. */
-const UX={rel:{filter:'',rows:[],summary:null,stages:[]},voFilter:'',voSentLimit:10,voReplyLimit:10,voRows:[],workPage:null,relEdit:null,relCtx:null,
+const UX={rel:{filter:'',rows:[],summary:null,stages:[]},voFilter:'',voSentLimit:10,voReplyLimit:10,voFetchLimit:100,voTotal:0,voRows:[],workPage:null,relEdit:null,relCtx:null,
   cust:{rows:[],offset:0,total:0,search:'',info:null,draft:null,templates:[]},ls:null,lsBusy:false,report:null,sd:null};
 const uxEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 async function uxJson(url,opts){const r=await fetch(url,opts);let d={};try{d=await r.json();}catch(e){/* empty body */}if(!r.ok)throw new Error((d.error&&d.error.message)||('Request failed ('+r.status+')'));return d;}
@@ -6639,8 +6640,20 @@ async function relRemove(){
 const UX_REPLY={interested:['Interested','green'],not_now:['Not now / not interested','amber'],unsubscribe:['Asked to unsubscribe','red'],auto_reply:['Automatic reply',''],other:['Needs a look','blue']};
 const UX_REPLY_ORDER=['interested','not_now','unsubscribe','auto_reply','other'];
 function voSetFilter(v){UX.voFilter=v;UX.voReplyLimit=10;voRenderReplies();}
-function voMoreSent(){UX.voSentLimit+=20;voRenderSent();}
-function voMoreReplies(){UX.voReplyLimit+=20;voRenderReplies();}
+// If showing 20 more would run past what's actually been fetched (and the
+// server has more beyond that), fetch a bigger page first — otherwise this
+// was just revealing more of an array that was silently capped at 50
+// (now 100) rows no matter how many emails had actually been sent.
+function voMoreSent(){
+  UX.voSentLimit+=20;
+  if(UX.voSentLimit>UX.voRows.length&&UX.voRows.length<UX.voTotal){UX.voFetchLimit=Math.max(UX.voFetchLimit*2,UX.voSentLimit+50);loadVendorOutreach();}
+  else voRenderSent();
+}
+function voMoreReplies(){
+  UX.voReplyLimit+=20;
+  if(UX.voRows.length<UX.voTotal){UX.voFetchLimit=UX.voFetchLimit*2;loadVendorOutreach();}
+  else voRenderReplies();
+}
 async function voSetCategory(id,cat){
   try{await uxSend('/api/vendors/outreach/'+id+'/reply-category',{category:cat},'PATCH');showNotif('Reply re-sorted',UX_REPLY[cat][0]+(cat==='unsubscribe'?' — they will not be emailed again':''));}
   catch(e){showNotif('Could not save',e.message);}

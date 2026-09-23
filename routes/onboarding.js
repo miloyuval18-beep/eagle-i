@@ -581,17 +581,25 @@ router.post('/api/vendors/outreach-email', requireAuth, async (req, res) => {
 });
 
 router.get('/api/vendors/outreach', requireAuth, async (req, res) => {
+  // Was a hardcoded LIMIT 50 with no way to see anything past that — a
+  // single bulk-send campaign easily exceeds it. Now a real offset-paged
+  // fetch, capped at 500 per request same as the vendor-directory listing.
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
   try {
     const result = await query(
       `SELECT vo.id, vo.vendor_name, vo.to_email, vo.message, vo.status, vo.error, vo.reply_text, vo.replied_at, vo.created_at,
               vo.delivery_status, vo.delivery_detail, vo.subject, vo.kind, vo.variant, vo.reply_category, vo.category_key,
-              f.status AS followup_status, f.due_at AS followup_due_at, f.cancel_reason AS followup_cancel_reason, f.step AS followup_step
+              f.status AS followup_status, f.due_at AS followup_due_at, f.cancel_reason AS followup_cancel_reason, f.step AS followup_step,
+              COUNT(*) OVER() AS total_count
        FROM vendor_outreach vo
        LEFT JOIN LATERAL (SELECT status, due_at, cancel_reason, step FROM outreach_followups WHERE outreach_id = vo.id ORDER BY step DESC LIMIT 1) f ON true
-       WHERE vo.tenant_id = $1 ORDER BY vo.created_at DESC LIMIT 50`,
-      [req.tenantId]
+       WHERE vo.tenant_id = $1 ORDER BY vo.created_at DESC LIMIT $2 OFFSET $3`,
+      [req.tenantId, limit, offset]
     );
-    res.json({ outreach: result.rows });
+    const total = result.rows[0] ? Number(result.rows[0].total_count) : 0;
+    const outreach = result.rows.map(r => { const { total_count, ...rest } = r; return rest; });
+    res.json({ outreach, total, hasMore: offset + outreach.length < total });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to load outreach history: ' + err.message } });
   }
