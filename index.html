@@ -4753,6 +4753,7 @@ async function bootstrap(){
   loadLandingPageState();
   loadReviewRequests();
   rvLoadMine();
+  prLoadRequests();
   loadScheduledPosts();
   loadVendorOutreach();
   loadPartnerOutreach();
@@ -5130,6 +5131,45 @@ function rvCopyDraft(id){
   const ta=document.getElementById('rv-draft-'+id);if(!ta)return;
   ta.select();
   try{document.execCommand('copy');showNotif('Copied','Paste it into your Google Business reply box');}catch(e){showNotif('Select & copy manually','');}
+}
+
+/* ---------- before/after photo requests ---------- */
+async function prSendRequest(){
+  const name=document.getElementById('pr-name').value.trim();
+  const email=document.getElementById('pr-email').value.trim();
+  const jobLabel=document.getElementById('pr-job').value.trim();
+  const btn=document.getElementById('pr-btn'),spin=document.getElementById('pr-spin'),s=document.getElementById('pr-s');
+  if(!name||!email){if(s){s.textContent='Name and email are required.';s.style.color='var(--red)';}return;}
+  btn.disabled=true;spin.style.display='inline-block';s.textContent='';
+  try{
+    await uxSend('/api/photo-requests',{customerName:name,customerEmail:email,jobLabel});
+    s.textContent='✓ Sent to '+email;s.style.color='var(--green)';
+    document.getElementById('pr-name').value='';document.getElementById('pr-email').value='';document.getElementById('pr-job').value='';
+    prLoadRequests();
+  }catch(e){s.textContent=e.message;s.style.color='var(--red)';}
+  btn.disabled=false;spin.style.display='none';
+}
+async function prLoadRequests(){
+  const el=document.getElementById('pr-requests-list');if(!el)return;
+  try{
+    const d=await uxJson('/api/photo-requests');
+    const list=d.requests||[];
+    if(!list.length){el.innerHTML='<div style="text-align:center;padding:14px;color:var(--ink3);font-size:12px">No photo requests sent yet</div>';return;}
+    el.innerHTML=list.map(r=>`<div style="padding:8px 10px;background:var(--bg4);border-radius:var(--r);font-size:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <span>${uxEsc(r.customerName)}${r.jobLabel?' — '+uxEsc(r.jobLabel):''}</span>
+        <span style="display:flex;align-items:center;gap:6px">
+          <span style="color:${r.status==='submitted'?'var(--green)':'var(--ink3)'};font-family:var(--fm);font-size:9px">${r.status==='submitted'?'✓ PHOTOS IN':r.sendError?'✗ SEND FAILED':'✉ SENT'}</span>
+          <button class="btn-xs" onclick="prRemove(${r.id})" aria-label="Remove">✕</button>
+        </span>
+      </div>
+      ${r.files&&r.files.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${r.files.map(f=>`<a href="/api/photo-requests/${r.id}/files/${f.id}" target="_blank" rel="noopener"><img src="/api/photo-requests/${r.id}/files/${f.id}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--bg4)" alt="${uxEsc(f.filename)}"></a>`).join('')}</div>`:''}
+    </div>`).join('');
+  }catch(e){/* leave existing content on transient failure */}
+}
+async function prRemove(id){
+  if(!confirm('Delete this photo request and its photos?'))return;
+  try{await fetch('/api/photo-requests/'+id,{method:'DELETE'});prLoadRequests();}catch(e){showNotif('Failed',e.message);}
 }
 // Command Center snapshot combining the two real-email flows in the app —
 // review requests (Social HQ) and vendor outreach (Growth & Partners) —
@@ -6273,6 +6313,19 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
   <div class="section">
     <div class="sh"><div><div class="st" style="font-size:18px">Reply to Your Reviews</div><div class="ss">Your real Google reviews, with an AI-drafted reply for each — grounded only in what the review actually says. Copy it into your Google Business Profile yourself; this app can't post a reply there directly (that needs a separate Google connection this app doesn't have).</div></div></div>
     <div id="rv-mine-out"><div class="sm">Loading…</div></div>
+  </div>
+  <div class="section">
+    <div class="sh"><div><div class="st" style="font-size:18px">Request Before/After Photos</div><div class="ss">Send a customer a link to share a couple of phone photos after a job wraps — reuse them in ads, on your landing pages, or as case studies. This really sends — it is not a simulation.</div></div></div>
+    <div class="composer" style="margin-bottom:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <input id="pr-name" placeholder="Customer's name" style="flex:1;min-width:140px">
+        <input id="pr-email" type="email" placeholder="Customer's email address" style="flex:1;min-width:160px">
+        <input id="pr-job" placeholder="Job (optional, e.g. Kitchen remodel)" style="flex:1;min-width:160px">
+        <button class="btn btn-blue" id="pr-btn" onclick="prSendRequest()"><span class="spin" id="pr-spin"></span>✉️ Send Request</button>
+      </div>
+      <div class="sm" id="pr-s"></div>
+      <div id="pr-requests-list" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
+    </div>
   </div>
   <div class="section">
     <div class="composer" id="post-composer">
