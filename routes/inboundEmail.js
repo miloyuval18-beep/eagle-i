@@ -24,6 +24,7 @@ const { cancelFollowUpForOutreach, cancelFollowUps } = require('../lib/followUps
 const { cancelQueued } = require('../lib/outreachQueue');
 const { classifyReply, senderAddress } = require('../lib/replyClassifier');
 const relationships = require('../lib/relationships');
+const { getVerifiedFromAddress } = require('../lib/sendingDomain');
 
 // Matches only the reply+<kind>-<uuid>@... local-part this app generates
 // itself (lib/email.js's buildReplyToAddress) — an inbound address in any
@@ -38,15 +39,27 @@ const REPLY_ADDRESS_RE = /^reply\+(vendor|review|partner)-([0-9a-f-]{36})@/i;
 // reads).
 async function forwardToTenant(tenantId, subjectPrefix, full, replyToEmail) {
   try {
-    const profileRes = await query('SELECT email FROM business_profile WHERE tenant_id = $1', [tenantId]);
-    const tenantEmail = profileRes.rows[0] && profileRes.rows[0].email;
+    const row = (await query(
+      `SELECT bp.email, t.company_name FROM business_profile bp
+       JOIN tenants t ON t.id = bp.tenant_id WHERE bp.tenant_id = $1`, [tenantId]
+    )).rows[0];
+    const tenantEmail = row && row.email;
     if (!tenantEmail) return;
+    // Without a verified sending domain, this falls back to Eagle I's shared
+    // default address — same as any other outreach email (lib/email.js).
+    // With one, use it here too: besides matching what the tenant already
+    // sees elsewhere, Resend's account-level sandbox restriction (limiting
+    // the shared default address to sending only to the account's own
+    // registered email) otherwise silently breaks forwarding entirely.
+    const fromAddress = await getVerifiedFromAddress(tenantId);
     await sendEmail({
       to: tenantEmail,
       subject: `${subjectPrefix}: ${full.subject || '(no subject)'}`,
       html: full.html || `<pre>${String(full.text || '').replace(/</g, '&lt;')}</pre>`,
       text: full.text || full.html || '',
-      replyTo: replyToEmail || undefined
+      replyTo: replyToEmail || undefined,
+      fromAddress: fromAddress || undefined,
+      fromName: row.company_name || undefined
     });
   } catch (err) {
     console.error('[inboundEmail] forwarding to tenant failed:', err.message);
