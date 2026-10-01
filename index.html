@@ -3678,7 +3678,7 @@ async function vdLettersGenerate(action){
 }
 
 /* ---------- delivery status + scheduled follow-ups (Sent Outreach & Replies) ---------- */
-const VD_FU_CANCEL={replied:'they replied',opted_out:'they unsubscribed',bounced:'the address bounced',complained:'they reported spam',user:'you cancelled it',no_address:'no business address on file',domain:"the address can't receive mail"};
+const VD_FU_CANCEL={replied:'they replied',opted_out:'they unsubscribed',bounced:'the address bounced',complained:'they reported spam',user:'you cancelled it',no_address:'no business address on file',domain:"the address can't receive mail",excluded_firm:'on your excluded-firms list'};
 const vdDate=iso=>new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'});
 async function vdCancelQueued(id){
   try{await fetch('/api/vendors/queue/'+id+'/cancel',{method:'POST'});}catch(e){}
