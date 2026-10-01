@@ -1024,6 +1024,18 @@ tbody tr:last-child td{border-bottom:none}
   <div class="sm" id="ven-s"></div>
   <div id="ppn-out"></div>
   <div class="sm" id="ppn-s"></div>
+  <div class="card" style="max-width:560px;margin-bottom:16px">
+    <div class="ce" style="margin-bottom:6px">🚫 Excluded Firms</div>
+    <div style="font-size:11px;color:var(--ink2);margin-bottom:8px">Businesses to never cold-email below, by domain (e.g. <code>aecom.com</code>) or by a word in their name. Applies to every category and every future send.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <select id="vex-type" class="btn-xs"><option value="domain">Domain</option><option value="name_contains">Name contains</option></select>
+      <input id="vex-value" placeholder="aecom.com" style="flex:1;min-width:140px">
+      <input id="vex-reason" placeholder="Reason (optional)" style="flex:1;min-width:140px">
+      <button class="btn-xs p" onclick="vexAdd()">Add</button>
+    </div>
+    <div id="vex-list"><div class="sm">Loading…</div></div>
+    <div class="sm" id="vex-s"></div>
+  </div>
   <div id="vd-root"></div>
   <div class="section" style="margin-top:20px">
     <div class="sh"><div><div class="st">Outreach Generator</div><div class="ss">Write a message to one specific person you already know — pick who they are and how you want to reach them below, then click "Generate Messages."</div></div></div>
@@ -1401,6 +1413,7 @@ function goTo(id,btn){
     if(id==='strategy')renderStrategyFromCache();
     if(id==='competitors')renderCompetitorsFromCache();
     if(id==='opps')renderOpportunitiesFromCache();
+    if(id==='growth')vexLoad();
   }
 }
 // In-page sub-tabs for merged top-level tabs (Leads, Budget & Ads, Growth &
@@ -2585,6 +2598,44 @@ function copyLP(){
 }
 
 /* VENDORS */
+/* EXCLUDED FIRMS — never cold-email these (routes/vendorDirectory.js, lib/vendorOutreach.js screenRecipients) */
+async function vexLoad(){
+  const out=document.getElementById('vex-list');if(!out)return;
+  try{
+    const r=await fetch('/api/vendors/exclusions');
+    const d=await r.json();
+    if(!r.ok){out.innerHTML=`<div class="sm" style="color:var(--red)">${escAttr(d.error?.message||'Failed to load')}</div>`;return;}
+    const rows=d.exclusions||[];
+    out.innerHTML=rows.length?rows.map(x=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bdr)">
+        <span class="badge" style="font-size:8px">${x.pattern_type==='domain'?'DOMAIN':'NAME'}</span>
+        <span style="font-size:12px;color:var(--ink);flex:1;min-width:0;overflow-wrap:anywhere">${escAttr(x.pattern)}${x.reason?` <span style="color:var(--ink3)">— ${escAttr(x.reason)}</span>`:''}</span>
+        <button class="btn-xs" onclick="vexRemove(${x.id},this)">Remove</button>
+      </div>`).join('') : '<div class="sm">No exclusions yet — add a domain or name above to never cold-email that firm, in any category.</div>';
+  }catch(e){out.innerHTML=`<div class="sm" style="color:var(--red)">Network error: ${escAttr(e.message)}</div>`;}
+}
+async function vexAdd(){
+  const type=document.getElementById('vex-type').value;
+  const value=document.getElementById('vex-value').value;
+  const reason=document.getElementById('vex-reason').value;
+  const s=document.getElementById('vex-s');
+  if(s){s.textContent='';s.style.color='';}
+  try{
+    const r=await fetch('/api/vendors/exclusions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,value,reason})});
+    const d=await r.json();
+    if(!r.ok){if(s){s.textContent=d.error?.message||'Failed to add';s.style.color='var(--red)';}return;}
+    document.getElementById('vex-value').value='';document.getElementById('vex-reason').value='';
+    vexLoad();
+  }catch(e){if(s){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}}
+}
+async function vexRemove(id,btn){
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/vendors/exclusions/'+id,{method:'DELETE'});
+    if(r.ok){const row=btn.closest('div[style*="border-bottom"]');if(row)row.remove();}
+  }catch(e){}
+  if(btn)btn.disabled=false;
+}
 async function loadVendors(){
   const btn=document.getElementById('ven-btn'),spin=document.getElementById('ven-spin');
   btn.disabled=true;spin.style.display='block';document.getElementById('ven-lbl').textContent='Loading...';
@@ -3253,7 +3304,7 @@ function vdBulkRender(keepScroll){
       +`<div class="vd-bar"><div class="vd-barfill" style="width:${pr.total?Math.round(pr.done/pr.total*100):0}%"></div></div>`;
   }else if(b.phase==='done'){
     const r=b.results;
-    const reasons={already_my_vendor:'already your vendor',already_emailed:'already emailed',opted_out:'opted out',bounced:'bounced before',complained:'reported a previous email as spam',domain_cannot_receive_mail:'address can\'t receive mail',duplicate_in_batch:'duplicate address',invalid_email:'invalid address',daily_cap:'over today\'s send limit'};
+    const reasons={already_my_vendor:'already your vendor',already_emailed:'already emailed',opted_out:'opted out',bounced:'bounced before',complained:'reported a previous email as spam',domain_cannot_receive_mail:'address can\'t receive mail',duplicate_in_batch:'duplicate address',invalid_email:'invalid address',daily_cap:'over today\'s send limit',excluded_firm:'on your excluded-firms list'};
     const skippedBy={};r.skipped.forEach(x=>{const k=reasons[x.reason]||x.reason;skippedBy[k]=(skippedBy[k]||0)+1;});
     html=(r.scheduled!=null?head(r.scheduled?`✓ ${r.scheduled} email${r.scheduled===1?'':'s'} scheduled`:'Nothing was scheduled',r.stopMsg||(r.scheduled?`From ${new Date(r.firstDue).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} to ${new Date(r.lastDue).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} — about ${r.perDay} a day.`:''))
       :head(r.sent?`✓ Sent ${r.sent} email${r.sent===1?'':'s'}`:'No emails were sent',r.stopMsg||''))
@@ -3395,7 +3446,7 @@ async function vdBulkToReview(){
     const r=await fetch('/api/vendors/outreach-bulk/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipients:k.ready.map(v=>({email:v.contactEmail,name:v.name,source:src,sourceId:v.id}))})});
     const d=await r.json();
     if(r.ok){
-      const why={already_emailed:'already emailed',opted_out:'opted out',invalid_email:'invalid address',already_my_vendor:'already your vendor'};
+      const why={already_emailed:'already emailed',opted_out:'opted out',invalid_email:'invalid address',already_my_vendor:'already your vendor',excluded_firm:'on your excluded-firms list'};
       d.skipped.forEach(s=>{if(s.reason==='duplicate_in_batch')return;k.ready.forEach(v=>{if(v.contactEmail.toLowerCase()===s.email&&!b.excluded[v.id])b.excluded[v.id]=why[s.reason]||s.reason;});});
     }
   }catch(e){/* server re-screens at send time regardless */}

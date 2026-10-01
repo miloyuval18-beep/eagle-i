@@ -651,4 +651,53 @@ router.post('/api/vendors/followups/:id/cancel', requireAuth, async (req, res) =
   }
 });
 
+// ---- Excluded firms (never cold-email these, by domain or name) -------
+// See migrations/..._vendor_outreach_exclusions.js and
+// lib/vendorOutreach.js's screenRecipients() for enforcement. Built after a
+// 266-email batch to the full TBAE architect list went out to firms like
+// AECOM and HOK alongside actual boutique firms, with zero replies.
+const oneLine = (s, n) => String(s == null ? '' : s).split('').filter(ch => ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) !== 127).join('').replace(/\s+/g, ' ').trim().slice(0, n);
+const DOMAIN_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
+
+router.get('/api/vendors/exclusions', requireAuth, async (req, res) => {
+  try {
+    const r = await query('SELECT id, pattern_type, pattern, reason, created_at FROM vendor_outreach_exclusions WHERE tenant_id = $1 ORDER BY created_at DESC', [req.tenantId]);
+    res.json({ exclusions: r.rows.map(x => ({ ...x, id: Number(x.id) })) });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to load: ' + err.message } });
+  }
+});
+
+router.post('/api/vendors/exclusions', requireAuth, async (req, res) => {
+  const { type, value, reason } = req.body || {};
+  if (type !== 'domain' && type !== 'name_contains') return res.status(400).json({ error: { message: 'type must be domain or name_contains.' } });
+  const pattern = oneLine(value, 120).toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').replace(/^@/, '');
+  if (!pattern) return res.status(400).json({ error: { message: 'A domain or name is required.' } });
+  if (type === 'domain' && !DOMAIN_RE.test(pattern)) return res.status(400).json({ error: { message: 'That doesn\'t look like a domain, e.g. aecom.com.' } });
+  if (type === 'name_contains' && pattern.length < 3) return res.status(400).json({ error: { message: 'Name patterns need at least 3 characters, to avoid accidentally excluding too much.' } });
+  try {
+    const row = (await query(
+      `INSERT INTO vendor_outreach_exclusions (tenant_id, pattern_type, pattern, reason) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (tenant_id, pattern_type, pattern) DO NOTHING RETURNING id, pattern_type, pattern, reason, created_at`,
+      [req.tenantId, type, pattern, oneLine(reason, 200) || null]
+    )).rows[0];
+    if (!row) return res.status(409).json({ error: { message: 'That one is already on the list.' } });
+    res.json({ exclusion: { ...row, id: Number(row.id) } });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to add: ' + err.message } });
+  }
+});
+
+router.delete('/api/vendors/exclusions/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: { message: 'Invalid id.' } });
+  try {
+    const n = (await query('DELETE FROM vendor_outreach_exclusions WHERE id = $1 AND tenant_id = $2', [id, req.tenantId])).rowCount;
+    if (!n) return res.status(404).json({ error: { message: 'Not found.' } });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Failed to remove: ' + err.message } });
+  }
+});
+
 module.exports = router;
