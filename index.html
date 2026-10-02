@@ -836,7 +836,7 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
   <div class="section" id="signals-section" style="display:none">
-    <div class="sh"><div><div class="st">🛰️ Real Signals — Live Data</div><div class="ss">This section shows real information, not an AI guess: real weather alerts from the National Weather Service, and real building-permit activity happening in Houston right now.</div></div><button class="btn-ghost" id="sig-btn" onclick="loadSignals(true)"><span class="spin" id="sig-spin"></span>Refresh</button></div>
+    <div class="sh"><div><div class="st">🛰️ Real Signals — Live Data</div><div class="ss">This section shows real information, not an AI guess: real weather alerts from the National Weather Service, and real building-permit activity happening right now in Houston or San Diego.</div></div><button class="btn-ghost" id="sig-btn" onclick="loadSignals(true)"><span class="spin" id="sig-spin"></span>Refresh</button></div>
     <div id="signals-out"></div>
     <div class="sm" id="sig-s"></div>
   </div>
@@ -844,7 +844,7 @@ tbody tr:last-child td{border-bottom:none}
     <div class="sh"><div><div class="st">💬 Reddit Leads</div><div class="ss">Real public Reddit posts matching keywords you choose, in subreddits you choose — not AI-estimated. Eagle I never posts or replies on Reddit for you; use the link on each post to reply from your own account.</div></div><button class="btn-ghost" id="rl-btn" onclick="loadRedditLeads(true)"><span class="spin" id="rl-spin"></span>Refresh</button></div>
     <div class="card" style="max-width:520px;margin-bottom:12px">
       <div class="ce" style="margin-bottom:6px">Search Settings</div>
-      <div style="font-size:11px;color:var(--ink2);margin-bottom:8px">Comma-separated. Example keywords: "need a roofer, recommend a contractor". Example subreddits: "houston, HomeImprovement". Checked about once a day.</div>
+      <div style="font-size:11px;color:var(--ink2);margin-bottom:8px">Comma-separated. Example keywords: "need a roofer, recommend a contractor". Example subreddits: your city's subreddit plus "HomeImprovement". Checked about once a day.</div>
       <label style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px">Keywords</label>
       <input id="rl-keywords" placeholder="need a roofer, recommend a contractor" style="width:100%;margin:4px 0 8px;box-sizing:border-box">
       <label style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px">Subreddits</label>
@@ -1216,9 +1216,9 @@ tbody tr:last-child td{border-bottom:none}
 <!-- ==================== PERMITS ==================== -->
 <div id="page-permits" class="page">
 <div class="wrap">
-  <div class="sh"><div><div class="st">High-Value Area Permits</div><div class="ss">A list of real Houston homes where someone recently filed a building or renovation permit — a good sign they might need your services soon. Pulled fresh from the city's own records every week. Click "Load Permits" below to see this week's list.</div></div>
+  <div class="sh"><div><div class="st">High-Value Area Permits</div><div class="ss" id="perm-intro">A list of real Houston homes where someone recently filed a building or renovation permit — a good sign they might need your services soon. Pulled fresh from the city's own records every week. Click "Load Permits" below to see this week's list.</div></div>
   <button class="btn btn-blue" id="perm-btn" onclick="loadPerms(false)"><span class="spin" id="perm-spin"></span><svg id="perm-ico" viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M12 7A5 5 0 1 1 7 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9.5,2 12,2 12,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Load Permits</button></div>
-  <div class="ib" data-ib-id="permits-real" style="margin-bottom:13px"><div class="ibt">🌐 What's real here, in plain terms<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div><div class="ibb">This list is real — it comes straight from the City of Houston, updated once a week (not second-by-second). It only gives us the property's address, not the owner's name, which is completely fine: mail addressed simply to "Property Owner" reaches the right house and is standard practice for this kind of outreach. On the rare property where public county tax records clearly show a real owner's name, your mailer letter will use that name instead — otherwise it stays addressed to "Property Owner," never a guess. Where you see a <b>🏛️ REAL HCAD DATA</b> badge, the home value shown comes directly from Harris County's own official property records. Neighborhood names below (River Oaks, The Heights, etc.) are general area groupings, not exact legal boundaries.</div></div>
+  <div class="ib" data-ib-id="permits-real" style="margin-bottom:13px"><div class="ibt">🌐 What's real here, in plain terms<button class="ib-toggle" onclick="toggleInfoBox(this)">Hide</button></div><div class="ibb" id="perm-realbox">This list is real — it comes straight from the City of Houston, updated once a week (not second-by-second). It only gives us the property's address, not the owner's name, which is completely fine: mail addressed simply to "Property Owner" reaches the right house and is standard practice for this kind of outreach. On the rare property where public county tax records clearly show a real owner's name, your mailer letter will use that name instead — otherwise it stays addressed to "Property Owner," never a guess. Where you see a <b>🏛️ REAL HCAD DATA</b> badge, the home value shown comes directly from Harris County's own official property records. Neighborhood names below (River Oaks, The Heights, etc.) are general area groupings, not exact legal boundaries.</div></div>
   <div id="perm-s" style="margin-bottom:10px"></div>
 
   <div id="perm-filter-wrap" style="display:none;margin-bottom:12px;position:relative">
@@ -1265,17 +1265,17 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <div id="perm-areas"><div style="text-align:center;padding:24px;color:var(--ink3)">Click the black "Load Permits" button above to see this week's real Houston permit list</div></div>
+  <div id="perm-areas"><div id="perm-empty" style="text-align:center;padding:24px;color:var(--ink3)">Click the black "Load Permits" button above to see this week's real Houston permit list</div></div>
   <div class="g2" style="margin-top:16px">
     <div class="card"><div class="ce" style="margin-bottom:6px">A Simple Letter You Can Copy Yourself</div><div style="font-size:11px;color:var(--ink3);margin-bottom:6px">The "Create Mailer Letters" button above already writes a personal letter for every address you select, automatically. This box is just a backup — a simple letter you can copy and paste yourself if you'd rather handle it another way.</div><div id="hcad-letter" style="font-size:12px;color:var(--ink);line-height:1.85;font-style:italic;background:var(--bg4);border-radius:var(--r);padding:10px 12px;border-left:3px solid var(--blue)">Property Owner<br>[Mailing Address]<br><br>Hello,<br><br>My name is [FOUNDER_NAME]. I'm reaching out from [COMPANY_NAME], serving [SERVICE_AREA].<br><br>You can reach me directly at [PHONE] or [EMAIL]. We'd be glad to answer any questions about your property — no obligation, no pitch.<br><br>[FOUNDER_NAME] · [COMPANY_NAME]</div><button class="btn-xs p" style="margin-top:7px" onclick="copyPermitLetter()">📋 Copy This Letter (with your info already filled in)</button></div>
     <div class="card"><div class="ce" style="margin-bottom:6px">Why We Suggest Mail Instead of Phone Calls or Texts</div>
       <div style="font-size:12px;color:var(--ink2);line-height:1.75">Calling or texting people using public permit records, without their permission first, can break federal telemarketing law and lead to real fines. A printed letter sent to their address doesn't have that risk — which is exactly why this tool only gives you addresses, not phone numbers.</div>
-      <div style="margin-top:8px;display:flex;gap:5px"><button class="btn-xs" onclick="exportPermitAddresses()">📥 Download Addresses as a Spreadsheet</button><button class="btn-xs" onclick="window.open('https://www.houstonpermittingcenter.org/sold-permits-search','_blank')">See the City's Original Records ↗</button></div>
+      <div style="margin-top:8px;display:flex;gap:5px"><button class="btn-xs" onclick="exportPermitAddresses()">📥 Download Addresses as a Spreadsheet</button><button class="btn-xs" id="perm-records-btn" onclick="window.open(PERMIT_META.recordsUrl,'_blank')">See the City's Original Records ↗</button></div>
     </div>
   </div>
 
   <div class="section" style="margin-top:24px">
-    <div class="sh"><div><div class="st">🕰️ Aging Systems</div><div class="ss">Beyond just-filed permits, this looks at how old a home's roof, HVAC, or water heater likely is — from real Harris County property records — and flags ones that are probably due for a look, even before any permit gets filed. "Likely due" is a helpful estimate based on typical service life, not a guarantee anything is actually broken.</div></div></div>
+    <div class="sh"><div><div class="st">🕰️ Aging Systems</div><div class="ss" id="aging-intro">Beyond just-filed permits, this looks at how old a home's roof, HVAC, or water heater likely is — from real Harris County property records — and flags ones that are probably due for a look, even before any permit gets filed. "Likely due" is a helpful estimate based on typical service life, not a guarantee anything is actually broken.</div></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
       <select id="aging-system-select" style="width:100%;box-sizing:border-box"><option value="roof">🏠 Roof (typically due at 18-25 years)</option><option value="hvac">❄️ HVAC (typically due at 12-18 years)</option><option value="water_heater">🚿 Water Heater (typically due at 8-12 years)</option></select>
       <button class="btn btn-blue" id="aging-btn" onclick="loadAgingSystems()"><span class="spin" id="aging-spin"></span><span id="aging-lbl">Find Aging Systems</span></button>
@@ -1415,6 +1415,7 @@ function goTo(id,btn){
     if(id==='opps')renderOpportunitiesFromCache();
     if(id==='growth')vexLoad();
   }
+  if(id==='permits')applyPermitMeta(permitMetaFor(ME?.profile?.market));
 }
 // In-page sub-tabs for merged top-level tabs (Leads, Budget & Ads, Growth &
 // Partners, Social HQ) — same active/inactive toggle as goTo(), scoped to
@@ -1675,7 +1676,7 @@ function renderSignals(d){
   const recentAddresses=d.recentPermitAddresses||[];
   if(!alerts.length&&!spikes.length){
     out.innerHTML=d.permitsAvailable===false
-      ?'<div class="ib"><div class="ibb">No active storm alerts for the '+escAttr((d.market&&d.market.label)||'')+' area right now — this is real, live National Weather Service data. Permit-volume signals are only available for Houston.</div></div>'
+      ?'<div class="ib"><div class="ibb">No active storm alerts for the '+escAttr((d.market&&d.market.label)||'')+' area right now — this is real, live National Weather Service data. Permit-volume signals are available for Houston and San Diego.</div></div>'
       :'<div class="ib"><div class="ibb">No active storm alerts and no permit-volume spikes right now — this is real, live data, not a placeholder.</div></div>';
     return;
   }
@@ -1687,7 +1688,7 @@ function renderSignals(d){
     const preview=recentAddresses.slice(0,5);
     const previewHtml=preview.length
       ?`<div style="background:var(--bg4);border-radius:var(--r);padding:7px 9px;margin-bottom:8px">
-          <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🏘️ Real recent permit activity in the Houston area (not necessarily this storm's path)</div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🏘️ Real recent permit activity in ${(d.permitMeta&&d.permitMeta.metro)||'the Houston area'} (not necessarily this storm's path)</div>
           ${preview.map(r=>`<div style="font-size:11px;color:var(--ink2);line-height:1.6">${r.address}${r.zip?' · '+r.zip:''}</div>`).join('')}
         </div>`
       :'';
@@ -1706,9 +1707,10 @@ function renderSignals(d){
   spikes.forEach((sp,i)=>{
     html+=`<div class="card" style="border:1px solid var(--bdr2)">
       <span class="badge b-blue" style="font-size:8px">📈 LIVE · +${sp.percentAboveAverage}% vs avg</span>
-      <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 3px">ZIP ${sp.zip}${sp.neighborhood?' — '+sp.neighborhood:''}</div>
+      <div style="font-family:var(--fh);font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 3px">ZIP ${sp.zip}${(sp.neighborhood||sp.region)?' — '+(sp.neighborhood||sp.region):''}</div>
       <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">${sp.recentCount} permits filed this week vs a ${sp.priorAvgCount}/week average — real permit-volume data, not estimated.</div>
       ${sp.hcad?`<div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">🏛️ Real Harris County appraisal data: avg home value <b>$${sp.hcad.avgMarketValue.toLocaleString()}</b> · median $${sp.hcad.medianMarketValue.toLocaleString()} across ${sp.hcad.parcelCount.toLocaleString()} parcels (HCAD ${sp.hcad.taxYear})</div>`:''}
+      ${sp.stats?`<div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:8px">🏛️ County records: median recent sale about <b>$${sp.stats.value.toLocaleString()}</b> (${sp.stats.transfers.toLocaleString()} single-family homes sold since ${sp.stats.since})</div>`:''}
       <button class="btn-xs p" onclick='draftSignalOutreach("permit_spike",${JSON.stringify({zip:sp.zip,recentCount:sp.recentCount,neighborhood:sp.neighborhood,hcadAvgValue:sp.hcad?sp.hcad.avgMarketValue:null}).replace(/'/g,"&#39;")},"sig-draft-p${i}")'>✍️ Draft outreach</button>
       <div id="sig-draft-p${i}" style="margin-top:8px"></div>
     </div>`;
@@ -1735,6 +1737,7 @@ async function loadRedditLeadSettings(){
     const d=await r.json();
     if(!r.ok)return;
     const kEl=document.getElementById('rl-keywords'),sEl=document.getElementById('rl-subreddits');
+    if(sEl&&ME?.profile?.market==='san_diego')sEl.placeholder='sandiego, HomeImprovement';
     if(kEl)kEl.value=d.keywords||'';
     if(sEl)sEl.value=d.subreddits||'';
     const s=document.getElementById('rl-settings-s');
@@ -2680,7 +2683,7 @@ async function loadRealVendors(category,idx,idPrefix){
       return;
     }
     el.innerHTML=`<div style="font-family:var(--fm);font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">🌐 Real businesses · ${d.source==='cache'?'cached':'live'}</div>`+
-      (d.highValueFocus?`<div style="font-size:11px;color:var(--ink2);background:var(--bg4);border-left:2px solid var(--amber);border-radius:var(--r);padding:6px 9px;margin-bottom:7px">🏛️ Your profile reads as a luxury/high-end focus — prioritizing vendors in or near Houston's known high-value neighborhoods (River Oaks, Memorial, West University Place, and similar).</div>`:'')+
+      (d.highValueFocus?`<div style="font-size:11px;color:var(--ink2);background:var(--bg4);border-left:2px solid var(--amber);border-radius:var(--r);padding:6px 9px;margin-bottom:7px">🏛️ Your profile reads as a luxury/high-end focus — prioritizing vendors in or near your market's known high-value neighborhoods (${ME?.profile?.market==='san_diego'?'La Jolla, Del Mar, Coronado, Carmel Valley, and similar':'River Oaks, Memorial, West University Place, and similar'}).</div>`:'')+
       vendors.map(v=>`
         <div class="vc-real-row" style="border-top:1px solid var(--bdr2);padding:6px 0;font-size:11px">
           <div style="color:var(--ink);font-weight:600">${v.name}${v.emailed?' <span class="badge b-new" style="vertical-align:middle">✉️ EMAILED</span>':''}${v.inHighValueZip?' <span style="font-family:var(--fm);font-size:8px;color:var(--amber);border:1px solid rgba(255,180,0,.35);border-radius:4px;padding:1px 5px;vertical-align:middle">🏛️ HIGH-VALUE AREA</span>':''}</div>
@@ -3953,6 +3956,20 @@ const PROFESSIONAL_PARTNER_TYPES=[
   {type:'Real Estate Attorneys',search:'real estate attorney',sourcing:'local Bar Association · LinkedIn',revenue:'$10K–$60K/yr advisory income'},
   {type:'Landscape Architects',search:'landscape architect',sourcing:'ASLA · Houzz · landscape permits',revenue:'4–8 co-referred projects/yr'}
 ];
+// The sourcing hints name local bodies (Houston's realtor association, Texas license lookups);
+// San Diego gets its own equivalents. Search terms and revenue figures are the same everywhere.
+const PARTNER_SOURCING_SD={
+  'Architects':'LinkedIn (ZIP + title) · AIA San Diego · permit records',
+  'Realtors':'San Diego Association of Realtors (SDAR) filtered by ZIP · CE course attendees',
+  'Engineers (PE)':'LinkedIn · CA PE license lookup (BPELSG)',
+  'Interior Designers':'ASID San Diego · Houzz · Instagram',
+  'Insurance Adjusters':'CA Dept. of Insurance license lookup · LinkedIn',
+  'Title Companies':'CA Dept. of Insurance · LinkedIn'
+};
+function partnerTypesForMarket(){
+  const sd=ME?.profile?.market==='san_diego';
+  return PROFESSIONAL_PARTNER_TYPES.map(t=>sd&&PARTNER_SOURCING_SD[t.type]?{...t,sourcing:PARTNER_SOURCING_SD[t.type]}:t);
+}
 async function loadProfessionalPartners(){
   const btn=document.getElementById('ppn-btn'),spin=document.getElementById('ppn-spin'),out=document.getElementById('ppn-out'),s=document.getElementById('ppn-s');
   if(btn)btn.disabled=true;if(spin)spin.style.display='block';
@@ -3961,7 +3978,7 @@ async function loadProfessionalPartners(){
     const p=await claude(`For ${C.name} (${C.founder}), a ${ME?.industry||'construction'} business in ${C.community||'their area'}, write a personalized 2-sentence first-outreach message to each of these 9 professional partner types, from ${C.founder} at ${C.phone}, proposing a referral relationship: ${PROFESSIONAL_PARTNER_TYPES.map(t=>t.type).join(', ')}.
 Return ONLY valid JSON: {"messages":{"Architects":"msg","Realtors":"msg","Engineers (PE)":"msg","Interior Designers":"msg","Insurance Adjusters":"msg","Private Bankers":"msg","Title Companies":"msg","Real Estate Attorneys":"msg","Landscape Architects":"msg"}}`,1800);
     const msgs=p.messages||{};
-    out.innerHTML=`<div class="g3">${PROFESSIONAL_PARTNER_TYPES.map((t,i)=>{
+    out.innerHTML=`<div class="g3">${partnerTypesForMarket().map((t,i)=>{
       const msg=msgs[t.type]||'';
       const safeMsg=msg.replace(/'/g,"\\'").replace(/"/g,'&quot;');
       return `
@@ -4050,7 +4067,30 @@ async function sendOutreachMsg(i,channel){
   }catch(e){if(s){s.textContent='Network error: '+e.message;s.style.color='var(--red)';}}
 }
 
-/* PERMITS — real, from lib/houstonPermits.js via /api/permits/high-value-areas */
+/* PERMIT MARKET WORDING — Houston's text is exactly what this page always said; other
+   markets fill the same sentences from the server's description of its permit source
+   (lib/permitSources.js), with this table as the first-paint copy before anything loads. */
+const PERMIT_META_BY_MARKET={
+  houston:{key:'houston',city:'Houston',cityState:'Houston, TX',metro:'the Houston area',recordsName:'City of Houston',recordsCadence:'once a week',recordsUrl:'https://www.houstonpermittingcenter.org/sold-permits-search',recordsLinkLabel:"See the City's Original Records ↗",csvPrefix:'houston_permits'},
+  san_diego:{key:'san_diego',city:'San Diego',cityState:'San Diego, CA',metro:'the San Diego area',recordsName:'City of San Diego',recordsCadence:'every day',recordsUrl:'https://data.sandiego.gov/datasets/development-permits/',recordsLinkLabel:"See the City's Open Data Records ↗",csvPrefix:'san_diego_permits',
+    ownerNote:'San Diego County does not publish owner names with its property data, so every letter is addressed to "Property Owner".',
+    valueNote:'Area values are the median county-assessed value of single-family homes recorded as sold in recent years (California reassesses a home to its purchase price when it sells), so they approximate recent sale prices. They are not appraisals.',
+    coverageNote:'Covers permits issued inside the City of San Diego only. Chula Vista, Oceanside, Escondido, Carlsbad and the unincorporated county publish their permits separately.'}
+};
+function permitMetaFor(key){return PERMIT_META_BY_MARKET[key]||PERMIT_META_BY_MARKET.houston;}
+let PERMIT_META=PERMIT_META_BY_MARKET.houston;
+function applyPermitMeta(m){
+  if(!m)return;
+  PERMIT_META=m;
+  const set=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
+  const btn=document.getElementById('perm-records-btn');if(btn)btn.textContent=m.recordsLinkLabel||"See the City's Original Records ↗";
+  if(m.key==='houston')return; // Houston's wording is already in the page
+  set('perm-intro',`A list of real ${escAttr(m.city)} homes where someone recently filed a building or renovation permit — a good sign they might need your services soon. Pulled from the city's own records ${escAttr(m.recordsCadence)}. Click "Load Permits" below to see the latest list.`);
+  set('perm-realbox',`This list is real — it comes straight from the ${escAttr(m.recordsName)}, updated ${escAttr(m.recordsCadence)}. It only gives us the property's address, not the owner's name, which is completely fine: mail addressed simply to "Property Owner" reaches the right house and is standard practice for this kind of outreach. ${escAttr(m.ownerNote||'')} Where you see a <b>🏛️ COUNTY RECORDS</b> badge, the area value shown comes from official county property records. ${escAttr(m.valueNote||'')} ${escAttr(m.coverageNote||'')} Neighborhood names below are general area groupings, not exact legal boundaries.`);
+  if(!permAreas.length)set('perm-empty',`Click the black "Load Permits" button above to see the latest real ${escAttr(m.city)} permit list`);
+}
+
+/* PERMITS — real, from lib/houstonPermits.js (Houston) or lib/sdPermits.js (San Diego) via /api/permits/high-value-areas */
 let permAreas=[];
 let permRegionFilter=new Set(); // empty = no filter, show every area
 let permNewOnly=false;          // true = only show permits from the most recently published report
@@ -4063,12 +4103,13 @@ async function loadPerms(force){
   const btn=document.getElementById('perm-btn'),spin=document.getElementById('perm-spin'),ico=document.getElementById('perm-ico');
   const s=document.getElementById('perm-s');
   btn.disabled=true;spin.style.display='block';ico.style.display='none';
-  s.textContent='Loading this week\'s real Houston permit reports...';
+  s.textContent=PERMIT_META.key==='houston'?'Loading this week\'s real Houston permit reports...':'Loading the latest real '+PERMIT_META.city+' permit records...';
   try{
     const r=await fetch('/api/permits/high-value-areas'+(force?'?refresh=true':''));
     const d=await r.json();
     if(!r.ok)throw new Error(d.error?.message||'Failed to load');
     permAreas=d.areas||[];
+    applyPermitMeta(d.market);
     permRegionFilter=new Set();
     permNewOnly=false;
     document.getElementById('perm-newonly-btn')?.classList.remove('active');
@@ -4078,7 +4119,7 @@ async function loadPerms(force){
     renderPermAreas();
     updatePermSelectBar();
     s.textContent=`${d.totalPermits} real permits across ${permAreas.length} zip codes · as of ${new Date(d.fetchedAt).toLocaleString()}`;
-    showNotif('Permits loaded',`${d.totalPermits} real permits from this week's Houston reports`);
+    showNotif('Permits loaded',PERMIT_META.key==='houston'?`${d.totalPermits} real permits from this week's Houston reports`:`${d.totalPermits} real permits from the latest ${PERMIT_META.city} records`);
   }catch(e){s.textContent='Error: '+e.message;}
   btn.disabled=false;spin.style.display='none';ico.style.display='';
 }
@@ -4190,10 +4231,10 @@ function renderPermAreas(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
           <span class="ce">${a.zip}${a.region?' — '+a.region:''}</span>
-          ${a.hcad?'<span class="badge b-new" style="margin-left:7px">🏛️ REAL HCAD DATA</span>':a.highValue?'<span class="badge b-new" style="margin-left:7px">HIGH VALUE</span>':''}
+          ${a.hcad?'<span class="badge b-new" style="margin-left:7px">🏛️ REAL HCAD DATA</span>':a.stats?'<span class="badge b-new" style="margin-left:7px">🏛️ COUNTY RECORDS</span>':a.highValue?'<span class="badge b-new" style="margin-left:7px">HIGH VALUE</span>':''}
           ${a.newCount?`<span class="badge b-blue" style="margin-left:7px">🆕 ${a.newCount} NEW</span>`:''}
         </div>
-        <span style="font-size:11px;color:var(--ink3)">${a.permitCount} permit${a.permitCount===1?'':'s'}${a.hcad?' · $'+a.hcad.avgMarketValue.toLocaleString()+' avg ('+a.hcad.parcelCount.toLocaleString()+' parcels, HCAD '+a.hcad.taxYear+')':a.approxMedianValue?' · ~$'+a.approxMedianValue.toLocaleString()+' median':''}</span>
+        <span style="font-size:11px;color:var(--ink3)">${a.permitCount} permit${a.permitCount===1?'':'s'}${a.hcad?' · $'+a.hcad.avgMarketValue.toLocaleString()+' avg ('+a.hcad.parcelCount.toLocaleString()+' parcels, HCAD '+a.hcad.taxYear+')':a.stats?' · ~$'+a.stats.value.toLocaleString()+' median recent sale ('+a.stats.transfers.toLocaleString()+' homes since '+a.stats.since+')':a.approxMedianValue?' · ~$'+a.approxMedianValue.toLocaleString()+' median':''}</span>
       </div>
       <div class="g3">
         ${a.permits.map(p=>{
@@ -4299,7 +4340,7 @@ async function generateMailerPdf(action){
       doc.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),marginX,y);y+=26;
       doc.text(L.recipientName||'Property Owner',marginX,y);y+=14;
       doc.text(L.recipientAddress||'',marginX,y);y+=14;
-      doc.text('Houston, TX'+(L.zip?' '+L.zip:''),marginX,y);y+=32;
+      doc.text((L.cityState||'Houston, TX')+(L.zip?' '+L.zip:''),marginX,y);y+=32;
 
       doc.text(L.greeting||'Dear Property Owner,',marginX,y);y+=22;
 
@@ -4352,11 +4393,19 @@ async function loadAgingSystems(){
   const btn=document.getElementById('aging-btn'),spin=document.getElementById('aging-spin'),lbl=document.getElementById('aging-lbl'),s=document.getElementById('aging-s');
   const system=document.getElementById('aging-system-select')?.value||'roof';
   if(btn)btn.disabled=true;if(spin)spin.style.display='block';if(lbl)lbl.textContent='Searching...';
-  if(s){s.textContent='Checking real Harris County property records...';s.style.color='var(--ink2)';}
+  if(s){s.textContent=PERMIT_META.key==='houston'?'Checking real Harris County property records...':'Checking county property records...';s.style.color='var(--ink2)';}
   try{
     const r=await fetch('/api/permits/aging-systems?system='+encodeURIComponent(system));
     const d=await r.json();
     if(!r.ok)throw new Error(d.error?.message||'Failed to load');
+    if(d.unavailable){
+      agingProperties=[];agingSelected=new Map();updateAgingSelectBar();
+      const out=document.getElementById('aging-out');
+      if(out)out.innerHTML='<div class="ib"><div class="ibb">'+escAttr(d.unavailable)+'</div></div>';
+      if(s){s.textContent='Not available for '+PERMIT_META.city+' yet';s.style.color='var(--ink2)';}
+      if(btn)btn.disabled=false;if(spin)spin.style.display='none';if(lbl)lbl.textContent='Find Aging Systems';
+      return;
+    }
     agingProperties=d.properties||[];
     agingSystemLabel=AGING_SYSTEM_LABELS[d.system]||AGING_SYSTEM_LABELS[system]||'';
     agingSelected=new Map();
@@ -4444,7 +4493,7 @@ async function generateAgingMailerPdf(action){
       doc.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),marginX,y);y+=26;
       doc.text(L.recipientName||'Property Owner',marginX,y);y+=14;
       doc.text(L.recipientAddress||'',marginX,y);y+=14;
-      doc.text('Houston, TX'+(L.zip?' '+L.zip:''),marginX,y);y+=32;
+      doc.text((L.cityState||'Houston, TX')+(L.zip?' '+L.zip:''),marginX,y);y+=32;
 
       doc.text(L.greeting||'Dear Property Owner,',marginX,y);y+=22;
 
@@ -4488,6 +4537,12 @@ function openOfficialPermitRecord(projectNo){
   // and the one public search tool is a legacy system with no stable URL
   // pattern for a single result. Best honest option: copy the project
   // number and open the real public search tool for the user to paste it in.
+  if(PERMIT_META.key!=='houston'){
+    // San Diego: the city's open-data page describes the records; the permit number is what to search for.
+    if(projectNo){navigator.clipboard?.writeText(projectNo).catch(()=>{});showNotif('Permit # copied',projectNo+' — search for it in the city\'s permit records on the page that just opened');}
+    window.open(PERMIT_META.recordsUrl,'_blank');
+    return;
+  }
   if(projectNo){
     navigator.clipboard?.writeText(projectNo).catch(()=>{});
     showNotif('Project # copied',projectNo+' — paste into "Project Number" search on the page that just opened');
@@ -4496,7 +4551,7 @@ function openOfficialPermitRecord(projectNo){
 }
 function openPermitLocation(address,zip){
   if(!address){showNotif('No address','Nothing to open');return;}
-  const q=encodeURIComponent(address+', Houston, TX '+(zip||''));
+  const q=encodeURIComponent(address+', '+PERMIT_META.cityState+' '+(zip||''));
   window.open('https://www.google.com/maps/search/?api=1&query='+q,'_blank');
 }
 function exportPermitAddresses(){
@@ -4504,7 +4559,7 @@ function exportPermitAddresses(){
   const rows=[['Zip','Area','Address','Permit Type','Permit Date','Comments']];
   permAreas.forEach(a=>a.permits.forEach(p=>rows.push([a.zip,a.region||a.neighborhood||'',p.address||'',p.permitType||'',p.permitDate||'',`"${(p.comments||'').replace(/"/g,'""')}"`])));
   const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});
-  const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='houston_permits_'+new Date().toISOString().slice(0,10)+'.csv';link.click();
+  const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=(PERMIT_META.csvPrefix||'houston_permits')+'_'+new Date().toISOString().slice(0,10)+'.csv';link.click();
 }
 function copyPermitLetter(){
   const letter=`Property Owner
@@ -6749,9 +6804,9 @@ ${(p.sections||[]).map(s=>'<h2>'+s.h+'</h2><p>'+s.p+'</p>').join('')}
       <div class="cred-row"><div class="cred-label">Service Area</div><input class="cred-input" type="text" id="prof-service-area" placeholder="e.g. Austin metro, or nationwide"></div>
     <div class="cred-row"><div class="cred-label">Area for the vendor lists</div>
       <select class="cred-input" id="prof-market" style="text-transform:none;font-weight:400;cursor:pointer">
-        <option value="houston">Houston</option><option value="dallas">Dallas–Fort Worth</option><option value="austin">Austin</option><option value="san_antonio">San Antonio</option>
+        <option value="houston">Houston</option><option value="dallas">Dallas–Fort Worth</option><option value="austin">Austin</option><option value="san_antonio">San Antonio</option><option value="san_diego">San Diego</option>
       </select>
-      <div class="sm">Which metro area the licensed-contractor, supplier, bank and other vendor lists cover. Permits and weather signals are still Houston only.</div></div>
+      <div class="sm">Which metro area the licensed-contractor, broker, bank and other vendor lists cover. Permits are available for Houston and San Diego; weather signals work everywhere.</div></div>
     </div>
     <div class="cred-row"><div class="cred-label">LinkedIn Profile <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink3)">(optional — shown in your outreach emails)</span></div><input class="cred-input" type="text" id="prof-linkedin" placeholder="https://www.linkedin.com/in/your-name"></div>
     <div class="cred-row"><label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0"><input type="checkbox" id="prof-lead-alerts" checked style="width:16px;height:16px"> Email me the moment a new lead fills out my landing page form</label></div>

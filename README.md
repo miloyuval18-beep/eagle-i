@@ -200,6 +200,57 @@ at all — Search Console only reports on keywords it's actually recorded
 real search impressions for, which is an honest limit of the data, not a
 bug here.
 
+## San Diego market
+
+A company picks its metro in Profile ("Area for the vendor lists"). **San Diego**
+is the first California market; the Texas ones are unchanged. Every Texas source
+(TBAE, TDLR, TREC and so on) only appears for a Texas market, and a California
+market gets its own (`lib/markets.js` carries a `state` per market; each source in
+`lib/vendorDirectories.js` says which states it serves).
+
+What San Diego uses, all of it real public data:
+
+- **Contractors (CSLB)** -- `lib/cslbContractors.js`. The Contractors State License
+  Board's free master list (cslb.ca.gov/onlineservices/dataportal): every general
+  contractor and trade, with phone, classifications, expiry and workers' comp status.
+  No email (state law), so email still comes from the Google lookup. The portal's
+  firewall rejects Node's built-in `fetch`, so the download uses the plain `https`
+  module; the 75MB file is streamed (`lib/csvStream.js`) and only San Diego County
+  rows are kept.
+- **Real estate brokers (DRE)** -- `lib/dreRegistrants.js`. The Department of Real
+  Estate's public licensee list; brokers and brokerages only. Broker street addresses
+  are not offered for letters (an address of record is sometimes a home address).
+- **Banks (FDIC)** -- the same importer as Houston, now state-aware
+  (`node scripts/importFdicBanks.js`). The FDIC moved its API to `api.fdic.gov`; if its
+  TLS certificate is still wrong the import fails with a certificate-name error. That is
+  on their side. Do not turn certificate checking off to get around it.
+- **Permits** -- `lib/sdPermits.js`. The City of San Diego's open data, refreshed daily
+  (City only: Chula Vista, Oceanside, Escondido, Carlsbad and the county publish
+  separately). The file has no ZIP column and many no-plan permits carry only a parcel
+  number, so ZIP and street address are filled in from the public SANDAG parcel layer.
+  The permit holder is often a contractor, so letters stay addressed to "Property Owner".
+- **Area values** -- `data/sd_zip_values.json`, built by `scripts/importSdZipValues.js`
+  from the public SANDAG parcel layers (no owner names): per ZIP, the median county
+  assessed value of single-family homes whose last transfer was recorded since 2022.
+  California reassesses a home to its purchase price when it sells, so that approximates
+  recent sale prices; it is not an appraisal. ZIPs with under 30 recent transfers get no
+  value. Re-run the script to refresh (a few minutes, ~600 requests).
+- **Weather** -- the National Weather Service at the San Diego point, with Red Flag /
+  Fire Weather alerts added to the storm triggers.
+
+**Not built, on purpose: aging systems.** The county's "effective year" is two digits
+("08"), which can mean 1908 or 2008. Guessing the century would tell the owner of a
+100-year-old house that its roof is 18 years old, so that section says it is not
+available for San Diego yet.
+
+**Do not use the county's internal parcel service** (`gis-public.sandiegocounty.gov`,
+"for use of the SanGIS JPA member users only", and it carries owner names). Only the
+public SANDAG release (`geo.sandag.org`) is used.
+
+Importers run monthly on the server (`lib/cslbRosterWorker.js`, `lib/dreRosterWorker.js`)
+and by hand: `node scripts/importCslbContractors.js`, `node scripts/importDreRegistrants.js`
+(both take `--dry-run`).
+
 ## Reddit lead-listening
 
 `routes/redditLeads.js` + `lib/redditPollWorker.js` search Reddit once a

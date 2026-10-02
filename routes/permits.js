@@ -1,18 +1,28 @@
-// Real Houston building-permit data for real-estate/home-services tenants —
-// see lib/houstonPermits.js for where this actually comes from and its
-// real limitations (no owner name field; weekly, not live).
+// Real building-permit data for real-estate/home-services tenants — Houston's
+// from lib/houstonPermits.js (weekly reports, no owner name field) or San Diego's
+// from lib/sdPermits.js (daily city open data), chosen by the company's market
+// via lib/permitSources.js. Both have real limitations, documented there.
 const express = require('express');
 const { query } = require('../db');
 const { requireAuth } = require('../auth');
-const { getRecentPermits, mostRecentWeekKey, isNewestWeek } = require('../lib/houstonPermits');
-const { HOUSTON_HIGH_VALUE_ZIPS, getHighValueZipInfo } = require('../lib/houstonZipValues');
-const { getRealHcadZipStatsForZips, findConfidentOwners, getParcelAgesForZips } = require('../lib/hcadZipValues');
+const { mostRecentWeekKey, isNewestWeek } = require('../lib/houstonPermits');
+const { getParcelAgesForZips } = require('../lib/hcadZipValues');
+const { getHighValueZipInfo } = require('../lib/houstonZipValues');
 const { getZipRegion } = require('../lib/houstonZipRegions');
+const { providerFor } = require('../lib/permitSources');
+const markets = require('../lib/markets');
 const { buildPermitLetter, buildAgingSystemLetter } = require('../lib/permitMailer');
 const { normalizeAddress } = require('../lib/hcadOwnerNames');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
 
 const router = express.Router();
+
+// The permit/area-value source for this company's market (Houston's for any
+// market that has none of its own, as it always was).
+async function tenantProvider(tenantId) {
+  const r = await query('SELECT market FROM business_profile WHERE tenant_id = $1', [tenantId]);
+  return providerFor(markets.getMarket(r.rows[0] && r.rows[0].market));
+}
 
 // Roughly the point in a system's typical service life where it's worth a
 // proactive look, not a hard failure age — framed to the homeowner as
@@ -34,8 +44,9 @@ router.get('/api/permits/high-value-areas', requireAuth, async (req, res) => {
       return res.status(403).json({ error: { message: 'This feature is only available for real estate, home services, or construction accounts.' } });
     }
 
+    const provider = await tenantProvider(req.tenantId);
     const forceRefresh = req.query.refresh === 'true';
-    const { records, fetchedAt, failures } = await getRecentPermits({ weeksBack: 4, forceRefresh });
+    const { records, fetchedAt, failures } = await provider.getRecentPermits({ weeksBack: 4, forceRefresh });
 
     const byZip = new Map();
     for (const rec of records) {
@@ -43,62 +54,45 @@ router.get('/api/permits/high-value-areas', requireAuth, async (req, res) => {
       byZip.get(rec.zip).push(rec);
     }
 
-    const hcadByZip = await getRealHcadZipStatsForZips([...byZip.keys()]);
+    const info = await provider.areaInfo([...byZip.keys()]);
 
-    // "New" means the most recent week Houston Permitting Center has
-    // actually published data for — not today's real calendar week. Their
-    // own publish lag runs well over a week (observed directly: the newest
-    // report was still only "Aug 17-23" as of Sept 2), so a permit dated in
-    // the literal current week essentially never exists yet; see
-    // lib/houstonPermits.js's mostRecentWeekKey for the full reasoning.
+    // "New" means the most recent week the city has actually published data for —
+    // not today's real calendar week. Houston's own publish lag runs well over a
+    // week (observed directly: the newest report was still only "Aug 17-23" as of
+    // Sept 2), so a permit dated in the literal current week essentially never
+    // exists yet; see lib/houstonPermits.js's mostRecentWeekKey for the reasoning.
     // Computed once across all records, not per zip/permit.
     const latestWeekKey = mostRecentWeekKey(records);
 
     const areas = [...byZip.entries()].map(([zip, permits]) => {
-      const zipInfo = getHighValueZipInfo(zip);
-      const hcad = hcadByZip.get(zip) || null;
+      const a = info.get(zip);
       return {
         zip,
-        // Broad area label for grouping/filtering — covers every zip the
-        // permit reports touch, not just the curated high-value list (see
-        // lib/houstonZipRegions.js). Falls back to the zip itself when even
-        // that broader list has no entry, so grouping never drops a permit.
-        region: getZipRegion(zip) || (zipInfo ? zipInfo.neighborhood : null) || `Zip ${zip}`,
-        neighborhood: zipInfo ? zipInfo.neighborhood : null,
-        approxMedianValue: zipInfo ? zipInfo.approxMedianValue : null,
-        highValue: !!zipInfo,
-        // Single best-available value estimate for this zip, for "top N by
-        // value" selection on the Permits page — same preference order as
-        // the sort below (real HCAD data first, then the curated estimate,
-        // 0 when neither is known so those permits simply rank last).
-        estValue: hcad ? hcad.avgMarketValue : (zipInfo ? zipInfo.approxMedianValue : 0),
-        hcad, // real HCAD appraisal-district data, when the import has covered this zip — see lib/hcadZipValues.js
+        region: a.region,
+        neighborhood: a.neighborhood,
+        approxMedianValue: a.approxMedianValue,
+        highValue: a.highValue,
+        estValue: a.estValue,
+        hcad: a.hcad, // Houston only: real HCAD appraisal-district data, when the import has covered this zip
+        stats: a.stats, // San Diego only: recent-sale median from county parcel records
         permitCount: permits.length,
         newCount: permits.filter(p => isNewestWeek(p.permitDate, latestWeekKey)).length,
         permits: permits
-          .sort((a, b) => (b.permitDate || '').localeCompare(a.permitDate || ''))
+          .sort((x, y) => (y.permitDate || '').localeCompare(x.permitDate || ''))
           .slice(0, 25) // cap per zip so one busy zip doesn't dwarf the response
           .map(p => ({ ...p, isNew: isNewestWeek(p.permitDate, latestWeekKey) }))
       };
     });
-
-    // Real HCAD data ranks first when present (it's the most trustworthy
-    // signal); the curated high-value list is the fallback ranking signal
-    // for zips HCAD import hasn't covered yet; permit volume breaks ties.
-    areas.sort((a, b) => {
-      if (!!a.hcad !== !!b.hcad) return a.hcad ? -1 : 1;
-      if (a.hcad) return b.hcad.avgMarketValue - a.hcad.avgMarketValue;
-      if (a.highValue !== b.highValue) return a.highValue ? -1 : 1;
-      if (a.highValue) return b.approxMedianValue - a.approxMedianValue;
-      return b.permitCount - a.permitCount;
-    });
+    areas.sort(provider.compareAreas);
 
     res.json({
       areas,
       totalPermits: records.length,
       fetchedAt: fetchedAt ? new Date(fetchedAt).toISOString() : null,
       sourceFailures: failures && failures.length ? failures : undefined,
-      trackedHighValueZipCount: HOUSTON_HIGH_VALUE_ZIPS.length
+      trackedHighValueZipCount: provider.trackedHighValueZipCount,
+      market: provider.meta,
+      agingSystems: provider.agingSystems
     });
   } catch (err) {
     res.status(502).json({ error: { message: 'Failed to load permit data: ' + err.message } });
@@ -167,16 +161,18 @@ router.post('/api/permits/mailer-letters', requireAuth, async (req, res) => {
     // findConfidentOwners() considers the (zip, address) match unambiguous
     // — see lib/hcadOwnerNames.js for the "only if fully confident" rules.
     // One query for the whole batch, not one per permit.
-    const owners = await findConfidentOwners(
+    const provider = await tenantProvider(req.tenantId);
+    const owners = await provider.owners(
       cleanedPermits.map(p => ({ id: p.id, zip: p.zip, address: p.address }))
     );
+    const areaInfo = await provider.areaInfo([...new Set(cleanedPermits.map(p => p.zip).filter(Boolean))]);
 
     const letters = cleanedPermits.map(permit => {
-      const zipInfo = getHighValueZipInfo(permit.zip);
-      const region = getZipRegion(permit.zip) || (zipInfo ? zipInfo.neighborhood : null) || (permit.zip ? `Zip ${permit.zip}` : '');
+      const a = areaInfo.get(permit.zip);
+      const region = (a && a.region) || (permit.zip ? `Zip ${permit.zip}` : '');
       const owner = owners.get(permit.id) || null;
-      const letter = buildPermitLetter({ permit, area: { zip: permit.zip, region }, tenant, owner });
-      return { ...letter, permitType: permit.permitType, permitDate: permit.permitDate, projectNo: permit.projectNo, region };
+      const letter = buildPermitLetter({ permit, area: { zip: permit.zip, region, metro: provider.meta.metro }, tenant, owner });
+      return { ...letter, permitType: permit.permitType, permitDate: permit.permitDate, projectNo: permit.projectNo, region, cityState: provider.meta.cityState };
     });
 
     res.json({
@@ -209,8 +205,11 @@ router.get('/api/permits/aging-systems', requireAuth, async (req, res) => {
       return res.status(400).json({ error: { message: `system must be one of: ${Object.keys(SYSTEM_AGE_THRESHOLDS).join(', ')}` } });
     }
 
+    const provider = await tenantProvider(req.tenantId);
+    if (!provider.agingSystems) return res.json({ properties: [], system, thresholds, unavailable: provider.agingNote });
+
     const forceRefresh = req.query.refresh === 'true';
-    const { records, fetchedAt } = await getRecentPermits({ weeksBack: 4, forceRefresh });
+    const { records, fetchedAt } = await provider.getRecentPermits({ weeksBack: 4, forceRefresh });
     const zips = [...new Set(records.map(r => r.zip).filter(Boolean))];
     const recentAddresses = new Set(records.filter(r => r.address).map(r => `${r.zip}||${normalizeAddress(r.address)}`));
 
@@ -262,6 +261,8 @@ router.post('/api/permits/aging-mailer-letters', requireAuth, async (req, res) =
     if (!SYSTEM_AGE_THRESHOLDS[system]) {
       return res.status(400).json({ error: { message: `system must be one of: ${Object.keys(SYSTEM_AGE_THRESHOLDS).join(', ')}` } });
     }
+    const provider = await tenantProvider(req.tenantId);
+    if (!provider.agingSystems) return res.status(400).json({ error: { message: provider.agingNote } });
 
     const properties = Array.isArray(req.body.properties) ? req.body.properties : [];
     if (!properties.length) return res.status(400).json({ error: { message: 'No properties selected.' } });
@@ -292,7 +293,7 @@ router.post('/api/permits/aging-mailer-letters', requireAuth, async (req, res) =
       };
     });
 
-    const owners = await findConfidentOwners(
+    const owners = await provider.owners(
       cleanedProperties.map(p => ({ id: p.id, zip: p.zip, address: p.address }))
     );
 
@@ -300,8 +301,8 @@ router.post('/api/permits/aging-mailer-letters', requireAuth, async (req, res) =
       const zipInfo = getHighValueZipInfo(property.zip);
       const region = getZipRegion(property.zip) || (zipInfo ? zipInfo.neighborhood : null) || (property.zip ? `Zip ${property.zip}` : '');
       const owner = owners.get(property.id) || null;
-      const letter = buildAgingSystemLetter({ property, area: { zip: property.zip, region }, tenant, system, owner });
-      return { ...letter, yearBuilt: property.yearBuilt, system, region };
+      const letter = buildAgingSystemLetter({ property, area: { zip: property.zip, region, metro: provider.meta.metro }, tenant, system, owner });
+      return { ...letter, yearBuilt: property.yearBuilt, system, region, cityState: provider.meta.cityState };
     });
 
     res.json({

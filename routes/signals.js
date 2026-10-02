@@ -16,9 +16,8 @@ const express = require('express');
 const { query } = require('../db');
 const { requireAuth } = require('../auth');
 const { getActiveAlerts } = require('../lib/weatherSignals');
-const { getRecentPermits, detectPermitSpikes } = require('../lib/houstonPermits');
-const { getHighValueZipInfo } = require('../lib/houstonZipValues');
-const { getRealHcadZipStatsForZips } = require('../lib/hcadZipValues');
+const { detectPermitSpikes } = require('../lib/houstonPermits');
+const { providerFor, hasOwnPermits } = require('../lib/permitSources');
 const { generateJSON } = require('../lib/anthropic');
 const { checkAndIncrementUsage } = require('../lib/usage');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
@@ -46,26 +45,29 @@ router.get('/api/signals', requireAuth, async (req, res) => {
 
     const forceRefresh = req.query.refresh === 'true';
     // Storm alerts follow the company's chosen metro. Permit data (and the
-    // county home values behind it) exists for Houston only, so other metros
-    // get weather alone rather than someone else's permits.
+    // home values behind it) exists for Houston and San Diego only, so other
+    // metros get weather alone rather than someone else's permits.
     const mkRow = await query('SELECT market FROM business_profile WHERE tenant_id = $1', [req.tenantId]);
     const mk = markets.getMarket(mkRow.rows[0] && mkRow.rows[0].market);
-    const permitsAvailable = mk.key === 'houston';
+    const permitsAvailable = hasOwnPermits(mk);
+    const provider = providerFor(mk);
     const [weather, permitsData] = await Promise.all([
       getActiveAlerts({ forceRefresh, point: mk.weatherPoint }).catch(err => ({ alerts: [], error: err.message })),
-      permitsAvailable ? getRecentPermits({ weeksBack: 4, forceRefresh }) : Promise.resolve({ records: [], fetchedAt: null })
+      permitsAvailable ? provider.getRecentPermits({ weeksBack: 4, forceRefresh }) : Promise.resolve({ records: [], fetchedAt: null })
     ]);
 
     const stormAlerts = (weather.alerts || []).filter(a => a.isStormTrigger);
     const rawSpikes = detectPermitSpikes(permitsData.records || []);
-    const hcadByZip = await getRealHcadZipStatsForZips(rawSpikes.map(s => s.zip));
+    const areaInfo = permitsAvailable ? await provider.areaInfo(rawSpikes.map(s => s.zip)) : new Map();
     const spikes = rawSpikes.map(s => {
-      const zipInfo = getHighValueZipInfo(s.zip);
+      const a = areaInfo.get(s.zip) || {};
       return {
         ...s,
-        neighborhood: zipInfo ? zipInfo.neighborhood : null,
-        highValue: !!zipInfo,
-        hcad: hcadByZip.get(s.zip) || null // real HCAD appraisal-district avg/median home value, when imported — see lib/hcadZipValues.js
+        neighborhood: a.neighborhood || null,
+        region: provider.key === 'san_diego' ? (a.region || null) : undefined, // Houston's cards show only a curated neighborhood name, as before
+        highValue: !!a.highValue,
+        hcad: a.hcad || null, // Houston: real HCAD appraisal-district avg/median home value, when imported — see lib/hcadZipValues.js
+        stats: a.stats || null // San Diego: recent-sale median from county parcel records
       };
     });
 
@@ -97,7 +99,7 @@ router.get('/api/signals', requireAuth, async (req, res) => {
       permitSpikes: spikes,
       permitsFetchedAt: permitsData.fetchedAt ? new Date(permitsData.fetchedAt).toISOString() : null,
       recentPermitAddresses,
-      permitsAvailable, market: { key: mk.key, label: mk.label }
+      permitsAvailable, market: { key: mk.key, label: mk.label }, permitMeta: permitsAvailable ? provider.meta : null
     });
   } catch (err) {
     res.status(502).json({ error: { message: 'Failed to load signals: ' + err.message } });

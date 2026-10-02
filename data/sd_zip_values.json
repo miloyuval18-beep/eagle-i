@@ -1,0 +1,650 @@
+{
+ "source": "SANDAG/SanGIS public parcel layers (geo.sandag.org)",
+ "generatedAt": "2026-10-02",
+ "recentSinceYear": 2022,
+ "minRecent": 30,
+ "zips": {
+  "91901": {
+   "singleFamilyParcels": 4294,
+   "recentTransfers": 1054,
+   "medianRecentValue": 848445,
+   "community": "ALPINE"
+  },
+  "91902": {
+   "singleFamilyParcels": 4719,
+   "recentTransfers": 794,
+   "medianRecentValue": 947863,
+   "community": "BONITA"
+  },
+  "91905": {
+   "singleFamilyParcels": 345,
+   "recentTransfers": 83,
+   "medianRecentValue": 314658,
+   "community": "BOULEVARD"
+  },
+  "91906": {
+   "singleFamilyParcels": 866,
+   "recentTransfers": 208,
+   "medianRecentValue": 438300,
+   "community": "CAMPO"
+  },
+  "91910": {
+   "singleFamilyParcels": 11441,
+   "recentTransfers": 1742,
+   "medianRecentValue": 713715,
+   "community": "CHULA VISTA"
+  },
+  "91911": {
+   "singleFamilyParcels": 11340,
+   "recentTransfers": 1900,
+   "medianRecentValue": 650131,
+   "community": "CHULA VISTA"
+  },
+  "91913": {
+   "singleFamilyParcels": 9726,
+   "recentTransfers": 1858,
+   "medianRecentValue": 867522,
+   "community": "CHULA VISTA"
+  },
+  "91914": {
+   "singleFamilyParcels": 3937,
+   "recentTransfers": 707,
+   "medianRecentValue": 1045000,
+   "community": "CHULA VISTA"
+  },
+  "91915": {
+   "singleFamilyParcels": 4591,
+   "recentTransfers": 734,
+   "medianRecentValue": 864941,
+   "community": "CHULA VISTA"
+  },
+  "91916": {
+   "singleFamilyParcels": 576,
+   "recentTransfers": 155,
+   "medianRecentValue": 560000,
+   "community": "DESCANSO"
+  },
+  "91917": {
+   "singleFamilyParcels": 114,
+   "recentTransfers": 23,
+   "medianRecentValue": null,
+   "community": "DULZURA"
+  },
+  "91931": {
+   "singleFamilyParcels": 55,
+   "recentTransfers": 14,
+   "medianRecentValue": null,
+   "community": "GUATAY"
+  },
+  "91932": {
+   "singleFamilyParcels": 2656,
+   "recentTransfers": 507,
+   "medianRecentValue": 764999,
+   "community": "IMPERIAL BEACH"
+  },
+  "91934": {
+   "singleFamilyParcels": 235,
+   "recentTransfers": 57,
+   "medianRecentValue": 291831,
+   "community": "JACUMBA"
+  },
+  "91935": {
+   "singleFamilyParcels": 3810,
+   "recentTransfers": 746,
+   "medianRecentValue": 864292,
+   "community": "JAMUL"
+  },
+  "91941": {
+   "singleFamilyParcels": 8248,
+   "recentTransfers": 1569,
+   "medianRecentValue": 849954,
+   "community": "LA MESA"
+  },
+  "91942": {
+   "singleFamilyParcels": 6850,
+   "recentTransfers": 1306,
+   "medianRecentValue": 764840,
+   "community": "LA MESA"
+  },
+  "91945": {
+   "singleFamilyParcels": 5177,
+   "recentTransfers": 1063,
+   "medianRecentValue": 672434,
+   "community": "LEMON GROVE"
+  },
+  "91948": {
+   "singleFamilyParcels": 75,
+   "recentTransfers": 14,
+   "medianRecentValue": null,
+   "community": "MOUNT LAGUNA"
+  },
+  "91950": {
+   "singleFamilyParcels": 5650,
+   "recentTransfers": 969,
+   "medianRecentValue": 516451,
+   "community": "NATIONAL CITY"
+  },
+  "91962": {
+   "singleFamilyParcels": 655,
+   "recentTransfers": 166,
+   "medianRecentValue": 644583,
+   "community": "PINE VALLEY"
+  },
+  "91963": {
+   "singleFamilyParcels": 127,
+   "recentTransfers": 34,
+   "medianRecentValue": 398709,
+   "community": "POTRERO"
+  },
+  "91977": {
+   "singleFamilyParcels": 11366,
+   "recentTransfers": 2333,
+   "medianRecentValue": 686662,
+   "community": "SPRING VALLEY"
+  },
+  "91978": {
+   "singleFamilyParcels": 1841,
+   "recentTransfers": 347,
+   "medianRecentValue": 760000,
+   "community": "SPRING VALLEY"
+  },
+  "91980": {
+   "singleFamilyParcels": 23,
+   "recentTransfers": 2,
+   "medianRecentValue": null,
+   "community": "TECATE"
+  },
+  "92003": {
+   "singleFamilyParcels": 1277,
+   "recentTransfers": 350,
+   "medianRecentValue": 1141864,
+   "community": "BONSALL"
+  },
+  "92004": {
+   "singleFamilyParcels": 1523,
+   "recentTransfers": 389,
+   "medianRecentValue": 351133,
+   "community": "BORREGO SPRINGS"
+  },
+  "92006": {
+   "singleFamilyParcels": 1,
+   "recentTransfers": 0,
+   "medianRecentValue": null,
+   "community": "CAMPO"
+  },
+  "92007": {
+   "singleFamilyParcels": 2916,
+   "recentTransfers": 537,
+   "medianRecentValue": 1356829,
+   "community": "CARDIFF"
+  },
+  "92008": {
+   "singleFamilyParcels": 5395,
+   "recentTransfers": 1090,
+   "medianRecentValue": 1170192,
+   "community": "CARLSBAD"
+  },
+  "92009": {
+   "singleFamilyParcels": 10184,
+   "recentTransfers": 2060,
+   "medianRecentValue": 1398200,
+   "community": "CARLSBAD"
+  },
+  "92010": {
+   "singleFamilyParcels": 4462,
+   "recentTransfers": 890,
+   "medianRecentValue": 956958,
+   "community": "CARLSBAD"
+  },
+  "92011": {
+   "singleFamilyParcels": 5714,
+   "recentTransfers": 1130,
+   "medianRecentValue": 1173000,
+   "community": "CARLSBAD"
+  },
+  "92014": {
+   "singleFamilyParcels": 3921,
+   "recentTransfers": 720,
+   "medianRecentValue": 2326854,
+   "community": "DEL MAR"
+  },
+  "92019": {
+   "singleFamilyParcels": 13378,
+   "recentTransfers": 2589,
+   "medianRecentValue": 814323,
+   "community": "EL CAJON"
+  },
+  "92020": {
+   "singleFamilyParcels": 8640,
+   "recentTransfers": 1695,
+   "medianRecentValue": 749476,
+   "community": "EL CAJON"
+  },
+  "92021": {
+   "singleFamilyParcels": 12358,
+   "recentTransfers": 2644,
+   "medianRecentValue": 747628,
+   "community": "EL CAJON"
+  },
+  "92024": {
+   "singleFamilyParcels": 12078,
+   "recentTransfers": 2167,
+   "medianRecentValue": 1485690,
+   "community": "ENCINITAS"
+  },
+  "92025": {
+   "singleFamilyParcels": 6578,
+   "recentTransfers": 1295,
+   "medianRecentValue": 801108,
+   "community": "ESCONDIDO"
+  },
+  "92026": {
+   "singleFamilyParcels": 11267,
+   "recentTransfers": 2484,
+   "medianRecentValue": 749850,
+   "community": "ESCONDIDO"
+  },
+  "92027": {
+   "singleFamilyParcels": 12632,
+   "recentTransfers": 2640,
+   "medianRecentValue": 725677,
+   "community": "ESCONDIDO"
+  },
+  "92028": {
+   "singleFamilyParcels": 13190,
+   "recentTransfers": 3620,
+   "medianRecentValue": 784848,
+   "community": "FALLBROOK"
+  },
+  "92029": {
+   "singleFamilyParcels": 5504,
+   "recentTransfers": 1190,
+   "medianRecentValue": 977300,
+   "community": "ESCONDIDO"
+  },
+  "92034": {
+   "singleFamilyParcels": 1,
+   "recentTransfers": 0,
+   "medianRecentValue": null,
+   "community": "JACUMBA"
+  },
+  "92036": {
+   "singleFamilyParcels": 1838,
+   "recentTransfers": 459,
+   "medianRecentValue": 497884,
+   "community": "JULIAN"
+  },
+  "92037": {
+   "singleFamilyParcels": 8355,
+   "recentTransfers": 1623,
+   "medianRecentValue": 2760201,
+   "community": "LA JOLLA"
+  },
+  "92040": {
+   "singleFamilyParcels": 12372,
+   "recentTransfers": 2788,
+   "medianRecentValue": 719373,
+   "community": "LAKESIDE"
+  },
+  "92042": {
+   "singleFamilyParcels": 2,
+   "recentTransfers": 0,
+   "medianRecentValue": null,
+   "community": null
+  },
+  "92050": {
+   "singleFamilyParcels": 1,
+   "recentTransfers": 0,
+   "medianRecentValue": null,
+   "community": "NATIONAL CITY"
+  },
+  "92054": {
+   "singleFamilyParcels": 5986,
+   "recentTransfers": 1240,
+   "medianRecentValue": 906922,
+   "community": "OCEANSIDE"
+  },
+  "92056": {
+   "singleFamilyParcels": 15543,
+   "recentTransfers": 3443,
+   "medianRecentValue": 665000,
+   "community": "OCEANSIDE"
+  },
+  "92057": {
+   "singleFamilyParcels": 14952,
+   "recentTransfers": 3352,
+   "medianRecentValue": 629858,
+   "community": "OCEANSIDE"
+  },
+  "92058": {
+   "singleFamilyParcels": 3394,
+   "recentTransfers": 653,
+   "medianRecentValue": 694881,
+   "community": "OCEANSIDE"
+  },
+  "92059": {
+   "singleFamilyParcels": 79,
+   "recentTransfers": 12,
+   "medianRecentValue": null,
+   "community": "PALA"
+  },
+  "92060": {
+   "singleFamilyParcels": 347,
+   "recentTransfers": 84,
+   "medianRecentValue": 330050,
+   "community": "PALOMAR MOUNTAIN"
+  },
+  "92061": {
+   "singleFamilyParcels": 974,
+   "recentTransfers": 236,
+   "medianRecentValue": 732390,
+   "community": "PAUMA VALLEY"
+  },
+  "92064": {
+   "singleFamilyParcels": 16610,
+   "recentTransfers": 3332,
+   "medianRecentValue": 1030098,
+   "community": "POWAY"
+  },
+  "92065": {
+   "singleFamilyParcels": 13770,
+   "recentTransfers": 2939,
+   "medianRecentValue": 758761,
+   "community": "RAMONA"
+  },
+  "92066": {
+   "singleFamilyParcels": 111,
+   "recentTransfers": 34,
+   "medianRecentValue": 354866,
+   "community": "RANCHITA"
+  },
+  "92067": {
+   "singleFamilyParcels": 3304,
+   "recentTransfers": 765,
+   "medianRecentValue": 3896400,
+   "community": "RANCHO SANTA FE"
+  },
+  "92069": {
+   "singleFamilyParcels": 8419,
+   "recentTransfers": 1673,
+   "medianRecentValue": 780000,
+   "community": "SAN MARCOS"
+  },
+  "92070": {
+   "singleFamilyParcels": 216,
+   "recentTransfers": 52,
+   "medianRecentValue": 588537,
+   "community": "SANTA YSABEL"
+  },
+  "92071": {
+   "singleFamilyParcels": 11328,
+   "recentTransfers": 2459,
+   "medianRecentValue": 761416,
+   "community": "SANTEE"
+  },
+  "92075": {
+   "singleFamilyParcels": 2696,
+   "recentTransfers": 458,
+   "medianRecentValue": 1844511,
+   "community": "SOLANA BEACH"
+  },
+  "92077": {
+   "singleFamilyParcels": 1,
+   "recentTransfers": 0,
+   "medianRecentValue": null,
+   "community": "SPRING VALLEY"
+  },
+  "92078": {
+   "singleFamilyParcels": 8385,
+   "recentTransfers": 1814,
+   "medianRecentValue": 970327,
+   "community": "SAN MARCOS"
+  },
+  "92080": {
+   "singleFamilyParcels": 1,
+   "recentTransfers": 0,
+   "medianRecentValue": null,
+   "community": "TECATE"
+  },
+  "92081": {
+   "singleFamilyParcels": 5803,
+   "recentTransfers": 1319,
+   "medianRecentValue": 821073,
+   "community": "VISTA"
+  },
+  "92082": {
+   "singleFamilyParcels": 7831,
+   "recentTransfers": 2201,
+   "medianRecentValue": 845345,
+   "community": "VALLEY CENTER"
+  },
+  "92083": {
+   "singleFamilyParcels": 5188,
+   "recentTransfers": 1026,
+   "medianRecentValue": 665347,
+   "community": "VISTA"
+  },
+  "92084": {
+   "singleFamilyParcels": 9194,
+   "recentTransfers": 2008,
+   "medianRecentValue": 763112,
+   "community": "VISTA"
+  },
+  "92086": {
+   "singleFamilyParcels": 277,
+   "recentTransfers": 72,
+   "medianRecentValue": 461034,
+   "community": "WARNER SPRINGS"
+  },
+  "92091": {
+   "singleFamilyParcels": 895,
+   "recentTransfers": 229,
+   "medianRecentValue": 2559399,
+   "community": "RANCHO SANTA FE"
+  },
+  "92097": {
+   "singleFamilyParcels": 1,
+   "recentTransfers": 0,
+   "medianRecentValue": null,
+   "community": "RANCHO SANTA FE"
+  },
+  "92101": {
+   "singleFamilyParcels": 232,
+   "recentTransfers": 49,
+   "medianRecentValue": 831300,
+   "community": "SAN DIEGO"
+  },
+  "92102": {
+   "singleFamilyParcels": 3641,
+   "recentTransfers": 701,
+   "medianRecentValue": 637499,
+   "community": "SAN DIEGO"
+  },
+  "92103": {
+   "singleFamilyParcels": 3492,
+   "recentTransfers": 700,
+   "medianRecentValue": 1295400,
+   "community": "SAN DIEGO"
+  },
+  "92104": {
+   "singleFamilyParcels": 4328,
+   "recentTransfers": 848,
+   "medianRecentValue": 936118,
+   "community": "SAN DIEGO"
+  },
+  "92105": {
+   "singleFamilyParcels": 6676,
+   "recentTransfers": 1291,
+   "medianRecentValue": 576299,
+   "community": "SAN DIEGO"
+  },
+  "92106": {
+   "singleFamilyParcels": 4899,
+   "recentTransfers": 906,
+   "medianRecentValue": 1467488,
+   "community": "SAN DIEGO"
+  },
+  "92107": {
+   "singleFamilyParcels": 4342,
+   "recentTransfers": 771,
+   "medianRecentValue": 1346400,
+   "community": "SAN DIEGO"
+  },
+  "92108": {
+   "singleFamilyParcels": 202,
+   "recentTransfers": 89,
+   "medianRecentValue": 836400,
+   "community": "SAN DIEGO"
+  },
+  "92109": {
+   "singleFamilyParcels": 4942,
+   "recentTransfers": 962,
+   "medianRecentValue": 1540000,
+   "community": "SAN DIEGO"
+  },
+  "92110": {
+   "singleFamilyParcels": 3411,
+   "recentTransfers": 596,
+   "medianRecentValue": 1051761,
+   "community": "SAN DIEGO"
+  },
+  "92111": {
+   "singleFamilyParcels": 7450,
+   "recentTransfers": 1464,
+   "medianRecentValue": 800999,
+   "community": "SAN DIEGO"
+  },
+  "92113": {
+   "singleFamilyParcels": 4039,
+   "recentTransfers": 741,
+   "medianRecentValue": 530000,
+   "community": "SAN DIEGO"
+  },
+  "92114": {
+   "singleFamilyParcels": 14376,
+   "recentTransfers": 2632,
+   "medianRecentValue": 583664,
+   "community": "SAN DIEGO"
+  },
+  "92115": {
+   "singleFamilyParcels": 8474,
+   "recentTransfers": 1757,
+   "medianRecentValue": 794843,
+   "community": "SAN DIEGO"
+  },
+  "92116": {
+   "singleFamilyParcels": 4293,
+   "recentTransfers": 845,
+   "medianRecentValue": 975268,
+   "community": "SAN DIEGO"
+  },
+  "92117": {
+   "singleFamilyParcels": 12767,
+   "recentTransfers": 2381,
+   "medianRecentValue": 928556,
+   "community": "SAN DIEGO"
+  },
+  "92118": {
+   "singleFamilyParcels": 3551,
+   "recentTransfers": 627,
+   "medianRecentValue": 2450000,
+   "community": "CORONADO"
+  },
+  "92119": {
+   "singleFamilyParcels": 6503,
+   "recentTransfers": 1259,
+   "medianRecentValue": 870189,
+   "community": "SAN DIEGO"
+  },
+  "92120": {
+   "singleFamilyParcels": 8017,
+   "recentTransfers": 1575,
+   "medianRecentValue": 928556,
+   "community": "SAN DIEGO"
+  },
+  "92121": {
+   "singleFamilyParcels": 788,
+   "recentTransfers": 151,
+   "medianRecentValue": 1247623,
+   "community": "SAN DIEGO"
+  },
+  "92122": {
+   "singleFamilyParcels": 4699,
+   "recentTransfers": 805,
+   "medianRecentValue": 1220388,
+   "community": "SAN DIEGO"
+  },
+  "92123": {
+   "singleFamilyParcels": 4785,
+   "recentTransfers": 926,
+   "medianRecentValue": 884745,
+   "community": "SAN DIEGO"
+  },
+  "92124": {
+   "singleFamilyParcels": 4646,
+   "recentTransfers": 841,
+   "medianRecentValue": 909415,
+   "community": "SAN DIEGO"
+  },
+  "92126": {
+   "singleFamilyParcels": 16931,
+   "recentTransfers": 2763,
+   "medianRecentValue": 710472,
+   "community": "SAN DIEGO"
+  },
+  "92127": {
+   "singleFamilyParcels": 9989,
+   "recentTransfers": 2038,
+   "medianRecentValue": 1476738,
+   "community": "SAN DIEGO"
+  },
+  "92128": {
+   "singleFamilyParcels": 9396,
+   "recentTransfers": 1800,
+   "medianRecentValue": 936807,
+   "community": "SAN DIEGO"
+  },
+  "92129": {
+   "singleFamilyParcels": 12754,
+   "recentTransfers": 2238,
+   "medianRecentValue": 958783,
+   "community": "SAN DIEGO"
+  },
+  "92130": {
+   "singleFamilyParcels": 12693,
+   "recentTransfers": 2094,
+   "medianRecentValue": 1745773,
+   "community": "SAN DIEGO"
+  },
+  "92131": {
+   "singleFamilyParcels": 12220,
+   "recentTransfers": 2109,
+   "medianRecentValue": 1326510,
+   "community": "SAN DIEGO"
+  },
+  "92139": {
+   "singleFamilyParcels": 6282,
+   "recentTransfers": 1044,
+   "medianRecentValue": 604208,
+   "community": "SAN DIEGO"
+  },
+  "92154": {
+   "singleFamilyParcels": 11725,
+   "recentTransfers": 1915,
+   "medianRecentValue": 668560,
+   "community": "SAN DIEGO"
+  },
+  "92173": {
+   "singleFamilyParcels": 2040,
+   "recentTransfers": 300,
+   "medianRecentValue": 504843,
+   "community": "SAN YSIDRO"
+  },
+  "92536": {
+   "singleFamilyParcels": 14,
+   "recentTransfers": 3,
+   "medianRecentValue": null,
+   "community": "AGUANGA"
+  }
+ }
+}

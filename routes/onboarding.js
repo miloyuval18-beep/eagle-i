@@ -11,6 +11,7 @@ const { searchNearbyCompetitors } = require('../lib/googlePlaces');
 const { derivePromotionEdge } = require('../lib/competitorPromoAnalysis');
 const { detectRatingDrops } = require('../lib/competitorRatingAlerts');
 const { detectsHighValueFocus } = require('../lib/vendorTargeting');
+const markets = require('../lib/markets');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
 const { findContactEmail } = require('../lib/vendorContactFinder');
 const { getSenderContext, sendOutreach } = require('../lib/vendorOutreach');
@@ -458,7 +459,7 @@ router.get('/api/vendors/places', requireAuth, async (req, res) => {
 
   try {
     const profileRes = await query(
-      `SELECT service_area, services, differentiators, places_vendors FROM business_profile WHERE tenant_id = $1`,
+      `SELECT service_area, services, differentiators, places_vendors, market FROM business_profile WHERE tenant_id = $1`,
       [req.tenantId]
     );
     if (!profileRes.rows.length) return res.status(404).json({ error: { message: 'Tenant not found.' } });
@@ -498,6 +499,7 @@ router.get('/api/vendors/places', requireAuth, async (req, res) => {
       services: category,
       serviceArea: profile.service_area,
       highValueFocus,
+      market: markets.getMarket(profile.market),
       // Significantly more than the default 10 — this is a "who could I
       // work with" lookup (Vendor Directory / Professional Partner
       // Network), not the competitor lookup below, which stays at the

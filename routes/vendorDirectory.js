@@ -467,7 +467,8 @@ router.post('/api/vendor-directory/:source/mailer-letters', requireAuth, async (
     }
     const built = await letters.buildLetters({
       tenantId: req.tenantId, sourceKey: req.params.source, categoryKey: category, ids, message: String(message),
-      includeWithEmail: !!includeWithEmail, includeRecentlyLettered: !!includeRecentlyLettered, record: record !== false
+      includeWithEmail: !!includeWithEmail, includeRecentlyLettered: !!includeRecentlyLettered, record: record !== false,
+      state: markets.stateOf(await tenantMarket(req.tenantId))
     });
     const t = await loadTemplateContext(req.tenantId);
     res.json({
