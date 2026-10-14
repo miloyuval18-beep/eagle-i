@@ -1189,3 +1189,99 @@ describe('pipeline (CRM)', () => {
     assert.equal(pipeA.deals.length, 0);
   });
 });
+
+describe('CRM team', () => {
+  async function owner() {
+    const client = makeClient();
+    const r = await client.post('/api/auth/signup', {
+      email: uniqueEmail('team-owner'), password: 'TestPass1234!', companyName: 'Team Co', industry: 'home_services', acceptedTerms: true, product: 'crm'
+    });
+    trackTenant((await r.json()).tenantId);
+    return client;
+  }
+  // RESEND_API_KEY is unset in tests, so the invite email fails and the link comes back to the inviter.
+  async function inviteAndJoin(ownerClient, role) {
+    const email = uniqueEmail('team-' + role);
+    const inv = await ownerClient.post('/api/crm/team/invites', { email, name: 'Pat ' + role, role });
+    assert.equal(inv.status, 200);
+    const { inviteUrl, emailed } = await inv.json();
+    assert.equal(emailed, false);
+    const token = new URL(inviteUrl).searchParams.get('token');
+    const info = await (await makeClient().get('/api/crm/join?token=' + token)).json();
+    assert.equal(info.email, email.toLowerCase());
+    const member = makeClient();
+    const join = await member.post('/api/crm/join', { token, name: 'Pat ' + role, password: 'MemberPass123!' });
+    assert.equal(join.status, 200);
+    assert.equal((await makeClient().post('/api/crm/join', { token, name: 'X', password: 'MemberPass123!' })).status, 400, 'a link works once');
+    return member;
+  }
+
+  test('an owner can invite a member, who joins and works deals but cannot manage the company', async () => {
+    const o = await owner();
+    const m = await inviteAndJoin(o, 'member');
+    const me = await (await m.get('/api/crm/me')).json();
+    assert.equal(me.role, 'member');
+    assert.equal(me.canManage, false);
+    assert.equal(me.hasMarketing, false);
+    const add = await m.post('/api/crm/deals', { name: 'Member Lead' });
+    assert.equal(add.status, 200);
+    const { deal } = await add.json();
+    assert.equal(deal.owner_user_id, me.userId, 'a deal you add is yours');
+    assert.equal((await m.patch(`/api/crm/deals/${deal.id}`, { stage: 'qualified' })).status, 200);
+    // Company-wide changes are for the owner and admins.
+    assert.equal((await m.patch('/api/crm/company', { companyName: 'Hijack' })).status, 403);
+    assert.equal((await m.post('/api/crm/team/invites', { email: uniqueEmail('x') })).status, 403);
+    const pb = (await (await m.get('/api/crm/playbooks')).json()).playbooks[0];
+    assert.equal((await m.post(`/api/crm/playbooks/${pb.id}/approve`, {})).status, 403);
+    assert.equal((await m.patch('/api/crm/settings', { paused: true })).status, 403);
+    assert.equal((await m.delete(`/api/crm/deals/${deal.id}`)).status, 403);
+    // The marketing product is the owner's only.
+    assert.equal((await m.get('/api/leads')).status, 403);
+    const home = await m.get('/');
+    assert.equal(home.headers.get('location'), '/crm');
+  });
+
+  test('an admin can manage the team; nobody can remove the owner; a removed member is signed out', async () => {
+    const o = await owner();
+    const a = await inviteAndJoin(o, 'admin');
+    const m = await inviteAndJoin(o, 'member');
+    const t = await (await a.get('/api/crm/team')).json();
+    assert.equal(t.members.length, 3);
+    const ownerRow = t.members.find(x => x.role === 'owner');
+    const memberRow = t.members.find(x => x.role === 'member');
+    assert.equal((await a.delete(`/api/crm/team/${ownerRow.id}`)).status, 400);
+    assert.equal((await a.patch(`/api/crm/team/${memberRow.id}`, { role: 'admin' })).status, 200);
+    assert.equal((await a.patch(`/api/crm/team/${memberRow.id}`, { role: 'member' })).status, 200);
+    assert.equal((await a.delete(`/api/crm/team/${memberRow.id}`)).status, 200);
+    assert.equal((await m.get('/api/crm/pipeline')).status, 401);
+  });
+
+  test('new leads can be handed to a team member automatically', async () => {
+    const o = await owner();
+    const m = await inviteAndJoin(o, 'member');
+    const memberId = (await (await m.get('/api/crm/me')).json()).userId;
+    assert.equal((await o.patch('/api/crm/settings', { leadOwnerUserId: memberId })).status, 200);
+    const pool = getTestPool();
+    let slug;
+    try {
+      const tid = (await pool.query('SELECT tenant_id FROM users WHERE id = $1', [memberId])).rows[0].tenant_id;
+      slug = `team-${tid.slice(0, 8)}`;
+      await pool.query(`INSERT INTO landing_pages (tenant_id, slug, headline, status) VALUES ($1, $2, 'H', 'published')`, [tid, slug]);
+    } finally { await pool.end(); }
+    await makeClient().post(`/lp/${slug}/submit`, { name: 'Auto Assigned', email: 'auto@example.test' });
+    let deal;
+    for (let i = 0; i < 20 && !deal; i++) {
+      const pipe = await (await o.get('/api/crm/pipeline')).json();
+      deal = pipe.deals.find(d => d.contact_name === 'Auto Assigned');
+      if (!deal) await new Promise(r => setTimeout(r, 100));
+    }
+    assert.ok(deal, 'the form lead reached the pipeline');
+    assert.equal(deal.owner_user_id, memberId);
+  });
+
+  test('an invite to someone who already has an account is refused', async () => {
+    const o = await owner();
+    const me = await (await o.get('/api/crm/me')).json();
+    assert.equal((await o.post('/api/crm/team/invites', { email: me.email })).status, 409);
+  });
+});

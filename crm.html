@@ -127,6 +127,7 @@ select{width:auto;cursor:pointer}
     <button class="cr-menu-btn" id="cr-menu-btn" aria-haspopup="true" aria-expanded="false" onclick="crMenu()">Account ▾</button>
     <div class="cr-menu" id="cr-menu" role="menu">
       <div class="who" id="cr-who"></div>
+      <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
       <a href="/forgot-password.html">Change password</a>
       <button onclick="crSignOut()">Sign out</button>
@@ -136,7 +137,7 @@ select{width:auto;cursor:pointer}
     <button class="cr-tab active" data-view="pipeline" onclick="crView('pipeline')">Pipeline</button>
     <button class="cr-tab" data-view="needs" onclick="crView('needs')">Needs You<span class="tbadge" id="pl-needs-badge">0</span></button>
     <button class="cr-tab" data-view="auto" onclick="crView('auto')">Automations</button>
-    <button class="cr-tab" data-view="company" onclick="crView('company')">Company</button>
+    <button class="cr-tab" data-view="team" onclick="crView('team')">Team</button>
   </nav>
 </header>
 <main class="wrap" id="cr-main">
@@ -166,6 +167,13 @@ select{width:auto;cursor:pointer}
     <div class="pl-strip" id="pl-week"></div>
     <div class="pl-h">Playbooks</div>
     <div id="pl-playbooks"><div class="pl-empty">Loading…</div></div>
+  </section>
+  <section class="view" id="view-team">
+    <div class="sh"><div><div class="st">Team</div><div class="ss">Everyone at your company who uses Eagle I CRM. Members work deals; the owner and admins also manage the team, company details and automatic emails.</div></div></div>
+    <div id="tm-invite"></div>
+    <div class="pl-h">People</div>
+    <div class="pl-list" id="tm-list"><div class="pl-empty">Loading…</div></div>
+    <div id="tm-invites"></div>
   </section>
   <section class="view" id="view-company">
     <div class="sh"><div><div class="st">Company</div><div class="ss">These details go on every automatic email: your name and phone in the signature, and your business address at the bottom (required by law for marketing email, so emails wait until it's filled in).</div></div></div>
@@ -201,7 +209,10 @@ let toastTimer=null;
 function showNotif(t,b){const el=document.getElementById('toast');el.innerHTML='<b>'+uxEsc(t)+'</b>'+uxEsc(b||'');el.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.display='none',4500);}
 
 /* ---------- app shell ---------- */
-const CR={me:null,view:'pipeline'};
+const CR={me:null,view:'pipeline',team:[]};
+const crCanManage=()=>!!(CR.me&&CR.me.canManage);
+async function crLoadTeam(){try{const d=await plApi('/api/crm/team');CR.team=d.members||[];return d;}catch(e){return null;}}
+function crOwnerOptions(sel){return '<option value="">Unassigned</option>'+CR.team.map(m=>`<option value="${m.id}"${m.id===sel?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`).join('');}
 function crMenu(force){const m=document.getElementById('cr-menu');const open=force===undefined?!m.classList.contains('open'):force;m.classList.toggle('open',open);document.getElementById('cr-menu-btn').setAttribute('aria-expanded',open);}
 document.addEventListener('click',e=>{if(!e.target.closest('#cr-menu')&&!e.target.closest('#cr-menu-btn'))crMenu(false);});
 async function crSignOut(){try{await fetch('/api/auth/logout',{method:'POST'});}catch(e){}location.href='/crm/login';}
@@ -213,6 +224,7 @@ function crView(v){
   if(v==='needs')plLoadNeeds();
   if(v==='auto')plLoadAuto();
   if(v==='company')coLoad();
+  if(v==='team')tmLoad();
   try{history.replaceState(null,'','#'+v);}catch(e){}
   window.scrollTo(0,0);
 }
@@ -231,7 +243,8 @@ async function crInit(){
     return;
   }
   const start=(location.hash||'').slice(1);
-  crView(['pipeline','needs','auto','company'].includes(start)?start:'pipeline');
+  await crLoadTeam();
+  crView(['pipeline','needs','auto','team','company'].includes(start)?start:'pipeline');
   plApi('/api/crm/inbox').then(d=>plBadge(d.items.length)).catch(()=>{});
   plCheckSetup();
 }
@@ -247,7 +260,52 @@ async function plCheckSetup(){
     el.innerHTML=(company.address||'').trim().length<8?'<div class="pl-banner"><span>Add your business address before any automatic email can go out. It goes at the bottom of every email.</span><button class="btn-xs p" onclick="crView(\'company\')">Add it</button></div>':'';
   }catch(e){}
 }
+/* ---------- team ---------- */
+const TM_ROLE={owner:'Owner',admin:'Admin',member:'Member'};
+async function tmLoad(){
+  const d=await crLoadTeam();
+  const list=document.getElementById('tm-list');
+  if(!d){list.innerHTML='<div class="pl-empty">Could not load your team.</div>';return;}
+  const manage=crCanManage();
+  const myName=CR.me&&CR.me.name;
+  document.getElementById('tm-invite').innerHTML=(myName?'':`<div class="pl-banner"><span>Add your name so your team sees who did what.</span><span style="display:flex;gap:6px;flex:1;min-width:220px"><input id="tm-myname" class="cred-input" autocomplete="name" aria-label="Your name"><button class="btn-xs p" onclick="tmSaveName(this)">Save</button></span></div>`)+(manage?`<div class="pl-pb"><div class="pl-item-t">Invite someone</div>
+    <div class="pl-form" style="margin-top:8px">
+      <div><label for="tm-name">Name</label><input id="tm-name" class="cred-input" autocomplete="off"></div>
+      <div><label for="tm-email">Email</label><input id="tm-email" class="cred-input" type="email" inputmode="email" autocomplete="off"></div>
+      <div class="full"><label for="tm-role">Role</label><select id="tm-role"><option value="member">Member: works deals</option><option value="admin">Admin: also manages the team, company and automatic emails</option></select></div>
+    </div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="tmInvite(this)">Send invitation</button></div><div class="sm" id="tm-msg"></div></div>`:'');
+  list.innerHTML=d.members.map(m=>{
+    const me=CR.me&&m.id===CR.me.userId;
+    const canEdit=manage&&m.role!=='owner'&&!me;
+    return `<div class="pl-item"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(m.name||m.email)}${me?' (you)':''}</div><div class="pl-item-d">${uxEsc(m.email)} · ${m.open_deals} open deal${m.open_deals===1?'':'s'}</div></div><span class="pl-pill${m.role==='owner'?' on':''}">${TM_ROLE[m.role]||m.role}</span></div>
+      ${canEdit?`<div class="pl-acts"><select onchange="tmRole('${m.id}',this.value)" aria-label="Role for ${uxEsc(m.name||m.email)}"><option value="member"${m.role==='member'?' selected':''}>Member</option><option value="admin"${m.role==='admin'?' selected':''}>Admin</option></select><button class="btn-xs" style="color:var(--red)" onclick="tmRemove('${m.id}','${uxEsc(m.name||m.email)}')">Remove</button></div>`:''}</div>`;
+  }).join('');
+  document.getElementById('tm-invites').innerHTML=d.invites.length?'<div class="pl-h">Waiting to join</div><div class="pl-list">'+d.invites.map(i=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(i.name||i.email)}</div><div class="pl-item-d">${uxEsc(i.email)} · ${TM_ROLE[i.role]} · invited ${new Date(i.created_at).toLocaleDateString()}, link works until ${new Date(i.expires_at).toLocaleDateString()}</div>${manage?`<div class="pl-acts"><button class="btn-xs" onclick="tmCancel('${i.id}')">Cancel invitation</button></div>`:''}</div>`).join('')+'</div>':'';
+}
+async function tmInvite(btn){
+  const msg=document.getElementById('tm-msg');btn.disabled=true;msg.textContent='';
+  try{
+    const r=await plApi('/api/crm/team/invites',{body:{name:document.getElementById('tm-name').value,email:document.getElementById('tm-email').value,role:document.getElementById('tm-role').value}});
+    await tmLoad();
+    const m=document.getElementById('tm-msg');
+    m.innerHTML=r.emailed?'Invitation sent.':'The email could not be sent, so pass this link on yourself (it works once, for 7 days):<br><input class="cred-input" readonly value="'+uxEsc(r.inviteUrl)+'" onclick="this.select()" style="margin-top:6px">';
+  }catch(e){msg.textContent=e.message;btn.disabled=false;}
+}
+async function tmSaveName(btn){
+  const v=document.getElementById('tm-myname').value;btn.disabled=true;
+  try{await plApi('/api/crm/me',{method:'PATCH',body:{name:v}});CR.me.name=v.trim();tmLoad();}catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
+}
+async function tmRole(id,role){try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{role}});showNotif('Role changed','');tmLoad();}catch(e){showNotif('Could not change the role',e.message);tmLoad();}}
+async function tmRemove(id,name){
+  if(!confirm('Remove '+name+'? Their login stops working right away. Their deals become unassigned and their history stays.'))return;
+  try{await plApi('/api/crm/team/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not remove',e.message);}
+}
+async function tmCancel(id){try{await plApi('/api/crm/team/invites/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not cancel',e.message);}}
+
 async function coLoad(){
+  document.querySelectorAll('#view-company input').forEach(i=>i.disabled=!crCanManage());
+  document.querySelector('#view-company .btn-blue').hidden=!crCanManage();
   try{
     const {company:c}=await plApi('/api/crm/company');
     document.getElementById('co-name').value=c.company_name||'';
@@ -306,10 +364,11 @@ function plRender(){
     [selling.length,'Deals being sold'],[plMoney(d.openValue)||'$0','Value being sold'],[newWeek,'New leads this week'],[d.needsYou,'Need you']
   ].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
   document.getElementById('pl-paused-banner').innerHTML=d.settings&&d.settings.paused?'<div class="pl-banner"><span>⏸ All automatic emails are paused. Nothing is being sent.</span><button class="btn-xs p" onclick="plSetting({paused:false})">Resume</button></div>':'';
-  const chips=[['open','All open',open.length]].concat(d.stages.map(s=>[s.key,s.label,d.counts[s.key]||0]));
+  const mine=open.filter(x=>CR.me&&x.owner_user_id===CR.me.userId);
+  const chips=[['open','All open',open.length]].concat(CR.team.length>1?[['mine','My deals',mine.length]]:[]).concat(d.stages.map(s=>[s.key,s.label,d.counts[s.key]||0]));
   document.getElementById('pl-stages').innerHTML=chips.map(([k,l,n])=>`<button class="pl-chip${PL.filter===k?' active':''}" role="tab" aria-selected="${PL.filter===k}" onclick="PL.filter='${k}';plRender()">${uxEsc(l)}<b>${n}</b></button>`).join('');
   const q=(document.getElementById('pl-search').value||'').trim().toLowerCase();
-  let list=PL.filter==='open'?open:d.deals.filter(x=>x.stage===PL.filter);
+  let list=PL.filter==='open'?open:PL.filter==='mine'?mine:d.deals.filter(x=>x.stage===PL.filter);
   if(q)list=d.deals.filter(x=>[x.title,x.contact_name,x.contact_email,x.contact_phone,x.property_address].some(v=>String(v||'').toLowerCase().includes(q)));
   const el=document.getElementById('pl-list');
   if(!list.length){
@@ -320,6 +379,7 @@ function plRender(){
     const waiting=x.stage==='new'&&!x.first_response_at;
     const tags=[`<span class="pl-tag">${uxEsc(st.label)}</span>`,`<span class="pl-tag">${uxEsc(plSourceLabel(x.source))}</span>`,`<span class="pl-tag">${plAgo(x.stage_entered_at)} in stage</span>`];
     if(waiting)tags.push(`<span class="pl-tag warn">Waiting ${plAgo(x.created_at)}</span>`);
+    if(CR.team.length>1)tags.push(`<span class="pl-tag">${x.owner_name?'👤 '+uxEsc(x.owner_name):'Unassigned'}</span>`);
     if(x.automations_waiting)tags.push(`<span class="pl-tag auto">✓ ${x.automations_waiting} automatic email${x.automations_waiting>1?'s':''} scheduled</span>`);
     return `<button class="pl-card" onclick="plOpenDeal('${x.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(x.title)}</div><div class="pl-card-val">${uxEsc(plMoney(x.value))}</div></div>
       <div class="pl-card-sub">${uxEsc([x.contact_name,x.contact_phone,x.contact_email].filter(Boolean).join(' · '))}</div>
@@ -342,6 +402,7 @@ function plNewDeal(){
       ${plField('pln-title','Project','',{ph:'e.g. Kitchen + primary bath'})}${plField('pln-value','Estimated value','',{ph:'e.g. 85k',mode:'decimal'})}
       <div><label for="pln-stage">Stage</label><select id="pln-stage">${plStageOptions('new')}</select></div>
       <div><label for="pln-source">Where it came from</label><select id="pln-source">${plSourceOptions('manual')}</select></div>
+      ${CR.team.length>1?`<div class="full"><label for="pln-owner">Who's handling it</label><select id="pln-owner">${crOwnerOptions(CR.me&&CR.me.userId)}</select></div>`:''}
       <div class="full"><label for="pln-note">Note</label><textarea id="pln-note" class="cred-input" rows="3"></textarea></div>
     </div>
     <div class="sm">If you pick a later stage, that stage's approved automatic emails start for this deal.</div>
@@ -352,7 +413,7 @@ async function plSaveNew(btn){
   const v=id=>document.getElementById(id).value;
   btn.disabled=true;
   try{
-    const r=await plApi('/api/crm/deals',{body:{name:v('pln-name'),phone:v('pln-phone'),email:v('pln-email'),address:v('pln-address'),title:v('pln-title'),value:v('pln-value'),stage:v('pln-stage'),source:v('pln-source'),note:v('pln-note')}});
+    const r=await plApi('/api/crm/deals',{body:{name:v('pln-name'),phone:v('pln-phone'),email:v('pln-email'),address:v('pln-address'),title:v('pln-title'),value:v('pln-value'),stage:v('pln-stage'),source:v('pln-source'),note:v('pln-note'),ownerUserId:document.getElementById('pln-owner')?v('pln-owner'):undefined}});
     uxClose();showNotif('Deal added',r.deal.title);await plLoad();
   }catch(e){document.getElementById('pln-err').textContent=e.message;btn.disabled=false;}
 }
@@ -363,7 +424,7 @@ async function plOpenDeal(id){
   try{d=await plApi('/api/crm/deals/'+id);}catch(e){uxOpen(uxHead('Could not open this deal',uxEsc(e.message)));return;}
   const x=d.deal;
   const upcoming=d.automations.filter(a=>a.status==='pending');
-  const actorLbl={owner:'You',eagle_i:'Eagle I',contact:x.contact_name};
+  const actorLbl={owner:'Your team',eagle_i:'Eagle I',contact:x.contact_name};
   const kindIcon={lead_in:'📥',note:'📝',stage:'➡️',email:'✉️',reply:'💬',system:'✏️'};
   const zipInfo=x.zip_median_value?` · county median home value in ${uxEsc(x.property_zip)}: ${plMoney(x.zip_median_value)}`:'';
   uxOpen(uxHead(uxEsc(x.title),uxEsc(plSourceLabel(x.source))+' · added '+new Date(x.created_at).toLocaleDateString()+zipInfo)+
@@ -373,12 +434,13 @@ async function plOpenDeal(id){
       ${plField('pld-name','Name',x.contact_name)}${plField('pld-phone','Phone',x.contact_phone,{type:'tel',mode:'tel'})}
       ${plField('pld-email','Email',x.contact_email,{type:'email',mode:'email',full:true})}
       ${plField('pld-address','Property address',x.property_address,{full:true})}
-      <div class="full"><label for="pld-source">Where it came from</label><select id="pld-source">${plSourceOptions(x.source)}</select></div>
+      <div class="${CR.team.length>1?'':'full'}"><label for="pld-source">Where it came from</label><select id="pld-source">${plSourceOptions(x.source)}</select></div>
+      ${CR.team.length>1?`<div><label for="pld-owner">Who's handling it</label><select id="pld-owner">${crOwnerOptions(x.owner_user_id)}</select></div>`:''}
     </div>
     ${x.stage==='lost'&&x.lost_reason?`<div class="sm">Lost because: ${uxEsc(x.lost_reason)}</div>`:''}
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="plSaveDeal('${x.id}',this)">Save changes</button>
       ${x.contact_phone?`<a class="btn-xs" href="tel:${uxEsc(x.contact_phone)}">📞 Call</a>`:''}${x.contact_email?`<a class="btn-xs" href="mailto:${uxEsc(x.contact_email)}">✉️ Email</a>`:''}
-      <button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="plDeleteDeal('${x.id}')">Delete</button></div>
+      ${crCanManage()?`<button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="plDeleteDeal('${x.id}')">Delete</button>`:''}</div>
     <div class="sm" id="pld-msg"></div>
     <div class="pl-h">Add a note</div>
     <textarea id="pld-note" class="cred-input" rows="3" placeholder="What happened, what's next…"></textarea>
@@ -386,7 +448,7 @@ async function plOpenDeal(id){
     <div class="pl-h">Coming up automatically</div>
     ${upcoming.length?'<ul class="pl-tl">'+upcoming.map(a=>`<li class="eagle_i">✉️ ${uxEsc(a.playbook_name)}, email ${a.step}<div class="pl-tl-meta">${new Date(a.due_at)>new Date()?'Due '+new Date(a.due_at).toLocaleString():'Going out at the next chance (weekdays 9 to 5 Central)'}</div></li>`).join('')+'</ul>':`<div class="sm">Nothing scheduled.${x.contact_email?'':' This contact has no email address, so no automatic emails can go out.'}</div>`}
     <div class="pl-h">History</div>
-    <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(actorLbl[a.actor]||a.actor)} · ${new Date(a.created_at).toLocaleString()}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
+    <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${new Date(a.created_at).toLocaleString()}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
 }
 async function plStageChanged(id,sel){
   const stage=sel.value;let lostReason=null;
@@ -404,7 +466,7 @@ async function plSaveDeal(id,btn){
   const v=k=>document.getElementById(k).value;
   btn.disabled=true;
   try{
-    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),source:v('pld-source')}});
+    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),source:v('pld-source'),...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{})}});
     document.getElementById('pld-msg').textContent='Saved.';btn.disabled=false;plLoad();
   }catch(e){document.getElementById('pld-msg').textContent=e.message;btn.disabled=false;}
 }
@@ -443,15 +505,18 @@ async function plLoadAuto(){
     const [pb,sum]=await Promise.all([plApi('/api/crm/playbooks'),plApi('/api/crm/summary')]);
     PL.playbooks=pb.playbooks;PL.settings=pb.settings;PL.maxSteps=pb.maxSteps;
     const s=pb.settings;
-    document.getElementById('pl-auto-settings').innerHTML=`
+    if(!crCanManage()){document.getElementById('pl-auto-settings').innerHTML='<div class="pl-banner"><span>Only the owner or an admin can change automatic emails. You can read them here.</span></div>';}
+    else document.getElementById('pl-auto-settings').innerHTML=`
       <label class="pl-switch"><input type="checkbox" ${s.paused?'':'checked'} onchange="plSetting({paused:!this.checked})"><span>Automatic emails are <b>${s.paused?'paused':'on'}</b>. Turn this off to pause everything at once.</span></label>
       <label class="pl-switch" style="margin-top:8px"><input type="checkbox" ${s.weeklySummary?'checked':''} onchange="plSetting({weeklySummary:this.checked})"><span>Email me a summary every Monday</span></label>
       <div style="margin-top:8px;font-size:13px;color:var(--ink)">Tell me when a new lead has waited <select onchange="plSetting({waitingMinutes:+this.value})" style="text-transform:none;letter-spacing:0">${[15,30,60,120,240].map(m=>`<option value="${m}"${m===s.waitingMinutes?' selected':''}>${m<60?m+' minutes':m/60+' hour'+(m>60?'s':'')}</option>`).join('')}</select> without anyone picking it up.</div>
+      ${CR.team.length>1?`<div style="margin-top:8px;font-size:13px;color:var(--ink)">Give new leads to <select onchange="plSetting({leadOwnerUserId:this.value||null})" style="text-transform:none;letter-spacing:0">${crOwnerOptions(s.leadOwnerUserId)}</select> automatically.</div>`:''}
       <div class="sm">Limits that always apply: up to ${pb.maxPerDay} automatic emails a day; anything after the first day goes out weekdays 9am to 5pm Central; anyone who unsubscribes, bounces or replies stops getting them.</div>`;
     const x=sum.summary;
     document.getElementById('pl-week').innerHTML=[[x.newLeads,'New leads'],[x.respondedCount?plFmtMin(x.medianResponseMinutes):'—','Median time to pick up a lead'],[x.automatedEmails,'Automatic emails sent'],[x.replies,'Replies to them']]
       .map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
     plRenderPlaybooks();
+    if(!crCanManage())document.querySelectorAll('#pl-playbooks input,#pl-playbooks textarea').forEach(f=>f.readOnly=true);
   }catch(e){document.getElementById('pl-playbooks').innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
 }
 function plFmtMin(m){if(m==null)return '—';if(m<60)return Math.round(m)+' min';if(m<2880)return (m/60).toFixed(1).replace(/\.0$/,'')+' h';return Math.round(m/1440)+' days';}
@@ -464,12 +529,12 @@ function plRenderPlaybooks(){
         <input class="cred-input" data-k="subject" data-i="${i}" value="${uxEsc(s.subject)}" aria-label="Subject" style="margin-bottom:5px">
         <textarea class="cred-input" data-k="message" data-i="${i}" rows="6" aria-label="Message" style="font-size:13px;line-height:1.5">${uxEsc(s.message)}</textarea></div>`).join('')}
       <div class="sm">You can use {name}, {company}, {phone}, {email} and {founder}. Your address and an unsubscribe link are added at the bottom of every email.</div>
-      <div class="pl-acts">
+      ${crCanManage()?`<div class="pl-acts">
         ${p.enabled&&p.approved?`<button class="btn-xs" onclick="plPbEnabled('${p.id}',false)">Switch off</button>`:`<button class="btn btn-blue" onclick="plPbApprove('${p.id}',this)">✓ Approve this wording &amp; switch on</button>`}
         <button class="btn-xs" onclick="plPbSave('${p.id}',this)">Save wording</button>
         <button class="btn-xs" onclick="plPbPreview('${p.id}',this)">Send me a preview</button>
         <button class="btn-xs" onclick="plPbReset('${p.id}')">Back to original wording</button>
-      </div><div class="sm" id="pbmsg-${p.id}"></div></div>`;
+      </div>`:''}<div class="sm" id="pbmsg-${p.id}"></div></div>`;
   }).join('');
 }
 function plPbSteps(id){

@@ -794,7 +794,7 @@ describe('CRM core (lib/crm.js)', () => {
     assert.equal(crm.leadStatusForStage('new'), 'new');
   });
   test('settings fall back to safe defaults', () => {
-    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, backfilledAt: null });
+    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, backfilledAt: null });
     assert.equal(crm.normalizeSettings({ waitingMinutes: 7 }).waitingMinutes, 30);
     assert.equal(crm.normalizeSettings({ waitingMinutes: '60' }).waitingMinutes, 60);
   });

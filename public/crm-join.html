@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Eagle I CRM — Join Your Team</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6f8;--card:#ffffff;--soft:#eef1f4;
+  --ink:#14202b;--ink2:#3a4855;--ink3:#55636f;
+  --bdr:#c3ccd4;--bdr2:#8794a0;--accent:#1f4e79;--accent2:#173b5c;--err:#a12a1f;
+  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-font-smoothing:antialiased}
+.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:28px 24px;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
+.brand{font-size:24px;font-weight:800;text-align:center;color:var(--ink)}
+.brand span{color:var(--accent)}
+.tag{font-size:14px;color:var(--ink3);text-align:center;margin:4px 0 20px}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--soft);border-radius:9px;padding:4px}
+.tab{flex:1;text-align:center;padding:10px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700;color:var(--ink3);border:0;background:transparent;font-family:var(--f)}
+.tab.active{background:var(--accent);color:#fff}
+label{display:block;font-size:13px;font-weight:700;color:var(--ink2);margin:12px 0 5px}
+input{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:16px;color:var(--ink);outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
+.check{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--ink2)}
+.check input{width:18px;height:18px;margin-top:2px;flex:0 0 auto}
+.check a,.forgot{color:var(--accent)}
+.btn{width:100%;margin-top:18px;padding:13px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-family:var(--f);font-size:16px;font-weight:800;cursor:pointer}
+.btn:hover{background:var(--accent2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--err);font-size:14px;margin-top:10px;min-height:20px}
+.forgot{display:inline-block;margin-top:10px;font-size:14px}
+.foot{font-size:13px;color:var(--ink3);text-align:center;margin-top:18px}
+.foot a{color:var(--ink2)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand">Eagle I <span>CRM</span></div>
+  <div class="tag" id="tag">Loading your invitation…</div>
+  <form id="form-join" onsubmit="join(event)" hidden>
+    <label for="j-email">Email</label><input id="j-email" type="email" disabled>
+    <label for="j-name">Your name</label><input id="j-name" autocomplete="name" required>
+    <label for="j-pw">Create a password (at least 8 characters)</label><input id="j-pw" type="password" autocomplete="new-password" minlength="8" required>
+    <button class="btn" id="j-btn">Join the team</button>
+    <div class="err" id="j-err" role="alert"></div>
+  </form>
+  <div class="foot">Already have a login? <a href="/crm/login">Sign in</a></div>
+</main>
+<script>
+const token=new URLSearchParams(location.search).get('token')||'';
+(async()=>{
+  const tag=document.getElementById('tag');
+  try{
+    const r=await fetch('/api/crm/join?token='+encodeURIComponent(token));
+    const d=await r.json();
+    if(!r.ok)throw new Error((d.error&&d.error.message)||'This invitation could not be loaded.');
+    tag.textContent='You’ve been invited to join '+d.companyName+'.';
+    document.getElementById('j-email').value=d.email;
+    if(d.name)document.getElementById('j-name').value=d.name;
+    document.getElementById('form-join').hidden=false;
+  }catch(e){tag.textContent=e.message;}
+})();
+async function join(e){
+  e.preventDefault();const b=document.getElementById('j-btn'),err=document.getElementById('j-err');
+  b.disabled=true;err.textContent='';
+  try{
+    const r=await fetch('/api/crm/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,name:document.getElementById('j-name').value,password:document.getElementById('j-pw').value})});
+    const d=await r.json();
+    if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
+    location.href='/crm';
+  }catch(x){err.textContent=x.message;b.disabled=false;}
+}
+</script>
+</body>
+</html>

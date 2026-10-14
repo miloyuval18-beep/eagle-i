@@ -293,6 +293,16 @@ plan). It shares this server and login system but nothing in the marketing UI:
 - Every `/api/crm/*` route except `/api/crm/me` and `/api/crm/activate`
   answers 403 (`code: no_crm`) for companies without it.
 
+**Team (step 2).** A company can have many logins. Roles: `owner` (signed up),
+`admin` and `member`. Owners/admins invite people from the CRM's Team screen
+(`lib/crmTeam.js`): a one-time link to `/crm/join` that expires in 7 days (only
+its hash is stored); if the email can't be sent, the inviter gets the link to
+pass on. Members work deals; only owners/admins change the team, company
+details, playbooks and automation settings. Invited people use the CRM only:
+`/` sends them to `/crm` and every `/api/*` route outside `/api/crm` and
+`/api/auth` answers 403 for them. Each deal can have an owner, new leads can be
+handed to a chosen person automatically, and the timeline records who did what.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

@@ -5,6 +5,7 @@ const express = require('express');
 const { requireAuth } = require('../auth');
 const crm = require('../lib/crm');
 const playbooks = require('../lib/crmPlaybooks');
+const team = require('../lib/crmTeam');
 
 const { query } = require('../db');
 
@@ -22,27 +23,64 @@ function fail(res, err, what) {
 router.get('/api/crm/me', requireAuth, async (req, res) => {
   try {
     const r = (await query(
-      `SELECT u.email, t.company_name, t.products FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
+      `SELECT u.id, u.email, u.name, u.role, t.company_name, t.products FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
     if (!r) return res.status(401).json({ error: { message: 'Not logged in.' } });
-    res.json({ email: r.email, companyName: r.company_name, products: r.products || [], hasCrm: (r.products || []).includes('crm'), hasMarketing: (r.products || []).includes('marketing') });
+    res.json({
+      userId: r.id, email: r.email, name: r.name, role: r.role, canManage: team.isManager(r.role), companyName: r.company_name,
+      products: r.products || [], hasCrm: (r.products || []).includes('crm'),
+      // Team members invited to the CRM only see the CRM; the marketing dashboard is the owner's.
+      hasMarketing: (r.products || []).includes('marketing') && r.role === 'owner'
+    });
   } catch (err) { fail(res, err, 'Failed to load your account'); }
 });
 
 // A company already on Eagle I marketing can add the CRM to the same login.
 router.post('/api/crm/activate', requireAuth, async (req, res) => {
   try {
+    const me = await team.getUser(req.userId);
+    if (!me || me.role !== 'owner') return res.status(403).json({ error: { message: 'Only the account owner can switch the CRM on.' } });
     await query(`UPDATE tenants SET products = array_append(products, 'crm') WHERE id = $1 AND NOT ('crm' = ANY(products))`, [req.tenantId]);
     res.json({ ok: true });
   } catch (err) { fail(res, err, 'Failed to switch on the CRM'); }
 });
 
-// Everything else under /api/crm is for companies that use the CRM.
+// Invitation links (no login: the person doesn't have one yet).
+router.get('/api/crm/join', async (req, res) => {
+  try {
+    const info = await team.inviteInfo(String(req.query.token || ''));
+    if (!info) return res.status(404).json({ error: { message: 'This invitation link is invalid, already used, or has expired. Ask for a new one.' } });
+    res.json({ email: info.email, name: info.name, companyName: info.company_name });
+  } catch (err) { fail(res, err, 'Failed to load the invitation'); }
+});
+
+router.post('/api/crm/join', async (req, res) => {
+  const { token, name, password } = req.body || {};
+  try {
+    const user = await team.acceptInvite({ token: String(token || ''), name, password });
+    req.session.userId = user.id;
+    req.session.tenantId = user.tenant_id;
+    res.json({ ok: true });
+  } catch (err) { fail(res, err, 'Failed to join'); }
+});
+
+// Everything else under /api/crm is for signed-in people at companies that use the CRM.
 router.use('/api/crm', requireAuth, async (req, res, next) => {
   try {
+    const me = await team.getUser(req.userId);
+    // A removed team member's old session stops working at once.
+    if (!me || me.tenant_id !== req.tenantId) return res.status(401).json({ error: { message: 'Not logged in.' } });
+    req.crmUser = me;
     if (await crm.hasCrm(req.tenantId)) return next();
     res.status(403).json({ error: { message: 'Eagle I CRM is not switched on for this company.', code: 'no_crm' } });
   } catch (err) { fail(res, err, 'Failed to check your account'); }
 });
+
+// For changes that speak for the whole company: the team, company details,
+// and the wording and switches of automatic emails.
+function managersOnly(req, res, next) {
+  if (team.isManager(req.crmUser && req.crmUser.role)) return next();
+  res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+}
 
 // The company details every automatic email uses (signature and footer).
 router.get('/api/crm/company', async (req, res) => {
@@ -53,7 +91,7 @@ router.get('/api/crm/company', async (req, res) => {
   } catch (err) { fail(res, err, 'Failed to load company details'); }
 });
 
-router.patch('/api/crm/company', async (req, res) => {
+router.patch('/api/crm/company', managersOnly, async (req, res) => {
   const b = req.body || {};
   const clean = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
   if (b.companyName !== undefined && !clean(b.companyName, 120)) return res.status(400).json({ error: { message: 'Add your company name.' } });
@@ -98,7 +136,8 @@ router.post('/api/crm/deals', requireAuth, async (req, res) => {
   try {
     const deal = await crm.createDeal({
       tenantId: req.tenantId, name: b.name, email: b.email, phone: b.phone, address: b.address, zip: b.zip,
-      title: b.title, stage: b.stage || 'new', value: b.value, source: b.source || 'manual', note: b.note || null, baseUrl: baseUrlOf(req)
+      title: b.title, stage: b.stage || 'new', value: b.value, source: b.source || 'manual', note: b.note || null, baseUrl: baseUrlOf(req),
+      userId: req.userId, ownerUserId: b.ownerUserId || null
     });
     sendDueNow(deal.id);
     res.json({ ok: true, deal: await crm.getDeal(req.tenantId, deal.id) });
@@ -120,7 +159,7 @@ router.patch('/api/crm/deals/:id', requireAuth, async (req, res) => {
   const b = req.body || {};
   if (b.stage && !crm.isStage(b.stage)) return res.status(400).json({ error: { message: 'Unknown stage.' } });
   try {
-    const deal = await crm.updateDeal({ tenantId: req.tenantId, dealId: req.params.id, patch: b, baseUrl: baseUrlOf(req) });
+    const deal = await crm.updateDeal({ tenantId: req.tenantId, dealId: req.params.id, patch: b, baseUrl: baseUrlOf(req), userId: req.userId });
     if (b.stage) sendDueNow(deal.id);
     res.json({ ok: true, deal });
   } catch (err) { fail(res, err, 'Failed to save the deal'); }
@@ -128,12 +167,12 @@ router.patch('/api/crm/deals/:id', requireAuth, async (req, res) => {
 
 router.post('/api/crm/deals/:id/notes', requireAuth, async (req, res) => {
   try {
-    await crm.addNote({ tenantId: req.tenantId, dealId: req.params.id, body: (req.body || {}).body });
+    await crm.addNote({ tenantId: req.tenantId, dealId: req.params.id, body: (req.body || {}).body, userId: req.userId });
     res.json({ ok: true });
   } catch (err) { fail(res, err, 'Failed to save the note'); }
 });
 
-router.delete('/api/crm/deals/:id', requireAuth, async (req, res) => {
+router.delete('/api/crm/deals/:id', requireAuth, managersOnly, async (req, res) => {
   try {
     if (!(await crm.deleteDeal(req.tenantId, req.params.id))) return res.status(404).json({ error: { message: 'Deal not found.' } });
     res.json({ ok: true });
@@ -158,20 +197,20 @@ router.get('/api/crm/playbooks', requireAuth, async (req, res) => {
   } catch (err) { fail(res, err, 'Failed to load playbooks'); }
 });
 
-router.put('/api/crm/playbooks/:id', requireAuth, async (req, res) => {
+router.put('/api/crm/playbooks/:id', requireAuth, managersOnly, async (req, res) => {
   const { name, steps } = req.body || {};
   try { res.json({ ok: true, ...(await playbooks.savePlaybook({ tenantId: req.tenantId, id: req.params.id, name, steps })) }); } catch (err) { fail(res, err, 'Failed to save the playbook'); }
 });
 
-router.post('/api/crm/playbooks/:id/approve', requireAuth, async (req, res) => {
+router.post('/api/crm/playbooks/:id/approve', requireAuth, managersOnly, async (req, res) => {
   try { await playbooks.approvePlaybook({ tenantId: req.tenantId, id: req.params.id }); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to approve the playbook'); }
 });
 
-router.post('/api/crm/playbooks/:id/enabled', requireAuth, async (req, res) => {
+router.post('/api/crm/playbooks/:id/enabled', requireAuth, managersOnly, async (req, res) => {
   try { await playbooks.setEnabled({ tenantId: req.tenantId, id: req.params.id, enabled: !!(req.body || {}).enabled }); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to switch the playbook'); }
 });
 
-router.post('/api/crm/playbooks/:id/reset', requireAuth, async (req, res) => {
+router.post('/api/crm/playbooks/:id/reset', requireAuth, managersOnly, async (req, res) => {
   try { res.json({ ok: true, ...(await playbooks.resetPlaybook({ tenantId: req.tenantId, id: req.params.id })) }); } catch (err) { fail(res, err, 'Failed to reset the playbook'); }
 });
 
@@ -185,13 +224,19 @@ router.post('/api/crm/playbooks/:id/preview', requireAuth, async (req, res) => {
   }
 });
 
-router.patch('/api/crm/settings', requireAuth, async (req, res) => {
+router.patch('/api/crm/settings', requireAuth, managersOnly, async (req, res) => {
   const b = req.body || {};
   const patch = {};
   if (typeof b.paused === 'boolean') patch.paused = b.paused;
   if (typeof b.weeklySummary === 'boolean') patch.weeklySummary = b.weeklySummary;
   if (b.waitingMinutes !== undefined) patch.waitingMinutes = b.waitingMinutes;
-  try { res.json({ ok: true, settings: await crm.saveSettings(req.tenantId, patch) }); } catch (err) { fail(res, err, 'Failed to save settings'); }
+  try {
+    if (b.leadOwnerUserId !== undefined) {
+      if (b.leadOwnerUserId && !(await query('SELECT 1 FROM users WHERE id = $1 AND tenant_id = $2', [b.leadOwnerUserId, req.tenantId])).rows.length) {
+        return res.status(400).json({ error: { message: 'That person is not on your team.' } });
+      }
+      patch.leadOwnerUserId = b.leadOwnerUserId || null;
+    } res.json({ ok: true, settings: await crm.saveSettings(req.tenantId, patch) }); } catch (err) { fail(res, err, 'Failed to save settings'); }
 });
 
 // The "what Eagle I did for you" numbers for the last 7 days (same counts as the Monday email).
@@ -201,6 +246,43 @@ router.get('/api/crm/summary', requireAuth, async (req, res) => {
     const start = new Date(end.getTime() - 7 * 86400000);
     res.json({ summary: await crm.buildWeeklySummary(req.tenantId, { start, end }) });
   } catch (err) { fail(res, err, 'Failed to load the summary'); }
+});
+
+// ---------- team ----------
+
+// Your own name, shown to your team on deals and in history.
+router.patch('/api/crm/me', requireAuth, async (req, res) => {
+  const name = String((req.body || {}).name || '').trim().slice(0, 120);
+  if (!name) return res.status(400).json({ error: { message: 'Add your name.' } });
+  try { await query('UPDATE users SET name = $1 WHERE id = $2', [name, req.userId]); res.json({ ok: true }); }
+  catch (err) { fail(res, err, 'Failed to save your name'); }
+});
+
+router.get('/api/crm/team', requireAuth, async (req, res) => {
+  try { res.json({ ...(await team.listTeam(req.tenantId)), me: { id: req.crmUser.id, role: req.crmUser.role } }); } catch (err) { fail(res, err, 'Failed to load your team'); }
+});
+
+router.post('/api/crm/team/invites', requireAuth, managersOnly, async (req, res) => {
+  const { email, name, role } = req.body || {};
+  try { res.json({ ok: true, ...(await team.createInvite({ tenantId: req.tenantId, invitedBy: req.userId, email, name, role: role || 'member', baseUrl: baseUrlOf(req) })) }); }
+  catch (err) { fail(res, err, 'Failed to send the invitation'); }
+});
+
+router.delete('/api/crm/team/invites/:id', requireAuth, managersOnly, async (req, res) => {
+  try {
+    if (!(await team.revokeInvite({ tenantId: req.tenantId, id: req.params.id }))) return res.status(404).json({ error: { message: 'Invitation not found.' } });
+    res.json({ ok: true });
+  } catch (err) { fail(res, err, 'Failed to cancel the invitation'); }
+});
+
+router.patch('/api/crm/team/:userId', requireAuth, managersOnly, async (req, res) => {
+  try { await team.setRole({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId, role: (req.body || {}).role }); res.json({ ok: true }); }
+  catch (err) { fail(res, err, 'Failed to change the role'); }
+});
+
+router.delete('/api/crm/team/:userId', requireAuth, managersOnly, async (req, res) => {
+  try { await team.removeMember({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId }); res.json({ ok: true }); }
+  catch (err) { fail(res, err, 'Failed to remove the team member'); }
 });
 
 module.exports = router;

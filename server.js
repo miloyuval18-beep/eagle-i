@@ -111,6 +111,21 @@ app.use(sessionMiddleware());
 app.use(express.static(path.join(__dirname, 'public')));
 
 registerAuthRoutes(app);
+// Team members invited to Eagle I CRM use only the CRM. The marketing product's
+// API is for the company owner, so everything outside /api/crm and /api/auth
+// is closed to them.
+app.use('/api', async (req, res, next) => {
+  if (!req.session || !req.session.userId || req.path.startsWith('/crm') || req.path.startsWith('/auth')) return next();
+  try {
+    const r = await query('SELECT role FROM users WHERE id = $1', [req.session.userId]);
+    if (r.rows.length && r.rows[0].role && r.rows[0].role !== 'owner') {
+      return res.status(403).json({ error: { message: 'Your login is for Eagle I CRM only.' } });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 app.use(onboardingRoutes);
 app.use(claudeRoutes);
 app.use(socialRoutes);
@@ -157,6 +172,7 @@ app.get(['/crm', '/crm/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'crm.html'));
 });
 app.get('/crm/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm-login.html')));
+app.get('/crm/join', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm-join.html')));
 
 // The dashboard itself: not logged in -> /login.html; logged in but never
 // finished onboarding -> /onboarding.html; otherwise serve the app.
@@ -166,11 +182,13 @@ app.get(['/', '/index.html'], async (req, res) => {
   }
   try {
     const result = await query(
-      `SELECT bp.generated_content, t.products FROM tenants t LEFT JOIN business_profile bp ON bp.tenant_id = t.id WHERE t.id = $1`,
-      [req.session.tenantId]
+      `SELECT bp.generated_content, t.products, u.role FROM tenants t LEFT JOIN business_profile bp ON bp.tenant_id = t.id
+       LEFT JOIN users u ON u.id = $2 WHERE t.id = $1`,
+      [req.session.tenantId, req.session.userId]
     );
-    // A CRM-only company has no marketing dashboard: send it to its own app.
-    if (result.rows.length && Array.isArray(result.rows[0].products) && !result.rows[0].products.includes('marketing')) {
+    // A CRM-only company has no marketing dashboard, and team members invited
+    // to the CRM only use the CRM: send them to its own app.
+    if (result.rows.length && ((Array.isArray(result.rows[0].products) && !result.rows[0].products.includes('marketing')) || (result.rows[0].role && result.rows[0].role !== 'owner'))) {
       return res.redirect('/crm');
     }
     const onboarded = result.rows.length && Object.keys(result.rows[0].generated_content || {}).length > 0;
