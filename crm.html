@@ -140,6 +140,7 @@ select{width:auto;cursor:pointer}
     <button class="cr-menu-btn" id="cr-menu-btn" aria-haspopup="true" aria-expanded="false" onclick="crMenu()">Account ▾</button>
     <div class="cr-menu" id="cr-menu" role="menu">
       <div class="who" id="cr-who"></div>
+      <button id="cr-reports-link" onclick="crMenu(false);crView('reports')" hidden>Weekly reports</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
@@ -191,6 +192,13 @@ select{width:auto;cursor:pointer}
     <div class="ss" style="margin-bottom:10px">Your own items with cost and markup, ready to drop into any estimate. Homeowners only ever see prices.</div>
     <div id="cat-form"></div>
     <div class="pl-list" id="cat-list"><div class="pl-empty">Loading…</div></div>
+  </section>
+  <section class="view" id="view-reports">
+    <div class="sh"><div><div class="st">Weekly reports</div><div class="ss">Every Monday morning: what went well, what needs attention, what each person worked on, and what to focus on. Written from your CRM records; every number comes from what was logged.</div></div>
+      <button class="btn btn-blue" onclick="rpNow(this)">This week so far</button></div>
+    <div id="rp-view"></div>
+    <div class="pl-h">Past weeks</div>
+    <div class="pl-list" id="rp-list"><div class="pl-empty">Loading…</div></div>
   </section>
   <section class="view" id="view-team">
     <div class="sh"><div><div class="st">Team</div><div class="ss">Everyone at your company who uses Eagle I CRM. Members work deals; the owner and admins also manage the team, company details and automatic emails.</div></div></div>
@@ -253,6 +261,7 @@ function crView(v){
   if(v==='company')coLoad();
   if(v==='team')tmLoad();
   if(v==='estimates')esLoad();
+  if(v==='reports')rpLoad();
   try{history.replaceState(null,'','#'+v);}catch(e){}
   window.scrollTo(0,0);
 }
@@ -264,6 +273,7 @@ async function crInit(){
   document.getElementById('cr-company').textContent=me.companyName||'';
   document.getElementById('cr-who').textContent=me.email||'';
   document.getElementById('cr-mkt').hidden=!me.hasMarketing;
+  document.getElementById('cr-reports-link').hidden=!me.canManage;
   if(!me.hasCrm){
     document.getElementById('cr-nav').style.display='none';
     document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
@@ -272,7 +282,7 @@ async function crInit(){
   }
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
-  crView(['pipeline','needs','estimates','auto','team','company'].includes(start)?start:'pipeline');
+  crView(['pipeline','needs','estimates','auto','team','company','reports'].includes(start)?start:'pipeline');
   plApi('/api/crm/inbox').then(d=>plBadge(d.items.length)).catch(()=>{});
   plCheckSetup();
 }
@@ -288,6 +298,36 @@ async function plCheckSetup(){
     el.innerHTML=(company.address||'').trim().length<8?'<div class="pl-banner"><span>Add your business address before any automatic email can go out. It goes at the bottom of every email.</span><button class="btn-xs p" onclick="crView(\'company\')">Add it</button></div>':'';
   }catch(e){}
 }
+/* ---------- weekly reports ---------- */
+function rpRender(r,label){
+  const n=r.narrative,c=r.facts.company;
+  const ul=a=>'<ul class="vd-list-plain" style="margin:4px 0 12px 18px;font-size:14px;line-height:1.55">'+a.map(x=>'<li>'+uxEsc(x)+'</li>').join('')+'</ul>';
+  document.getElementById('rp-view').innerHTML=`<div class="pl-pb">
+    <div class="sm" style="margin-top:0">${uxEsc(label)}${r.writtenBy==='ai'?' · written with AI from your records':' · written from your records'}</div>
+    <div class="st" style="font-size:20px;margin:4px 0 10px">${uxEsc(n.headline)}</div>
+    <div class="pl-strip">${[[c.newLeads,'New leads'],[c.medianResponseMinutes==null?'—':plFmtMin(c.medianResponseMinutes),'To pick up a lead'],[plMoney(c.signedValue)||'$0','Signed'],[plMoney(c.openValue)||'$0','Being sold']].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('')}</div>
+    <div class="pl-h">What went well</div>${ul(n.successes||[])}
+    <div class="pl-h">What needs attention</div>${ul(n.challenges||[])}
+    ${n.team&&n.team.length?'<div class="pl-h">The team</div><ul style="margin:4px 0 12px 18px;font-size:14px;line-height:1.55">'+n.team.map(t=>`<li><b>${uxEsc(t.name)}:</b> ${uxEsc(t.note)}</li>`).join('')+'</ul>':''}
+    ${n.focus&&n.focus.length?'<div class="pl-h">Focus this week</div>'+ul(n.focus):''}
+  </div>`;
+}
+async function rpLoad(){
+  const el=document.getElementById('rp-list');
+  try{
+    const {reports}=await plApi('/api/crm/reports');
+    el.innerHTML=reports.length?reports.map(r=>`<button class="pl-card" onclick="rpOpen('${String(r.week_start).slice(0,10)}')"><div class="pl-card-title">Week of ${new Date(String(r.week_start).slice(0,10)+'T12:00:00Z').toLocaleDateString([], {month:'long',day:'numeric',year:'numeric'})}</div><div class="pl-card-sub">${uxEsc(r.headline||'')}</div></button>`).join(''):'<div class="pl-empty">Your first report arrives on Monday morning. Tap “This week so far” to see one now.</div>';
+    if(reports.length&&!document.getElementById('rp-view').innerHTML)rpOpen(String(reports[0].week_start).slice(0,10));
+  }catch(e){el.innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
+}
+async function rpOpen(week){try{const {report}=await plApi('/api/crm/reports/'+week);rpRender(report,'Week of '+new Date(week+'T12:00:00Z').toLocaleDateString([], {month:'long',day:'numeric'}));window.scrollTo(0,0);}catch(e){showNotif('Could not open the report',e.message);}}
+async function rpNow(btn){
+  btn.disabled=true;document.getElementById('rp-view').innerHTML='<div class="pl-empty">Writing your report…</div>';
+  try{const {report}=await plApi('/api/crm/reports/now',{body:{}});rpRender(report,'The last 7 days, as of now');}
+  catch(e){document.getElementById('rp-view').innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
+  btn.disabled=false;
+}
+
 /* ---------- estimates ---------- */
 const ES={catalog:[],units:['ea','sf','lf','sy','cy','hr','day','ls','allow'],kinds:{design_agreement:'Design agreement',construction:'Construction estimate'},cur:null};
 const esMoney=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -751,7 +791,7 @@ async function plLoadAuto(){
     if(!crCanManage()){document.getElementById('pl-auto-settings').innerHTML='<div class="pl-banner"><span>Only the owner or an admin can change automatic emails. You can read them here.</span></div>';}
     else document.getElementById('pl-auto-settings').innerHTML=`
       <label class="pl-switch"><input type="checkbox" ${s.paused?'':'checked'} onchange="plSetting({paused:!this.checked})"><span>Automatic emails are <b>${s.paused?'paused':'on'}</b>. Turn this off to pause everything at once.</span></label>
-      <label class="pl-switch" style="margin-top:8px"><input type="checkbox" ${s.weeklySummary?'checked':''} onchange="plSetting({weeklySummary:this.checked})"><span>Email me a summary every Monday</span></label>
+      <label class="pl-switch" style="margin-top:8px"><input type="checkbox" ${s.weeklySummary?'checked':''} onchange="plSetting({weeklySummary:this.checked})"><span>Email the weekly report to the owner and admins every Monday</span></label>
       <div style="margin-top:8px;font-size:13px;color:var(--ink)">Tell me when a new lead has waited <select onchange="plSetting({waitingMinutes:+this.value})" style="text-transform:none;letter-spacing:0">${[15,30,60,120,240].map(m=>`<option value="${m}"${m===s.waitingMinutes?' selected':''}>${m<60?m+' minutes':m/60+' hour'+(m>60?'s':'')}</option>`).join('')}</select> without anyone picking it up.</div>
       ${CR.team.length>1?`<div style="margin-top:8px;font-size:13px;color:var(--ink)">Give new leads to <select onchange="plSetting({leadOwnerUserId:this.value||null})" style="text-transform:none;letter-spacing:0">${crOwnerOptions(s.leadOwnerUserId)}</select> automatically.</div>`:''}
       <div class="sm">Limits that always apply: up to ${pb.maxPerDay} automatic emails a day; anything after the first day goes out weekdays 9am to 5pm Central; anyone who unsubscribes, bounces or replies stops getting them.</div>`;

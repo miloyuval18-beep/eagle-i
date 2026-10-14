@@ -1000,3 +1000,45 @@ describe('CRM Google Workspace (lib/crmGoogle.js)', () => {
     assert.equal(g.directionFor({ from: 'sam@levi.test', mailbox: 'pat@levi.test', domain: 'levi.test' }), 'out');
   });
 });
+
+describe('CRM weekly report (lib/crmReports.js)', () => {
+  const rp = require('../lib/crmReports');
+  const facts = {
+    company: {
+      newLeads: 3, leadsBySource: { website: 2, houzz: 1 }, leadsAnswered: 2, medianResponseMinutes: 95,
+      signed: [{ title: 'Garcia kitchen', value: 85000 }], signedValue: 85000, lost: [{ title: 'Chen patio', reason: 'budget' }],
+      estimatesSent: 2, estimatesSentValue: 140000, estimatesAccepted: [{ title: 'Garcia kitchen', total: 85000 }], estimatesDeclined: [],
+      dealsMoved: 6, openDeals: 5, openValue: 220000, stalled: [{ title: 'Lee addition', stage: 'Proposal sent', daysIdle: 14, owner: 'Alex' }], stalledCount: 1,
+      waitingLeads: 1, automaticEmails: 7, replies: 2, customerEmailsIn: 4, customerEmailsOut: 6, needsYou: 2
+    },
+    team: [
+      { name: 'Sam', role: 'owner', leadsAssigned: 2, leadsAnswered: 2, medianResponseMinutes: 30, dealsMoved: 4, notes: 1, customerEmails: 5, estimatesSent: 2, signed: 1, signedValue: 85000, lost: 0, openDeals: 3, stalledDeals: [], waitingLeads: 0 },
+      { name: 'Alex', role: 'member', leadsAssigned: 1, leadsAnswered: 0, medianResponseMinutes: null, dealsMoved: 0, notes: 0, customerEmails: 0, estimatesSent: 0, signed: 0, signedValue: 0, lost: 1, openDeals: 2, stalledDeals: ['Lee addition'], waitingLeads: 1 }
+    ]
+  };
+  test('the plain-rules report only states facts, and covers successes, challenges and each person', () => {
+    const n = rp.writeByRules(facts);
+    assert.equal(n.headline, '$85,000 signed this week');
+    assert.ok(n.successes.some(s => /Garcia kitchen/.test(s) && /\$85,000/.test(s)));
+    assert.ok(n.challenges.some(s => /1 new lead is still waiting/.test(s)));
+    assert.ok(n.challenges.some(s => /Lee addition.*14 days/.test(s)));
+    assert.ok(n.challenges.some(s => /Chen patio \(budget\)/.test(s)));
+    assert.equal(n.team.length, 2);
+    const alex = n.team.find(t => t.name === 'Alex');
+    assert.match(alex.note, /hand with 1 lead waiting/);
+    assert.ok(!n.team.some(t => /best|worst|top|lowest|lazy/i.test(t.note)), 'no ranking or judging');
+  });
+  test('a one-person company gets no team section', () => {
+    const solo = { ...facts, team: [{ ...facts.team[0], solo: true }] };
+    assert.equal(rp.writeByRules(solo).team.length, 0);
+  });
+  test('the email escapes what it shows', () => {
+    const n = rp.writeByRules(facts);
+    n.successes.push('<script>x</script>');
+    const { html, text, subject } = rp.renderEmail({ companyName: 'A & B <Builders>', report: { facts, narrative: n, writtenBy: 'rules' }, weekLabel: 'week of Oct 12', appUrl: 'https://app.test' });
+    assert.ok(!html.includes('<script>'));
+    assert.ok(html.includes('A &amp; B &lt;Builders&gt;'));
+    assert.match(text, /WHAT NEEDS ATTENTION/);
+    assert.match(subject, /^Your week: \$85,000 signed/);
+  });
+});

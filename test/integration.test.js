@@ -1431,3 +1431,24 @@ describe('CRM Google Workspace', () => {
     assert.equal((await m.delete('/api/crm/google')).status, 403);
   });
 });
+
+describe('CRM weekly reports', () => {
+  test('owners can write one now; members cannot see reports', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('rep'), password: 'TestPass1234!', companyName: 'Report Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    await o.post('/api/crm/deals', { name: 'Pat Doe', title: 'Signed One', value: '50k', stage: 'new' }).then(x => x.json()).then(({ deal }) => o.patch(`/api/crm/deals/${deal.id}`, { stage: 'signed' }));
+    const now = await o.post('/api/crm/reports/now', {});
+    assert.equal(now.status, 200);
+    const { report } = await now.json();
+    assert.equal(report.facts.company.signedValue, 50000);
+    assert.equal(report.writtenBy, 'rules', 'no AI key in tests');
+    assert.ok(report.narrative.successes.some(s => /Signed One/.test(s)));
+    assert.deepEqual((await (await o.get('/api/crm/reports')).json()).reports, [], 'a "so far" report is not saved');
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('rep-mem'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    assert.equal((await m.get('/api/crm/reports')).status, 403);
+    assert.equal((await m.post('/api/crm/reports/now', {})).status, 403);
+  });
+});

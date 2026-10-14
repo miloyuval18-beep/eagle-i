@@ -348,6 +348,18 @@ and Admin SDK API, create a service account with a JSON key, and set
 `GOOGLE_SERVICE_ACCOUNT_JSON` on Render. No Google app verification is needed
 for domain-wide delegation.
 
+**Weekly reports (step 6).** `lib/crmReports.js`, `routes/crmReports.js`. Every
+Monday from 8am Central, for the week just ended: facts counted from the
+records (new leads by source, pickup time, signed/lost with reasons, estimates
+sent/accepted/declined, stalled deals, waiting leads, and per team member: leads,
+pickup time, deals moved, notes, customer emails, estimates, signed, stalled)
+and a written summary (successes, challenges, the team, focus). AI writes it
+from the facts only (told never to rank or judge people); plain rules write it
+without `ANTHROPIC_API_KEY` or if AI fails. Saved in `crm_weekly_reports`,
+emailed to owners and admins (the "weekly summary" switch), readable under
+Account → Weekly reports; "This week so far" writes an unsaved one on demand
+(5/day). This replaces the Phase 1 counts-only email.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.
@@ -368,7 +380,7 @@ Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
   Approving a playbook never emails deals already sitting in that stage.
 - **Needs you:** only exceptions: a new lead untouched for 30 minutes (adjustable),
   a deal with no activity past its stage's limit, a reply, or a failed send.
-- **Weekly summary:** Monday from 8am Central, counts from real records only.
+- **Weekly report:** Monday from 8am Central (see step 6 below).
 
 The background work runs on the existing 5-minute tick in `lib/followUpWorker.js`.
 
