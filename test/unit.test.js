@@ -967,3 +967,36 @@ describe('CRM automated communications', () => {
     assert.ok(intake.KEY_RE.test('0123456789abcdef01234567'));
   });
 });
+
+describe('CRM Google Workspace (lib/crmGoogle.js)', () => {
+  const g = require('../lib/crmGoogle');
+  const crypto = require('crypto');
+  test('the service-account sign-in request is a valid RS256 token for the right person and scope', () => {
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const sa = { client_email: 'eagle@proj.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }), token_uri: 'https://oauth2.googleapis.com/token' };
+    const jwt = g.buildAssertion(sa, 'pat@levi.test', g.SCOPES.gmail, Date.UTC(2026, 9, 14));
+    const [h, c, sig] = jwt.split('.');
+    assert.ok(crypto.verify('RSA-SHA256', Buffer.from(`${h}.${c}`), publicKey, Buffer.from(sig.replace(/-/g, '+').replace(/_/g, '/'), 'base64')));
+    const claims = JSON.parse(Buffer.from(c.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+    assert.equal(claims.sub, 'pat@levi.test');
+    assert.equal(claims.scope, g.SCOPES.gmail);
+    assert.equal(claims.exp - claims.iat, 3600);
+  });
+  test('the key can be given as JSON or base64, and a broken one is ignored', () => {
+    const j = JSON.stringify({ client_email: 'a@b.iam.gserviceaccount.com', private_key: 'k', client_id: '123' });
+    assert.equal(g.serviceAccount({ GOOGLE_SERVICE_ACCOUNT_JSON: j }).client_id, '123');
+    assert.equal(g.serviceAccount({ GOOGLE_SERVICE_ACCOUNT_JSON: Buffer.from(j).toString('base64') }).client_id, '123');
+    assert.equal(g.serviceAccount({ GOOGLE_SERVICE_ACCOUNT_JSON: 'nonsense' }), null);
+    assert.equal(g.serviceAccount({}), null);
+  });
+  test('headers are read and the direction is worked out from the company domain', () => {
+    const h = g.readHeaders({ id: 'x', internalDate: '1760000000000', payload: { headers: [
+      { name: 'From', value: 'Maria Garcia <Maria@Example.test>' }, { name: 'To', value: 'Pat <pat@levi.test>, "Sam" <sam@levi.test>' },
+      { name: 'Cc', value: 'spouse@example.test' }, { name: 'Subject', value: 'Kitchen' }, { name: 'Message-ID', value: '<abc@mail>' }] } });
+    assert.equal(h.from, 'maria@example.test');
+    assert.deepEqual(h.to, ['pat@levi.test', 'sam@levi.test', 'spouse@example.test']);
+    assert.equal(h.messageKey, '<abc@mail>');
+    assert.equal(g.directionFor({ from: h.from, mailbox: 'pat@levi.test', domain: 'levi.test' }), 'in');
+    assert.equal(g.directionFor({ from: 'sam@levi.test', mailbox: 'pat@levi.test', domain: 'levi.test' }), 'out');
+  });
+});

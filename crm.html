@@ -209,6 +209,9 @@ select{width:auto;cursor:pointer}
       <div class="full"><label for="co-address">Business address</label><input id="co-address" class="cred-input" autocomplete="street-address" placeholder="Street, city, state, ZIP"></div>
     </div>
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="coSave(this)">Save</button><span class="sm" id="co-msg" style="margin:0"></span></div>
+    <div class="pl-h" style="margin-top:26px">Google Workspace email</div>
+    <div class="ss" style="margin-bottom:10px">Connect your company’s Google Workspace and every email between your team and a customer lands on that customer’s deal by itself. A customer’s email stops the follow-ups; your team’s email to a new lead counts as picking it up. Only emails with people in your CRM are kept (who, when, subject and a short preview). Personal mail and attachments are never stored.</div>
+    <div id="gw"><div class="sm">Loading…</div></div>
   </section>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -475,7 +478,45 @@ async function tmRemove(id,name){
 }
 async function tmCancel(id){try{await plApi('/api/crm/team/invites/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not cancel',e.message);}}
 
+/* ---------- Google Workspace ---------- */
+async function gwLoad(){
+  const el=document.getElementById('gw');if(!el)return;
+  let d;try{d=await plApi('/api/crm/google');}catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';return;}
+  const manage=crCanManage();
+  if(!d.configured){el.innerHTML='<div class="pl-banner"><span>Google Workspace access isn’t set up on the Eagle I server yet.</span></div>';return;}
+  const c=d.connection;
+  if(!c){
+    if(!manage){el.innerHTML='<div class="sm">Not connected. Ask your account owner or an admin to connect it.</div>';return;}
+    el.innerHTML=`<div class="pl-pb">
+      <div class="pl-item-t">Step 1: Allow Eagle I in your Google Admin console</div>
+      <ol style="margin:8px 0 0 18px;font-size:14px;color:var(--ink2)"><li>Open <a href="https://admin.google.com/ac/owl/domainwidedelegation" target="_blank" rel="noopener">admin.google.com → Security → API controls → Domain-wide delegation</a></li><li>Click <b>Add new</b> and paste these two values. This gives read-only access, and you can remove it there any time.</li></ol>
+      <label for="gw-cid" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Client ID</label><div style="display:flex;gap:6px"><input id="gw-cid" class="cred-input" readonly value="${uxEsc(d.clientId||'')}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('gw-cid')">Copy</button></div>
+      <label for="gw-sc" style="font-size:12px;font-weight:700;display:block;margin-top:8px">OAuth scopes</label><div style="display:flex;gap:6px"><input id="gw-sc" class="cred-input" readonly value="${uxEsc(d.scopes.join(','))}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('gw-sc')">Copy</button></div>
+      <div class="pl-item-t" style="margin-top:16px">Step 2: Connect</div>
+      <div class="pl-form" style="margin-top:6px"><div><label for="gw-dom">Your email domain</label><input id="gw-dom" class="cred-input" placeholder="levihomes.com"></div><div><label for="gw-adm">A Google admin’s email</label><input id="gw-adm" class="cred-input" type="email" inputmode="email" placeholder="you@levihomes.com"></div></div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="gwConnect(this)">Connect</button></div><div class="sm" id="gw-msg"></div></div>`;
+    return;
+  }
+  const inc=d.mailboxes.filter(m=>m.included).length;
+  el.innerHTML=`<div class="pl-pb">
+    <div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(c.domain)}</div><div class="pl-item-d">${c.status==='connected'?'Connected':'Problem'} · reading ${inc} of ${d.mailboxes.length} mailboxes${c.last_synced_at?' · last read '+new Date(c.last_synced_at).toLocaleString():''}</div></div><span class="pl-pill ${c.status==='connected'?'on':'need'}">${c.status==='connected'?'● On':'Needs attention'}</span></div>
+    ${c.last_error?`<div class="pl-banner" style="margin-top:8px"><span>${uxEsc(c.last_error)}</span></div>`:''}
+    ${manage?`<div class="vd-mbtns"><button class="btn-xs p" onclick="gwSync(this)">Read email now</button><button class="btn-xs" style="color:var(--red)" onclick="gwDisconnect()">Disconnect</button></div>`:''}
+    <div class="pl-h" style="font-size:14px">Mailboxes</div>
+    <div class="pl-list">${d.mailboxes.map(m=>`<div class="pl-item" style="padding:8px 10px"><label class="pl-switch" style="justify-content:space-between"><span style="min-width:0;overflow-wrap:anywhere"><b>${uxEsc(m.name||m.email)}</b><br><span class="sm" style="margin:0">${uxEsc(m.email)} · ${m.logged} customer email${m.logged===1?'':'s'} logged${m.status==='error'&&m.last_error?' · ⚠ '+uxEsc(m.last_error):''}</span></span><input type="checkbox" ${m.included?'checked':''} ${manage?'':'disabled'} onchange="gwInclude(${m.id},this.checked)" aria-label="Read ${uxEsc(m.email)}"></label></div>`).join('')}</div>
+  </div>`;
+}
+async function gwConnect(btn){
+  const msg=document.getElementById('gw-msg');btn.disabled=true;msg.textContent='Checking with Google…';
+  try{const r=await plApi('/api/crm/google/connect',{body:{domain:document.getElementById('gw-dom').value,adminEmail:document.getElementById('gw-adm').value}});showNotif('Connected',r.mailboxes+' mailboxes found. Reading recent customer email now.');gwLoad();}
+  catch(e){msg.textContent=e.message;btn.disabled=false;}
+}
+async function gwInclude(id,on){try{await plApi('/api/crm/google/mailboxes/'+id,{method:'PATCH',body:{included:on}});}catch(e){showNotif('Could not save',e.message);gwLoad();}}
+async function gwSync(btn){btn.disabled=true;try{const r=await plApi('/api/crm/google/sync',{body:{}});showNotif('Done',`Read ${r.read} emails; ${r.stored} were with customers.`);}catch(e){showNotif('Could not read email',e.message);}gwLoad();}
+async function gwDisconnect(){if(!confirm('Stop reading your team’s email? Emails already on deals stay there.'))return;try{await plApi('/api/crm/google',{method:'DELETE'});gwLoad();}catch(e){showNotif('Could not disconnect',e.message);}}
+
 async function coLoad(){
+  gwLoad();
   document.querySelectorAll('#view-company input').forEach(i=>i.disabled=!crCanManage());
   document.querySelector('#view-company .btn-blue').hidden=!crCanManage();
   try{

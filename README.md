@@ -24,7 +24,7 @@ Open http://localhost:3000 — it redirects to `/login.html` (sign up to create 
 3. Add a Postgres database (Render's managed Postgres, or any other host) and set `DATABASE_URL`
    to its connection string in the service's Environment tab, along with `SESSION_SECRET` and
    `ANTHROPIC_API_KEY`. The other vars in `render.yaml` (Stripe, Meta, Google Ads/Places/Business
-   Profile, Resend) are each optional — every route that needs one is gated behind a clean
+   Profile, Resend, and `GOOGLE_SERVICE_ACCOUNT_JSON` for Eagle I CRM's Google Workspace email) are each optional — every route that needs one is gated behind a clean
    "not configured yet" 503 until it's supplied, see the feature sections below.
 4. Run the migrations against that database once (`DATABASE_URL=<...> npx node-pg-migrate up`,
    from your machine or a Render shell).
@@ -329,6 +329,24 @@ sent estimate puts it back to draft until it's resent; accepted ones are locked.
   never after the event; a reply stops only the stage follow-ups. Starter
   playbooks added: instant reply to new leads, site-visit reminder, estimate
   about to expire. Setting a site visit moves the deal to "Site visit set".
+
+**Google Workspace email (step 5).** `lib/crmGoogle.js`, `routes/crmGoogle.js`.
+Uses domain-wide delegation: Eagle I's service account (env
+`GOOGLE_SERVICE_ACCOUNT_JSON`, the key file JSON or base64 of it) is allowed by
+the company's Workspace admin for two read-only scopes
+(`admin.directory.user.readonly`, `gmail.readonly`) in their Admin console. The
+CRM's Company screen shows the client ID and scopes to paste, then checks access
+before saving. Every included mailbox is read every ~10 minutes (first run: last
+30 days), headers only. Only emails with a CRM contact are stored
+(`crm_emails`, once per Message-ID, with Gmail's short preview); everything else
+is never kept. A customer's email stops that deal's stage follow-ups; a team
+email to a new lead sets its first-response time. If access is revoked in
+Google, the connection shows the error.
+
+*Server setup needed once:* create a Google Cloud project, enable the Gmail API
+and Admin SDK API, create a service account with a JSON key, and set
+`GOOGLE_SERVICE_ACCOUNT_JSON` on Render. No Google app verification is needed
+for domain-wide delegation.
 
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration

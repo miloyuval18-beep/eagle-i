@@ -1413,3 +1413,21 @@ describe('CRM lead intake and site visits', () => {
     assert.equal((await o.patch(`/api/crm/deals/${deal.id}`, { siteVisitAt: 'not a date' })).status, 400);
   });
 });
+
+describe('CRM Google Workspace', () => {
+  test('without the server key it says so plainly; members cannot connect', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('gw'), password: 'TestPass1234!', companyName: 'GW Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const st = await (await o.get('/api/crm/google')).json();
+    assert.equal(st.configured, false);
+    assert.equal(st.connection, null);
+    assert.equal((await o.post('/api/crm/google/connect', { domain: 'example.test', adminEmail: 'a@example.test' })).status, 503);
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('gw-mem'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    assert.equal((await m.get('/api/crm/google')).status, 200);
+    assert.equal((await m.post('/api/crm/google/connect', { domain: 'example.test', adminEmail: 'a@example.test' })).status, 403);
+    assert.equal((await m.delete('/api/crm/google')).status, 403);
+  });
+});

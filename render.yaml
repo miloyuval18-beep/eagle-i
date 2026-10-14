@@ -54,6 +54,8 @@ services:
         sync: false
       - key: GOOGLE_PLACES_API_KEY
         sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON # Eagle I CRM: Google Workspace email (domain-wide delegation)
+        sync: false
       - key: ADMIN_ALERT_EMAIL
         sync: false
       - key: NODE_ENV
