@@ -278,6 +278,45 @@ per tenant per day, `tenants.monthly_reddit_search_cap`) as an accepted
 risk rather than a resolved one — worth revisiting if usage grows or
 Reddit objects.
 
+## Eagle I CRM (separate product, Phase 1)
+
+**Eagle I CRM** is its own product: a self-standing construction CRM for
+builders and remodelers (see `EagleI_Construction_CRM_Deep_Dive.pdf` for the
+plan). It shares this server and login system but nothing in the marketing UI:
+
+- App at `/crm` (`crm.html`), its own sign-in/sign-up at `/crm/login`
+  (`public/crm-login.html`). A CRM signup gets `tenants.products = {crm}`; a
+  CRM-only company visiting `/` is sent to `/crm`.
+- A marketing company can switch the CRM on from `/crm` (adds `crm` to its
+  products); its existing landing-page leads are then brought in. Landing-page
+  leads only create deals for companies that have the CRM.
+- Every `/api/crm/*` route except `/api/crm/me` and `/api/crm/activate`
+  answers 403 (`code: no_crm`) for companies without it.
+
+Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
+`lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
+`1760400000000_crm_core.js`.
+
+- **Records:** contact (person), property (house, with the HCAD median value for
+  its ZIP when known) and deal (stage, value, source), plus a timeline per deal.
+- **Design-build stages:** New → Qualified → Site visit → Design agreement sent →
+  In design → Proposal sent → Contract signed → In production → Complete, or Lost.
+- **Automatic intake:** every landing-page lead becomes a contact + deal, matched to
+  an existing contact by email or phone. Older leads are brought in the first time
+  the pipeline opens. Moving a deal updates the Leads inbox status (and stops the
+  new-lead emails), and the other way round.
+- **Playbooks (approve once, run forever):** six starter playbooks tied to stages,
+  all off until the owner approves the exact wording. Editing the wording withdraws
+  the approval. Sends stop when the deal leaves the stage, when the person replies
+  (reply kind `crm`, via the same inbound webhook), unsubscribes or bounces; later
+  steps go out weekdays 9–5 Central; 60 a day per company; one switch pauses all.
+  Approving a playbook never emails deals already sitting in that stage.
+- **Needs you:** only exceptions: a new lead untouched for 30 minutes (adjustable),
+  a deal with no activity past its stage's limit, a reply, or a failed send.
+- **Weekly summary:** Monday from 8am Central, counts from real records only.
+
+The background work runs on the existing 5-minute tick in `lib/followUpWorker.js`.
+
 ## Scheduled posts
 
 The Social HQ composer can queue a post for a future time instead of publishing

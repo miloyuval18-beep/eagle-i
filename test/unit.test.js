@@ -761,3 +761,115 @@ describe('buildPermitLetter (lib/permitMailer.js)', () => {
     assert.match(letter.bodyParagraphs.join(' '), /the number below/);
   });
 });
+
+describe('CRM core (lib/crm.js)', () => {
+  const crm = require('../lib/crm');
+  test('phoneDigits matches the same number typed different ways', () => {
+    assert.equal(crm.phoneDigits('(713) 555-0100'), '7135550100');
+    assert.equal(crm.phoneDigits('+1 713.555.0100'), '7135550100');
+    assert.equal(crm.phoneDigits('12'), null);
+    assert.equal(crm.phoneDigits(null), null);
+  });
+  test('extractZip reads a ZIP field or the end of an address', () => {
+    assert.equal(crm.extractZip('77077', null), '77077');
+    assert.equal(crm.extractZip('', '123 Main St, Houston, TX 77024'), '77024');
+    assert.equal(crm.extractZip(null, '123 Main St, Houston, TX 77024-1234'), '77024');
+    assert.equal(crm.extractZip(null, '123 Main St'), null);
+  });
+  test('parseValue accepts the ways people write money and rejects nonsense', () => {
+    assert.equal(crm.parseValue('85,000'), 85000);
+    assert.equal(crm.parseValue('$85k'), 85000);
+    assert.equal(crm.parseValue('1.2m'), 1200000);
+    assert.equal(crm.parseValue(42000), 42000);
+    assert.equal(crm.parseValue(''), null);
+    assert.equal(crm.parseValue('about 50'), null);
+    assert.equal(crm.parseValue(-5), null);
+  });
+  test('lead status and stage map both ways', () => {
+    assert.equal(crm.stageForLeadStatus('won'), 'signed');
+    assert.equal(crm.stageForLeadStatus('contacted'), 'qualified');
+    assert.equal(crm.leadStatusForStage('proposal'), 'contacted');
+    assert.equal(crm.leadStatusForStage('production'), 'won');
+    assert.equal(crm.leadStatusForStage('lost'), 'lost');
+    assert.equal(crm.leadStatusForStage('new'), 'new');
+  });
+  test('settings fall back to safe defaults', () => {
+    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, backfilledAt: null });
+    assert.equal(crm.normalizeSettings({ waitingMinutes: 7 }).waitingMinutes, 30);
+    assert.equal(crm.normalizeSettings({ waitingMinutes: '60' }).waitingMinutes, 60);
+  });
+  test('median handles odd, even and empty lists', () => {
+    assert.equal(crm.median([5, 1, 3]), 3);
+    assert.equal(crm.median([1, 2, 3, 4]), 2.5);
+    assert.equal(crm.median([]), null);
+  });
+  test('weekBounds reports on the Monday-to-Monday week just ended, in Central time', () => {
+    // Monday Oct 19 2026, 9am Central = 14:00 UTC (CDT).
+    const b = crm.weekBounds(new Date('2026-10-19T14:00:00Z'));
+    assert.equal(b.dayOfWeek, 0);
+    assert.equal(b.hour, 9);
+    assert.equal(b.weekStartKey, '2026-10-12');
+    assert.equal(b.start.toISOString(), '2026-10-12T05:00:00.000Z');
+    assert.equal(b.end.toISOString(), '2026-10-19T05:00:00.000Z');
+    // Sunday night still belongs to the week before.
+    assert.equal(crm.weekBounds(new Date('2026-10-19T03:00:00Z')).weekStartKey, '2026-10-05');
+  });
+  test('defaultTitle names the project from the message when it can', () => {
+    assert.equal(crm.defaultTitle('maria garcia', 'Looking to redo our kitchen'), 'maria — kitchen');
+    assert.equal(crm.defaultTitle('Sam', ''), 'Sam — project');
+  });
+  test('weekly summary email escapes the company name', () => {
+    const { html, subject } = crm.renderWeeklySummaryEmail({ companyName: '<b>Acme</b>', weekLabel: 'week of Oct 12', s: { newLeads: 1, respondedCount: 1, medianResponseMinutes: 12, automatedEmails: 3, replies: 1, stageMoves: 2, signedCount: 0, signedValue: 0, openPipelineValue: 150000, needsYou: 0 } });
+    assert.ok(!html.includes('<b>Acme</b>'));
+    assert.ok(html.includes('&lt;b&gt;Acme'));
+    assert.ok(html.includes('$150,000'));
+    assert.match(subject, /1 new lead, 3 automatic emails/);
+  });
+});
+
+describe('CRM playbooks (lib/crmPlaybooks.js)', () => {
+  const pb = require('../lib/crmPlaybooks');
+  test('every starter playbook is valid and tied to a real stage', () => {
+    const { isStage } = require('../lib/crm');
+    for (const p of pb.DEFAULT_PLAYBOOKS) {
+      assert.equal(pb.validateSteps(p.steps), null, p.key);
+      assert.ok(isStage(p.stage), p.key);
+    }
+  });
+  test('any change to the wording changes the approval fingerprint', () => {
+    const steps = [{ days: 3, subject: 'Hi', message: 'Hello {name}' }];
+    const h = pb.playbookHash('proposal', steps);
+    assert.equal(h, pb.playbookHash('proposal', [{ days: '3', subject: ' Hi ', message: 'Hello {name}\n' }]));
+    assert.notEqual(h, pb.playbookHash('proposal', [{ days: 3, subject: 'Hi', message: 'Hello {name}!' }]));
+    assert.notEqual(h, pb.playbookHash('proposal', [{ days: 4, subject: 'Hi', message: 'Hello {name}' }]));
+    assert.notEqual(h, pb.playbookHash('lost', steps));
+  });
+  test('isApproved only when the approved fingerprint matches the current wording', () => {
+    const steps = [{ days: 0, subject: 'Hi', message: 'Hello' }];
+    const row = { stage: 'signed', steps, approved_hash: pb.playbookHash('signed', steps) };
+    assert.equal(pb.isApproved(row), true);
+    assert.equal(pb.isApproved({ ...row, steps: [{ days: 0, subject: 'Hi', message: 'Hello again' }] }), false);
+    assert.equal(pb.isApproved({ ...row, approved_hash: null }), false);
+  });
+  test('validateSteps rejects unsafe or out-of-order playbooks', () => {
+    assert.match(pb.validateSteps([]), /1 to 3/);
+    assert.match(pb.validateSteps([{ days: 3, subject: 'a', message: 'b' }, { days: 2, subject: 'a', message: 'b' }]), /after the previous/);
+    assert.match(pb.validateSteps([{ days: 400, subject: 'a', message: 'b' }]), /0 to 365/);
+    assert.match(pb.validateSteps([{ days: 1, subject: 'a', message: 'Hi {address}' }]), /\{address\}/);
+    assert.match(pb.validateSteps([{ days: 1, subject: '', message: 'b' }]), /subject/);
+    assert.equal(pb.validateSteps([{ days: 0, subject: 'a', message: 'Hi {name} from {company}' }]), null);
+  });
+  test('renderStep fills tokens and the first name', () => {
+    const ctx = { companyName: 'Levi Homes', profile: { phone: '713-555-0100', email: 'hi@levi.test', founder_name: 'Levi' } };
+    const out = pb.renderStep({ subject: 'Welcome to {company}', message: 'Hi {name}, call {phone}.' }, { ctx, contactName: 'maria garcia' });
+    assert.equal(out.subject, 'Welcome to Levi Homes');
+    assert.equal(out.message, 'Hi Maria, call 713-555-0100.');
+  });
+  test('the reply address accepts the crm kind', () => {
+    process.env.RESEND_INBOUND_DOMAIN = 'in.example.test';
+    const addr = buildReplyToAddress('crm', '123e4567-e89b-12d3-a456-426614174000');
+    delete process.env.RESEND_INBOUND_DOMAIN;
+    const m = REPLY_ADDRESS_RE.exec(addr);
+    assert.equal(m[1], 'crm');
+  });
+});

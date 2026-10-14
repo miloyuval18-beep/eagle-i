@@ -44,6 +44,7 @@ const workWithUsRoutes = require('./routes/workWithUs');
 const sendingDomainRoutes = require('./routes/sendingDomain');
 const photoRequestsRoutes = require('./routes/photoRequests');
 const redditLeadsRoutes = require('./routes/redditLeads');
+const crmRoutes = require('./routes/crm');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -145,9 +146,17 @@ app.use(workWithUsRoutes);
 app.use(sendingDomainRoutes);
 app.use(photoRequestsRoutes);
 app.use(redditLeadsRoutes);
+app.use(crmRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
+
+// Eagle I CRM: a separate product with its own app, login and signup.
+app.get(['/crm', '/crm/'], (req, res) => {
+  if (!req.session || !req.session.userId) return res.redirect('/crm/login');
+  res.sendFile(path.join(__dirname, 'crm.html'));
+});
+app.get('/crm/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm-login.html')));
 
 // The dashboard itself: not logged in -> /login.html; logged in but never
 // finished onboarding -> /onboarding.html; otherwise serve the app.
@@ -157,9 +166,13 @@ app.get(['/', '/index.html'], async (req, res) => {
   }
   try {
     const result = await query(
-      'SELECT generated_content FROM business_profile WHERE tenant_id = $1',
+      `SELECT bp.generated_content, t.products FROM tenants t LEFT JOIN business_profile bp ON bp.tenant_id = t.id WHERE t.id = $1`,
       [req.session.tenantId]
     );
+    // A CRM-only company has no marketing dashboard: send it to its own app.
+    if (result.rows.length && Array.isArray(result.rows[0].products) && !result.rows[0].products.includes('marketing')) {
+      return res.redirect('/crm');
+    }
     const onboarded = result.rows.length && Object.keys(result.rows[0].generated_content || {}).length > 0;
     if (!onboarded) return res.redirect('/onboarding.html');
   } catch (err) {

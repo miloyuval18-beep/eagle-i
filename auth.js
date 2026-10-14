@@ -64,7 +64,7 @@ async function requireAdmin(req, res, next) {
 
 function registerAuthRoutes(app) {
   app.post('/api/auth/signup', async (req, res) => {
-    const { email, password, companyName, industry, acceptedTerms } = req.body || {};
+    const { email, password, companyName, industry, acceptedTerms, product } = req.body || {};
     if (!email || !EMAIL_RE.test(email)) {
       return res.status(400).json({ error: { message: 'A valid email is required.' } });
     }
@@ -91,9 +91,11 @@ function registerAuthRoutes(app) {
         return res.status(409).json({ error: { message: 'An account with that email already exists.' } });
       }
 
+      // The CRM (/crm) is sold as its own product; everyone else signs up for marketing.
+      const products = product === 'crm' ? ['crm'] : ['marketing'];
       const tenantResult = await client.query(
-        `INSERT INTO tenants (company_name, industry) VALUES ($1, $2) RETURNING id`,
-        [companyName.trim(), safeIndustry]
+        `INSERT INTO tenants (company_name, industry, products) VALUES ($1, $2, $3) RETURNING id`,
+        [companyName.trim(), safeIndustry, products]
       );
       const tenantId = tenantResult.rows[0].id;
 
@@ -111,16 +113,16 @@ function registerAuthRoutes(app) {
 
       req.session.userId = userResult.rows[0].id;
       req.session.tenantId = tenantId;
-      res.json({ ok: true, tenantId });
+      res.json({ ok: true, tenantId, products });
 
       // Best-effort — signup already succeeded and the user is logged in
       // regardless of whether this send works (e.g. RESEND_API_KEY unset).
       const verifyUrl = `${req.protocol}://${req.get('host')}/verify-email.html?token=${verificationToken}`;
       sendEmail({
         to: email.toLowerCase(),
-        subject: 'Verify your Eagle I email',
-        html: `<p>Welcome to Eagle I! <a href="${verifyUrl}">Confirm your email address</a> to secure your account.</p>`,
-        text: `Welcome to Eagle I! Confirm your email address: ${verifyUrl}`
+        subject: product === 'crm' ? 'Verify your Eagle I CRM email' : 'Verify your Eagle I email',
+        html: `<p>Welcome to Eagle I${product === 'crm' ? ' CRM' : ''}! <a href="${verifyUrl}">Confirm your email address</a> to secure your account.</p>`,
+        text: `Welcome to Eagle I${product === 'crm' ? ' CRM' : ''}! Confirm your email address: ${verifyUrl}`
       }).catch(err => console.warn('Verification email not sent:', err.message));
     } catch (err) {
       if (client) await client.query('ROLLBACK').catch(() => {});

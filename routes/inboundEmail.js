@@ -29,7 +29,7 @@ const { getVerifiedFromAddress } = require('../lib/sendingDomain');
 // Matches only the reply+<kind>-<uuid>@... local-part this app generates
 // itself (lib/email.js's buildReplyToAddress) — an inbound address in any
 // other shape is ignored rather than trusted.
-const REPLY_ADDRESS_RE = /^reply\+(vendor|review|partner)-([0-9a-f-]{36})@/i;
+const REPLY_ADDRESS_RE = /^reply\+(vendor|review|partner|crm)-([0-9a-f-]{36})@/i;
 
 // replyToEmail is whoever actually sent the reply (not necessarily the
 // address Eagle I originally wrote to — a reply can come from a different
@@ -141,6 +141,18 @@ async function processInboundEmail(data) {
     if (result.rows.length) {
       const row = result.rows[0];
       await forwardToTenant(row.tenant_id, `${row.customer_name} replied`, full, senderAddress(full.from) || row.customer_email);
+    }
+  } else if (kind === 'crm') {
+    // A reply to one of the pipeline's automatic emails (lib/crmPlaybooks.js).
+    const text = full.text || htmlToText(full.html);
+    const cls = classifyReply({ subject: full.subject, text });
+    const r = await require('../lib/crmPlaybooks').recordReply({ sendId: id, text, html: full.html, category: cls.category });
+    if (r && !r.autoReply) {
+      if (cls.category === 'unsubscribe') {
+        await suppress(r.tenantId, r.row.contact_email);
+        await require('../lib/crmPlaybooks').cancelForEmail(r.tenantId, r.row.contact_email, 'opted_out');
+      }
+      await forwardToTenant(r.tenantId, (ALERT_PREFIX[cls.category] || ALERT_PREFIX.other)(r.row.contact_name), full, senderAddress(full.from) || r.row.contact_email);
     }
   } else if (kind === 'partner') {
     const result = await query(

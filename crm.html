@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Eagle I CRM</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- Eagle I CRM: its own product and app, separate from the Eagle I marketing
+     dashboard (index.html). API: routes/crm.js. -->
+<style>
+:root{
+  --bg:#f4f6f8;--bg2:#ffffff;--bg3:#ffffff;--bg4:#eef1f4;--bg5:#ffffff;
+  --bdr:#c3ccd4;--bdr2:#8794a0;--bdr3:#55636f;
+  --ink:#14202b;--ink2:#3a4855;--ink3:#55636f;
+  --blue:#1f4e79;--blue2:#173b5c;--accent:#1f4e79;
+  --green:#2c6e49;--red:#a12a1f;--amber:#8a5a00;
+  --glow:rgba(31,78,121,.08);
+  --fh:'Nunito Sans',system-ui,-apple-system,sans-serif;--fb:var(--fh);--fm:var(--fh);
+  --r:8px;--r2:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:16px;line-height:1.55;min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--accent)}
+.cr-top{position:sticky;top:0;z-index:50;background:var(--bg2);border-bottom:1px solid var(--bdr)}
+.cr-bar{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 16px}
+.cr-brand{font-weight:800;font-size:19px;white-space:nowrap}
+.cr-brand span{color:var(--accent)}
+.cr-company{font-size:13px;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.cr-menu-btn{border:1px solid var(--bdr2);background:var(--bg2);border-radius:8px;padding:6px 10px;font:inherit;font-size:14px;cursor:pointer;color:var(--ink)}
+.cr-menu{position:absolute;right:16px;top:52px;background:var(--bg2);border:1px solid var(--bdr2);border-radius:10px;box-shadow:0 8px 24px rgba(20,32,43,.12);min-width:220px;padding:6px;display:none;z-index:60}
+.cr-menu.open{display:block}
+.cr-menu a,.cr-menu button{display:block;width:100%;text-align:left;padding:9px 10px;border-radius:6px;border:0;background:none;font:inherit;font-size:14px;color:var(--ink);text-decoration:none;cursor:pointer}
+.cr-menu a:hover,.cr-menu button:hover{background:var(--bg4)}
+.cr-menu .who{font-size:12px;color:var(--ink3);padding:6px 10px;overflow-wrap:anywhere}
+.cr-nav{max-width:1080px;margin:0 auto;display:flex;gap:4px;padding:0 12px;overflow-x:auto;scrollbar-width:none}
+.cr-nav::-webkit-scrollbar{display:none}
+.cr-tab{flex:0 0 auto;border:0;background:none;font:inherit;font-weight:700;font-size:15px;color:var(--ink3);padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.cr-tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.wrap{max-width:1080px;margin:0 auto;padding:18px 16px 60px}
+.view{display:none}.view.active{display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--fh);font-size:15px;font-weight:800;padding:10px 16px;border-radius:var(--r);border:none;cursor:pointer}
+.btn-blue{background:var(--accent);color:#fff}
+.btn-blue:hover{background:var(--blue2)}
+.btn-blue:disabled{opacity:.45;cursor:not-allowed}
+.btn-xs{display:inline-flex;align-items:center;gap:4px;font-family:var(--fh);font-size:13px;font-weight:700;padding:6px 10px;border-radius:6px;border:1px solid var(--bdr2);background:var(--bg2);color:var(--ink2);cursor:pointer;text-decoration:none}
+.btn-xs:hover{border-color:var(--accent);color:var(--accent)}
+.btn-xs.p{background:var(--glow);color:var(--accent);border-color:var(--accent)}
+.btn-xs:disabled{opacity:.5}
+.cred-input,select,textarea{width:100%;background:var(--bg5);border:1.5px solid var(--bdr2);border-radius:7px;padding:9px 11px;font-family:var(--fb);font-size:15px;color:var(--ink);outline:none}
+.cred-input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+select{width:auto;cursor:pointer}
+.sm{font-size:13px;color:var(--ink3);margin-top:6px}
+.section{margin-bottom:22px}
+.sh{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bdr);flex-wrap:wrap;gap:10px}
+.st{font-size:24px;font-weight:800;color:var(--ink)}
+.ss{font-size:14px;color:var(--ink2);margin-top:4px;max-width:680px}
+.tbadge{background:var(--red);color:#fff;font-size:12px;padding:0 6px;border-radius:9px;font-weight:800;display:none;margin-left:4px}
+.tbadge.on{display:inline-block}
+.vd-modal{position:fixed;inset:0;background:rgba(20,32,43,.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px}
+.vd-modal-box{background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r2);width:min(720px,100%);max-height:calc(100vh - 32px);overflow-y:auto;padding:20px}
+.vd-mh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.vd-mt{font-size:19px;font-weight:800;color:var(--ink);overflow-wrap:anywhere}
+.vd-mbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;font-size:14px;z-index:1100;max-width:calc(100% - 32px);display:none;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.toast b{display:block}
+.cr-activate{max-width:560px;margin:40px auto;background:var(--bg2);border:1px solid var(--bdr);border-radius:14px;padding:24px;text-align:center}
+@media(max-width:420px){.cr-tab{padding:10px 8px;font-size:14px}.cr-nav{padding:0 6px;gap:0}.cr-company{display:none}}
+@media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.st{font-size:21px}}
+/* ---------- Pipeline (CRM) ---------- */
+.pl-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.pl-tile{border:1px solid var(--bdr2);border-radius:var(--r2);background:var(--bg3);padding:10px 12px;min-width:0}
+.pl-tile-v{font-family:var(--fh);font-size:20px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.pl-tile-l{font-size:12px;color:var(--ink2);margin-top:2px}
+.pl-stages{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.pl-chip{flex:0 0 auto;border:1px solid var(--bdr2);background:var(--bg4);border-radius:999px;padding:6px 12px;font-family:var(--fb);font-size:13px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+.pl-chip b{font-weight:700;color:var(--ink);margin-left:4px}
+.pl-chip.active{background:var(--ink);color:var(--bg2);border-color:var(--ink)}
+.pl-chip.active b{color:var(--bg2)}
+.pl-list{display:flex;flex-direction:column;gap:8px}
+.pl-card{border:1px solid var(--bdr2);border-radius:var(--r2);background:var(--bg3);padding:11px 13px;cursor:pointer;text-align:left;width:100%;box-sizing:border-box;font:inherit;color:inherit}
+.pl-card:hover{border-color:var(--bdr3)}
+.pl-card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.pl-card-title{font-weight:700;color:var(--ink);font-size:14px;overflow-wrap:anywhere}
+.pl-card-val{font-family:var(--fh);font-weight:700;color:var(--ink);white-space:nowrap}
+.pl-card-sub{font-size:12px;color:var(--ink2);margin-top:3px;overflow-wrap:anywhere}
+.pl-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.pl-tag{font-size:11px;border:1px solid var(--bdr2);border-radius:4px;padding:1px 6px;color:var(--ink2);white-space:nowrap}
+.pl-tag.auto{color:var(--green);border-color:rgba(60,110,70,.4)}
+.pl-tag.warn{color:var(--amber);border-color:rgba(160,110,0,.5)}
+.pl-empty{text-align:center;padding:26px 12px;color:var(--ink3);font-size:13px;border:1px dashed var(--bdr2);border-radius:var(--r2)}
+.pl-banner{border:1px solid rgba(160,110,0,.5);background:rgba(160,110,0,.08);border-radius:var(--r2);padding:10px 12px;font-size:13px;margin-bottom:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.pl-form{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+.pl-form label{display:block;font-size:12px;color:var(--ink2);margin-bottom:3px}
+.pl-form .full{grid-column:1/-1}
+.pl-form select{width:100%;text-transform:none;letter-spacing:0;font-family:var(--fb);font-weight:400}
+.pl-tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pl-tl li{border-left:3px solid var(--bdr2);padding:2px 0 2px 10px;font-size:13px}
+.pl-tl li.eagle_i{border-left-color:var(--green)}
+.pl-tl li.contact{border-left-color:var(--blue2)}
+.pl-tl-meta{font-size:11px;color:var(--ink3);margin-top:2px}
+.pl-h{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--ink);margin:16px 0 8px}
+.pl-item{border:1px solid var(--bdr2);border-radius:var(--r2);background:var(--bg3);padding:11px 13px}
+.pl-item.negative_reply,.pl-item.send_failed{border-left:4px solid var(--red)}
+.pl-item.waiting_lead{border-left:4px solid var(--amber)}
+.pl-item-t{font-weight:700;color:var(--ink);font-size:14px;overflow-wrap:anywhere}
+.pl-item-d{font-size:12px;color:var(--ink2);margin-top:3px;white-space:pre-wrap;overflow-wrap:anywhere}
+.pl-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pl-pb{border:1px solid var(--bdr2);border-radius:var(--r2);background:var(--bg3);padding:12px 14px;margin-bottom:10px}
+.pl-pb-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.pl-pill{font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;border:1px solid var(--bdr2);color:var(--ink2)}
+.pl-pill.on{color:var(--green);border-color:rgba(60,110,70,.45);background:rgba(60,110,70,.08)}
+.pl-pill.need{color:var(--amber);border-color:rgba(160,110,0,.5);background:rgba(160,110,0,.08)}
+.pl-step{border-top:1px solid var(--bdr);padding-top:9px;margin-top:9px}
+.pl-step-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:5px;font-size:12px;color:var(--ink2)}
+.pl-step-row input[type=number]{width:70px}
+.pl-switch{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer}
+.pl-switch input{width:18px;height:18px;flex:0 0 auto}
+@media(max-width:600px){.pl-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.pl-form{grid-template-columns:1fr}.pl-tile-v{font-size:17px}}
+</style>
+</head>
+<body>
+<header class="cr-top">
+  <div class="cr-bar">
+    <div class="cr-brand">Eagle I <span>CRM</span></div>
+    <div class="cr-company" id="cr-company"></div>
+    <button class="cr-menu-btn" id="cr-menu-btn" aria-haspopup="true" aria-expanded="false" onclick="crMenu()">Account ▾</button>
+    <div class="cr-menu" id="cr-menu" role="menu">
+      <div class="who" id="cr-who"></div>
+      <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
+      <a href="/forgot-password.html">Change password</a>
+      <button onclick="crSignOut()">Sign out</button>
+    </div>
+  </div>
+  <nav class="cr-nav" id="cr-nav" aria-label="CRM sections">
+    <button class="cr-tab active" data-view="pipeline" onclick="crView('pipeline')">Pipeline</button>
+    <button class="cr-tab" data-view="needs" onclick="crView('needs')">Needs You<span class="tbadge" id="pl-needs-badge">0</span></button>
+    <button class="cr-tab" data-view="auto" onclick="crView('auto')">Automations</button>
+    <button class="cr-tab" data-view="company" onclick="crView('company')">Company</button>
+  </nav>
+</header>
+<main class="wrap" id="cr-main">
+  <div class="cr-activate" id="cr-activate" hidden>
+    <div class="st">Add Eagle I CRM</div>
+    <p class="ss" style="margin:8px auto 16px">Your company uses Eagle I marketing. The CRM is a separate app for running your sales pipeline: every lead in one place, follow-up emails that send themselves, and a short list of what needs you. Switch it on to start; your marketing account stays exactly as it is.</p>
+    <button class="btn btn-blue" onclick="crActivate(this)">Switch on Eagle I CRM</button>
+  </div>
+  <section class="view active" id="view-pipeline">
+    <div class="sh"><div><div class="st">Pipeline</div><div class="ss">Every job you're selling, from first contact to finished project. Move a deal to a new stage and Eagle I sends that stage's emails for you, once you've approved them in Automations.</div></div>
+      <button class="btn btn-blue" onclick="plNewDeal()">＋ Add a deal</button></div>
+    <div id="pl-setup-banner"></div>
+    <div id="pl-paused-banner"></div>
+    <div class="pl-strip" id="pl-strip"></div>
+    <div class="pl-stages" id="pl-stages" role="tablist" aria-label="Pipeline stages"></div>
+    <input type="text" class="cred-input" id="pl-search" placeholder="Search by name, email, phone or address…" aria-label="Search deals" oninput="plRender()" style="margin-bottom:10px">
+    <div class="pl-list" id="pl-list"><div class="pl-empty">Loading your pipeline…</div></div>
+  </section>
+  <section class="view" id="view-needs">
+    <div class="sh"><div><div class="st">Needs You</div><div class="ss">Only the things a person has to look at: a new lead nobody has picked up, a deal that has gone quiet, a reply to one of the automatic emails, or an email that could not be sent. Everything else Eagle I handles on its own.</div></div></div>
+    <div class="pl-list" id="pl-needs"><div class="pl-empty">Loading…</div></div>
+  </section>
+  <section class="view" id="view-auto">
+    <div class="sh"><div><div class="st">Automations</div><div class="ss">Each playbook sends emails when a deal reaches its stage. Nothing sends until you approve the exact wording. After that it runs on its own for every deal that enters the stage. If you change the wording, it switches off until you approve the new version.</div></div></div>
+    <div class="section" id="pl-auto-settings"></div>
+    <div class="pl-h">What Eagle I did in the last 7 days</div>
+    <div class="pl-strip" id="pl-week"></div>
+    <div class="pl-h">Playbooks</div>
+    <div id="pl-playbooks"><div class="pl-empty">Loading…</div></div>
+  </section>
+  <section class="view" id="view-company">
+    <div class="sh"><div><div class="st">Company</div><div class="ss">These details go on every automatic email: your name and phone in the signature, and your business address at the bottom (required by law for marketing email, so emails wait until it's filled in).</div></div></div>
+    <div class="pl-form" style="max-width:640px">
+      <div class="full"><label for="co-name">Company name</label><input id="co-name" class="cred-input" autocomplete="organization"></div>
+      <div><label for="co-founder">Your name (for the signature)</label><input id="co-founder" class="cred-input" autocomplete="name"></div>
+      <div><label for="co-phone">Phone</label><input id="co-phone" class="cred-input" type="tel" inputmode="tel" autocomplete="tel"></div>
+      <div class="full"><label for="co-email">Email replies should go to</label><input id="co-email" class="cred-input" type="email" inputmode="email" autocomplete="email"></div>
+      <div class="full"><label for="co-address">Business address</label><input id="co-address" class="cred-input" autocomplete="street-address" placeholder="Street, city, state, ZIP"></div>
+    </div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="coSave(this)">Save</button><span class="sm" id="co-msg" style="margin:0"></span></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+/* ---------- small helpers (this app does not load the marketing dashboard's code) ---------- */
+const uxEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function uxModalEl(){
+  let m=document.getElementById('ux-modal');
+  if(!m){
+    m=document.createElement('div');m.id='ux-modal';m.className='vd-modal';
+    m.innerHTML='<div class="vd-modal-box" role="dialog" aria-modal="true" tabindex="-1"></div>';
+    document.body.appendChild(m);
+    m.addEventListener('click',e=>{if(e.target.id==='ux-modal')uxClose();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&m.style.display==='flex')uxClose();});
+  }
+  return m;
+}
+function uxOpen(html){const m=uxModalEl();const box=m.querySelector('.vd-modal-box');box.innerHTML=html;m.style.display='flex';box.scrollTop=0;return box;}
+function uxClose(){const m=document.getElementById('ux-modal');if(m)m.style.display='none';}
+const uxHead=(title,sub)=>`<div class="vd-mh"><div><div class="vd-mt">${title}</div>${sub?`<div class="sm">${sub}</div>`:''}</div><button class="btn-xs" onclick="uxClose()" aria-label="Close">✕</button></div>`;
+let toastTimer=null;
+function showNotif(t,b){const el=document.getElementById('toast');el.innerHTML='<b>'+uxEsc(t)+'</b>'+uxEsc(b||'');el.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.display='none',4500);}
+
+/* ---------- app shell ---------- */
+const CR={me:null,view:'pipeline'};
+function crMenu(force){const m=document.getElementById('cr-menu');const open=force===undefined?!m.classList.contains('open'):force;m.classList.toggle('open',open);document.getElementById('cr-menu-btn').setAttribute('aria-expanded',open);}
+document.addEventListener('click',e=>{if(!e.target.closest('#cr-menu')&&!e.target.closest('#cr-menu-btn'))crMenu(false);});
+async function crSignOut(){try{await fetch('/api/auth/logout',{method:'POST'});}catch(e){}location.href='/crm/login';}
+function crView(v){
+  CR.view=v;
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
+  document.querySelectorAll('.cr-tab').forEach(t=>{t.classList.toggle('active',t.dataset.view===v);t.setAttribute('aria-current',t.dataset.view===v?'page':'false');});
+  if(v==='pipeline')plLoad();
+  if(v==='needs')plLoadNeeds();
+  if(v==='auto')plLoadAuto();
+  if(v==='company')coLoad();
+  try{history.replaceState(null,'','#'+v);}catch(e){}
+  window.scrollTo(0,0);
+}
+async function crInit(){
+  let me;
+  try{const r=await fetch('/api/crm/me');if(r.status===401){location.href='/crm/login';return;}me=await r.json();}
+  catch(e){document.getElementById('pl-list').innerHTML='<div class="pl-empty">Could not reach Eagle I. Check your connection and reload.</div>';return;}
+  CR.me=me;
+  document.getElementById('cr-company').textContent=me.companyName||'';
+  document.getElementById('cr-who').textContent=me.email||'';
+  document.getElementById('cr-mkt').hidden=!me.hasMarketing;
+  if(!me.hasCrm){
+    document.getElementById('cr-nav').style.display='none';
+    document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+    document.getElementById('cr-activate').hidden=false;
+    return;
+  }
+  const start=(location.hash||'').slice(1);
+  crView(['pipeline','needs','auto','company'].includes(start)?start:'pipeline');
+  plApi('/api/crm/inbox').then(d=>plBadge(d.items.length)).catch(()=>{});
+  plCheckSetup();
+}
+async function crActivate(btn){
+  btn.disabled=true;
+  try{await plApi('/api/crm/activate',{body:{}});location.reload();}catch(e){showNotif('Could not switch it on',e.message);btn.disabled=false;}
+}
+// Automatic emails need the business address; say so up front instead of failing quietly.
+async function plCheckSetup(){
+  try{
+    const {company}=await plApi('/api/crm/company');
+    const el=document.getElementById('pl-setup-banner');
+    el.innerHTML=(company.address||'').trim().length<8?'<div class="pl-banner"><span>Add your business address before any automatic email can go out. It goes at the bottom of every email.</span><button class="btn-xs p" onclick="crView(\'company\')">Add it</button></div>':'';
+  }catch(e){}
+}
+async function coLoad(){
+  try{
+    const {company:c}=await plApi('/api/crm/company');
+    document.getElementById('co-name').value=c.company_name||'';
+    document.getElementById('co-founder').value=c.founder_name||'';
+    document.getElementById('co-phone').value=c.phone||'';
+    document.getElementById('co-email').value=c.email||'';
+    document.getElementById('co-address').value=c.address||'';
+  }catch(e){document.getElementById('co-msg').textContent=e.message;}
+}
+async function coSave(btn){
+  const v=id=>document.getElementById(id).value;const msg=document.getElementById('co-msg');
+  btn.disabled=true;msg.textContent='';
+  try{
+    await plApi('/api/crm/company',{method:'PATCH',body:{companyName:v('co-name'),founderName:v('co-founder'),phone:v('co-phone'),email:v('co-email'),address:v('co-address')}});
+    msg.textContent='Saved.';document.getElementById('cr-company').textContent=v('co-name');plCheckSetup();
+  }catch(e){msg.textContent=e.message;}
+  btn.disabled=false;
+}
+</script>
+<script>
+/* ==================== PIPELINE (CRM) ==================== */
+const PL={data:null,filter:'open',playbooks:null,settings:null};
+const PL_SOURCES=[['manual','Added by hand'],['landing_page','Landing page'],['website','Website'],['phone','Phone call'],['referral','Referral'],['repeat','Past client'],['partner','Trade partner'],['houzz','Houzz'],['angi','Angi'],['thumbtack','Thumbtack'],['other','Other']];
+const plSourceLabel=k=>(PL_SOURCES.find(s=>s[0]===k)||[k,k])[1];
+const plMoney=n=>n==null||n===''?'':'$'+Math.round(Number(n)).toLocaleString('en-US');
+function plAgo(ts){
+  const m=(Date.now()-new Date(ts).getTime())/60000;
+  if(m<60)return Math.max(1,Math.round(m))+' min';
+  if(m<48*60)return Math.round(m/60)+' h';
+  return Math.round(m/1440)+' days';
+}
+async function plApi(url,opts){
+  const r=await fetch(url,opts&&opts.body!==undefined?{method:opts.method||'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(opts.body)}:(opts||{}));
+  let d={};try{d=await r.json();}catch(e){}
+  if(!r.ok)throw new Error((d.error&&d.error.message)||('Request failed ('+r.status+')'));
+  return d;
+}
+const plStage=k=>(PL.data&&PL.data.stages.find(s=>s.key===k))||{key:k,label:k,open:true};
+
+async function plLoad(){
+  try{
+    PL.data=await plApi('/api/crm/pipeline');
+    plRender();plBadge(PL.data.needsYou);
+  }catch(e){const el=document.getElementById('pl-list');if(el)el.innerHTML='<div class="pl-empty">Could not load your pipeline: '+uxEsc(e.message)+'</div>';}
+}
+function plBadge(n){
+  const b=document.getElementById('pl-needs-badge');if(b){b.textContent=n;b.classList.toggle('on',n>0);}
+}
+function plRender(){
+  const d=PL.data;if(!d)return;
+  const open=d.deals.filter(x=>plStage(x.stage).open);
+  const selling=open.filter(x=>!['signed','production'].includes(x.stage));
+  const weekAgo=Date.now()-7*86400000;
+  const newWeek=d.deals.filter(x=>x.inbound&&new Date(x.created_at).getTime()>weekAgo).length;
+  document.getElementById('pl-strip').innerHTML=[
+    [selling.length,'Deals being sold'],[plMoney(d.openValue)||'$0','Value being sold'],[newWeek,'New leads this week'],[d.needsYou,'Need you']
+  ].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
+  document.getElementById('pl-paused-banner').innerHTML=d.settings&&d.settings.paused?'<div class="pl-banner"><span>⏸ All automatic emails are paused. Nothing is being sent.</span><button class="btn-xs p" onclick="plSetting({paused:false})">Resume</button></div>':'';
+  const chips=[['open','All open',open.length]].concat(d.stages.map(s=>[s.key,s.label,d.counts[s.key]||0]));
+  document.getElementById('pl-stages').innerHTML=chips.map(([k,l,n])=>`<button class="pl-chip${PL.filter===k?' active':''}" role="tab" aria-selected="${PL.filter===k}" onclick="PL.filter='${k}';plRender()">${uxEsc(l)}<b>${n}</b></button>`).join('');
+  const q=(document.getElementById('pl-search').value||'').trim().toLowerCase();
+  let list=PL.filter==='open'?open:d.deals.filter(x=>x.stage===PL.filter);
+  if(q)list=d.deals.filter(x=>[x.title,x.contact_name,x.contact_email,x.contact_phone,x.property_address].some(v=>String(v||'').toLowerCase().includes(q)));
+  const el=document.getElementById('pl-list');
+  if(!list.length){
+    el.innerHTML=`<div class="pl-empty">${q?'No deals match that search.':d.deals.length?'Nothing in this stage right now.':(CR.me&&CR.me.hasMarketing?'No deals yet. Leads from your Eagle I landing pages will appear here on their own, or tap “Add a deal” to add one yourself.':'No deals yet. Tap “Add a deal” to add your first one.')}</div>`;return;
+  }
+  el.innerHTML=list.map(x=>{
+    const st=plStage(x.stage);
+    const waiting=x.stage==='new'&&!x.first_response_at;
+    const tags=[`<span class="pl-tag">${uxEsc(st.label)}</span>`,`<span class="pl-tag">${uxEsc(plSourceLabel(x.source))}</span>`,`<span class="pl-tag">${plAgo(x.stage_entered_at)} in stage</span>`];
+    if(waiting)tags.push(`<span class="pl-tag warn">Waiting ${plAgo(x.created_at)}</span>`);
+    if(x.automations_waiting)tags.push(`<span class="pl-tag auto">✓ ${x.automations_waiting} automatic email${x.automations_waiting>1?'s':''} scheduled</span>`);
+    return `<button class="pl-card" onclick="plOpenDeal('${x.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(x.title)}</div><div class="pl-card-val">${uxEsc(plMoney(x.value))}</div></div>
+      <div class="pl-card-sub">${uxEsc([x.contact_name,x.contact_phone,x.contact_email].filter(Boolean).join(' · '))}</div>
+      ${x.property_address?`<div class="pl-card-sub">📍 ${uxEsc(x.property_address)}</div>`:''}
+      <div class="pl-tags">${tags.join('')}</div></button>`;
+  }).join('');
+}
+
+function plStageOptions(sel){return (PL.data?PL.data.stages:[]).map(s=>`<option value="${s.key}"${s.key===sel?' selected':''}>${uxEsc(s.label)}</option>`).join('');}
+function plSourceOptions(sel){return PL_SOURCES.map(([k,l])=>`<option value="${k}"${k===sel?' selected':''}>${uxEsc(l)}</option>`).join('');}
+function plField(id,label,val,attrs){return `<div class="${attrs&&attrs.full?'full':''}"><label for="${id}">${label}</label><input id="${id}" class="cred-input" value="${uxEsc(val==null?'':val)}" ${attrs&&attrs.type?'type="'+attrs.type+'"':''} ${attrs&&attrs.ph?'placeholder="'+uxEsc(attrs.ph)+'"':''} ${attrs&&attrs.mode?'inputmode="'+attrs.mode+'"':''}></div>`;}
+
+function plNewDeal(){
+  if(!PL.data){plLoad().then(plNewDeal);return;}
+  uxOpen(uxHead('Add a deal','A person and the project you are selling them.')+
+    `<div class="pl-form">
+      ${plField('pln-name','Name *','',{ph:'e.g. Maria Garcia'})}${plField('pln-phone','Phone','',{type:'tel',mode:'tel'})}
+      ${plField('pln-email','Email','',{type:'email',mode:'email',full:true})}
+      ${plField('pln-address','Property address','',{ph:'Street, city, ZIP',full:true})}
+      ${plField('pln-title','Project','',{ph:'e.g. Kitchen + primary bath'})}${plField('pln-value','Estimated value','',{ph:'e.g. 85k',mode:'decimal'})}
+      <div><label for="pln-stage">Stage</label><select id="pln-stage">${plStageOptions('new')}</select></div>
+      <div><label for="pln-source">Where it came from</label><select id="pln-source">${plSourceOptions('manual')}</select></div>
+      <div class="full"><label for="pln-note">Note</label><textarea id="pln-note" class="cred-input" rows="3"></textarea></div>
+    </div>
+    <div class="sm">If you pick a later stage, that stage's approved automatic emails start for this deal.</div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="plSaveNew(this)">Add deal</button><button class="btn-xs" onclick="uxClose()">Cancel</button></div><div class="sm" id="pln-err"></div>`);
+  setTimeout(()=>{const n=document.getElementById('pln-name');if(n)n.focus();},50);
+}
+async function plSaveNew(btn){
+  const v=id=>document.getElementById(id).value;
+  btn.disabled=true;
+  try{
+    const r=await plApi('/api/crm/deals',{body:{name:v('pln-name'),phone:v('pln-phone'),email:v('pln-email'),address:v('pln-address'),title:v('pln-title'),value:v('pln-value'),stage:v('pln-stage'),source:v('pln-source'),note:v('pln-note')}});
+    uxClose();showNotif('Deal added',r.deal.title);await plLoad();
+  }catch(e){document.getElementById('pln-err').textContent=e.message;btn.disabled=false;}
+}
+
+async function plOpenDeal(id){
+  uxOpen(uxHead('Loading…'));
+  let d;
+  try{d=await plApi('/api/crm/deals/'+id);}catch(e){uxOpen(uxHead('Could not open this deal',uxEsc(e.message)));return;}
+  const x=d.deal;
+  const upcoming=d.automations.filter(a=>a.status==='pending');
+  const actorLbl={owner:'You',eagle_i:'Eagle I',contact:x.contact_name};
+  const kindIcon={lead_in:'📥',note:'📝',stage:'➡️',email:'✉️',reply:'💬',system:'✏️'};
+  const zipInfo=x.zip_median_value?` · county median home value in ${uxEsc(x.property_zip)}: ${plMoney(x.zip_median_value)}`:'';
+  uxOpen(uxHead(uxEsc(x.title),uxEsc(plSourceLabel(x.source))+' · added '+new Date(x.created_at).toLocaleDateString()+zipInfo)+
+    `<div class="pl-form">
+      <div class="full"><label for="pld-stage">Stage</label><select id="pld-stage" onchange="plStageChanged('${x.id}',this)">${plStageOptions(x.stage)}</select></div>
+      ${plField('pld-title','Project',x.title)}${plField('pld-value','Estimated value',x.value==null?'':Math.round(x.value),{mode:'decimal',ph:'e.g. 85k'})}
+      ${plField('pld-name','Name',x.contact_name)}${plField('pld-phone','Phone',x.contact_phone,{type:'tel',mode:'tel'})}
+      ${plField('pld-email','Email',x.contact_email,{type:'email',mode:'email',full:true})}
+      ${plField('pld-address','Property address',x.property_address,{full:true})}
+      <div class="full"><label for="pld-source">Where it came from</label><select id="pld-source">${plSourceOptions(x.source)}</select></div>
+    </div>
+    ${x.stage==='lost'&&x.lost_reason?`<div class="sm">Lost because: ${uxEsc(x.lost_reason)}</div>`:''}
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="plSaveDeal('${x.id}',this)">Save changes</button>
+      ${x.contact_phone?`<a class="btn-xs" href="tel:${uxEsc(x.contact_phone)}">📞 Call</a>`:''}${x.contact_email?`<a class="btn-xs" href="mailto:${uxEsc(x.contact_email)}">✉️ Email</a>`:''}
+      <button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="plDeleteDeal('${x.id}')">Delete</button></div>
+    <div class="sm" id="pld-msg"></div>
+    <div class="pl-h">Add a note</div>
+    <textarea id="pld-note" class="cred-input" rows="3" placeholder="What happened, what's next…"></textarea>
+    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="plAddNote('${x.id}',this)">Save note</button></div>
+    <div class="pl-h">Coming up automatically</div>
+    ${upcoming.length?'<ul class="pl-tl">'+upcoming.map(a=>`<li class="eagle_i">✉️ ${uxEsc(a.playbook_name)}, email ${a.step}<div class="pl-tl-meta">${new Date(a.due_at)>new Date()?'Due '+new Date(a.due_at).toLocaleString():'Going out at the next chance (weekdays 9 to 5 Central)'}</div></li>`).join('')+'</ul>':`<div class="sm">Nothing scheduled.${x.contact_email?'':' This contact has no email address, so no automatic emails can go out.'}</div>`}
+    <div class="pl-h">History</div>
+    <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(actorLbl[a.actor]||a.actor)} · ${new Date(a.created_at).toLocaleString()}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
+}
+async function plStageChanged(id,sel){
+  const stage=sel.value;let lostReason=null;
+  if(stage==='lost'){
+    lostReason=prompt('Why was it lost? (optional, e.g. "went with another builder", "budget", "timing")','');
+    if(lostReason===null){plOpenDeal(id);return;}
+  }
+  try{
+    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{stage,lostReason}});
+    showNotif('Moved to '+plStage(stage).label,'Any approved emails for this stage are on their way.');
+    await plLoad();plOpenDeal(id);
+  }catch(e){showNotif('Could not move the deal',e.message);plOpenDeal(id);}
+}
+async function plSaveDeal(id,btn){
+  const v=k=>document.getElementById(k).value;
+  btn.disabled=true;
+  try{
+    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),source:v('pld-source')}});
+    document.getElementById('pld-msg').textContent='Saved.';btn.disabled=false;plLoad();
+  }catch(e){document.getElementById('pld-msg').textContent=e.message;btn.disabled=false;}
+}
+async function plAddNote(id,btn){
+  const t=document.getElementById('pld-note');if(!t.value.trim())return;
+  btn.disabled=true;
+  try{await plApi('/api/crm/deals/'+id+'/notes',{body:{body:t.value}});plLoad();plOpenDeal(id);}
+  catch(e){showNotif('Could not save the note',e.message);btn.disabled=false;}
+}
+async function plDeleteDeal(id){
+  if(!confirm('Delete this deal and its history? Its contact stays. This cannot be undone.'))return;
+  try{await plApi('/api/crm/deals/'+id,{method:'DELETE'});uxClose();plLoad();}catch(e){showNotif('Could not delete',e.message);}
+}
+
+async function plLoadNeeds(){
+  const el=document.getElementById('pl-needs');if(!el)return;
+  try{
+    if(!PL.data)await plLoad(); // stage names come from the pipeline
+    const {items}=await plApi('/api/crm/inbox');plBadge(items.length);
+    if(!items.length){el.innerHTML='<div class="pl-empty">Nothing needs you right now. 🎉</div>';return;}
+    el.innerHTML=items.map(i=>`<div class="pl-item ${i.kind}"><div class="pl-item-t">${uxEsc(i.title)}</div><div class="pl-tl-meta">Flagged ${plAgo(i.created_at)} ago</div>
+      ${i.deal_title?`<div class="pl-item-d">${uxEsc(i.deal_title)}${i.deal_stage?' · '+uxEsc(plStage(i.deal_stage).label):''}</div>`:''}
+      ${i.detail?`<div class="pl-item-d">${uxEsc(i.detail)}</div>`:''}
+      <div class="pl-acts">${i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
+        <button class="btn-xs" onclick="plInboxAct(${i.id},'done')">✓ Done</button>
+        <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',1)">Snooze 1 day</button>
+        <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',3)">3 days</button></div></div>`).join('');
+  }catch(e){el.innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+async function plInboxAct(id,action,days){
+  try{await plApi('/api/crm/inbox/'+id,{body:{action,days}});plLoadNeeds();}catch(e){showNotif('Could not update',e.message);}
+}
+
+async function plLoadAuto(){
+  try{
+    const [pb,sum]=await Promise.all([plApi('/api/crm/playbooks'),plApi('/api/crm/summary')]);
+    PL.playbooks=pb.playbooks;PL.settings=pb.settings;PL.maxSteps=pb.maxSteps;
+    const s=pb.settings;
+    document.getElementById('pl-auto-settings').innerHTML=`
+      <label class="pl-switch"><input type="checkbox" ${s.paused?'':'checked'} onchange="plSetting({paused:!this.checked})"><span>Automatic emails are <b>${s.paused?'paused':'on'}</b>. Turn this off to pause everything at once.</span></label>
+      <label class="pl-switch" style="margin-top:8px"><input type="checkbox" ${s.weeklySummary?'checked':''} onchange="plSetting({weeklySummary:this.checked})"><span>Email me a summary every Monday</span></label>
+      <div style="margin-top:8px;font-size:13px;color:var(--ink)">Tell me when a new lead has waited <select onchange="plSetting({waitingMinutes:+this.value})" style="text-transform:none;letter-spacing:0">${[15,30,60,120,240].map(m=>`<option value="${m}"${m===s.waitingMinutes?' selected':''}>${m<60?m+' minutes':m/60+' hour'+(m>60?'s':'')}</option>`).join('')}</select> without anyone picking it up.</div>
+      <div class="sm">Limits that always apply: up to ${pb.maxPerDay} automatic emails a day; anything after the first day goes out weekdays 9am to 5pm Central; anyone who unsubscribes, bounces or replies stops getting them.</div>`;
+    const x=sum.summary;
+    document.getElementById('pl-week').innerHTML=[[x.newLeads,'New leads'],[x.respondedCount?plFmtMin(x.medianResponseMinutes):'—','Median time to pick up a lead'],[x.automatedEmails,'Automatic emails sent'],[x.replies,'Replies to them']]
+      .map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
+    plRenderPlaybooks();
+  }catch(e){document.getElementById('pl-playbooks').innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+function plFmtMin(m){if(m==null)return '—';if(m<60)return Math.round(m)+' min';if(m<2880)return (m/60).toFixed(1).replace(/\.0$/,'')+' h';return Math.round(m/1440)+' days';}
+function plRenderPlaybooks(){
+  const el=document.getElementById('pl-playbooks');
+  el.innerHTML=PL.playbooks.map(p=>{
+    const pill=p.enabled&&p.approved?'<span class="pl-pill on">● On</span>':p.approved?'<span class="pl-pill">Off</span>':'<span class="pl-pill need">Needs your approval</span>';
+    return `<div class="pl-pb" id="pb-${p.id}"><div class="pl-pb-head"><div><div class="pl-item-t">${uxEsc(p.name)}</div><div class="pl-item-d">When a deal moves to “${uxEsc(p.stageLabel)}” · ${p.steps.length} email${p.steps.length>1?'s':''}${p.sent?' · '+p.sent+' sent so far':''}${p.waiting?' · '+p.waiting+' scheduled':''}</div></div>${pill}</div>
+      ${p.steps.map((s,i)=>`<div class="pl-step"><div class="pl-step-row">Email ${i+1}: <input type="number" class="cred-input" min="0" max="365" value="${s.days}" data-k="days" data-i="${i}" aria-label="Days after entering the stage"> days after the deal enters the stage${i===0&&s.days===0?' (goes out right away)':''}</div>
+        <input class="cred-input" data-k="subject" data-i="${i}" value="${uxEsc(s.subject)}" aria-label="Subject" style="margin-bottom:5px">
+        <textarea class="cred-input" data-k="message" data-i="${i}" rows="6" aria-label="Message" style="font-size:13px;line-height:1.5">${uxEsc(s.message)}</textarea></div>`).join('')}
+      <div class="sm">You can use {name}, {company}, {phone}, {email} and {founder}. Your address and an unsubscribe link are added at the bottom of every email.</div>
+      <div class="pl-acts">
+        ${p.enabled&&p.approved?`<button class="btn-xs" onclick="plPbEnabled('${p.id}',false)">Switch off</button>`:`<button class="btn btn-blue" onclick="plPbApprove('${p.id}',this)">✓ Approve this wording &amp; switch on</button>`}
+        <button class="btn-xs" onclick="plPbSave('${p.id}',this)">Save wording</button>
+        <button class="btn-xs" onclick="plPbPreview('${p.id}',this)">Send me a preview</button>
+        <button class="btn-xs" onclick="plPbReset('${p.id}')">Back to original wording</button>
+      </div><div class="sm" id="pbmsg-${p.id}"></div></div>`;
+  }).join('');
+}
+function plPbSteps(id){
+  const box=document.getElementById('pb-'+id);const steps=[];
+  box.querySelectorAll('[data-k]').forEach(f=>{const i=+f.dataset.i;steps[i]=steps[i]||{};steps[i][f.dataset.k]=f.dataset.k==='days'?parseInt(f.value,10):f.value;});
+  return steps;
+}
+function plPbDirty(id){
+  const p=PL.playbooks.find(x=>x.id===id);return JSON.stringify(plPbSteps(id))!==JSON.stringify(p.steps.map(s=>({days:s.days,subject:s.subject,message:s.message})));
+}
+async function plPbSave(id,btn){
+  const msg=document.getElementById('pbmsg-'+id);btn.disabled=true;
+  try{const r=await plApi('/api/crm/playbooks/'+id,{method:'PUT',body:{steps:plPbSteps(id)}});await plLoadAuto();const m=document.getElementById('pbmsg-'+id);if(m)m.textContent=r.changed?'Saved. Approve the new wording to switch it back on.':'No changes to save.';}
+  catch(e){msg.textContent=e.message;btn.disabled=false;}
+}
+async function plPbApprove(id,btn){
+  const msg=document.getElementById('pbmsg-'+id);btn.disabled=true;
+  try{
+    if(plPbDirty(id))await plApi('/api/crm/playbooks/'+id,{method:'PUT',body:{steps:plPbSteps(id)}});
+    await plApi('/api/crm/playbooks/'+id+'/approve',{body:{}});
+    await plLoadAuto();showNotif('Playbook switched on','It will run for every deal that enters this stage from now on.');
+  }catch(e){msg.textContent=e.message;btn.disabled=false;}
+}
+async function plPbEnabled(id,on){try{await plApi('/api/crm/playbooks/'+id+'/enabled',{body:{enabled:on}});plLoadAuto();}catch(e){showNotif('Could not switch it',e.message);}}
+async function plPbPreview(id,btn){
+  const msg=document.getElementById('pbmsg-'+id);btn.disabled=true;
+  try{const r=await plApi('/api/crm/playbooks/'+id+'/preview',{body:{step:1}});msg.textContent='Preview of email 1 sent to '+r.to+'.';}catch(e){msg.textContent=e.message;}
+  btn.disabled=false;
+}
+async function plPbReset(id){
+  if(!confirm('Go back to the original wording? This switches the playbook off until you approve it again.'))return;
+  try{await plApi('/api/crm/playbooks/'+id+'/reset',{body:{}});plLoadAuto();}catch(e){showNotif('Could not reset',e.message);}
+}
+async function plSetting(patch){
+  try{await plApi('/api/crm/settings',{method:'PATCH',body:patch});if(CR.view==='auto')plLoadAuto();plLoad();}
+  catch(e){showNotif('Could not save',e.message);}
+}
+crInit();
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ const { generateJSON } = require('../lib/anthropic');
 const { renderLandingPageHtml } = require('../lib/landingPageTemplate');
 const landingStats = require('../lib/landingStats');
 const leadSequence = require('../lib/leadSequence');
+const crm = require('../lib/crm');
 
 const router = express.Router();
 
@@ -95,7 +96,7 @@ router.post('/lp/:slug/submit', async (req, res) => {
     const variant = shownVariant === 'A' || shownVariant === 'B' ? shownVariant : null;
     const inserted = await query(
       `INSERT INTO leads (tenant_id, name, phone, email, message, source, landing_page_id, landing_variant)
-       VALUES ($1, $2, $3, $4, $5, 'landing_page', $6, $7) RETURNING id`,
+       VALUES ($1, $2, $3, $4, $5, 'landing_page', $6, $7) RETURNING *`,
       [pageRes.rows[0].tenant_id, name.trim(), phone || null, email || null, message || null, pageRes.rows[0].id, variant]
     );
     res.json({ ok: true });
@@ -105,6 +106,8 @@ router.post('/lp/:slug/submit', async (req, res) => {
     leadSequence.scheduleForLead({ tenantId: pageRes.rows[0].tenant_id, leadId, email: email || '', baseUrl: `${req.protocol}://${req.get('host')}` })
       .then(r => (r.scheduled ? leadSequence.processDueLeadSequence({ onlyLeadId: leadId }) : null))
       .catch(err => console.error('[leadSequence] failed:', err.message));
+    // Every lead lands in the pipeline on its own. Never able to fail the submission.
+    crm.createDealFromLead(inserted.rows[0]).catch(err => console.error('[crm] deal from lead failed:', err.message));
     // After the visitor has their answer, and never able to fail it: tell the owner.
     sendLeadAlert({
       tenantId: pageRes.rows[0].tenant_id, lead: { name, phone, email, message },
@@ -144,6 +147,9 @@ router.patch('/api/leads/:id', requireAuth, async (req, res) => {
     }
     // Once the owner has picked a lead up, automatic emails to that person stop.
     if (status !== 'new') leadSequence.cancelForLead(result.rows[0].id, 'lead_handled').catch(() => {});
+    // Keep the pipeline in step with the Leads inbox.
+    await crm.syncFromLeadStatus({ tenantId: req.tenantId, leadId: result.rows[0].id, status, baseUrl: `${req.protocol}://${req.get('host')}` })
+      .catch(err => console.error('[crm] lead status sync failed:', err.message));
     res.json({ ok: true, lead: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: { message: 'Failed to update lead: ' + err.message } });

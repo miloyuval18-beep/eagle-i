@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Eagle I CRM — Sign In</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6f8;--card:#ffffff;--soft:#eef1f4;
+  --ink:#14202b;--ink2:#3a4855;--ink3:#55636f;
+  --bdr:#c3ccd4;--bdr2:#8794a0;--accent:#1f4e79;--accent2:#173b5c;--err:#a12a1f;
+  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-font-smoothing:antialiased}
+.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:28px 24px;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
+.brand{font-size:24px;font-weight:800;text-align:center;color:var(--ink)}
+.brand span{color:var(--accent)}
+.tag{font-size:14px;color:var(--ink3);text-align:center;margin:4px 0 20px}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--soft);border-radius:9px;padding:4px}
+.tab{flex:1;text-align:center;padding:10px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700;color:var(--ink3);border:0;background:transparent;font-family:var(--f)}
+.tab.active{background:var(--accent);color:#fff}
+label{display:block;font-size:13px;font-weight:700;color:var(--ink2);margin:12px 0 5px}
+input{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:16px;color:var(--ink);outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
+.check{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--ink2)}
+.check input{width:18px;height:18px;margin-top:2px;flex:0 0 auto}
+.check a,.forgot{color:var(--accent)}
+.btn{width:100%;margin-top:18px;padding:13px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-family:var(--f);font-size:16px;font-weight:800;cursor:pointer}
+.btn:hover{background:var(--accent2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--err);font-size:14px;margin-top:10px;min-height:20px}
+.forgot{display:inline-block;margin-top:10px;font-size:14px}
+.foot{font-size:13px;color:var(--ink3);text-align:center;margin-top:18px}
+.foot a{color:var(--ink2)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand">Eagle I <span>CRM</span></div>
+  <div class="tag">The self-running pipeline for builders and remodelers</div>
+  <div class="tabs" role="tablist">
+    <button class="tab active" id="tab-in" role="tab" aria-selected="true" onclick="show('in')">Sign in</button>
+    <button class="tab" id="tab-up" role="tab" aria-selected="false" onclick="show('up')">Create account</button>
+  </div>
+  <form id="form-in" onsubmit="signIn(event)">
+    <label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" required>
+    <label for="in-pw">Password</label><input id="in-pw" type="password" autocomplete="current-password" required>
+    <button class="btn" id="in-btn">Sign in</button>
+    <div class="err" id="in-err" role="alert"></div>
+    <a class="forgot" href="/forgot-password.html">Forgot password?</a>
+  </form>
+  <form id="form-up" onsubmit="signUp(event)" hidden>
+    <label for="up-company">Company name</label><input id="up-company" autocomplete="organization" required>
+    <label for="up-email">Email</label><input id="up-email" type="email" autocomplete="email" required>
+    <label for="up-pw">Password (at least 8 characters)</label><input id="up-pw" type="password" autocomplete="new-password" minlength="8" required>
+    <div class="check"><input type="checkbox" id="up-terms" required><label for="up-terms" style="margin:0;font-weight:400">I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></label></div>
+    <button class="btn" id="up-btn">Create account</button>
+    <div class="err" id="up-err" role="alert"></div>
+  </form>
+  <div class="foot">Looking for Eagle I marketing? <a href="/login.html">Sign in here</a></div>
+</main>
+<script>
+function show(which){
+  document.getElementById('form-in').hidden=which!=='in';
+  document.getElementById('form-up').hidden=which!=='up';
+  for(const k of ['in','up']){const t=document.getElementById('tab-'+k);t.classList.toggle('active',k===which);t.setAttribute('aria-selected',k===which);}
+}
+if(location.hash==='#signup')show('up');
+async function post(url,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  let d={};try{d=await r.json();}catch(e){}
+  if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
+  return d;
+}
+async function signIn(e){
+  e.preventDefault();const b=document.getElementById('in-btn'),err=document.getElementById('in-err');
+  b.disabled=true;err.textContent='';
+  try{await post('/api/auth/login',{email:document.getElementById('in-email').value,password:document.getElementById('in-pw').value});location.href='/crm';}
+  catch(x){err.textContent=x.message;b.disabled=false;}
+}
+async function signUp(e){
+  e.preventDefault();const b=document.getElementById('up-btn'),err=document.getElementById('up-err');
+  b.disabled=true;err.textContent='';
+  try{
+    await post('/api/auth/signup',{companyName:document.getElementById('up-company').value,email:document.getElementById('up-email').value,password:document.getElementById('up-pw').value,industry:'home_services',acceptedTerms:document.getElementById('up-terms').checked,product:'crm'});
+    location.href='/crm';
+  }catch(x){err.textContent=x.message;b.disabled=false;}
+}
+</script>
+</body>
+</html>

@@ -1074,3 +1074,118 @@ describe('malformed request bodies return clean JSON, not an HTML error page', (
     assert.match(body.error.message, /malformed json/i);
   });
 });
+
+describe('pipeline (CRM)', () => {
+  async function signup(label, product = 'crm') {
+    const client = makeClient();
+    const r = await client.post('/api/auth/signup', {
+      email: uniqueEmail(label), password: 'TestPass1234!', companyName: 'CRM Co', industry: 'home_services', acceptedTerms: true, product
+    });
+    const body = await r.json();
+    trackTenant(body.tenantId);
+    client.tenantId = body.tenantId;
+    return client;
+  }
+
+  test('the CRM is its own product: a CRM signup lands in /crm, not the marketing dashboard', async () => {
+    const client = await signup('crm-only');
+    const me = await (await client.get('/api/crm/me')).json();
+    assert.deepEqual(me.products, ['crm']);
+    const home = await client.get('/');
+    assert.equal(home.status, 302);
+    assert.equal(home.headers.get('location'), '/crm');
+    assert.equal((await client.get('/crm')).status, 200);
+    assert.equal((await makeClient().get('/crm')).headers.get('location'), '/crm/login');
+  });
+
+  test('a marketing company cannot use the CRM until it switches it on, and its leads stay out of it until then', async () => {
+    const client = await signup('mkt-only', 'marketing');
+    const blocked = await client.get('/api/crm/pipeline');
+    assert.equal(blocked.status, 403);
+    assert.equal((await blocked.json()).error.code, 'no_crm');
+    const pool = getTestPool();
+    try {
+      await pool.query(`INSERT INTO landing_pages (tenant_id, slug, headline, status) VALUES ($1, $2, 'H', 'published')`, [client.tenantId, `mkt-${client.tenantId.slice(0, 8)}`]);
+    } finally { await pool.end(); }
+    await makeClient().post(`/lp/mkt-${client.tenantId.slice(0, 8)}/submit`, { name: 'Form Person', email: 'form@example.test' });
+    assert.equal((await client.post('/api/crm/activate', {})).status, 200);
+    const pipe = await (await client.get('/api/crm/pipeline')).json();
+    // Switching it on brings existing leads in.
+    assert.equal(pipe.deals.length, 1);
+    assert.equal(pipe.deals[0].contact_name, 'Form Person');
+  });
+
+  test('company details for email footers can be saved', async () => {
+    const client = await signup('crm-co');
+    assert.equal((await client.patch('/api/crm/company', { address: 'short' })).status, 400);
+    assert.equal((await client.patch('/api/crm/company', { companyName: 'Levi Test', phone: '713-555-0100', address: '1001 S Dairy Ashford, Houston TX 77077' })).status, 200);
+    const { company } = await (await client.get('/api/crm/company')).json();
+    assert.equal(company.company_name, 'Levi Test');
+    assert.match(company.address, /Dairy Ashford/);
+  });
+
+  test('pipeline routes require a login', async () => {
+    const r = await makeClient().get('/api/crm/pipeline');
+    assert.equal(r.status, 401);
+  });
+
+  test('a deal can be added, moved and noted, and the timeline records each step', async () => {
+    const client = await signup('crm');
+    const add = await client.post('/api/crm/deals', { name: 'Pat Doe', email: 'pat@example.test', title: 'Primary bath', value: '65k', source: 'referral' });
+    assert.equal(add.status, 200);
+    const { deal } = await add.json();
+    assert.equal(deal.stage, 'new');
+    assert.equal(Number(deal.value), 65000);
+
+    const moved = await client.patch(`/api/crm/deals/${deal.id}`, { stage: 'proposal' });
+    assert.equal(moved.status, 200);
+    assert.equal((await moved.json()).deal.stage, 'proposal');
+    assert.equal((await client.post(`/api/crm/deals/${deal.id}/notes`, { body: 'Walked the house.' })).status, 200);
+
+    const detail = await (await client.get(`/api/crm/deals/${deal.id}`)).json();
+    const kinds = detail.activities.map(a => a.kind);
+    assert.ok(kinds.includes('stage') && kinds.includes('note'));
+    // No playbook is approved yet, so nothing is scheduled.
+    assert.equal(detail.automations.length, 0);
+
+    const pipe = await (await client.get('/api/crm/pipeline')).json();
+    assert.equal(pipe.counts.proposal, 1);
+  });
+
+  test('input is checked', async () => {
+    const client = await signup('crm-bad');
+    assert.equal((await client.post('/api/crm/deals', { name: '' })).status, 400);
+    assert.equal((await client.post('/api/crm/deals', { name: 'X', email: 'nope' })).status, 400);
+    assert.equal((await client.post('/api/crm/deals', { name: 'X', value: 'lots' })).status, 400);
+    assert.equal((await client.post('/api/crm/deals', { name: 'X', stage: 'made_up' })).status, 400);
+  });
+
+  test('playbooks start off, need approval, and lose it when the wording changes', async () => {
+    const client = await signup('crm-pb');
+    const list = (await (await client.get('/api/crm/playbooks')).json()).playbooks;
+    assert.equal(list.length, 6);
+    assert.ok(list.every(p => !p.enabled && !p.approved));
+    const p = list.find(x => x.key === 'proposal_follow_up');
+    assert.equal((await client.post(`/api/crm/playbooks/${p.id}/enabled`, { enabled: true })).status, 400);
+    assert.equal((await client.post(`/api/crm/playbooks/${p.id}/approve`, {})).status, 200);
+    let now = (await (await client.get('/api/crm/playbooks')).json()).playbooks.find(x => x.id === p.id);
+    assert.equal(now.enabled && now.approved, true);
+    const steps = now.steps.map(s => ({ ...s }));
+    steps[0].message += ' Thanks!';
+    assert.equal((await client.put(`/api/crm/playbooks/${p.id}`, { steps })).status, 200);
+    now = (await (await client.get('/api/crm/playbooks')).json()).playbooks.find(x => x.id === p.id);
+    assert.equal(now.enabled, false);
+    assert.equal(now.approved, false);
+  });
+
+  test("tenant A cannot read or change tenant B's deal", async () => {
+    const a = await signup('crm-a');
+    const b = await signup('crm-b');
+    const { deal } = await (await b.post('/api/crm/deals', { name: 'B only' })).json();
+    assert.equal((await a.get(`/api/crm/deals/${deal.id}`)).status, 404);
+    assert.equal((await a.patch(`/api/crm/deals/${deal.id}`, { stage: 'lost' })).status, 404);
+    assert.equal((await a.delete(`/api/crm/deals/${deal.id}`)).status, 404);
+    const pipeA = await (await a.get('/api/crm/pipeline')).json();
+    assert.equal(pipeA.deals.length, 0);
+  });
+});
