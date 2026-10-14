@@ -873,3 +873,51 @@ describe('CRM playbooks (lib/crmPlaybooks.js)', () => {
     assert.equal(m[1], 'crm');
   });
 });
+
+describe('CRM estimates (lib/crmEstimates.js)', () => {
+  const est = require('../lib/crmEstimates');
+  test('line price is quantity × cost × (1 + markup), in cents', () => {
+    assert.equal(est.linePrice({ quantity: 3, unit_cost: 10.1, markup_pct: 20 }), 36.36);
+    assert.equal(est.linePrice({ quantity: 0.5, unit_cost: '1,000', markup_pct: 0 }), 500);
+    assert.equal(est.linePrice({ quantity: 'x', unit_cost: 50, markup_pct: 10 }), 0);
+  });
+  test('totals are worked out from cleaned lines; blank lines are dropped; blank markup uses the default', () => {
+    const c = est.computeEstimate({
+      lines: [
+        { description: 'Demo', quantity: 1, unit: 'ls', unit_cost: 1000, markup_pct: '' },
+        { description: '   ', quantity: 5, unit_cost: 99 },
+        { description: 'Tile', quantity: 100, unit: 'sf', unit_cost: 8.5, markup_pct: 30 },
+        { description: 'Bad unit', quantity: 2, unit: 'gallons<script>', unit_cost: 10, markup_pct: 0 }
+      ],
+      default_markup_pct: 25, tax_pct: 8.25, deposit_pct: 10
+    });
+    assert.equal(c.lines.length, 3);
+    assert.deepEqual(c.lines.map(l => l.position), [0, 1, 2]);
+    assert.equal(c.lines[0].markup_pct, 25);
+    assert.equal(c.lines[0].price, 1250);
+    assert.equal(c.lines[1].price, 1105);
+    assert.equal(c.lines[2].unit, 'ea');
+    assert.equal(c.cost_total, 1870);
+    assert.equal(c.subtotal, 2375);
+    assert.equal(c.tax, 195.94);
+    assert.equal(c.total, 2570.94);
+    assert.equal(c.deposit, 257.09);
+  });
+  test('the homeowner view never includes costs or markups', () => {
+    const view = est.publicView(
+      { number: 1001, kind: 'construction', title: 'T', status: 'sent', show_line_prices: false, subtotal: 120, tax: 0, tax_pct: 0, total: 120, deposit_pct: 50, contact_name: 'Pat' },
+      [{ section: 'Kitchen', description: 'Cabinets', quantity: 1, unit: 'ea', unit_cost: 100, markup_pct: 20, price: 120 }],
+      { name: 'Co' });
+    const json = JSON.stringify(view);
+    assert.ok(!/unit_cost|markup/.test(json));
+    assert.equal(view.sections[0].lines[0].price, null, 'line prices hidden when asked');
+    assert.equal(view.sections[0].total, 120);
+    assert.equal(view.deposit, 60);
+  });
+  test('an estimate expires at the end of its valid-until day', () => {
+    const e = { status: 'sent', valid_until: '2026-10-14' };
+    assert.equal(est.isExpired(e, new Date('2026-10-14T23:00:00Z')), false);
+    assert.equal(est.isExpired(e, new Date('2026-10-15T00:30:00Z')), true);
+    assert.equal(est.isExpired({ ...e, status: 'accepted' }, new Date('2027-01-01')), false);
+  });
+});

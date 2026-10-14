@@ -65,6 +65,19 @@ select{width:auto;cursor:pointer}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;font-size:14px;z-index:1100;max-width:calc(100% - 32px);display:none;box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .toast b{display:block}
 .cr-activate{max-width:560px;margin:40px auto;background:var(--bg2);border:1px solid var(--bdr);border-radius:14px;padding:24px;text-align:center}
+.es-line{border:1px solid var(--bdr);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--bg4)}
+.es-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
+.es-grid label,.es-line label{font-size:11px;color:var(--ink3);display:block}
+.es-grid .cred-input,.es-grid select{padding:7px 8px;font-size:14px;width:100%}
+.es-price{font-weight:800;text-align:right;margin-top:6px}
+.es-tot{display:grid;grid-template-columns:1fr auto;gap:4px 14px;max-width:360px;margin-left:auto;font-size:14px}
+.es-tot .g{font-size:18px;font-weight:800;border-top:2px solid var(--ink);padding-top:6px}
+.es-tot .m{color:var(--ink3)}
+.pl-pill.sent{color:var(--accent);border-color:var(--accent)}
+.pl-pill.accepted{color:var(--green);border-color:var(--green);background:rgba(44,110,73,.08)}
+.pl-pill.declined{color:var(--red);border-color:var(--red)}
+.pl-item.estimate_accepted{border-left:4px solid var(--green)}
+@media(max-width:520px){.es-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.cr-tab{padding:10px 8px;font-size:14px}.cr-nav{padding:0 6px;gap:0}.cr-company{display:none}}
 @media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.st{font-size:21px}}
 /* ---------- Pipeline (CRM) ---------- */
@@ -127,6 +140,7 @@ select{width:auto;cursor:pointer}
     <button class="cr-menu-btn" id="cr-menu-btn" aria-haspopup="true" aria-expanded="false" onclick="crMenu()">Account ▾</button>
     <div class="cr-menu" id="cr-menu" role="menu">
       <div class="who" id="cr-who"></div>
+      <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
       <a href="/forgot-password.html">Change password</a>
@@ -136,8 +150,8 @@ select{width:auto;cursor:pointer}
   <nav class="cr-nav" id="cr-nav" aria-label="CRM sections">
     <button class="cr-tab active" data-view="pipeline" onclick="crView('pipeline')">Pipeline</button>
     <button class="cr-tab" data-view="needs" onclick="crView('needs')">Needs You<span class="tbadge" id="pl-needs-badge">0</span></button>
+    <button class="cr-tab" data-view="estimates" onclick="crView('estimates')">Estimates</button>
     <button class="cr-tab" data-view="auto" onclick="crView('auto')">Automations</button>
-    <button class="cr-tab" data-view="team" onclick="crView('team')">Team</button>
   </nav>
 </header>
 <main class="wrap" id="cr-main">
@@ -167,6 +181,14 @@ select{width:auto;cursor:pointer}
     <div class="pl-strip" id="pl-week"></div>
     <div class="pl-h">Playbooks</div>
     <div id="pl-playbooks"><div class="pl-empty">Loading…</div></div>
+  </section>
+  <section class="view" id="view-estimates">
+    <div class="sh"><div><div class="st">Estimates</div><div class="ss">Design agreements and construction estimates. Start one from a deal. Sending it moves the deal along and starts that stage's follow-ups; when the homeowner accepts online, the deal moves to the next stage on its own.</div></div></div>
+    <div class="pl-list" id="es-list"><div class="pl-empty">Loading…</div></div>
+    <div class="pl-h">Cost catalog</div>
+    <div class="ss" style="margin-bottom:10px">Your own items with cost and markup, ready to drop into any estimate. Homeowners only ever see prices.</div>
+    <div id="cat-form"></div>
+    <div class="pl-list" id="cat-list"><div class="pl-empty">Loading…</div></div>
   </section>
   <section class="view" id="view-team">
     <div class="sh"><div><div class="st">Team</div><div class="ss">Everyone at your company who uses Eagle I CRM. Members work deals; the owner and admins also manage the team, company details and automatic emails.</div></div></div>
@@ -225,6 +247,7 @@ function crView(v){
   if(v==='auto')plLoadAuto();
   if(v==='company')coLoad();
   if(v==='team')tmLoad();
+  if(v==='estimates')esLoad();
   try{history.replaceState(null,'','#'+v);}catch(e){}
   window.scrollTo(0,0);
 }
@@ -244,7 +267,7 @@ async function crInit(){
   }
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
-  crView(['pipeline','needs','auto','team','company'].includes(start)?start:'pipeline');
+  crView(['pipeline','needs','estimates','auto','team','company'].includes(start)?start:'pipeline');
   plApi('/api/crm/inbox').then(d=>plBadge(d.items.length)).catch(()=>{});
   plCheckSetup();
 }
@@ -260,6 +283,153 @@ async function plCheckSetup(){
     el.innerHTML=(company.address||'').trim().length<8?'<div class="pl-banner"><span>Add your business address before any automatic email can go out. It goes at the bottom of every email.</span><button class="btn-xs p" onclick="crView(\'company\')">Add it</button></div>':'';
   }catch(e){}
 }
+/* ---------- estimates ---------- */
+const ES={catalog:[],units:['ea','sf','lf','sy','cy','hr','day','ls','allow'],kinds:{design_agreement:'Design agreement',construction:'Construction estimate'},cur:null};
+const esMoney=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const ES_STATUS={draft:'Draft',sent:'Sent',accepted:'Accepted',declined:'Declined'};
+function esRow(e){
+  const st=e.expired?'<span class="pl-pill declined">Expired</span>':`<span class="pl-pill ${e.status}">${ES_STATUS[e.status]||e.status}</span>`;
+  const seen=e.status==='sent'?(e.first_viewed_at?` · opened ${e.view_count}×`:' · not opened yet'):'';
+  return `<button class="pl-card" onclick="esOpen('${e.id}')"><div class="pl-card-top"><div class="pl-card-title">#${e.number} ${uxEsc(e.title)}</div><div class="pl-card-val">${esMoney(e.total)}</div></div>
+    <div class="pl-card-sub">${uxEsc(ES.kinds[e.kind]||e.kind)} · ${uxEsc(e.contact_name)}${seen}</div><div class="pl-tags">${st}</div></button>`;
+}
+async function esLoad(){
+  try{
+    const [{estimates},cat]=await Promise.all([plApi('/api/crm/estimates'),plApi('/api/crm/catalog')]);
+    ES.catalog=cat.items;ES.units=cat.units;
+    document.getElementById('es-list').innerHTML=estimates.length?estimates.map(esRow).join(''):'<div class="pl-empty">No estimates yet. Open a deal and tap “Construction estimate” or “Design agreement”.</div>';
+    esRenderCatalog(cat.categories);
+  }catch(e){document.getElementById('es-list').innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
+}
+function esRenderCatalog(categories){
+  const manage=crCanManage();
+  document.getElementById('cat-form').innerHTML=manage?`<div class="pl-pb"><div class="pl-item-t">Add an item</div><div class="es-grid" style="grid-template-columns:1fr">
+    <div><label for="cat-name">Name</label><input id="cat-name" class="cred-input" placeholder="e.g. Quartz countertop, installed"></div></div>
+    <div class="es-grid"><div><label for="cat-cat">Type</label><select id="cat-cat">${categories.map(c=>`<option>${c}</option>`).join('')}</select></div>
+    <div><label for="cat-unit">Unit</label><select id="cat-unit">${ES.units.map(u=>`<option>${u}</option>`).join('')}</select></div>
+    <div><label for="cat-cost">Your cost</label><input id="cat-cost" class="cred-input" inputmode="decimal" placeholder="0.00"></div>
+    <div><label for="cat-mk">Markup %</label><input id="cat-mk" class="cred-input" inputmode="decimal" placeholder="default"></div></div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="catAdd(this)">Add to catalog</button><span class="sm" id="cat-msg" style="margin:0"></span></div></div>`:'';
+  document.getElementById('cat-list').innerHTML=ES.catalog.length?ES.catalog.map(i=>`<div class="pl-item"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(i.name)}</div><div class="pl-item-d">${uxEsc(i.category)} · ${esMoney(i.unit_cost)} per ${uxEsc(i.unit)}${i.markup_pct!=null?' · '+Number(i.markup_pct)+'% markup':''}</div></div>${manage?`<button class="btn-xs" onclick="catRemove('${i.id}')" aria-label="Remove ${uxEsc(i.name)}">Remove</button>`:''}</div></div>`).join(''):'<div class="pl-empty">Your catalog is empty.</div>';
+}
+async function catAdd(btn){
+  const v=id=>document.getElementById(id).value;const msg=document.getElementById('cat-msg');btn.disabled=true;msg.textContent='';
+  try{await plApi('/api/crm/catalog',{body:{name:v('cat-name'),category:v('cat-cat'),unit:v('cat-unit'),unit_cost:v('cat-cost'),markup_pct:v('cat-mk')}});await esLoad();}
+  catch(e){msg.textContent=e.message;btn.disabled=false;}
+}
+async function catRemove(id){try{await plApi('/api/crm/catalog/'+id,{method:'DELETE'});esLoad();}catch(e){showNotif('Could not remove',e.message);}}
+async function esNew(dealId,kind){
+  try{const {estimate}=await plApi('/api/crm/deals/'+dealId+'/estimates',{body:{kind}});esOpen(estimate.id);}catch(e){showNotif('Could not start the estimate',e.message);}
+}
+async function esOpen(id){
+  uxOpen(uxHead('Loading…'));
+  try{
+    const [d,cat]=await Promise.all([plApi('/api/crm/estimates/'+id),plApi('/api/crm/catalog')]);
+    ES.catalog=cat.items;ES.units=d.units;ES.kinds=d.kinds;ES.cur={...d.estimate,publicUrl:d.publicUrl,lines:d.estimate.lines.map(l=>({section:l.section||'',description:l.description,quantity:Number(l.quantity),unit:l.unit,unit_cost:Number(l.unit_cost),markup_pct:Number(l.markup_pct),catalog_item_id:l.catalog_item_id}))};
+    esRender();
+  }catch(e){uxOpen(uxHead('Could not open the estimate',uxEsc(e.message)));}
+}
+function esPrice(l,dm){const mk=l.markup_pct===''||l.markup_pct==null||isNaN(l.markup_pct)?dm:Number(l.markup_pct);return Math.round((Number(l.quantity)||0)*Math.round((Number(l.unit_cost)||0)*100)*(1+mk/100))/100;}
+function esTotals(){
+  const e=ES.cur,dm=Number(e.default_markup_pct)||0;
+  const cost=e.lines.reduce((n,l)=>n+(Number(l.quantity)||0)*(Number(l.unit_cost)||0),0);
+  const sub=e.lines.reduce((n,l)=>n+esPrice(l,dm),0);
+  const tax=Math.round(sub*(Number(e.tax_pct)||0))/100;
+  const total=sub+tax;
+  return {cost,sub,tax,total,deposit:Math.round(total*(Number(e.deposit_pct)||0))/100,profit:sub-cost,margin:sub?((sub-cost)/sub*100):0};
+}
+function esRender(){
+  const e=ES.cur,locked=e.status==='accepted';
+  const dis=locked?'disabled':'';
+  const lineHtml=e.lines.map((l,i)=>`<div class="es-line">
+    <div class="es-grid" style="grid-template-columns:1fr"><div><label>Description</label><input class="cred-input" ${dis} value="${uxEsc(l.description)}" oninput="esSet(${i},'description',this.value)"></div></div>
+    <div class="es-grid">
+      <div><label>Qty</label><input class="cred-input" ${dis} inputmode="decimal" value="${l.quantity}" oninput="esSet(${i},'quantity',this.value)"></div>
+      <div><label>Unit</label><select ${dis} onchange="esSet(${i},'unit',this.value)">${ES.units.map(u=>`<option${u===l.unit?' selected':''}>${u}</option>`).join('')}</select></div>
+      <div><label>Your cost</label><input class="cred-input" ${dis} inputmode="decimal" value="${l.unit_cost}" oninput="esSet(${i},'unit_cost',this.value)"></div>
+      <div><label>Markup %</label><input class="cred-input" ${dis} inputmode="decimal" value="${l.markup_pct}" oninput="esSet(${i},'markup_pct',this.value)"></div>
+    </div>
+    <div class="es-grid" style="grid-template-columns:1fr auto;align-items:end"><div><label>Section (optional)</label><input class="cred-input" ${dis} value="${uxEsc(l.section)}" placeholder="e.g. Kitchen" oninput="esSet(${i},'section',this.value)"></div>
+      <div class="es-price" id="es-p-${i}">${esMoney(esPrice(l,Number(e.default_markup_pct)||0))}</div></div>
+    ${locked?'':`<div style="text-align:right;margin-top:4px"><button class="btn-xs" onclick="esDel(${i})">Remove line</button></div>`}
+  </div>`).join('');
+  const t=esTotals();
+  const status=e.status==='sent'?`Sent to ${uxEsc(e.sent_to)} on ${new Date(e.sent_at).toLocaleDateString()}${e.first_viewed_at?`, opened ${e.view_count}×`:', not opened yet'}`:e.status==='accepted'?`Accepted by ${uxEsc(e.accepted_name)} on ${new Date(e.accepted_at).toLocaleString()}`:e.status==='declined'?`Declined${e.decline_reason?': '+uxEsc(e.decline_reason):''}`:'Draft: not sent yet';
+  uxOpen(uxHead(`#${e.number} ${uxEsc(e.title)}`,uxEsc(e.deal_title)+' · '+status)+`
+    ${locked?'<div class="pl-banner"><span>Accepted estimates can’t be changed. Make a copy to revise it.</span></div>':''}
+    <div class="pl-form">
+      <div><label for="es-kind">Type</label><select id="es-kind" ${dis} onchange="ES.cur.kind=this.value">${Object.entries(ES.kinds).map(([k,v])=>`<option value="${k}"${k===e.kind?' selected':''}>${v}</option>`).join('')}</select></div>
+      <div><label for="es-valid">Valid until</label><input id="es-valid" type="date" class="cred-input" ${dis} value="${e.valid_until?String(e.valid_until).slice(0,10):''}" onchange="ES.cur.valid_until=this.value"></div>
+      <div class="full"><label for="es-title">Title</label><input id="es-title" class="cred-input" ${dis} value="${uxEsc(e.title)}" oninput="ES.cur.title=this.value"></div>
+      <div class="full"><label for="es-intro">Note to the homeowner (optional)</label><textarea id="es-intro" class="cred-input" rows="3" ${dis} oninput="ES.cur.intro=this.value">${uxEsc(e.intro||'')}</textarea></div>
+    </div>
+    <div class="pl-h">Line items</div>
+    <div id="es-lines">${lineHtml||'<div class="sm">No lines yet.</div>'}</div>
+    ${locked?'':`<div class="vd-mbtns"><button class="btn-xs p" onclick="esAdd()">＋ Add a line</button>${ES.catalog.length?`<select onchange="esFromCat(this)" aria-label="Add from catalog"><option value="">＋ From catalog…</option>${ES.catalog.map(c=>`<option value="${c.id}">${uxEsc(c.name)} (${esMoney(c.unit_cost)}/${uxEsc(c.unit)})</option>`).join('')}</select>`:''}</div>`}
+    <div class="pl-h">Pricing</div>
+    <div class="es-grid">
+      <div><label for="es-mk">Default markup %</label><input id="es-mk" class="cred-input" ${dis} inputmode="decimal" value="${Number(e.default_markup_pct)}" oninput="ES.cur.default_markup_pct=this.value;esRefresh()"></div>
+      <div><label for="es-tax">Tax %</label><input id="es-tax" class="cred-input" ${dis} inputmode="decimal" value="${Number(e.tax_pct)}" oninput="ES.cur.tax_pct=this.value;esRefresh()"></div>
+      <div><label for="es-dep">Due at signing %</label><input id="es-dep" class="cred-input" ${dis} inputmode="decimal" value="${Number(e.deposit_pct)}" oninput="ES.cur.deposit_pct=this.value;esRefresh()"></div>
+      <div><label for="es-show">Show line prices</label><select id="es-show" ${dis} onchange="ES.cur.show_line_prices=this.value==='1'"><option value="1"${e.show_line_prices?' selected':''}>Yes</option><option value="0"${e.show_line_prices?'':' selected'}>Section totals only</option></select></div>
+    </div>
+    <div class="es-tot" id="es-tot" style="margin-top:12px"></div>
+    <div class="pl-h">Terms</div>
+    <textarea id="es-terms" class="cred-input" rows="4" ${dis} oninput="ES.cur.terms=this.value">${uxEsc(e.terms||'')}</textarea>
+    <div class="vd-mbtns">
+      ${locked?'':'<button class="btn btn-blue" onclick="esSave(this)">Save</button>'}
+      ${locked?'':'<button class="btn-xs p" onclick="esSendDialog()">Send to homeowner…</button>'}
+      <a class="btn-xs" href="${uxEsc(e.publicUrl)}" target="_blank" rel="noopener">Preview / PDF</a>
+      <button class="btn-xs" onclick="esCopy()">Make a copy</button>
+      ${e.status==='draft'?'<button class="btn-xs" style="color:var(--red)" onclick="esDelete()">Delete draft</button>':''}
+    </div><div class="sm" id="es-msg"></div>`);
+  esRefresh();
+}
+function esRefresh(){
+  const e=ES.cur,dm=Number(e.default_markup_pct)||0,t=esTotals();
+  e.lines.forEach((l,i)=>{const p=document.getElementById('es-p-'+i);if(p)p.textContent=esMoney(esPrice(l,dm));});
+  const el=document.getElementById('es-tot');if(!el)return;
+  el.innerHTML=`${Number(e.tax_pct)?`<span>Subtotal</span><span>${esMoney(t.sub)}</span><span>Tax</span><span>${esMoney(t.tax)}</span>`:''}
+    <span class="g">Total</span><span class="g">${esMoney(t.total)}</span>
+    ${Number(e.deposit_pct)?`<span>Due at signing</span><span>${esMoney(t.deposit)}</span>`:''}
+    <span class="m">Your cost (only you see this)</span><span class="m">${esMoney(t.cost)}</span>
+    <span class="m">Gross profit</span><span class="m">${esMoney(t.profit)} (${t.margin.toFixed(1)}%)</span>`;
+}
+function esSet(i,k,v){ES.cur.lines[i][k]=v;if(k!=='description'&&k!=='section')esRefresh();}
+function esAdd(){esCapture();ES.cur.lines.push({section:'',description:'',quantity:1,unit:'ea',unit_cost:0,markup_pct:Number(ES.cur.default_markup_pct)||0});esRender();const ins=document.querySelectorAll('#es-lines .es-line');if(ins.length)ins[ins.length-1].querySelector('input').focus();}
+function esDel(i){esCapture();ES.cur.lines.splice(i,1);esRender();}
+function esFromCat(sel){
+  const c=ES.catalog.find(x=>x.id===sel.value);if(!c)return;esCapture();
+  ES.cur.lines.push({section:'',description:c.name+(c.description?' — '+c.description:''),quantity:1,unit:c.unit,unit_cost:Number(c.unit_cost),markup_pct:c.markup_pct!=null?Number(c.markup_pct):Number(ES.cur.default_markup_pct)||0,catalog_item_id:c.id});
+  esRender();
+}
+// Keep the top fields when the editor re-renders.
+function esCapture(){const g=id=>document.getElementById(id);if(!g('es-title'))return;Object.assign(ES.cur,{title:g('es-title').value,intro:g('es-intro').value,terms:g('es-terms').value,valid_until:g('es-valid').value,kind:g('es-kind').value});}
+async function esSave(btn,quiet){
+  esCapture();const e=ES.cur;if(btn)btn.disabled=true;
+  try{
+    const r=await plApi('/api/crm/estimates/'+e.id,{method:'PUT',body:{title:e.title,kind:e.kind,intro:e.intro,terms:e.terms,valid_until:e.valid_until,default_markup_pct:e.default_markup_pct,tax_pct:e.tax_pct,deposit_pct:e.deposit_pct,show_line_prices:e.show_line_prices,lines:e.lines}});
+    if(!quiet){await esOpen(e.id);const m=document.getElementById('es-msg');if(m)m.textContent='Saved. Total '+esMoney(r.estimate.total)+'.';}
+    return r.estimate;
+  }catch(x){const m=document.getElementById('es-msg');if(m)m.textContent=x.message;if(btn)btn.disabled=false;throw x;}
+}
+function esSendDialog(){
+  const e=ES.cur;
+  const box=document.getElementById('es-msg');
+  box.innerHTML=`<div class="pl-pb" style="margin-top:10px"><div class="pl-item-t">Send to the homeowner</div>
+    <div class="sm">Eagle I saves your changes and emails a private link where they can view it, download a PDF and accept online.</div>
+    <label for="es-note" style="font-size:12px;color:var(--ink3);display:block;margin-top:8px">Message (optional)</label><textarea id="es-note" class="cred-input" rows="3" placeholder="A short personal note…"></textarea>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="esSend(this)">Send now</button></div><div class="sm" id="es-send-msg"></div></div>`;
+  box.scrollIntoView({block:'nearest'});
+}
+async function esSend(btn){
+  const note=document.getElementById('es-note').value;btn.disabled=true;
+  try{await esSave(null,true);const r=await plApi('/api/crm/estimates/'+ES.cur.id+'/send',{body:{message:note}});showNotif('Sent to '+r.to,'The deal moved forward and its follow-ups have started.');await esOpen(ES.cur.id);plLoad();}
+  catch(x){const m=document.getElementById('es-send-msg');if(m)m.textContent=x.message;btn.disabled=false;}
+}
+async function esCopy(){try{const {estimate}=await plApi('/api/crm/deals/'+ES.cur.deal_id+'/estimates',{body:{copyFromId:ES.cur.id}});esOpen(estimate.id);}catch(e){showNotif('Could not copy',e.message);}}
+async function esDelete(){if(!confirm('Delete this draft?'))return;try{await plApi('/api/crm/estimates/'+ES.cur.id,{method:'DELETE'});uxClose();if(CR.view==='estimates')esLoad();}catch(e){showNotif('Could not delete',e.message);}}
+
 /* ---------- team ---------- */
 const TM_ROLE={owner:'Owner',admin:'Admin',member:'Member'};
 async function tmLoad(){
@@ -442,6 +612,9 @@ async function plOpenDeal(id){
       ${x.contact_phone?`<a class="btn-xs" href="tel:${uxEsc(x.contact_phone)}">📞 Call</a>`:''}${x.contact_email?`<a class="btn-xs" href="mailto:${uxEsc(x.contact_email)}">✉️ Email</a>`:''}
       ${crCanManage()?`<button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="plDeleteDeal('${x.id}')">Delete</button>`:''}</div>
     <div class="sm" id="pld-msg"></div>
+    <div class="pl-h">Estimates</div>
+    <div id="pld-est"><div class="sm">Loading…</div></div>
+    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button></div>
     <div class="pl-h">Add a note</div>
     <textarea id="pld-note" class="cred-input" rows="3" placeholder="What happened, what's next…"></textarea>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="plAddNote('${x.id}',this)">Save note</button></div>
@@ -449,6 +622,12 @@ async function plOpenDeal(id){
     ${upcoming.length?'<ul class="pl-tl">'+upcoming.map(a=>`<li class="eagle_i">✉️ ${uxEsc(a.playbook_name)}, email ${a.step}<div class="pl-tl-meta">${new Date(a.due_at)>new Date()?'Due '+new Date(a.due_at).toLocaleString():'Going out at the next chance (weekdays 9 to 5 Central)'}</div></li>`).join('')+'</ul>':`<div class="sm">Nothing scheduled.${x.contact_email?'':' This contact has no email address, so no automatic emails can go out.'}</div>`}
     <div class="pl-h">History</div>
     <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${new Date(a.created_at).toLocaleString()}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
+  plDealEstimates(x.id);
+}
+async function plDealEstimates(dealId){
+  const el=document.getElementById('pld-est');if(!el)return;
+  try{const {estimates}=await plApi('/api/crm/estimates?dealId='+dealId);el.innerHTML=estimates.length?'<div class="pl-list">'+estimates.map(esRow).join('')+'</div>':'<div class="sm">None yet.</div>';}
+  catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
 async function plStageChanged(id,sel){
   const stage=sel.value;let lostReason=null;

@@ -303,6 +303,18 @@ details, playbooks and automation settings. Invited people use the CRM only:
 `/api/auth` answers 403 for them. Each deal can have an owner, new leads can be
 handed to a chosen person automatically, and the timeline records who did what.
 
+**Estimates (step 3).** `lib/crmEstimates.js`, `routes/crmEstimates.js`. A cost
+catalog (owners/admins edit it) and line-item estimates on a deal: quantity ×
+cost × (1 + markup), worked out on the server in cents. Two kinds: design
+agreement and construction estimate. Sending emails the homeowner a private
+link, `/e/<48-hex token>` (`public/estimate.html`), where they see prices only
+(never costs or markups), download a PDF (jsPDF, in the browser) and accept by
+typing their name, or decline. Sending moves the deal to "Design agreement
+sent" / "Proposal sent" (so those follow-ups start); accepting moves it to "In
+design" / "Contract signed", adds a "Needs you" item and emails the deal owner.
+The homeowner's API is `/api/crm-public/*` (no login; rate-limited). Editing a
+sent estimate puts it back to draft until it's resent; accepted ones are locked.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

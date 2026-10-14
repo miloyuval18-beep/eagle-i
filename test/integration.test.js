@@ -1285,3 +1285,83 @@ describe('CRM team', () => {
     assert.equal((await o.post('/api/crm/team/invites', { email: me.email })).status, 409);
   });
 });
+
+describe('CRM estimates', () => {
+  async function crmOwner(label) {
+    const client = makeClient();
+    const r = await client.post('/api/auth/signup', {
+      email: uniqueEmail(label), password: 'TestPass1234!', companyName: 'Estimate Co', industry: 'home_services', acceptedTerms: true, product: 'crm'
+    });
+    trackTenant((await r.json()).tenantId);
+    await client.patch('/api/crm/company', { address: '1001 S Dairy Ashford, Houston TX 77077' });
+    return client;
+  }
+
+  test('an estimate is priced on the server, accepted online, and moves the deal to signed', async () => {
+    const o = await crmOwner('est');
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Home Owner', email: 'ho@example.test', stage: 'site_visit' })).json();
+    const { item } = await (await o.post('/api/crm/catalog', { name: 'Tile install', unit: 'sf', unit_cost: 8.5, markup_pct: 30, category: 'labor' })).json();
+    const { estimate } = await (await o.post(`/api/crm/deals/${deal.id}/estimates`, { kind: 'construction' })).json();
+    assert.equal(estimate.status, 'draft');
+    assert.ok(estimate.number > 1000);
+    const saved = await o.put(`/api/crm/estimates/${estimate.id}`, {
+      title: 'Primary bath', kind: 'construction', default_markup_pct: 25, tax_pct: 0, deposit_pct: 10,
+      // A total sent from the browser is ignored; the server works it out.
+      total: 1, lines: [{ description: 'Demo', quantity: 1, unit: 'ls', unit_cost: 1000 }, { description: 'Tile', quantity: 100, unit: 'sf', unit_cost: 8.5, markup_pct: 30, catalog_item_id: item.id }]
+    });
+    assert.equal(saved.status, 200);
+    assert.equal(Number((await saved.json()).estimate.total), 2355);
+
+    const token = (await (await o.get(`/api/crm/estimates/${estimate.id}`)).json()).estimate.public_token;
+    // Never sent: the public link shows nothing to anyone outside the company.
+    assert.equal((await makeClient().get(`/api/crm-public/estimates/${token}`)).status, 404);
+    // Sending needs email, which isn't configured in tests; mark it sent directly.
+    const pool = getTestPool();
+    try { await pool.query(`UPDATE crm_estimates SET status = 'sent', sent_at = now(), valid_until = CURRENT_DATE + 30 WHERE id = $1`, [estimate.id]); } finally { await pool.end(); }
+
+    const homeowner = makeClient();
+    const view = await (await homeowner.get(`/api/crm-public/estimates/${token}`)).json();
+    assert.equal(view.estimate.total, 2355);
+    assert.ok(!/unit_cost|markup|cost_total/.test(JSON.stringify(view)), 'no costs or markups leak');
+    assert.equal((await homeowner.post(`/api/crm-public/estimates/${token}/accept`, { name: 'H' })).status, 400, 'a full name is required');
+    const acc = await homeowner.post(`/api/crm-public/estimates/${token}/accept`, { name: 'Home Owner' });
+    assert.equal(acc.status, 200);
+    assert.equal((await acc.json()).estimate.status, 'accepted');
+
+    const after = await (await o.get(`/api/crm/deals/${deal.id}`)).json();
+    assert.equal(after.deal.stage, 'signed');
+    assert.equal(Number(after.deal.value), 2355);
+    assert.ok(after.activities.some(a => /Opened construction estimate/.test(a.body)));
+    assert.ok(after.activities.some(a => /Accepted construction estimate/.test(a.body)));
+    const inbox = await (await o.get('/api/crm/inbox')).json();
+    assert.ok(inbox.items.some(i => i.kind === 'estimate_accepted'));
+    // Accepted estimates are locked.
+    assert.equal((await o.put(`/api/crm/estimates/${estimate.id}`, { title: 'Changed', lines: [] })).status, 400);
+  });
+
+  test('a declined estimate lands in Needs you; another company cannot read it', async () => {
+    const o = await crmOwner('est-dec');
+    const other = await crmOwner('est-other');
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Decliner', email: 'd@example.test' })).json();
+    const { estimate } = await (await o.post(`/api/crm/deals/${deal.id}/estimates`, { kind: 'design_agreement' })).json();
+    await o.put(`/api/crm/estimates/${estimate.id}`, { title: 'Design', lines: [{ description: 'Design fee', quantity: 1, unit_cost: 2500, markup_pct: 0 }] });
+    assert.equal((await other.get(`/api/crm/estimates/${estimate.id}`)).status, 404);
+    const token = (await (await o.get(`/api/crm/estimates/${estimate.id}`)).json()).estimate.public_token;
+    const pool = getTestPool();
+    try { await pool.query(`UPDATE crm_estimates SET status = 'sent', sent_at = now() WHERE id = $1`, [estimate.id]); } finally { await pool.end(); }
+    const dec = await makeClient().post(`/api/crm-public/estimates/${token}/decline`, { reason: 'Went another way' });
+    assert.equal(dec.status, 200);
+    const inbox = await (await o.get('/api/crm/inbox')).json();
+    assert.ok(inbox.items.some(i => i.kind === 'negative_reply' && /declined/.test(i.title)));
+  });
+
+  test('members can build estimates but not change the catalog', async () => {
+    const o = await crmOwner('est-team');
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('est-mem'), name: 'Mem', role: 'member' })).json();
+    const m = makeClient();
+    await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'Mem', password: 'MemberPass123!' });
+    assert.equal((await m.post('/api/crm/catalog', { name: 'X', unit_cost: 1 })).status, 403);
+    const { deal } = await (await m.post('/api/crm/deals', { name: 'Member deal' })).json();
+    assert.equal((await m.post(`/api/crm/deals/${deal.id}/estimates`, { kind: 'construction' })).status, 200);
+  });
+});
