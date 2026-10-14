@@ -2,9 +2,10 @@ services:
   - type: web
     name: eagle-i
     runtime: node
-    plan: free
+    plan: starter # 0.5 CPU / 512 MB; matches the plan chosen in the dashboard
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /healthz # answers instantly, so Render knows a new deploy is up without waiting on port detection
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
