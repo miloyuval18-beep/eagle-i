@@ -315,6 +315,21 @@ design" / "Contract signed", adds a "Needs you" item and emails the deal owner.
 The homeowner's API is `/api/crm-public/*` (no login; rate-limited). Editing a
 sent estimate puts it back to draft until it's resent; accepted ones are locked.
 
+**Automated communications (step 4).**
+- *Lead intake* (`lib/crmIntake.js`, `routes/crmIntake.js`): each company has a
+  private intake key (`tenants.crm_intake_key`) for a website inquiry form at
+  `/crm/f/<key>` (link or embed via iframe; honeypot + per-IP and per-company
+  limits) and a forwarding address `lead-<key>@$RESEND_INBOUND_DOMAIN`.
+  Forwarded Houzz/Angi/Thumbtack emails are read by AI (plain regex fallback
+  without `ANTHROPIC_API_KEY`); non-leads are ignored. New leads go to the
+  "give new leads to" person, get the instant reply and email the team.
+- *Playbook triggers*: `stage` (as before), `meeting` (days before a deal's
+  `site_visit_at`) and `estimate_expiry` (days before a sent estimate's
+  valid-until day ends, Central). Reminders send 8am–8pm Central any day and
+  never after the event; a reply stops only the stage follow-ups. Starter
+  playbooks added: instant reply to new leads, site-visit reminder, estimate
+  about to expire. Setting a site visit moves the deal to "Site visit set".
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

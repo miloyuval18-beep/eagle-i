@@ -832,8 +832,9 @@ describe('CRM playbooks (lib/crmPlaybooks.js)', () => {
   test('every starter playbook is valid and tied to a real stage', () => {
     const { isStage } = require('../lib/crm');
     for (const p of pb.DEFAULT_PLAYBOOKS) {
-      assert.equal(pb.validateSteps(p.steps), null, p.key);
-      assert.ok(isStage(p.stage), p.key);
+      assert.equal(pb.validateSteps(p.steps, p.trigger), null, p.key);
+      if (p.trigger === 'stage') assert.ok(isStage(p.stage), p.key);
+      else assert.equal(p.stage, null, p.key);
     }
   });
   test('any change to the wording changes the approval fingerprint', () => {
@@ -919,5 +920,50 @@ describe('CRM estimates (lib/crmEstimates.js)', () => {
     assert.equal(est.isExpired(e, new Date('2026-10-14T23:00:00Z')), false);
     assert.equal(est.isExpired(e, new Date('2026-10-15T00:30:00Z')), true);
     assert.equal(est.isExpired({ ...e, status: 'accepted' }, new Date('2027-01-01')), false);
+  });
+});
+
+describe('CRM automated communications', () => {
+  const pb = require('../lib/crmPlaybooks');
+  const intake = require('../lib/crmIntake');
+  const { LEAD_ADDRESS_RE } = require('../routes/inboundEmail');
+  test('stage playbooks keep their original approval fingerprint', () => {
+    const steps = [{ days: 3, subject: 'Hi', message: 'Hello' }];
+    const crypto = require('crypto');
+    const original = crypto.createHash('sha256').update(JSON.stringify({ stage: 'proposal', steps: pb.normalizeSteps(steps) })).digest('hex');
+    assert.equal(pb.playbookHash('proposal', steps), original);
+    assert.equal(pb.playbookHash('proposal', steps, 'stage'), original);
+    assert.notEqual(pb.playbookHash(null, steps, 'meeting'), pb.playbookHash(null, steps, 'estimate_expiry'));
+  });
+  test('reminders are timed before the event and may use their own details', () => {
+    assert.equal(pb.validateSteps([{ days: -1, subject: 'See you {visit_date}', message: 'At {visit_time}, {address}' }], 'meeting'), null);
+    assert.match(pb.validateSteps([{ days: 1, subject: 'a', message: 'b' }], 'meeting'), /before the site visit/);
+    assert.match(pb.validateSteps([{ days: -1, subject: 'a', message: '{estimate_link}' }], 'meeting'), /\{estimate_link\}/);
+    assert.equal(pb.validateSteps([{ days: -3, subject: 'Expires {expires}', message: '{estimate_link} {estimate_total}' }], 'estimate_expiry'), null);
+    assert.match(pb.validateSteps([{ days: 1, subject: 'a', message: '{visit_date}' }], 'stage'), /\{visit_date\}/);
+    for (const p of pb.DEFAULT_PLAYBOOKS) assert.equal(pb.validateSteps(p.steps, p.trigger), null, p.key);
+  });
+  test('an estimate stops being valid at the end of its day, Central time', () => {
+    assert.equal(pb.estimateExpiresAt('2026-10-20').toISOString(), '2026-10-21T04:59:00.000Z');
+    assert.equal(pb.estimateExpiresAt('2026-12-20').toISOString(), '2026-12-21T05:59:00.000Z');
+  });
+  test('reminders go out 8am-8pm Central', () => {
+    assert.equal(pb.inDaytime(new Date('2026-10-18T13:30:00Z')), true); // Sunday 8:30am CDT
+    assert.equal(pb.inDaytime(new Date('2026-10-18T12:30:00Z')), false); // 7:30am
+    assert.equal(pb.inDaytime(new Date('2026-10-19T01:30:00Z')), false); // 8:30pm
+  });
+  test('plain lead-email reading finds contact details and the platform', () => {
+    const r = intake.parseLeadEmailPlain({ subject: 'New lead from Houzz', from: 'no-reply@houzz.com', text: 'Name: Maria Garcia\nPhone: (713) 555-0101\nEmail: maria@example.test\nKitchen remodel' });
+    assert.equal(r.is_lead, true);
+    assert.equal(r.name, 'Maria Garcia');
+    assert.equal(r.email, 'maria@example.test');
+    assert.equal(r.phone, '(713) 555-0101');
+    assert.equal(r.source, 'houzz');
+    assert.equal(intake.parseLeadEmailPlain({ subject: 'Newsletter', from: 'x', text: 'Big sale this week' }).is_lead, false);
+  });
+  test('the lead-forwarding address is recognised', () => {
+    assert.ok(LEAD_ADDRESS_RE.test('lead-0123456789abcdef01234567@in.example.test'));
+    assert.ok(!LEAD_ADDRESS_RE.test('lead-xyz@in.example.test'));
+    assert.ok(intake.KEY_RE.test('0123456789abcdef01234567'));
   });
 });

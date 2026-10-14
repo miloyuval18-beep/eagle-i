@@ -1163,7 +1163,7 @@ describe('pipeline (CRM)', () => {
   test('playbooks start off, need approval, and lose it when the wording changes', async () => {
     const client = await signup('crm-pb');
     const list = (await (await client.get('/api/crm/playbooks')).json()).playbooks;
-    assert.equal(list.length, 6);
+    assert.equal(list.length, 9);
     assert.ok(list.every(p => !p.enabled && !p.approved));
     const p = list.find(x => x.key === 'proposal_follow_up');
     assert.equal((await client.post(`/api/crm/playbooks/${p.id}/enabled`, { enabled: true })).status, 400);
@@ -1363,5 +1363,53 @@ describe('CRM estimates', () => {
     assert.equal((await m.post('/api/crm/catalog', { name: 'X', unit_cost: 1 })).status, 403);
     const { deal } = await (await m.post('/api/crm/deals', { name: 'Member deal' })).json();
     assert.equal((await m.post(`/api/crm/deals/${deal.id}/estimates`, { kind: 'construction' })).status, 200);
+  });
+});
+
+describe('CRM lead intake and site visits', () => {
+  async function crmOwner(label) {
+    const client = makeClient();
+    const r = await client.post('/api/auth/signup', {
+      email: uniqueEmail(label), password: 'TestPass1234!', companyName: 'Intake Co', industry: 'home_services', acceptedTerms: true, product: 'crm'
+    });
+    trackTenant((await r.json()).tenantId);
+    return client;
+  }
+
+  test('the website form turns a visitor into a deal; bots and bad input are turned away', async () => {
+    const o = await crmOwner('intake');
+    const info = await (await o.get('/api/crm/intake')).json();
+    const key = new URL(info.formUrl).pathname.split('/').pop();
+    assert.match(info.embedCode, /<iframe/);
+    const page = await makeClient().get(`/crm/f/${key}`);
+    assert.equal(page.status, 200);
+    const visitor = makeClient();
+    assert.equal((await (await visitor.get(`/api/crm-public/forms/${key}`)).json()).companyName, 'Intake Co');
+    assert.equal((await visitor.post(`/api/crm-public/forms/${key}`, { name: 'No Contact' })).status, 400);
+    assert.equal((await visitor.post(`/api/crm-public/forms/${key}`, { name: 'Bot', email: 'bot@example.test', company_website: 'spam' })).status, 200);
+    const ok = await visitor.post(`/api/crm-public/forms/${key}`, { name: 'Form Lead', email: 'form@example.test', phone: '713-555-0199', address: '9 Elm St, Houston TX 77024', message: 'Patio and outdoor kitchen' });
+    assert.equal(ok.status, 200);
+    const pipe = await (await o.get('/api/crm/pipeline')).json();
+    assert.equal(pipe.deals.length, 1, 'the honeypot submission was dropped');
+    assert.equal(pipe.deals[0].contact_name, 'Form Lead');
+    assert.equal(pipe.deals[0].source, 'website');
+    assert.equal(pipe.deals[0].stage, 'new');
+    assert.equal(pipe.deals[0].first_response_at, null, 'nobody has picked it up yet');
+    // A new link retires the old one.
+    const fresh = await (await o.post('/api/crm/intake/rotate', {})).json();
+    assert.notEqual(fresh.formUrl, info.formUrl);
+    assert.equal((await makeClient().get(`/api/crm-public/forms/${key}`)).status, 404);
+  });
+
+  test('booking a site visit moves the deal to "Site visit set"', async () => {
+    const o = await crmOwner('visit');
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Visit Person', email: 'v@example.test' })).json();
+    const at = new Date(Date.now() + 3 * 86400000).toISOString();
+    const r = await o.patch(`/api/crm/deals/${deal.id}`, { siteVisitAt: at });
+    assert.equal(r.status, 200);
+    const d = (await r.json()).deal;
+    assert.equal(d.stage, 'site_visit');
+    assert.equal(new Date(d.site_visit_at).toISOString(), at);
+    assert.equal((await o.patch(`/api/crm/deals/${deal.id}`, { siteVisitAt: 'not a date' })).status, 400);
   });
 });

@@ -30,6 +30,8 @@ const { getVerifiedFromAddress } = require('../lib/sendingDomain');
 // itself (lib/email.js's buildReplyToAddress) — an inbound address in any
 // other shape is ignored rather than trusted.
 const REPLY_ADDRESS_RE = /^reply\+(vendor|review|partner|crm)-([0-9a-f-]{36})@/i;
+// Eagle I CRM's lead-forwarding address (lib/crmIntake.js): lead-<24 hex>@...
+const LEAD_ADDRESS_RE = /^lead-([0-9a-f]{24})@/i;
 
 // replyToEmail is whoever actually sent the reply (not necessarily the
 // address Eagle I originally wrote to — a reply can come from a different
@@ -85,8 +87,17 @@ async function suppress(tenantId, email) {
   await cancelQueued(tenantId, email, 'opted_out');
 }
 
-async function processInboundEmail(data) {
+async function processInboundEmail(data, { baseUrl = '' } = {}) {
   const toAddresses = Array.isArray(data.to) ? data.to : [data.to].filter(Boolean);
+  // A lead email forwarded into Eagle I CRM becomes a deal.
+  const leadTo = toAddresses.map(a => LEAD_ADDRESS_RE.exec(String(a).replace(/^.*<|>.*$/g, '').trim())).find(Boolean);
+  if (leadTo) {
+    const full = await getReceivedEmail(data.email_id);
+    const text = full.text || htmlToText(full.html);
+    const r = await require('../lib/crmIntake').intakeEmail({ key: leadTo[1].toLowerCase(), full: { subject: full.subject, text, from: full.from }, baseUrl });
+    if (!r.ok) console.log('[inboundEmail] forwarded lead not added:', r.reason);
+    return;
+  }
   let match = null;
   for (const addr of toAddresses) {
     match = REPLY_ADDRESS_RE.exec(addr);
@@ -195,7 +206,7 @@ async function handleInboundWebhook(req, res) {
   res.json({ received: true });
 
   try {
-    if (event.type === 'email.received') await processInboundEmail(event.data);
+    if (event.type === 'email.received') await processInboundEmail(event.data, { baseUrl: `${req.protocol}://${req.get('host')}` });
     // email.bounced / email.complained: see lib/deliveryEvents.js. Any other
     // event type is acknowledged and ignored.
     else await processDeliveryEvent(event);
@@ -204,4 +215,4 @@ async function handleInboundWebhook(req, res) {
   }
 }
 
-module.exports = { handleInboundWebhook, processInboundEmail, REPLY_ADDRESS_RE };
+module.exports = { handleInboundWebhook, processInboundEmail, REPLY_ADDRESS_RE, LEAD_ADDRESS_RE };

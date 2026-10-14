@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Contact Us</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6f8;--card:#ffffff;--soft:#eef1f4;
+  --ink:#14202b;--ink2:#3a4855;--ink3:#55636f;
+  --bdr:#c3ccd4;--bdr2:#8794a0;--accent:#1f4e79;--accent2:#173b5c;--err:#a12a1f;
+  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-font-smoothing:antialiased}
+.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:28px 24px;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
+.brand{font-size:24px;font-weight:800;text-align:center;color:var(--ink)}
+.brand span{color:var(--accent)}
+.tag{font-size:14px;color:var(--ink3);text-align:center;margin:4px 0 20px}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--soft);border-radius:9px;padding:4px}
+.tab{flex:1;text-align:center;padding:10px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700;color:var(--ink3);border:0;background:transparent;font-family:var(--f)}
+.tab.active{background:var(--accent);color:#fff}
+label{display:block;font-size:13px;font-weight:700;color:var(--ink2);margin:12px 0 5px}
+input{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:16px;color:var(--ink);outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
+.check{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--ink2)}
+.check input{width:18px;height:18px;margin-top:2px;flex:0 0 auto}
+.check a,.forgot{color:var(--accent)}
+.btn{width:100%;margin-top:18px;padding:13px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-family:var(--f);font-size:16px;font-weight:800;cursor:pointer}
+.btn:hover{background:var(--accent2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--err);font-size:14px;margin-top:10px;min-height:20px}
+.forgot{display:inline-block;margin-top:10px;font-size:14px}
+.foot{font-size:13px;color:var(--ink3);text-align:center;margin-top:18px}
+.foot a{color:var(--ink2)}
+[hidden]{display:none!important}
+.embed body,body.embed{background:transparent;padding:0;align-items:flex-start}.embed .card{box-shadow:none;border:0;max-width:none;padding:8px}
+textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:16px;color:var(--ink);outline:none;resize:vertical}
+textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
+.hp{position:absolute;left:-5000px;width:1px;height:1px;overflow:hidden}
+.ok{font-size:16px;text-align:center;padding:20px 0}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand" id="co">Contact us</div>
+  <div class="tag">Tell us about your project and we’ll be in touch shortly.</div>
+  <form id="f" onsubmit="send(event)">
+    <label for="name">Your name</label><input id="name" autocomplete="name" required>
+    <label for="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email">
+    <label for="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" inputmode="tel">
+    <label for="address">Project address (optional)</label><input id="address" autocomplete="street-address">
+    <label for="message">What are you planning?</label><textarea id="message" rows="4"></textarea>
+    <div class="hp" aria-hidden="true"><label for="company_website">Leave this empty</label><input id="company_website" tabindex="-1" autocomplete="off"></div>
+    <button class="btn" id="b">Send</button>
+    <div class="err" id="err" role="alert"></div>
+  </form>
+  <div class="ok" id="done" hidden>Thanks! We got your message and will be in touch soon.</div>
+</main>
+<script>
+const key=location.pathname.split('/').pop();
+if(new URLSearchParams(location.search).get('embed'))document.body.classList.add('embed');
+fetch('/api/crm-public/forms/'+key).then(r=>r.json().then(d=>{if(!r.ok)throw new Error(d.error&&d.error.message);document.getElementById('co').textContent='Contact '+d.companyName;})).catch(e=>{document.getElementById('f').hidden=true;document.querySelector('.tag').textContent=e.message||'This form is no longer active.';});
+async function send(e){
+  e.preventDefault();const b=document.getElementById('b'),err=document.getElementById('err');b.disabled=true;err.textContent='';
+  const v=id=>document.getElementById(id).value;
+  try{
+    const r=await fetch('/api/crm-public/forms/'+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),message:v('message'),company_website:v('company_website')})});
+    const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
+    document.getElementById('f').hidden=true;document.getElementById('done').hidden=false;
+  }catch(x){err.textContent=x.message;b.disabled=false;}
+}
+</script>
+</body>
+</html>

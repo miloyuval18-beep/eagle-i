@@ -46,6 +46,7 @@ const photoRequestsRoutes = require('./routes/photoRequests');
 const redditLeadsRoutes = require('./routes/redditLeads');
 const crmRoutes = require('./routes/crm');
 const crmEstimateRoutes = require('./routes/crmEstimates');
+const crmIntakeRoutes = require('./routes/crmIntake');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -163,7 +164,8 @@ app.use(sendingDomainRoutes);
 app.use(photoRequestsRoutes);
 app.use(redditLeadsRoutes);
 app.use(crmRoutes);
-app.use(crmEstimateRoutes); // after crmRoutes: its /api/crm/* routes rely on that sign-in check
+app.use(crmEstimateRoutes); // after crmRoutes: their /api/crm/* routes rely on that sign-in check
+app.use(crmIntakeRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));

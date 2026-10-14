@@ -177,6 +177,8 @@ select{width:auto;cursor:pointer}
   <section class="view" id="view-auto">
     <div class="sh"><div><div class="st">Automations</div><div class="ss">Each playbook sends emails when a deal reaches its stage. Nothing sends until you approve the exact wording. After that it runs on its own for every deal that enters the stage. If you change the wording, it switches off until you approve the new version.</div></div></div>
     <div class="section" id="pl-auto-settings"></div>
+    <div class="pl-h">Get leads in automatically</div>
+    <div id="pl-intake"><div class="sm">Loading…</div></div>
     <div class="pl-h">What Eagle I did in the last 7 days</div>
     <div class="pl-strip" id="pl-week"></div>
     <div class="pl-h">Playbooks</div>
@@ -549,6 +551,7 @@ function plRender(){
     const waiting=x.stage==='new'&&!x.first_response_at;
     const tags=[`<span class="pl-tag">${uxEsc(st.label)}</span>`,`<span class="pl-tag">${uxEsc(plSourceLabel(x.source))}</span>`,`<span class="pl-tag">${plAgo(x.stage_entered_at)} in stage</span>`];
     if(waiting)tags.push(`<span class="pl-tag warn">Waiting ${plAgo(x.created_at)}</span>`);
+    if(x.site_visit_at&&new Date(x.site_visit_at)>new Date(Date.now()-86400000))tags.push(`<span class="pl-tag">📅 ${new Date(x.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span>`);
     if(CR.team.length>1)tags.push(`<span class="pl-tag">${x.owner_name?'👤 '+uxEsc(x.owner_name):'Unassigned'}</span>`);
     if(x.automations_waiting)tags.push(`<span class="pl-tag auto">✓ ${x.automations_waiting} automatic email${x.automations_waiting>1?'s':''} scheduled</span>`);
     return `<button class="pl-card" onclick="plOpenDeal('${x.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(x.title)}</div><div class="pl-card-val">${uxEsc(plMoney(x.value))}</div></div>
@@ -558,6 +561,8 @@ function plRender(){
   }).join('');
 }
 
+// A stored time as the value a datetime-local box expects, in this device's time zone.
+function plLocalInput(ts){const d=new Date(ts);const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;}
 function plStageOptions(sel){return (PL.data?PL.data.stages:[]).map(s=>`<option value="${s.key}"${s.key===sel?' selected':''}>${uxEsc(s.label)}</option>`).join('');}
 function plSourceOptions(sel){return PL_SOURCES.map(([k,l])=>`<option value="${k}"${k===sel?' selected':''}>${uxEsc(l)}</option>`).join('');}
 function plField(id,label,val,attrs){return `<div class="${attrs&&attrs.full?'full':''}"><label for="${id}">${label}</label><input id="${id}" class="cred-input" value="${uxEsc(val==null?'':val)}" ${attrs&&attrs.type?'type="'+attrs.type+'"':''} ${attrs&&attrs.ph?'placeholder="'+uxEsc(attrs.ph)+'"':''} ${attrs&&attrs.mode?'inputmode="'+attrs.mode+'"':''}></div>`;}
@@ -604,6 +609,7 @@ async function plOpenDeal(id){
       ${plField('pld-name','Name',x.contact_name)}${plField('pld-phone','Phone',x.contact_phone,{type:'tel',mode:'tel'})}
       ${plField('pld-email','Email',x.contact_email,{type:'email',mode:'email',full:true})}
       ${plField('pld-address','Property address',x.property_address,{full:true})}
+      <div class="full"><label for="pld-visit">Site visit</label><input id="pld-visit" type="datetime-local" class="cred-input" value="${x.site_visit_at?plLocalInput(x.site_visit_at):''}"></div>
       <div class="${CR.team.length>1?'':'full'}"><label for="pld-source">Where it came from</label><select id="pld-source">${plSourceOptions(x.source)}</select></div>
       ${CR.team.length>1?`<div><label for="pld-owner">Who's handling it</label><select id="pld-owner">${crOwnerOptions(x.owner_user_id)}</select></div>`:''}
     </div>
@@ -645,7 +651,7 @@ async function plSaveDeal(id,btn){
   const v=k=>document.getElementById(k).value;
   btn.disabled=true;
   try{
-    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),source:v('pld-source'),...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{})}});
+    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),source:v('pld-source'),siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{})}});
     document.getElementById('pld-msg').textContent='Saved.';btn.disabled=false;plLoad();
   }catch(e){document.getElementById('pld-msg').textContent=e.message;btn.disabled=false;}
 }
@@ -679,7 +685,24 @@ async function plInboxAct(id,action,days){
   try{await plApi('/api/crm/inbox/'+id,{body:{action,days}});plLoadNeeds();}catch(e){showNotif('Could not update',e.message);}
 }
 
+async function plLoadIntake(){
+  const el=document.getElementById('pl-intake');
+  try{
+    const d=await plApi('/api/crm/intake');
+    const copy=(id,label,val)=>`<label for="${id}" style="font-size:13px;font-weight:700;display:block;margin-top:10px">${label}</label><div style="display:flex;gap:6px"><input id="${id}" class="cred-input" readonly value="${uxEsc(val)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('${id}')">Copy</button></div>`;
+    el.innerHTML=`<div class="pl-pb">
+      <div class="sm" style="margin-top:0">Every lead that comes in this way becomes a deal on its own, goes to the person you picked below, gets the instant reply (once you approve it), and your team gets an email right away.</div>
+      ${copy('in-form','Your inquiry form (link to it from your website, Google profile or social pages)',d.formUrl)}
+      ${copy('in-embed','Or put the form right on your website (give this code to whoever runs your site)',d.embedCode)}
+      ${d.forwardAddress?copy('in-fwd','Forward lead emails from Houzz, Angi, Thumbtack and others to this address',d.forwardAddress)+'<div class="sm">Tip: set up an automatic forward in your email for messages from those sites. Eagle I reads each one and ignores anything that isn’t a lead.</div>':'<div class="sm">Lead-email forwarding needs inbound email switched on for Eagle I. Ask your Eagle I admin.</div>'}
+      ${crCanManage()?'<div class="vd-mbtns"><button class="btn-xs" onclick="plRotate()">Make a new link</button><span class="sm" style="margin:0">Use this if the form is getting spam. The old link and address stop working.</span></div>':''}
+    </div>`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+function plCopy(id){const i=document.getElementById(id);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(()=>showNotif('Copied','')).catch(()=>{try{document.execCommand('copy');showNotif('Copied','');}catch(e){}});}
+async function plRotate(){if(!confirm('Make a new link? The old form link and forwarding address will stop working, so you’ll need to update your website.'))return;try{await plApi('/api/crm/intake/rotate',{body:{}});plLoadIntake();}catch(e){showNotif('Could not change it',e.message);}}
 async function plLoadAuto(){
+  plLoadIntake();
   try{
     const [pb,sum]=await Promise.all([plApi('/api/crm/playbooks'),plApi('/api/crm/summary')]);
     PL.playbooks=pb.playbooks;PL.settings=pb.settings;PL.maxSteps=pb.maxSteps;
@@ -703,11 +726,11 @@ function plRenderPlaybooks(){
   const el=document.getElementById('pl-playbooks');
   el.innerHTML=PL.playbooks.map(p=>{
     const pill=p.enabled&&p.approved?'<span class="pl-pill on">● On</span>':p.approved?'<span class="pl-pill">Off</span>':'<span class="pl-pill need">Needs your approval</span>';
-    return `<div class="pl-pb" id="pb-${p.id}"><div class="pl-pb-head"><div><div class="pl-item-t">${uxEsc(p.name)}</div><div class="pl-item-d">When a deal moves to “${uxEsc(p.stageLabel)}” · ${p.steps.length} email${p.steps.length>1?'s':''}${p.sent?' · '+p.sent+' sent so far':''}${p.waiting?' · '+p.waiting+' scheduled':''}</div></div>${pill}</div>
-      ${p.steps.map((s,i)=>`<div class="pl-step"><div class="pl-step-row">Email ${i+1}: <input type="number" class="cred-input" min="0" max="365" value="${s.days}" data-k="days" data-i="${i}" aria-label="Days after entering the stage"> days after the deal enters the stage${i===0&&s.days===0?' (goes out right away)':''}</div>
+    return `<div class="pl-pb" id="pb-${p.id}"><div class="pl-pb-head"><div><div class="pl-item-t">${uxEsc(p.name)}</div><div class="pl-item-d">${p.trigger==='stage'?'When a deal moves to “'+uxEsc(p.stageLabel)+'”':uxEsc(p.stageLabel)} · ${p.steps.length} email${p.steps.length>1?'s':''}${p.sent?' · '+p.sent+' sent so far':''}${p.waiting?' · '+p.waiting+' scheduled':''}</div></div>${pill}</div>
+      ${p.steps.map((s,i)=>`<div class="pl-step"><div class="pl-step-row">Email ${i+1}: ${p.trigger==='stage'?`<input type="number" class="cred-input" min="0" max="365" value="${s.days}" data-k="days" data-i="${i}" aria-label="Days after entering the stage"> days ${uxEsc(p.when)}${i===0&&s.days===0?' (goes out right away)':''}`:`<input type="number" class="cred-input" min="-14" max="-1" value="${s.days}" data-k="days" data-i="${i}" aria-label="Days before"> (${Math.abs(s.days)} day${Math.abs(s.days)===1?'':'s'} ${uxEsc(p.when)})`}</div>
         <input class="cred-input" data-k="subject" data-i="${i}" value="${uxEsc(s.subject)}" aria-label="Subject" style="margin-bottom:5px">
         <textarea class="cred-input" data-k="message" data-i="${i}" rows="6" aria-label="Message" style="font-size:13px;line-height:1.5">${uxEsc(s.message)}</textarea></div>`).join('')}
-      <div class="sm">You can use {name}, {company}, {phone}, {email} and {founder}. Your address and an unsubscribe link are added at the bottom of every email.</div>
+      <div class="sm">You can use ${(p.tokens||[]).map(t=>'{'+t+'}').join(', ')}. Your address and an unsubscribe link are added at the bottom of every email.</div>
       ${crCanManage()?`<div class="pl-acts">
         ${p.enabled&&p.approved?`<button class="btn-xs" onclick="plPbEnabled('${p.id}',false)">Switch off</button>`:`<button class="btn btn-blue" onclick="plPbApprove('${p.id}',this)">✓ Approve this wording &amp; switch on</button>`}
         <button class="btn-xs" onclick="plPbSave('${p.id}',this)">Save wording</button>
