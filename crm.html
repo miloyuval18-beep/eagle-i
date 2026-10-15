@@ -76,7 +76,7 @@ select{width:auto;cursor:pointer}
 .pl-pill.sent{color:var(--accent);border-color:var(--accent)}
 .pl-pill.accepted{color:var(--green);border-color:var(--green);background:rgba(44,110,73,.08)}
 .pl-pill.declined{color:var(--red);border-color:var(--red)}
-.pl-item.estimate_accepted{border-left:4px solid var(--green)}
+.pl-item.estimate_accepted,.pl-item.payment{border-left:4px solid var(--green)}
 @media(max-width:520px){.es-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.cr-tab{padding:10px 8px;font-size:14px}.cr-nav{padding:0 6px;gap:0}.cr-company{display:none}}
 @media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.st{font-size:21px}}
@@ -197,6 +197,9 @@ select{width:auto;cursor:pointer}
   <section class="view" id="view-estimates">
     <div class="sh"><div><div class="st">Estimates</div><div class="ss">Design agreements and construction estimates. Start one from a deal. Sending it moves the deal along and starts that stage's follow-ups; when the homeowner accepts online, the deal moves to the next stage on its own.</div></div></div>
     <div class="pl-list" id="es-list"><div class="pl-empty">Loading…</div></div>
+    <div class="pl-h">Invoices</div>
+    <div class="pl-strip" id="iv-strip" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
+    <div class="pl-list" id="iv-list"></div>
     <div class="pl-h">Cost catalog</div>
     <div class="ss" style="margin-bottom:10px">Your own items with cost and markup, ready to drop into any estimate. Homeowners only ever see prices.</div>
     <div id="cat-form"></div>
@@ -226,6 +229,8 @@ select{width:auto;cursor:pointer}
       <div class="full"><label for="co-address">Business address</label><input id="co-address" class="cred-input" autocomplete="street-address" placeholder="Street, city, state, ZIP"></div>
     </div>
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="coSave(this)">Save</button><span class="sm" id="co-msg" style="margin:0"></span></div>
+    <div class="pl-h" style="margin-top:26px">Online payments</div>
+    <div id="pay-box"><div class="sm">Loading…</div></div>
     <div class="pl-h" style="margin-top:26px">Google Workspace email</div>
     <div class="ss" style="margin-bottom:10px">Connect your company’s Google Workspace and every email between your team and a customer lands on that customer’s deal by itself. A customer’s email stops the follow-ups; your team’s email to a new lead counts as picking it up. Only emails with people in your CRM are kept (who, when, subject and a short preview). Personal mail and attachments are never stored.</div>
     <div id="gw"><div class="sm">Loading…</div></div>
@@ -354,6 +359,10 @@ async function esLoad(){
     ES.catalog=cat.items;ES.units=cat.units;
     document.getElementById('es-list').innerHTML=estimates.length?estimates.map(esRow).join(''):'<div class="pl-empty">No estimates yet. Open a deal and tap “Construction estimate” or “Design agreement”.</div>';
     esRenderCatalog(cat.categories);
+    const {invoices}=await plApi('/api/crm/invoices');
+    const open=invoices.filter(i=>i.status==='sent'),month=new Date();month.setDate(1);month.setHours(0,0,0,0);
+    document.getElementById('iv-strip').innerHTML=[[esMoney(open.reduce((n,i)=>n+Number(i.amount),0)),`Waiting for payment (${open.length})`],[esMoney(invoices.filter(i=>i.status==='paid'&&new Date(i.paid_at)>=month).reduce((n,i)=>n+Number(i.paid_amount||i.amount),0)),'Collected this month']].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
+    document.getElementById('iv-list').innerHTML=invoices.filter(i=>i.status!=='void').slice(0,40).map(i=>ivRow(i,true)).join('')||'<div class="pl-empty">No invoices yet.</div>';
   }catch(e){document.getElementById('es-list').innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
 }
 function esRenderCatalog(categories){
@@ -565,8 +574,22 @@ async function gwInclude(id,on){try{await plApi('/api/crm/google/mailboxes/'+id,
 async function gwSync(btn){btn.disabled=true;try{const r=await plApi('/api/crm/google/sync',{body:{}});showNotif('Done',`Read ${r.read} emails; ${r.stored} were with customers.`);}catch(e){showNotif('Could not read email',e.message);}gwLoad();}
 async function gwDisconnect(){if(!confirm('Stop reading your team’s email? Emails already on deals stay there.'))return;try{await plApi('/api/crm/google',{method:'DELETE'});gwLoad();}catch(e){showNotif('Could not disconnect',e.message);}}
 
+async function payLoad(){
+  const el=document.getElementById('pay-box');if(!el)return;
+  try{
+    const st=await plApi('/api/crm/payments'+(location.search.includes('stripe=return')?'?refresh=1':''));
+    if(!st.available){el.innerHTML='<div class="pl-banner"><span>Online payments aren’t set up on the Eagle I server yet. Invoices still work: homeowners see how to pay, and you mark checks and cash as paid.</span></div>';return;}
+    el.innerHTML=st.ready?'<div class="pl-pb"><div class="pl-card-top"><div><div class="pl-item-t">Stripe connected</div><div class="pl-item-d">Homeowners can pay invoices by card or bank transfer. Money goes straight to your Stripe account.</div></div><span class="pl-pill on">● On</span></div></div>'
+      :`<div class="pl-pb"><div class="pl-item-t">${st.accountId?'Finish setting up Stripe':'Take payments online'}</div><div class="sm">Connect your company’s Stripe account so homeowners can pay deposits and invoices by card or bank transfer. Money goes straight to you; Stripe’s usual fees apply.</div>
+        ${crCanManage()?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="payConnect(this)">${st.accountId?'Continue with Stripe':'Connect Stripe'}</button>${st.accountId?'<button class="btn-xs" onclick="payRefresh()">I finished, check again</button>':''}</div>`:'<div class="sm">Ask your account owner or an admin to connect it.</div>'}</div>`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function payConnect(btn){btn.disabled=true;try{const r=await plApi('/api/crm/payments/connect',{body:{}});location.href=r.url;}catch(e){showNotif('Could not open Stripe',e.message);btn.disabled=false;}}
+async function payRefresh(){try{await plApi('/api/crm/payments?refresh=1');}catch(e){}payLoad();}
+
 async function coLoad(){
   gwLoad();
+  payLoad();
   document.querySelectorAll('#view-company input').forEach(i=>i.disabled=!crCanManage());
   document.querySelector('#view-company .btn-blue').hidden=!crCanManage();
   try{
@@ -712,6 +735,18 @@ async function plOpenDeal(id){
     <div class="pl-h">Estimates</div>
     <div id="pld-est"><div class="sm">Loading…</div></div>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button></div>
+    <div class="pl-h">Invoices</div>
+    <div id="pld-inv"><div class="sm">Loading…</div></div>
+    <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New invoice</summary>
+      <div class="pl-form" style="margin-top:8px">
+        <div><label for="iv-kind">Type</label><select id="iv-kind"><option value="deposit">Deposit</option><option value="progress" selected>Progress payment</option><option value="final">Final payment</option><option value="other">Other</option></select></div>
+        <div><label for="iv-amt">Amount</label><input id="iv-amt" class="cred-input" inputmode="decimal" placeholder="e.g. 12500"></div>
+        <div class="full"><label for="iv-title">What it's for</label><input id="iv-title" class="cred-input" placeholder="e.g. Rough-in complete"></div>
+        <div><label for="iv-due">Due</label><input id="iv-due" type="date" class="cred-input"></div>
+        <div><label for="iv-note">Note (optional)</label><input id="iv-note" class="cred-input"></div>
+      </div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="ivCreate('${x.id}',this,true)">Create &amp; send</button><button class="btn-xs" onclick="ivCreate('${x.id}',this,false)">Save without sending</button></div><div class="sm" id="iv-msg"></div>
+    </details>
     <div class="pl-h">Photos &amp; files</div>
     <div id="pld-files"><div class="sm">Loading…</div></div>
     <div class="vd-mbtns" style="margin-top:6px"><label class="btn-xs p" style="cursor:pointer">📷 Add photos or PDFs<input type="file" accept="image/*,application/pdf" multiple style="display:none" onchange="flUpload('${x.id}',this)"></label><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="pld-share" checked> Share with the homeowner</label></div>
@@ -732,12 +767,43 @@ async function plOpenDeal(id){
   plDealEstimates(x.id);
   flLoad(x.id);
   ptLoad(x.id);
+  ivLoad(x.id);
 }
 async function plDealEstimates(dealId){
   const el=document.getElementById('pld-est');if(!el)return;
   try{const {estimates}=await plApi('/api/crm/estimates?dealId='+dealId);el.innerHTML=estimates.length?'<div class="pl-list">'+estimates.map(esRow).join('')+'</div>':'<div class="sm">None yet.</div>';}
   catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
+/* ---------- invoices ---------- */
+const IV_STATUS={draft:'Draft',sent:'Waiting for payment',paid:'Paid',void:'Cancelled'};
+const IV_KIND={deposit:'Deposit',progress:'Progress payment',final:'Final payment',other:'Invoice'};
+function ivRow(i,withDeal){
+  const st=i.status==='paid'?'<span class="pl-pill accepted">Paid</span>':i.status==='void'?'<span class="pl-pill">Cancelled</span>':i.overdue?'<span class="pl-pill declined">Overdue</span>':`<span class="pl-pill ${i.status==='sent'?'sent':''}">${IV_STATUS[i.status]}</span>`;
+  const due=i.due_date?' · due '+new Date(String(i.due_date).slice(0,10)+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric'}):'';
+  const acts=i.status==='paid'||i.status==='void'?'':`<div class="pl-acts">${i.status==='draft'?`<button class="btn-xs p" onclick="ivSend('${i.id}','${i.deal_id}',this)">Send</button>`:`<button class="btn-xs" onclick="ivSend('${i.id}','${i.deal_id}',this)">Resend</button>`}
+    <select onchange="if(this.value)ivPaid('${i.id}','${i.deal_id}',this.value)" aria-label="Record a payment"><option value="">Mark paid…</option><option value="check">By check</option><option value="cash">By cash</option><option value="bank">By bank transfer</option><option value="card">By card</option><option value="other">Other</option></select>
+    ${crCanManage()?`<button class="btn-xs" onclick="ivVoid('${i.id}','${i.deal_id}')">Cancel</button>`:''}</div>`;
+  return `<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">#${i.number} ${uxEsc(i.title)}</div><div class="pl-item-d">${withDeal?uxEsc(i.contact_name)+' · ':''}${uxEsc(IV_KIND[i.kind]||i.kind)}${due}${i.paid_at?' · paid '+new Date(i.paid_at).toLocaleDateString()+(i.paid_via?' by '+uxEsc(i.paid_via):''):''}</div></div><div style="text-align:right"><div class="pl-card-val">${esMoney(i.amount)}</div>${st}</div></div>${i.status!=='draft'&&i.status!=='void'?`<div class="pl-acts"><button class="btn-xs" onclick="ivCopy('${i.public_token}')">Copy pay link</button></div>`:''}${acts}</div>`;
+}
+async function ivLoad(dealId){
+  const el=document.getElementById('pld-inv');if(!el)return;
+  try{const {invoices}=await plApi('/api/crm/invoices?dealId='+dealId);el.innerHTML=invoices.length?'<div class="pl-list">'+invoices.map(i=>ivRow(i,false)).join('')+'</div>':'<div class="sm">None yet. Accepting an estimate with money due at signing creates the deposit invoice on its own.</div>';}
+  catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function ivCreate(dealId,btn,send){
+  const v=id=>document.getElementById(id).value;const msg=document.getElementById('iv-msg');btn.disabled=true;msg.textContent='';
+  try{
+    const {invoice}=await plApi('/api/crm/deals/'+dealId+'/invoices',{body:{kind:v('iv-kind'),amount:v('iv-amt'),title:v('iv-title'),dueDate:v('iv-due')||null,note:v('iv-note')}});
+    if(send){const r=await plApi('/api/crm/invoices/'+invoice.id+'/send',{body:{}});showNotif('Invoice sent','To '+r.to);}
+    plOpenDeal(dealId);
+  }catch(e){msg.textContent=e.message;btn.disabled=false;ivLoad(dealId);}
+}
+async function ivSend(id,dealId,btn){btn.disabled=true;try{const r=await plApi('/api/crm/invoices/'+id+'/send',{body:{}});showNotif('Invoice sent','To '+r.to);}catch(e){showNotif('Could not send',e.message);}ivRefresh(dealId);}
+async function ivPaid(id,dealId,via){try{await plApi('/api/crm/invoices/'+id+'/paid',{body:{via}});showNotif('Payment recorded','');}catch(e){showNotif('Could not record it',e.message);}ivRefresh(dealId);}
+async function ivVoid(id,dealId){if(!confirm('Cancel this invoice? The homeowner will see it as cancelled.'))return;try{await plApi('/api/crm/invoices/'+id+'/void',{body:{}});}catch(e){showNotif('Could not cancel',e.message);}ivRefresh(dealId);}
+function ivCopy(token){const u=location.origin+'/i/'+token;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>showNotif('Copied',u)).catch(()=>prompt('Copy this link',u));}
+function ivRefresh(dealId){if(document.getElementById('pld-inv'))ivLoad(dealId);if(CR.view==='estimates')esLoad();}
+
 /* ---------- files & portal ---------- */
 async function flLoad(dealId){
   const el=document.getElementById('pld-files');if(!el)return;

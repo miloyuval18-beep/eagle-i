@@ -381,6 +381,26 @@ message (logged as a reply, stops follow-ups, lands in "Needs you", emails the
 deal owner) or add photos. Team updates can be emailed with the link. Playbooks
 can include `{portal_link}` (the starter welcome email does).
 
+**Payments (step 9).** `lib/crmPayments.js`, `routes/crmPayments.js`,
+`public/invoice.html`. Each company connects its own Stripe account (Connect,
+Express); money goes straight to them, with an optional Eagle I fee
+(`CRM_PAYMENT_FEE_BPS`, basis points, default 0). Invoices (deposit, progress,
+final) have a pay page at `/i/<token>` with Stripe Checkout on the company's
+account (card or ACH). Accepting an estimate with money due at signing creates
+the deposit invoice once and the estimate page offers to pay it. A payment is
+confirmed with Stripe on the homeowner's return and by the Connect webhook
+(`POST /api/stripe/connect-webhook`, secret `STRIPE_CONNECT_WEBHOOK_SECRET`; only
+the invoice's own account can mark it paid), then logged, "Collect the deposit"
+ticks off, the team is told. "Invoice reminders" is a playbook trigger
+(`invoice_due`, days from the due date). Without Stripe, invoices still work and
+checks/cash are recorded by hand.
+
+*Setup needed once:* turn on Connect in the Stripe dashboard (Express accounts),
+and add a Connect webhook for `checkout.session.completed` and
+`checkout.session.async_payment_succeeded` pointing at
+`/api/stripe/connect-webhook`; put its signing secret in
+`STRIPE_CONNECT_WEBHOOK_SECRET`.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

@@ -107,6 +107,10 @@ function render(){
       <div style="margin-top:6px"><button class="btn btn-l" onclick="showDecline()">Not going ahead? Let us know</button></div>
       <div id="dec" hidden><label for="why">Anything we should know? (optional)</label><textarea id="why" rows="3"></textarea><button class="btn btn-o" style="margin-top:10px" onclick="decline()">Decline</button></div>`;
   }else{
+    if(e.status==='accepted'&&e.depositInvoice&&!e.depositInvoice.paid){
+      act.innerHTML=`<h2>Next: the deposit</h2><p class="meta">To get started, ${esc(c.name)} asks for ${money(e.depositInvoice.amount)} now.</p><a class="btn btn-p" style="text-decoration:none" href="${esc(e.depositInvoice.link)}">Pay the deposit</a><div style="margin-top:12px">${dl}</div>`;
+      return;
+    }
     act.innerHTML=(e.status==='draft'?'<p class="meta">This estimate is being updated. You’ll get an email when the new version is ready.</p>':e.expired?`<p class="meta">This estimate has expired. Please contact ${esc(c.name)}${c.phone?' at '+esc(c.phone):''} for an updated one.</p>`:'')+'<div style="margin-top:8px">'+dl+'</div>';
   }
 }

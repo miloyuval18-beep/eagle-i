@@ -1163,7 +1163,7 @@ describe('pipeline (CRM)', () => {
   test('playbooks start off, need approval, and lose it when the wording changes', async () => {
     const client = await signup('crm-pb');
     const list = (await (await client.get('/api/crm/playbooks')).json()).playbooks;
-    assert.equal(list.length, 9);
+    assert.equal(list.length, 10);
     assert.ok(list.every(p => !p.enabled && !p.approved));
     const p = list.find(x => x.key === 'proposal_follow_up');
     assert.equal((await client.post(`/api/crm/playbooks/${p.id}/enabled`, { enabled: true })).status, 400);
@@ -1543,5 +1543,34 @@ describe('CRM files and homeowner portal', () => {
     const reset = await (await o.post(`/api/crm/deals/${deal.id}/portal/reset`, {})).json();
     assert.notEqual(reset.url, url);
     assert.equal((await homeowner.get(`/api/crm-public/portal/${token}`)).status, 404);
+  });
+});
+
+describe('CRM invoices without online payments', () => {
+  test('invoices work with checks; the pay page says how to pay; members cannot cancel', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('inv'), password: 'TestPass1234!', companyName: 'Invoice Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Ivy', title: 'Deck' })).json();
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/invoices`, { amount: 'abc' })).status, 400);
+    const { invoice } = await (await o.post(`/api/crm/deals/${deal.id}/invoices`, { kind: 'progress', title: 'Framing', amount: '7,500.50' })).json();
+    assert.equal(Number(invoice.amount), 7500.5);
+    assert.equal(invoice.status, 'draft');
+    assert.equal((await makeClient().get(`/api/crm-public/invoices/${invoice.public_token}`)).status, 404, 'drafts are not public');
+    const pool = getTestPool();
+    try { await pool.query(`UPDATE crm_invoices SET status = 'sent' WHERE id = $1`, [invoice.id]); } finally { await pool.end(); }
+    const pub = (await (await makeClient().get(`/api/crm-public/invoices/${invoice.public_token}`)).json()).invoice;
+    assert.equal(pub.payOnline, false);
+    assert.equal((await makeClient().post(`/api/crm-public/invoices/${invoice.public_token}/checkout`, {})).status, 400);
+    assert.equal((await o.get('/api/crm/payments')).status, 200);
+    const inv2 = await (await o.post(`/api/crm/deals/${deal.id}/invoices`, { title: 'Extra', amount: 100 })).json();
+    const t = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('inv-m'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    await m.post('/api/crm/join', { token: new URL(t.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    assert.equal((await m.post(`/api/crm/invoices/${inv2.invoice.id}/void`, {})).status, 403);
+    assert.equal((await m.post(`/api/crm/invoices/${invoice.id}/paid`, { via: 'check' })).status, 200, 'anyone can record a check');
+    const list = (await (await o.get(`/api/crm/invoices?dealId=${deal.id}`)).json()).invoices;
+    assert.equal(list.find(i => i.id === invoice.id).status, 'paid');
+    assert.equal((await makeClient().get(`/i/${invoice.public_token}`)).status, 200);
   });
 });
