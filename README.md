@@ -429,6 +429,14 @@ change order for the difference for the team to send). All phases done →
 "Needs you" suggests moving the deal to Complete. The tab bar is now Pipeline,
 Today, Jobs, Money; Automations moved to the Account menu.
 
+**Job costing (step 12).** `lib/crmCosts.js`, `routes/crmCosts.js`. Budget =
+the accepted construction estimate's cost plus approved change orders' cost;
+contract = the deal value; actual = `crm_costs` (receipts read by AI from a
+photo via `generateJSON(..., { images })`, received purchase orders added once,
+labor as hours × rate, manual entries). Spending more than 15 points ahead of
+schedule progress → "Needs you". Owners/admins export invoices or costs as CSV
+(`/api/crm/export`, formula-safe) for the accountant.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

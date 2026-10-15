@@ -77,7 +77,7 @@ select{width:auto;cursor:pointer}
 .pl-pill.accepted{color:var(--green);border-color:var(--green);background:rgba(44,110,73,.08)}
 .pl-pill.declined{color:var(--red);border-color:var(--red)}
 .pl-item.estimate_accepted,.pl-item.payment,.pl-item.job_done{border-left:4px solid var(--green)}
-.pl-item.vendor_insurance{border-left:4px solid var(--amber)}
+.pl-item.vendor_insurance,.pl-item.over_budget{border-left:4px solid var(--amber)}
 @media(max-width:520px){.es-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.cr-tab{padding:10px 8px;font-size:14px}.cr-nav{padding:0 6px;gap:0}.cr-company{display:none}}
 @media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.st{font-size:21px}}
@@ -217,6 +217,9 @@ select{width:auto;cursor:pointer}
     <div class="pl-h">Invoices</div>
     <div class="pl-strip" id="iv-strip" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
     <div class="pl-list" id="iv-list"></div>
+    <div class="pl-h">Job costing</div>
+    <div class="pl-list" id="jc-all"></div>
+    <div id="ex-box"></div>
     <div class="pl-h">Cost catalog</div>
     <div class="ss" style="margin-bottom:10px">Your own items with cost and markup, ready to drop into any estimate. Homeowners only ever see prices.</div>
     <div id="cat-form"></div>
@@ -379,6 +382,16 @@ async function esLoad(){
     ES.catalog=cat.items;ES.units=cat.units;
     document.getElementById('es-list').innerHTML=estimates.length?estimates.map(esRow).join(''):'<div class="pl-empty">No estimates yet. Open a deal and tap “Construction estimate” or “Design agreement”.</div>';
     esRenderCatalog(cat.categories);
+    plApi('/api/crm/costing').then(({jobs})=>{
+      document.getElementById('jc-all').innerHTML=jobs.length?jobs.map(j=>`<button class="pl-card" onclick="jbOpen('${j.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${j.marginPct==null?'—':j.marginPct+'%'}</div></div>
+        <div class="pl-card-sub">Contract ${esMoney(j.contract)} · spent ${esMoney(j.actual)}${j.hasBudget?' of '+esMoney(j.budget)+' budget':''}</div>
+        <div class="pl-tags">${j.progressPct!=null?`<span class="pl-tag">${j.progressPct}% done</span>`:''}${j.spentPct!=null?`<span class="pl-tag${j.overPace?' warn':''}">${j.spentPct}% of budget spent</span>`:''}<span class="pl-tag">Collected ${esMoney(j.collected)}</span></div></button>`).join(''):'<div class="pl-empty">No signed jobs yet.</div>';
+    }).catch(()=>{});
+    const y=new Date().getFullYear();
+    document.getElementById('ex-box').innerHTML=crCanManage()?`<details class="pl-pb" style="margin-top:10px"><summary style="cursor:pointer;font-weight:800">Export for your accountant</summary>
+      <div class="sm">Spreadsheet files (CSV) that open in Excel or Google Sheets, or import into QuickBooks.</div>
+      <div class="es-grid" style="grid-template-columns:1fr 1fr;margin-top:8px"><div><label for="ex-from">From</label><input id="ex-from" type="date" class="cred-input" value="${y}-01-01"></div><div><label for="ex-to">To</label><input id="ex-to" type="date" class="cred-input" value="${new Date().toLocaleDateString('en-CA')}"></div></div>
+      <div class="vd-mbtns"><button class="btn-xs p" onclick="exGo('invoices')">⬇ Invoices &amp; payments</button><button class="btn-xs p" onclick="exGo('costs')">⬇ Job costs</button></div></details>`:'';
     const {invoices}=await plApi('/api/crm/invoices');
     const open=invoices.filter(i=>i.status==='sent'),month=new Date();month.setDate(1);month.setHours(0,0,0,0);
     document.getElementById('iv-strip').innerHTML=[[esMoney(open.reduce((n,i)=>n+Number(i.amount),0)),`Waiting for payment (${open.length})`],[esMoney(invoices.filter(i=>i.status==='paid'&&new Date(i.paid_at)>=month).reduce((n,i)=>n+Number(i.paid_amount||i.amount),0)),'Collected this month']].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
@@ -869,6 +882,8 @@ async function jbOpen(dealId){
   const poRow=p=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">PO #${p.number} ${uxEsc(p.title)}</div><div class="pl-item-d">${uxEsc(p.vendor_name||'No vendor')}${p.needed_by?' · needed '+fdate(p.needed_by):''}</div></div><div style="text-align:right"><div class="pl-card-val">${esMoney(p.total)}</div><span class="pl-pill ${p.status==='received'?'accepted':p.status==='sent'?'sent':''}">${{draft:'Draft',sent:'Sent',received:'Received',void:'Cancelled'}[p.status]}</span></div></div>
     <div class="pl-acts">${p.status!=='void'&&p.vendor_email?`<button class="btn-xs p" onclick="jbSendPO('${p.id}',this)">${p.status==='draft'?'Send to vendor':'Resend'}</button>`:''}${p.status==='sent'?`<button class="btn-xs" onclick="jbPOStatus('${p.id}','received')">Mark received</button>`:''}</div></div>`;
   uxOpen(uxHead('🛠 '+uxEsc(deal.title),uxEsc(deal.contact_name)+(deal.property_address?' · '+uxEsc(deal.property_address):''))+`
+    <div class="pl-h">Money on this job</div>
+    <div id="jc-box"><div class="sm">Loading…</div></div>
     <div class="pl-h">Schedule</div>
     ${d.schedule.length?sched:`<div class="sm">No schedule yet.</div><div class="vd-mbtns"><input type="date" id="jb-start" class="cred-input" style="width:auto" aria-label="Start date"><button class="btn-xs p" onclick="jbTemplate(this)">Lay it out from my template</button></div>`}
     <div class="vd-mbtns"><button class="btn-xs" onclick="jbAddItem()">＋ Add a phase</button>${d.schedule.length&&crCanManage()?'<button class="btn-xs" onclick="jbSaveTpl()">Save as my template</button>':''}</div>
@@ -900,7 +915,46 @@ async function jbOpen(dealId){
       <div><label for="po-need">Needed by</label><input id="po-need" type="date" class="cred-input"></div></div>
       <div class="vd-mbtns"><button class="btn btn-blue" onclick="jbNewPO(this)">Create purchase order</button></div></details>
     <div class="sm" id="jb-msg"></div>`);
+  jcLoad(dealId);
 }
+async function jcLoad(dealId){
+  const el=document.getElementById('jc-box');if(!el)return;
+  try{
+    const {summary:s,costs,categories}=await plApi('/api/crm/deals/'+dealId+'/costs');
+    const tile=(v,l,warn)=>`<div class="pl-tile"${warn?' style="border-color:var(--red)"':''}><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`;
+    el.innerHTML=`<div class="pl-strip">${tile(esMoney(s.contract),'Contract')}${tile(s.hasBudget?esMoney(s.budget):'—','Budgeted cost')}${tile(esMoney(s.actual),'Spent so far',s.overPace)}${tile(s.marginPct==null?'—':s.marginPct+'%','Projected margin')}</div>
+      ${s.progressPct!=null&&s.spentPct!=null?`<div class="sm" style="margin-top:0">Work done ${s.progressPct}% · budget spent ${s.spentPct}%${s.overPace?' · <b style="color:var(--red)">spending is ahead of the work</b>':''}</div>`:s.hasBudget?'':'<div class="sm" style="margin-top:0">No accepted construction estimate yet, so there’s no cost budget to compare against.</div>'}
+      ${s.committed?`<div class="sm">${esMoney(s.committed)} more is ordered on purchase orders not yet received.</div>`:''}
+      <div class="sm">Invoiced ${esMoney(s.invoiced)} · collected ${esMoney(s.collected)}</div>
+      <div class="vd-mbtns"><label class="btn btn-blue" style="cursor:pointer">📷 Snap a receipt<input type="file" accept="image/*" capture="environment" style="display:none" onchange="jcReceipt('${dealId}',this)"></label></div>
+      <div class="sm" id="jc-msg"></div>
+      <details style="margin-top:6px"><summary class="btn-xs" style="display:inline-flex;list-style:none;cursor:pointer">＋ Add a cost or labor by hand</summary>
+        <div class="pl-form" style="margin-top:8px"><div><label for="jc-cat">Type</label><select id="jc-cat" onchange="document.getElementById('jc-lab').style.display=this.value==='labor'?'':'none'">${categories.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div><label for="jc-amt">Amount ($)</label><input id="jc-amt" class="cred-input" inputmode="decimal"></div>
+        <div class="full" id="jc-lab" style="display:none"><div class="es-grid" style="grid-template-columns:1fr 1fr"><div><label for="jc-hrs">Hours</label><input id="jc-hrs" class="cred-input" inputmode="decimal"></div><div><label for="jc-rate">Rate ($/hr)</label><input id="jc-rate" class="cred-input" inputmode="decimal"></div></div><div class="sm">Leave the amount blank and Eagle I works it out.</div></div>
+        <div><label for="jc-vendor">Paid to</label><input id="jc-vendor" class="cred-input"></div><div><label for="jc-date">Date</label><input id="jc-date" type="date" class="cred-input"></div>
+        <div class="full"><label for="jc-desc">What for</label><input id="jc-desc" class="cred-input"></div></div>
+        <div class="vd-mbtns"><button class="btn-xs p" onclick="jcAdd('${dealId}',this)">Add cost</button></div></details>
+      ${costs.length?'<div class="pl-list" style="margin-top:8px">'+costs.slice(0,30).map(c=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t" style="font-size:13px">${uxEsc(c.description||c.category)}</div><div class="pl-item-d">${fdate(c.cost_date)} · ${uxEsc(c.category)}${c.vendor_name?' · '+uxEsc(c.vendor_name):''}${c.hours?` · ${Number(c.hours)} h × ${esMoney(c.rate)}`:''}${c.source==='receipt'?' · from a receipt':c.source==='po'?' · from a PO':''}</div></div><div style="text-align:right"><div class="pl-card-val" style="font-size:14px">${esMoney(c.amount)}</div>${c.file_id?`<a class="sm" href="/api/crm/files/${c.file_id}" target="_blank" rel="noopener">photo</a>`:''}${crCanManage()?` <button class="btn-xs" onclick="jcDel('${c.id}','${dealId}')" aria-label="Delete cost">✕</button>`:''}</div></div></div>`).join('')+'</div>':''}`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function jcReceipt(dealId,input){
+  const f=input.files[0];if(!f)return;const m=document.getElementById('jc-msg');
+  if(f.size>8*1024*1024){m.textContent='That photo is over 8 MB.';return;}
+  m.textContent='Reading the receipt…';
+  try{
+    const r=await plApi('/api/crm/deals/'+dealId+'/receipts',{body:{filename:f.name,dataBase64:await flRead(f)}});
+    if(r.cost){showNotif('Receipt added',`${esMoney(r.cost.amount)}${r.cost.vendor_name?' at '+r.cost.vendor_name:''}`);jcLoad(dealId);}
+    else{m.textContent='Photo saved. Eagle I couldn’t read the total, so add the amount by hand below.';document.querySelector('#jc-box details').open=true;}
+  }catch(e){m.textContent=e.message;}
+  input.value='';
+}
+async function jcAdd(dealId,btn){
+  const v=id=>document.getElementById(id).value;btn.disabled=true;
+  try{await plApi('/api/crm/deals/'+dealId+'/costs',{body:{category:v('jc-cat'),amount:v('jc-amt'),hours:v('jc-hrs'),rate:v('jc-rate'),vendorName:v('jc-vendor'),costDate:v('jc-date')||null,description:v('jc-desc')}});jcLoad(dealId);}
+  catch(e){document.getElementById('jc-msg').textContent=e.message;btn.disabled=false;}
+}
+async function jcDel(id,dealId){if(!confirm('Delete this cost?'))return;try{await plApi('/api/crm/costs/'+id,{method:'DELETE'});jcLoad(dealId);}catch(e){showNotif('Could not delete',e.message);}}
 const jbErr=e=>{const m=document.getElementById('jb-msg');if(m){m.textContent=e.message;m.scrollIntoView({block:'nearest'});}else showNotif('Problem',e.message);};
 async function jbTemplate(btn){btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/schedule/from-template',{body:{startDate:document.getElementById('jb-start').value||null}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
 async function jbSaveTpl(){try{const r=await plApi('/api/crm/deals/'+JB.dealId+'/schedule/save-template',{body:{}});showNotif('Template saved',r.phases+' phases. New jobs will use it.');}catch(e){jbErr(e);}}
@@ -956,6 +1010,8 @@ async function smSend(dealId,btn){
   try{await plApi('/api/crm/deals/'+dealId+'/messages',{body:{body:b.value}});smLoad(dealId);}catch(e){showNotif('Could not send',e.message);btn.disabled=false;}
 }
 async function smConsent(dealId,on){try{await plApi('/api/crm/deals/'+dealId+'/sms-consent',{body:{consent:on}});}catch(e){showNotif('Could not save',e.message);}}
+
+function exGo(kind){const f=document.getElementById('ex-from').value,t=document.getElementById('ex-to').value;location.href=`/api/crm/export?kind=${kind}&from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}`;}
 
 /* ---------- invoices ---------- */
 const IV_STATUS={draft:'Draft',sent:'Waiting for payment',paid:'Paid',void:'Cancelled'};

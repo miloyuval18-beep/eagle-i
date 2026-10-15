@@ -81,7 +81,7 @@ router.post('/api/crm/deals/:id/pos', requireAuth, wrap('Failed to create the pu
 }));
 router.post('/api/crm/pos/:poId/send', requireAuth, wrap('Failed to send the purchase order', async (req, res) => res.json({ ok: true, ...(await jobs.sendPO({ tenantId: req.tenantId, id: req.params.poId, userId: req.userId })) })));
 router.patch('/api/crm/pos/:poId', requireAuth, wrap('Failed to save', async (req, res) => {
-  const po = await jobs.setPOStatus({ tenantId: req.tenantId, id: req.params.poId, status: (req.body || {}).status });
+  const po = await jobs.setPOStatus({ tenantId: req.tenantId, id: req.params.poId, status: (req.body || {}).status, userId: req.userId });
   if (!po) return res.status(404).json({ error: { message: 'Purchase order not found.' } });
   res.json({ ok: true, po });
 }));

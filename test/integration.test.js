@@ -1647,3 +1647,29 @@ describe('CRM running the job', () => {
     assert.equal((await o.post(`/api/crm/deals/${deal.id}/pos`, { title: 'Empty', lines: [] })).status, 400);
   });
 });
+
+describe('CRM job costing and export', () => {
+  test('costs add up; only owners/admins export; the export is a CSV download', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('cost'), password: 'TestPass1234!', companyName: 'Cost Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Cy', title: 'Bath', value: 30000, stage: 'signed' })).json();
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/costs`, { category: 'materials', amount: '' })).status, 400);
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/costs`, { category: 'materials', amount: '1,250.50', vendorName: 'Ferguson' })).status, 200);
+    const d = await (await o.get(`/api/crm/deals/${deal.id}/costs`)).json();
+    assert.equal(d.summary.actual, 1250.5);
+    assert.equal(d.summary.contract, 30000);
+    const today = new Date().toISOString().slice(0, 10);
+    const ex = await o.get(`/api/crm/export?kind=costs&from=2020-01-01&to=${today}`);
+    assert.equal(ex.status, 200);
+    assert.match(ex.headers.get('content-type'), /text\/csv/);
+    assert.match(await ex.text(), /Ferguson/);
+    assert.equal((await o.get('/api/crm/export?kind=bogus&from=2020-01-01&to=2020-02-01')).status, 400);
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('cost-m'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    const joined = await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    assert.equal(joined.status, 200, await joined.clone().text());
+    assert.equal((await m.get(`/api/crm/export?kind=costs&from=2020-01-01&to=${today}`)).status, 403);
+    assert.equal((await m.post(`/api/crm/deals/${deal.id}/costs`, { category: 'labor', hours: 8, rate: 40 })).status, 200, 'members can log costs');
+  });
+});

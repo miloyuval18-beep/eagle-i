@@ -1100,3 +1100,11 @@ describe('CRM job schedule (lib/crmJobs.js)', () => {
     assert.equal(jobs.DEFAULT_TEMPLATE[jobs.DEFAULT_TEMPLATE.length - 1][0], 'Final walkthrough');
   });
 });
+
+describe('CRM job costing (lib/crmCosts.js)', () => {
+  const costs = require('../lib/crmCosts');
+  test('CSV export quotes commas and neutralises spreadsheet formulas', () => {
+    const out = costs.csv([['Vendor', 'Note'], ['Home Depot, #455', '=HYPERLINK("http://evil")'], ['Plain', '+1 call']]);
+    assert.equal(out, 'Vendor,Note\r\n"Home Depot, #455","\'=HYPERLINK(""http://evil"")"\r\nPlain,"\'+1 call"\r\n');
+  });
+});
