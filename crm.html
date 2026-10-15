@@ -78,6 +78,7 @@ select{width:auto;cursor:pointer}
 .pl-pill.declined{color:var(--red);border-color:var(--red)}
 .pl-item.estimate_accepted,.pl-item.payment,.pl-item.job_done{border-left:4px solid var(--green)}
 .pl-item.vendor_insurance,.pl-item.over_budget{border-left:4px solid var(--amber)}
+.pl-item.referral{border-left:4px solid var(--green)}
 @media(max-width:520px){.es-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.cr-tab{padding:10px 8px;font-size:14px}.cr-nav{padding:0 6px;gap:0}.cr-company{display:none}}
 @media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.st{font-size:21px}}
@@ -148,6 +149,7 @@ select{width:auto;cursor:pointer}
       <div class="who" id="cr-who"></div>
       <button onclick="crMenu(false);crView('auto')">Automations</button>
       <button id="cr-reports-link" onclick="crMenu(false);crView('reports')" hidden>Weekly reports</button>
+      <button onclick="crMenu(false);crView('refs')">Referrals &amp; partners</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
@@ -232,6 +234,27 @@ select{width:auto;cursor:pointer}
     <div id="cat-form"></div>
     <div class="pl-list" id="cat-list"><div class="pl-empty">Loading…</div></div>
   </section>
+  <section class="view" id="view-refs">
+    <div class="sh"><div><div class="st">Referrals &amp; partners</div><div class="ss">Every past client and every trade partner gets their own link. Anyone who comes in through it is credited to them, and when that job signs Eagle I reminds you to thank them. Finished jobs get a review request and a home file with care reminders on their own.</div></div></div>
+    <div class="pl-strip" id="rf-tot"></div>
+    <div id="rf-settings"></div>
+    <div class="pl-h">Thank-yous owed</div>
+    <div class="pl-list" id="rf-rewards"></div>
+    <div class="pl-h">Trade partners</div>
+    <div class="pl-list" id="rf-partners"></div>
+    <details class="pl-pb" style="margin-top:8px"><summary style="cursor:pointer;font-weight:800">＋ Add a partner</summary>
+      <div class="pl-form" style="margin-top:8px">
+        <div><label for="rf-name">Name *</label><input id="rf-name" class="cred-input"></div>
+        <div><label for="rf-kind">Kind</label><select id="rf-kind"></select></div>
+        <div><label for="rf-co">Company</label><input id="rf-co" class="cred-input"></div>
+        <div><label for="rf-phone">Phone</label><input id="rf-phone" class="cred-input" type="tel" inputmode="tel"></div>
+        <div class="full"><label for="rf-email">Email</label><input id="rf-email" class="cred-input" type="email" inputmode="email"></div>
+      </div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="rfAdd(this)">Add partner</button></div><div class="sm" id="rf-msg"></div>
+    </details>
+    <div class="pl-h">Clients who send you work</div>
+    <div class="pl-list" id="rf-clients"></div>
+  </section>
   <section class="view" id="view-reports">
     <div class="sh"><div><div class="st">Weekly reports</div><div class="ss">Every Monday morning: what went well, what needs attention, what each person worked on, and what to focus on. Written from your CRM records; every number comes from what was logged.</div></div>
       <button class="btn btn-blue" onclick="rpNow(this)">This week so far</button></div>
@@ -307,6 +330,7 @@ function crView(v){
   if(v==='estimates')esLoad();
   if(v==='reports')rpLoad();
   if(v==='jobs')jbList();
+  if(v==='refs')rfLoad();
   try{history.replaceState(null,'','#'+v);}catch(e){}
   window.scrollTo(0,0);
 }
@@ -327,7 +351,7 @@ async function crInit(){
   }
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
-  crView(['pipeline','needs','jobs','estimates','auto','team','company','reports'].includes(start)?start:'pipeline');
+  crView(['pipeline','needs','jobs','estimates','auto','team','company','reports','refs'].includes(start)?start:'pipeline');
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
 }
@@ -823,6 +847,8 @@ async function plOpenDeal(id){
     <div class="sm" id="pld-up-msg"></div>
     <div class="pl-h">Homeowner portal</div>
     <div id="pld-portal"><div class="sm">Loading…</div></div>
+    <div class="pl-h">Referrals${['signed','production','complete'].includes(x.stage)?' &amp; home file':''}</div>
+    <div id="pld-life" data-stage="${x.stage}"><div class="sm">Loading…</div></div>
     <div class="pl-h">Tasks</div>
     <div class="pl-list">${(d.tasks||[]).map(t=>tdRow(t,false)).join('')||'<div class="sm">No tasks yet.</div>'}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><input id="pld-task" class="cred-input" placeholder="Add a task…" style="flex:1;min-width:150px" onkeydown="if(event.key==='Enter')tdAdd('${x.id}')"><input id="pld-task-due" type="date" class="cred-input" style="width:auto" aria-label="Due date">${CR.team.length>1?`<select id="pld-task-who" aria-label="Who">${crOwnerOptions(x.owner_user_id||(CR.me&&CR.me.userId)).replace('Unassigned','Anyone')}</select>`:''}<button class="btn-xs p" onclick="tdAdd('${x.id}')">Add</button></div>
@@ -836,6 +862,7 @@ async function plOpenDeal(id){
     <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${new Date(a.created_at).toLocaleString()}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
   plDealEstimates(x.id);
   fitLoad(x.id);
+  lfLoad(x.id);
   flLoad(x.id);
   ptLoad(x.id);
   ivLoad(x.id);
@@ -861,6 +888,68 @@ async function fitLoad(dealId){
 }
 async function fitRescore(dealId){try{await plApi('/api/crm/deals/'+dealId+'/rescore',{body:{}});fitLoad(dealId);plLoad();}catch(e){showNotif('Could not score',e.message);}}
 async function fitBrief(dealId,btn){btn.disabled=true;btn.textContent='Writing…';try{await plApi('/api/crm/deals/'+dealId+'/brief',{body:{}});fitLoad(dealId);}catch(e){showNotif('Could not write the brief',e.message);btn.disabled=false;}}
+/* ---------- referrals, partners, home file ---------- */
+const lfDate=d=>d?new Date(String(d).slice(0,10)+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'}):'';
+async function lfLoad(dealId){
+  const el=document.getElementById('pld-life');if(!el)return;
+  try{
+    const d=await plApi('/api/crm/deals/'+dealId+'/lifetime');
+    const job=['signed','production','complete'].includes(el.dataset.stage);
+    const r=d.referrer;
+    el.innerHTML=`<div class="pl-pb">
+      <label for="lf-ref" style="font-size:12px;font-weight:700;display:block">Referred by</label>
+      ${r&&r.kind==='client'?`<div class="sm" style="margin-top:2px">👤 ${uxEsc(r.name)} (a past client)</div>`:`<div style="display:flex;gap:6px"><select id="lf-ref" onchange="lfSetRef('${dealId}',this.value)"><option value="">Nobody / not sure</option>${d.partners.map(p=>`<option value="${p.id}"${r&&r.id===p.id?' selected':''}>${uxEsc(p.name)}${p.company?' · '+uxEsc(p.company):''}</option>`).join('')}</select></div>${d.partners.length?'':'<div class="sm">Add realtors, designers and architects under Account → Referrals &amp; partners.</div>'}`}
+      <label for="lf-link" style="font-size:12px;font-weight:700;display:block;margin-top:10px">This client’s own referral link</label>
+      <div style="display:flex;gap:6px"><input id="lf-link" class="cred-input" readonly value="${uxEsc(d.referralLink)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('lf-link')">Copy</button></div>
+      <div class="sm">Anyone who comes in through it is credited to them. The “Job complete” emails include it.</div>
+    </div>
+    ${job?`<div class="pl-pb" style="margin-top:8px"><div class="pl-item-t">Home file</div><div class="sm" style="margin-top:2px">What went into the house, shown in the homeowner’s portal. Finishing the job adds your workmanship warranty and every selection on its own. Items with a care interval get a reminder email when they’re due (once you approve “Home care reminders” in Automations).</div>
+      <div class="pl-list" style="margin-top:8px">${d.home.map(i=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t" style="font-size:13px">${uxEsc(i.name)}</div><div class="pl-item-d">${uxEsc(d.categories[i.category]||i.category)}${i.details?' · '+uxEsc(i.details):''}${i.warranty_until?' · warranty to '+lfDate(i.warranty_until):''}${i.care_every_months?` · care every ${i.care_every_months} mo, next ${lfDate(i.next_care_at)}`:''}</div></div><button class="btn-xs" onclick="lfDel('${i.id}','${dealId}')" aria-label="Remove item">✕</button></div></div>`).join('')||'<div class="sm">Nothing yet.</div>'}</div>
+      <details style="margin-top:6px"><summary class="btn-xs" style="display:inline-flex;list-style:none;cursor:pointer">＋ Add to the home file</summary>
+        <div class="pl-form" style="margin-top:8px">
+          <div class="full"><label for="hf-name">What it is *</label><input id="hf-name" class="cred-input" placeholder="e.g. Tankless water heater"></div>
+          <div><label for="hf-cat">Kind</label><select id="hf-cat">${Object.entries(d.categories).map(([k,v])=>`<option value="${k}"${k==='appliance'?' selected':''}>${v}</option>`).join('')}</select></div>
+          <div><label for="hf-det">Brand, model, color</label><input id="hf-det" class="cred-input"></div>
+          <div><label for="hf-inst">Installed</label><input id="hf-inst" type="date" class="cred-input"></div>
+          <div><label for="hf-war">Warranty until</label><input id="hf-war" type="date" class="cred-input"></div>
+          <div><label for="hf-every">Care every (months)</label><input id="hf-every" class="cred-input" inputmode="numeric" placeholder="e.g. 12"></div>
+          <div><label for="hf-note">Care needed</label><input id="hf-note" class="cred-input" placeholder="e.g. Flush the tank"></div>
+        </div>
+        <div class="vd-mbtns"><button class="btn-xs p" onclick="lfAdd('${dealId}',this)">Add</button></div><div class="sm" id="hf-msg"></div></details></div>`:''}`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function lfSetRef(dealId,pid){try{await plApi('/api/crm/deals/'+dealId+'/referrer',{method:'PATCH',body:{partnerId:pid||null}});showNotif('Saved','');}catch(e){showNotif('Could not save',e.message);}}
+async function lfAdd(dealId,btn){
+  const v=id=>document.getElementById(id).value;btn.disabled=true;
+  try{await plApi('/api/crm/deals/'+dealId+'/home',{body:{name:v('hf-name'),category:v('hf-cat'),details:v('hf-det'),installedOn:v('hf-inst')||null,warrantyUntil:v('hf-war')||null,careEveryMonths:v('hf-every'),careNote:v('hf-note')}});lfLoad(dealId);}
+  catch(e){document.getElementById('hf-msg').textContent=e.message;btn.disabled=false;}
+}
+async function lfDel(id,dealId){if(!confirm('Remove this from the home file?'))return;try{await plApi('/api/crm/home/'+id,{method:'DELETE'});lfLoad(dealId);}catch(e){showNotif('Could not remove',e.message);}}
+async function rfLoad(){
+  try{
+    const d=await plApi('/api/crm/referrals');const manage=crCanManage();const st=d.settings;
+    const tile=(v,l)=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`;
+    document.getElementById('rf-tot').innerHTML=tile(d.totals.leads,'Referred leads, 12 mo')+tile(d.totals.signed,'Signed')+tile(esMoney(d.totals.revenue),'Signed work');
+    document.getElementById('rf-kind').innerHTML=Object.entries(d.kinds).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+    const dis=manage?'':' disabled';
+    document.getElementById('rf-settings').innerHTML=`<details class="pl-pb" style="margin-top:10px"${st.reviewUrl?'':' open'}><summary style="cursor:pointer;font-weight:800">Rewards, reviews &amp; warranty</summary>
+      <div class="pl-form" style="margin-top:8px">
+        <div><label for="rf-rew">Reward when a referral signs ($)</label><input id="rf-rew" class="cred-input" inputmode="decimal" value="${st.referralReward||''}" placeholder="e.g. 500, or leave blank"${dis}></div>
+        <div><label for="rf-war">Your workmanship warranty (months)</label><input id="rf-war" class="cred-input" inputmode="numeric" value="${st.warrantyMonths}"${dis}></div>
+        <div class="full"><label for="rf-rev">Your review page link (Google, Houzz…)</label><input id="rf-rev" class="cred-input" type="url" value="${uxEsc(st.reviewUrl||'')}" placeholder="https://g.page/r/…"${dis}></div>
+      </div>
+      <div class="sm">${st.reviewUrl?'':'<b>No review link yet:</b> the “Ask for a review” email stays off until you add one. '}In Google Business Profile, tap “Ask for reviews” to copy yours.</div>
+      ${manage?'<div class="vd-mbtns"><button class="btn btn-blue" onclick="rfSave(this)">Save</button></div>':''}</details>`;
+    document.getElementById('rf-rewards').innerHTML=d.rewards.length?d.rewards.map(r=>`<div class="pl-item${r.status==='owed'?' referral':''}"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(r.who||'Someone')}</div><div class="pl-item-d">Sent you ${uxEsc(r.deal_title)} · ${r.amount?esMoney(r.amount):'a thank-you'}${r.status==='paid'?' · thanked '+lfDate(r.paid_at):''}</div></div>${manage?`<button class="btn-xs${r.status==='owed'?' p':''}" onclick="rfPaid('${r.id}',${r.status==='owed'})">${r.status==='owed'?'Mark done':'Undo'}</button>`:''}</div></div>`).join(''):'<div class="pl-empty">When a referred job signs, it shows up here so you remember to thank them.</div>';
+    document.getElementById('rf-partners').innerHTML=d.partners.length?d.partners.map(p=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(p.name)}${p.company?' · '+uxEsc(p.company):''}</div><div class="pl-item-d">${uxEsc(d.kinds[p.kind]||p.kind)} · ${p.leads} lead${p.leads===1?'':'s'} · ${p.signed} signed · ${esMoney(p.revenue)}${p.last_lead_at?' · last '+lfDate(p.last_lead_at):''}</div></div>${manage?`<button class="btn-xs" onclick="rfArchive('${p.id}')" aria-label="Remove partner">✕</button>`:''}</div>
+      <div style="display:flex;gap:6px;margin-top:6px"><input id="rf-l-${p.id}" class="cred-input" readonly value="${uxEsc(p.link)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('rf-l-${p.id}')">Copy</button></div></div>`).join(''):'<div class="pl-empty">No partners yet. Add the realtors, designers and architects who send you work and give each their link.</div>';
+    document.getElementById('rf-clients').innerHTML=d.clients.length?d.clients.map(c=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(c.name)}</div><div class="pl-item-d">${c.leads} referral${c.leads===1?'':'s'} · ${c.signed} signed · ${esMoney(c.revenue)}</div></div>`).join(''):'<div class="pl-empty">Nobody yet. Every finished job’s thank-you email includes the client’s own link.</div>';
+  }catch(e){document.getElementById('rf-partners').innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function rfSave(btn){const v=id=>document.getElementById(id).value;btn.disabled=true;try{await plApi('/api/crm/lifetime/settings',{method:'PATCH',body:{referralReward:v('rf-rew'),warrantyMonths:v('rf-war'),reviewUrl:v('rf-rev')}});showNotif('Saved','');rfLoad();}catch(e){showNotif('Could not save',e.message);btn.disabled=false;}}
+async function rfAdd(btn){const v=id=>document.getElementById(id).value;btn.disabled=true;try{await plApi('/api/crm/partners',{body:{name:v('rf-name'),kind:v('rf-kind'),company:v('rf-co'),phone:v('rf-phone'),email:v('rf-email')}});['rf-name','rf-co','rf-phone','rf-email'].forEach(i=>document.getElementById(i).value='');document.getElementById('rf-msg').textContent='';rfLoad();}catch(e){document.getElementById('rf-msg').textContent=e.message;}btn.disabled=false;}
+async function rfPaid(id,paid){try{await plApi('/api/crm/rewards/'+id,{body:{paid}});rfLoad();}catch(e){showNotif('Could not save',e.message);}}
+async function rfArchive(id){if(!confirm('Remove this partner? Their link stops working; their past leads stay credited.'))return;try{await plApi('/api/crm/partners/'+id,{method:'DELETE'});rfLoad();}catch(e){showNotif('Could not remove',e.message);}}
 const BK_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 async function bkLoad(){
   const el=document.getElementById('pl-booking');if(!el)return;
@@ -1312,7 +1401,7 @@ function plRenderPlaybooks(){
   el.innerHTML=PL.playbooks.map(p=>{
     const pill=p.enabled&&p.approved?'<span class="pl-pill on">● On</span>':p.approved?'<span class="pl-pill">Off</span>':'<span class="pl-pill need">Needs your approval</span>';
     return `<div class="pl-pb" id="pb-${p.id}"><div class="pl-pb-head"><div><div class="pl-item-t">${uxEsc(p.name)}</div><div class="pl-item-d">${p.trigger==='stage'?'When a deal moves to “'+uxEsc(p.stageLabel)+'”':uxEsc(p.stageLabel)} · ${p.steps.length} message${p.steps.length>1?'s':''}${p.sent?' · '+p.sent+' sent so far':''}${p.waiting?' · '+p.waiting+' scheduled':''}</div></div>${pill}</div>
-      ${p.steps.map((s,i)=>{const rg=PB_RANGE[p.trigger]||PB_RANGE.stage;const when=p.trigger==='stage'?`days ${uxEsc(p.when)}${i===0&&s.days===0?' (goes out right away)':''}`:p.trigger==='invoice_due'?`days from the due date (${s.days<0?Math.abs(s.days)+' before':s.days===0?'on the day':s.days+' after'})`:`(${Math.abs(s.days)} day${Math.abs(s.days)===1?'':'s'} ${uxEsc(p.when)})`;
+      ${p.steps.map((s,i)=>{const rg=PB_RANGE[p.trigger]||PB_RANGE.stage;const when=p.trigger==='home_care'?`days ${uxEsc(p.when)}${s.days===0?' (on the day, 9am)':''}`:p.trigger==='stage'?`days ${uxEsc(p.when)}${i===0&&s.days===0?' (goes out right away)':''}`:p.trigger==='invoice_due'?`days from the due date (${s.days<0?Math.abs(s.days)+' before':s.days===0?'on the day':s.days+' after'})`:`(${Math.abs(s.days)} day${Math.abs(s.days)===1?'':'s'} ${uxEsc(p.when)})`;
         return `<div class="pl-step"><div class="pl-step-row"><select data-k="channel" data-i="${i}" aria-label="Send as" onchange="plPbChannel(this)"><option value="email"${s.channel==='sms'?'':' selected'}>Email</option><option value="sms"${s.channel==='sms'?' selected':''}>Text</option></select> ${i+1}: <input type="number" class="cred-input" min="${rg[0]}" max="${rg[1]}" value="${s.days}" data-k="days" data-i="${i}" aria-label="Days"> ${when}</div>
         <input class="cred-input" data-k="subject" data-i="${i}" value="${uxEsc(s.subject)}" aria-label="Subject" style="margin-bottom:5px${s.channel==='sms'?';display:none':''}">
         <textarea class="cred-input" data-k="message" data-i="${i}" rows="${s.channel==='sms'?3:6}" aria-label="Message" style="font-size:13px;line-height:1.5">${uxEsc(s.message)}</textarea></div>`;}).join('')}
@@ -1325,7 +1414,7 @@ function plRenderPlaybooks(){
       </div>`:''}<div class="sm" id="pbmsg-${p.id}"></div></div>`;
   }).join('');
 }
-const PB_RANGE={stage:[0,365],meeting:[-14,-1],estimate_expiry:[-14,-1],invoice_due:[-7,30]};
+const PB_RANGE={stage:[0,365],meeting:[-14,-1],estimate_expiry:[-14,-1],invoice_due:[-7,30],home_care:[0,14],warranty_end:[-60,-1]};
 function plPbSteps(id){
   const box=document.getElementById('pb-'+id);const steps=[];
   box.querySelectorAll('[data-k]').forEach(f=>{const i=+f.dataset.i;steps[i]=steps[i]||{};steps[i][f.dataset.k]=f.dataset.k==='days'?parseInt(f.value,10):f.value;});

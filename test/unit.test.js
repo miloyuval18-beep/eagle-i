@@ -794,7 +794,7 @@ describe('CRM core (lib/crm.js)', () => {
     assert.equal(crm.leadStatusForStage('new'), 'new');
   });
   test('settings fall back to safe defaults', () => {
-    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], smsForwardTo: null, missedCallText: null, missedCallApproved: null, scheduleTemplate: null, minJobValue: null, booking: null, backfilledAt: null });
+    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], smsForwardTo: null, missedCallText: null, missedCallApproved: null, scheduleTemplate: null, minJobValue: null, booking: null, referralReward: null, reviewUrl: null, warrantyMonths: null, backfilledAt: null });
     assert.equal(crm.normalizeSettings({ waitingMinutes: 7 }).waitingMinutes, 30);
     assert.equal(crm.normalizeSettings({ waitingMinutes: '60' }).waitingMinutes, 60);
   });
@@ -1151,5 +1151,33 @@ describe('CRM qualifying', () => {
     assert.match(t, /\$50k–\$100k/);
     assert.match(t, /Hates the tile/);
     assert.doesNotMatch(t, /Address/);
+  });
+});
+
+describe('CRM lifetime', () => {
+  const life = require('../lib/crmLifetime');
+  const pb = require('../lib/crmPlaybooks');
+  test('adding months keeps the day, or the month’s last day', () => {
+    assert.equal(life.addMonths('2026-01-31', 1), '2026-02-28');
+    assert.equal(life.addMonths('2026-10-15', 12), '2027-10-15');
+    assert.equal(life.addMonths('2026-11-30', 3), '2027-02-28');
+  });
+  test('the next care date is always in the future', () => {
+    const now = new Date('2026-10-15T17:00:00Z');
+    assert.equal(life.nextCare('2024-01-10', 12, now), '2027-01-10');
+    assert.equal(life.nextCare('2026-10-15', 6, now), '2027-04-15');
+    assert.equal(life.nextCare(null, 3, now), '2027-01-15');
+    assert.equal(life.nextCare('2024-01-10', null, now), null);
+  });
+  test('home care and warranty playbooks have their own timing rules', () => {
+    assert.equal(pb.validateSteps([{ days: 0, subject: 'Care for {item}', message: '{care_note}' }], 'home_care'), null);
+    assert.match(pb.validateSteps([{ days: -3, subject: 'x', message: 'y' }], 'home_care'), /0 to 14 days after/);
+    assert.equal(pb.validateSteps([{ days: -30, subject: 'Ends {warranty_end}', message: 'Your {item}' }], 'warranty_end'), null);
+    assert.match(pb.validateSteps([{ days: 0, subject: 'x', message: 'y' }], 'warranty_end'), /-1 to -60/);
+    assert.match(pb.validateSteps([{ days: 0, subject: 'x', message: '{item}' }], 'stage'), /not available/);
+    assert.equal(pb.validateSteps([{ days: 7, subject: 'x', message: '{review_link} {referral_link}' }], 'stage'), null);
+  });
+  test('every starter playbook is valid as written', () => {
+    for (const p of pb.DEFAULT_PLAYBOOKS) assert.equal(pb.validateSteps(p.steps, p.trigger), null, p.key);
   });
 });

@@ -69,7 +69,7 @@ async function send(e){
   e.preventDefault();const b=document.getElementById('b'),err=document.getElementById('err');b.disabled=true;err.textContent='';
   const v=id=>document.getElementById(id).value;
   try{
-    const r=await fetch('/api/crm-public/forms/'+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),message:v('message'),company_website:v('company_website'),sms_consent:document.getElementById('sms_consent').checked})});
+    const r=await fetch('/api/crm-public/forms/'+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),message:v('message'),company_website:v('company_website'),ref:new URLSearchParams(location.search).get('ref')||undefined,sms_consent:document.getElementById('sms_consent').checked})});
     const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
     document.getElementById('f').hidden=true;document.getElementById('done').hidden=false;
   }catch(x){err.textContent=x.message;b.disabled=false;}

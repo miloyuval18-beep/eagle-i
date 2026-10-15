@@ -85,10 +85,22 @@ function render(){
   ${docs.length||p.estimates.length?`<div class="card"><h2>Documents</h2>
     ${p.estimates.map(e=>`<div class="row"><a href="${esc(e.link)}">${esc(e.kind)} #${esc(e.number)}: ${esc(e.title)}</a><span class="tag">${esc(e.status)} · ${money(e.total)}</span></div>`).join('')}
     ${docs.map(f=>`<div class="row"><a href="${fileUrl(f.id)}" target="_blank" rel="noopener">${esc(f.caption||f.filename)}</a><span class="tag">PDF</span></div>`).join('')}</div>`:''}
+  ${homeHtml(p)}
   <div class="card"><h2>Message ${esc(p.company.name||'us')}</h2>
     <textarea id="m" rows="4" placeholder="Questions, changes, anything on your mind…" aria-label="Your message"></textarea>
     <div style="margin-top:10px"><button class="btn" id="mb" onclick="send()">Send message</button></div><div class="msg" id="m-msg" role="status"></div></div>`;
 }
+function homeHtml(p){
+  const h=p.home||{items:[]};let out='';
+  const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'}):'';
+  if(h.items.length)out+=`<div class="card"><h2>Your home file</h2><div class="meta" style="margin-bottom:8px">What went into your home, with warranties and care. Keep this link; it’s yours.</div>${h.items.map(i=>`<div style="border-top:1px solid #e3e7eb;padding:10px 0"><b>${esc(i.name)}</b>
+    <div class="tag" style="margin-top:2px">${esc(i.category)}${i.installedOn&&i.category!=='Warranty'?` · installed ${fd(i.installedOn)}`:''}${i.warrantyUntil?` · ${i.category==='Warranty'?'good':'warranty'} through ${fd(i.warrantyUntil)}`:''}</div>
+    ${i.details?`<div class="meta">${esc(i.details)}</div>`:''}${i.careNote?`<div class="meta">Care${i.careEveryMonths?` every ${i.careEveryMonths} month${i.careEveryMonths===1?'':'s'}`:''}: ${esc(i.careNote)}</div>`:''}</div>`).join('')}</div>`;
+  if(h.referralCode){const link=location.origin+'/r/'+h.referralCode;out+=`<div class="card"><h2>Know someone planning a project?</h2><div class="meta">Share your personal link. Anyone who reaches out through it is credited to you, so ${esc(p.company.name||'we')} can say thank you.</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><input type="text" class="nm" id="ref-link" readonly value="${esc(link)}" onclick="this.select()" style="margin:0"><button class="btn btn-o" onclick="shareRef(this)">Share</button></div></div>`;}
+  return out;
+}
+function shareRef(b){const l=document.getElementById('ref-link').value;if(navigator.share){navigator.share({title:(P.company.name||'')+' ',url:l}).catch(()=>{});return;}(navigator.clipboard?navigator.clipboard.writeText(l):Promise.reject()).then(()=>{b.textContent='Copied';}).catch(()=>{document.getElementById('ref-link').select();});}
 function jobHtml(p){
   const j=p.job||{schedule:[],changeOrders:[],selections:[]};let out='';
   const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric'}):'';

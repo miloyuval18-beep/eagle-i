@@ -452,6 +452,26 @@ horizon (Central time), minus visits already booked. Booking sets the visit
 (→ "Site visit set", reminders start) and writes a pre-visit brief (AI when
 `ANTHROPIC_API_KEY` is set, else from the facts) emailed to whoever is going.
 
+**The customer for life (step 14).** `lib/crmLifetime.js`,
+`routes/crmLifetime.js`, Account → Referrals & partners. Every contact and
+every trade partner (`crm_partners`) has a 10-hex code; `/r/<code>` redirects to
+the company's inquiry form with `?ref=`, and a lead from it gets source
+referral/partner and `referred_by_contact_id`/`partner_id` (never yourself).
+Signing a referred deal adds a `crm_referral_rewards` row (the company's reward
+amount) and a "Thank them" item in Needs you, cleared when marked done. The
+scoreboard shows leads, signed jobs and signed value per partner and per
+referring client. New starter playbooks (13 in all): "Ask for a review" (7 days
+after Complete, `{review_link}`; cancelled when the company has no review link),
+"Home care reminders" (trigger `home_care`) and "Warranty check-in" (trigger
+`warranty_end`, 30 days before); the Job-complete email now carries the
+client's `{referral_link}`. The home file (`crm_home_items`) starts itself when a
+job completes (workmanship warranty for the company's warranty months, plus
+every chosen selection); the team adds appliances and systems with a care
+interval. The 5-minute tick queues care reminders as they come due and warranty
+check-ins 60 days out (plus a walkthrough task for the workmanship warranty).
+The portal shows the home file and, once the job is underway, the homeowner's
+own referral link.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

@@ -1163,7 +1163,7 @@ describe('pipeline (CRM)', () => {
   test('playbooks start off, need approval, and lose it when the wording changes', async () => {
     const client = await signup('crm-pb');
     const list = (await (await client.get('/api/crm/playbooks')).json()).playbooks;
-    assert.equal(list.length, 10);
+    assert.equal(list.length, 13);
     assert.ok(list.every(p => !p.enabled && !p.approved));
     const p = list.find(x => x.key === 'proposal_follow_up');
     assert.equal((await client.post(`/api/crm/playbooks/${p.id}/enabled`, { enabled: true })).status, 400);
@@ -1717,5 +1717,55 @@ describe('CRM qualifying and booking', () => {
     assert.equal((await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' })).status, 200);
     assert.equal((await m.patch('/api/crm/qualify/settings', { minJobValue: 1 })).status, 403);
     assert.equal((await m.get('/api/crm/qualify/settings')).status, 200);
+  });
+});
+
+describe('CRM referrals, partners and the home file', () => {
+  test('referral links credit the lead; partners and rewards are for the team; the home file shows in the portal', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('life'), password: 'TestPass1234!', companyName: 'Life Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    assert.equal((await o.patch('/api/crm/lifetime/settings', { reviewUrl: 'http://not-secure.test' })).status, 400);
+    assert.equal((await o.patch('/api/crm/lifetime/settings', { reviewUrl: 'https://g.page/r/x', referralReward: '250', warrantyMonths: 24 })).status, 200);
+    const { partner } = await (await o.post('/api/crm/partners', { name: 'Dana Designs', kind: 'designer' })).json();
+    const board = await (await o.get('/api/crm/referrals')).json();
+    const link = board.partners.find(p => p.id === partner.id).link;
+    // The link goes to the inquiry form; submitting it credits the partner.
+    const anon = makeClient();
+    const go = await anon.get(new URL(link).pathname);
+    assert.equal(go.status, 302);
+    const form = new URL(go.headers.get('location'), link);
+    assert.equal(form.searchParams.get('ref'), partner.code);
+    assert.equal((await anon.get('/r/0000000000')).status, 404);
+    const key = form.pathname.split('/crm/f/')[1];
+    assert.equal((await anon.post(`/api/crm-public/forms/${key}`, { name: 'Lee Park', email: 'lee@life.test', message: 'Kitchen', ref: partner.code })).status, 200);
+    const pipe = await (await o.get('/api/crm/pipeline')).json();
+    const lee = pipe.deals.find(x => x.contact_name === 'Lee Park');
+    assert.equal(lee.source, 'partner');
+    const lt = await (await o.get(`/api/crm/deals/${lee.id}/lifetime`)).json();
+    assert.equal(lt.referrer.name, 'Dana Designs');
+    assert.match(lt.referralLink, /\/r\/[0-9a-f]{10}$/);
+    // Signing owes the reward; finishing adds the warranty to the home file.
+    await o.patch(`/api/crm/deals/${lee.id}`, { stage: 'signed' });
+    const after = await (await o.get('/api/crm/referrals')).json();
+    assert.equal(after.rewards.length, 1); assert.equal(Number(after.rewards[0].amount), 250);
+    assert.equal((await o.post(`/api/crm/deals/${lee.id}/home`, { name: '' })).status, 400);
+    assert.equal((await o.post(`/api/crm/deals/${lee.id}/home`, { name: 'Range hood', category: 'appliance', careEveryMonths: 3, careNote: 'Wash the filters' })).status, 200);
+    await o.patch(`/api/crm/deals/${lee.id}`, { stage: 'complete' });
+    const home = (await (await o.get(`/api/crm/deals/${lee.id}/lifetime`)).json()).home;
+    assert.ok(home.some(i => i.category === 'warranty'));
+    const fit = await (await o.get(`/api/crm/deals/${lee.id}/fit`)).json();
+    const token = fit.links.questionnaire.split('/q/')[1];
+    const view = (await (await anon.get(`/api/crm-public/portal/${token}`)).json()).portal;
+    assert.ok(view.home.items.some(i => i.name === 'Range hood' && i.careNote === 'Wash the filters'));
+    assert.match(view.home.referralCode, /^[0-9a-f]{10}$/);
+    // Members can add partners but not change rewards or remove partners.
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('life-m'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    assert.equal((await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' })).status, 200);
+    assert.equal((await m.post('/api/crm/partners', { name: 'Ray Realty', kind: 'realtor' })).status, 200);
+    assert.equal((await m.delete(`/api/crm/partners/${partner.id}`)).status, 403);
+    assert.equal((await m.post(`/api/crm/rewards/${after.rewards[0].id}`, { paid: true })).status, 403);
+    assert.equal((await m.patch('/api/crm/lifetime/settings', { referralReward: 1 })).status, 403);
   });
 });
