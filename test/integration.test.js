@@ -1769,3 +1769,32 @@ describe('CRM referrals, partners and the home file', () => {
     assert.equal((await m.patch('/api/crm/lifetime/settings', { referralReward: 1 })).status, 403);
   });
 });
+
+describe('CRM marketing and backlog', () => {
+  test('ad leads are labelled; spend and targets are for owners/admins; everyone can see the numbers', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('mk'), password: 'TestPass1234!', companyName: 'Mk Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const info = await (await o.get('/api/crm/intake')).json();
+    assert.match(info.embedCode, /<script>/);
+    const key = info.formUrl.split('/crm/f/')[1];
+    assert.equal((await makeClient().post(`/api/crm-public/forms/${key}`, { name: 'Ann Ads', email: 'ann@mk.test', utm: { gclid: 'abc', utm_campaign: 'spring' } })).status, 200);
+    const deal = (await (await o.get('/api/crm/pipeline')).json()).deals.find(d => d.contact_name === 'Ann Ads');
+    assert.equal(deal.source, 'google_ads');
+    const month = new Date().toISOString().slice(0, 7);
+    assert.equal((await o.post('/api/crm/marketing/spend', { source: 'google_ads', month, amount: '2,500' })).status, 200);
+    assert.equal((await o.post('/api/crm/marketing/spend', { source: 'google_ads', month, amount: 'lots' })).status, 400);
+    assert.equal((await o.patch('/api/crm/marketing/settings', { monthlyCapacity: '100000', lowWeeks: 6, highWeeks: 16 })).status, 200);
+    const d = await (await o.get('/api/crm/marketing?months=3')).json();
+    const g = d.report.channels.find(c => c.source === 'google_ads');
+    assert.equal(g.leads, 1); assert.equal(g.spend, 2500); assert.equal(g.costPerLead, 2500);
+    assert.equal(d.backlog.settings.lowWeeks, 6); assert.equal(d.backlog.weeksBooked, 0); assert.equal(d.backlog.advice.level, 'ramp');
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('mk-m'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    assert.equal((await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' })).status, 200);
+    assert.equal((await m.get('/api/crm/marketing')).status, 200);
+    assert.equal((await m.post('/api/crm/marketing/spend', { source: 'facebook', month, amount: 1 })).status, 403);
+    assert.equal((await m.delete(`/api/crm/marketing/spend/${d.spend[0].id}`)).status, 403);
+    assert.equal((await m.patch('/api/crm/marketing/settings', { monthlyCapacity: 1 })).status, 403);
+  });
+});

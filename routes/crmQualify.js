@@ -77,7 +77,7 @@ router.post('/api/crm-public/book/:key', wrap('Failed to book', async (req, res)
   if (limited(req.ip)) return res.status(429).json({ error: { message: 'Too many attempts. Please try again later.' } });
   const b = req.body || {};
   if (b.company_website) return res.json({ ok: true }); // honeypot
-  res.json({ ok: true, ...(await q.bookNew({ key: req.params.key, name: b.name, email: b.email, phone: b.phone, address: b.address, notes: b.notes, slot: b.slot, baseUrl: baseUrlOf(req) })) });
+  res.json({ ok: true, ...(await q.bookNew({ key: req.params.key, name: b.name, email: b.email, phone: b.phone, address: b.address, notes: b.notes, slot: b.slot, utm: b.utm, baseUrl: baseUrlOf(req) })) });
 }));
 
 module.exports = router;

@@ -56,6 +56,7 @@ const crmJobRoutes = require('./routes/crmJobs');
 const crmCostRoutes = require('./routes/crmCosts');
 const crmQualifyRoutes = require('./routes/crmQualify');
 const crmLifetimeRoutes = require('./routes/crmLifetime');
+const crmMarketingRoutes = require('./routes/crmMarketing');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -174,6 +175,9 @@ app.use(workWithUsRoutes);
 app.use(sendingDomainRoutes);
 app.use(photoRequestsRoutes);
 app.use(redditLeadsRoutes);
+// CRM answers are live business data (and the homeowner's private pages):
+// never let a browser or proxy show a stale copy.
+app.use(['/api/crm', '/api/crm-public'], (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 app.use(crmRoutes);
 app.use(crmEstimateRoutes); // after crmRoutes: their /api/crm/* routes rely on that sign-in check
 app.use(crmIntakeRoutes);
@@ -186,6 +190,7 @@ app.use(crmJobRoutes);
 app.use(crmCostRoutes);
 app.use(crmQualifyRoutes);
 app.use(crmLifetimeRoutes);
+app.use(crmMarketingRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
@@ -193,6 +198,8 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 // Eagle I CRM: a separate product with its own app, login and signup.
 app.get(['/crm', '/crm/'], (req, res) => {
   if (!req.session || !req.session.userId) return res.redirect('/crm/login');
+  // Always check for a newer copy, so a deploy's page never runs against an older or newer server.
+  res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'crm.html'));
 });
 app.get('/crm/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm-login.html')));

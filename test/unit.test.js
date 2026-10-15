@@ -794,7 +794,7 @@ describe('CRM core (lib/crm.js)', () => {
     assert.equal(crm.leadStatusForStage('new'), 'new');
   });
   test('settings fall back to safe defaults', () => {
-    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], smsForwardTo: null, missedCallText: null, missedCallApproved: null, scheduleTemplate: null, minJobValue: null, booking: null, referralReward: null, reviewUrl: null, warrantyMonths: null, backfilledAt: null });
+    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], smsForwardTo: null, missedCallText: null, missedCallApproved: null, scheduleTemplate: null, minJobValue: null, booking: null, referralReward: null, reviewUrl: null, warrantyMonths: null, monthlyCapacity: null, backlogLowWeeks: null, backlogHighWeeks: null, backfilledAt: null });
     assert.equal(crm.normalizeSettings({ waitingMinutes: 7 }).waitingMinutes, 30);
     assert.equal(crm.normalizeSettings({ waitingMinutes: '60' }).waitingMinutes, 60);
   });
@@ -1179,5 +1179,43 @@ describe('CRM lifetime', () => {
   });
   test('every starter playbook is valid as written', () => {
     for (const p of pb.DEFAULT_PLAYBOOKS) assert.equal(pb.validateSteps(p.steps, p.trigger), null, p.key);
+  });
+});
+
+describe('CRM marketing', () => {
+  const mk = require('../lib/crmMarketing');
+  test('ad clicks and campaign tags name the channel', () => {
+    assert.equal(mk.channelFromUtm({ gclid: 'abc' }), 'google_ads');
+    assert.equal(mk.channelFromUtm({ utm_source: 'google', utm_medium: 'cpc' }), 'google_ads');
+    assert.equal(mk.channelFromUtm({ utm_source: 'google', utm_medium: 'organic' }), null, 'organic search is just the website');
+    assert.equal(mk.channelFromUtm({ utm_source: 'google', utm_medium: 'lsa' }), 'google_lsa');
+    assert.equal(mk.channelFromUtm({ fbclid: 'x' }), 'facebook');
+    assert.equal(mk.channelFromUtm({ utm_source: 'ig' }), 'facebook');
+    assert.equal(mk.channelFromUtm({ utm_source: 'nextdoor' }), 'nextdoor');
+    assert.equal(mk.channelFromUtm({ referrer: 'www.houzz.com' }), 'houzz');
+    assert.equal(mk.channelFromUtm(null), null);
+  });
+  test('tags are cleaned: known keys only, referrer as a host name', () => {
+    assert.deepEqual(mk.cleanUtm({ gclid: ' a ', evil: '<x>', referrer: 'https://www.facebook.com/some/path?q=1' }), { gclid: 'a', referrer: 'www.facebook.com' });
+    assert.equal(mk.cleanUtm({ referrer: 'javascript:alert(1)' }), null);
+    assert.equal(mk.cleanUtm('nope'), null);
+  });
+  test('months are the 1st', () => {
+    assert.equal(mk.monthStart('2026-09'), '2026-09-01');
+    assert.equal(mk.monthStart('2026-09-17'), '2026-09-01');
+    assert.throws(() => mk.monthStart('2026-13'), /month/);
+  });
+  test('backlog advice: ramp up into the cheapest channel, ease off the costliest', () => {
+    const channels = [
+      { source: 'google_ads', spend: 6000, signed: 3, costPerSigned: 2000 },
+      { source: 'angi', spend: 3000, signed: 0, costPerSigned: null },
+      { source: 'facebook', spend: 4000, signed: 1, costPerSigned: 4000 }
+    ];
+    const ramp = mk.backlogAdvice({ weeksBooked: 4, lowWeeks: 8, highWeeks: 20, channels });
+    assert.equal(ramp.level, 'ramp'); assert.match(ramp.text, /Google Ads/); assert.match(ramp.text, /\$2,000/);
+    const ease = mk.backlogAdvice({ weeksBooked: 26, lowWeeks: 8, highWeeks: 20, channels });
+    assert.equal(ease.level, 'ease'); assert.match(ease.text, /Angi/); assert.match(ease.text, /nothing signed yet/);
+    assert.equal(mk.backlogAdvice({ weeksBooked: 12, lowWeeks: 8, highWeeks: 20, channels }).level, 'hold');
+    assert.equal(mk.backlogAdvice({ weeksBooked: null, lowWeeks: 8, highWeeks: 20 }).level, 'unknown');
   });
 });

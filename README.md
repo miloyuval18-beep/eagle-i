@@ -472,6 +472,24 @@ check-ins 60 days out (plus a walkthrough task for the workmanship warranty).
 The portal shows the home file and, once the job is underway, the homeowner's
 own referral link.
 
+**Marketing & backlog (step 15).** `lib/crmMarketing.js`,
+`routes/crmMarketing.js`, Account → Marketing & backlog. The inquiry form and
+public booking page send the page's `gclid`/`fbclid`/`utm_*` tags and referrer
+(the embed snippet passes the host page's query into the iframe); they're
+stored on `crm_deals.utm` and pick the source (new sources: Google Ads, Google
+Local Services, Facebook & Instagram, Nextdoor, home show, yard signs).
+Owners/admins enter monthly spend per channel (`crm_marketing_spend`, one row
+per channel per month), with a "Needs you" nudge on the 2nd for companies that
+track spend. Per channel over 3–24 months: spend, leads, good fits (A/B), site
+visits, signed jobs and value, cost per lead, cost per signed job, signed
+value per $1. Backlog = signed jobs + the unfinished share of jobs underway
+(by schedule phases), against monthly capacity (set, or the last year's
+completed work) → "booked N weeks out", plus the pipeline weighted by win rate
+per stage (from two years of closed deals, defaults under 5). Below the low
+mark it says which channel signs jobs cheapest; above the high mark, which to
+cut first. The weekly report carries it. CRM API responses are now
+`Cache-Control: no-store` and the CRM page `no-cache`.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

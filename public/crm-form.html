@@ -64,12 +64,13 @@ textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.1
 <script>
 const key=location.pathname.split('/').pop();
 if(new URLSearchParams(location.search).get('embed'))document.body.classList.add('embed');
+function pageTags(){const q=new URLSearchParams(location.search),o={};['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','gbraid','wbraid','fbclid','msclkid'].forEach(k=>{const v=q.get(k);if(v)o[k]=v;});if(document.referrer&&!document.referrer.startsWith(location.origin))o.referrer=document.referrer;return Object.keys(o).length?o:undefined;}
 fetch('/api/crm-public/forms/'+key).then(r=>r.json().then(d=>{if(!r.ok)throw new Error(d.error&&d.error.message);document.getElementById('co').textContent='Contact '+d.companyName;})).catch(e=>{document.getElementById('f').hidden=true;document.querySelector('.tag').textContent=e.message||'This form is no longer active.';});
 async function send(e){
   e.preventDefault();const b=document.getElementById('b'),err=document.getElementById('err');b.disabled=true;err.textContent='';
   const v=id=>document.getElementById(id).value;
   try{
-    const r=await fetch('/api/crm-public/forms/'+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),message:v('message'),company_website:v('company_website'),ref:new URLSearchParams(location.search).get('ref')||undefined,sms_consent:document.getElementById('sms_consent').checked})});
+    const r=await fetch('/api/crm-public/forms/'+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),message:v('message'),company_website:v('company_website'),ref:new URLSearchParams(location.search).get('ref')||undefined,utm:pageTags(),sms_consent:document.getElementById('sms_consent').checked})});
     const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
     document.getElementById('f').hidden=true;document.getElementById('done').hidden=false;
   }catch(x){err.textContent=x.message;b.disabled=false;}

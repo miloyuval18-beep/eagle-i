@@ -79,6 +79,11 @@ select{width:auto;cursor:pointer}
 .pl-item.estimate_accepted,.pl-item.payment,.pl-item.job_done{border-left:4px solid var(--green)}
 .pl-item.vendor_insurance,.pl-item.over_budget{border-left:4px solid var(--amber)}
 .pl-item.referral{border-left:4px solid var(--green)}
+.mk-big{font-size:28px;font-weight:800;letter-spacing:-.01em}
+.mk-adv{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px;line-height:1.45;border:1px solid var(--bdr2)}
+.mk-adv.ramp{border-color:rgba(160,110,0,.5);background:rgba(160,110,0,.07)}
+.mk-adv.ease{border-color:var(--accent);background:rgba(40,80,130,.06)}
+.mk-adv.hold{border-color:rgba(60,110,70,.45);background:rgba(60,110,70,.07)}
 @media(max-width:520px){.es-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.cr-tab{padding:10px 8px;font-size:14px}.cr-nav{padding:0 6px;gap:0}.cr-company{display:none}}
 @media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.st{font-size:21px}}
@@ -150,6 +155,7 @@ select{width:auto;cursor:pointer}
       <button onclick="crMenu(false);crView('auto')">Automations</button>
       <button id="cr-reports-link" onclick="crMenu(false);crView('reports')" hidden>Weekly reports</button>
       <button onclick="crMenu(false);crView('refs')">Referrals &amp; partners</button>
+      <button onclick="crMenu(false);crView('growth')">Marketing &amp; backlog</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
@@ -233,6 +239,15 @@ select{width:auto;cursor:pointer}
     <div class="ss" style="margin-bottom:10px">Your own items with cost and markup, ready to drop into any estimate. Homeowners only ever see prices.</div>
     <div id="cat-form"></div>
     <div class="pl-list" id="cat-list"><div class="pl-empty">Loading…</div></div>
+  </section>
+  <section class="view" id="view-growth">
+    <div class="sh"><div><div class="st">Marketing &amp; backlog</div><div class="ss">Which channels bring in signed work and what each one costs, and how far out you’re booked, so you know when to spend more on ads and when to ease off.</div></div></div>
+    <div id="mk-backlog"><div class="sm">Loading…</div></div>
+    <div class="pl-card-top" style="margin-top:18px"><div class="pl-h" style="margin:0">Where your work comes from</div><select id="mk-months" aria-label="Period" onchange="mkLoad()" style="width:auto"><option value="3">3 months</option><option value="6">6 months</option><option value="12" selected>12 months</option><option value="24">24 months</option></select></div>
+    <div class="pl-strip" id="mk-tot" style="margin-top:8px"></div>
+    <div class="pl-list" id="mk-channels"></div>
+    <div class="pl-h">Marketing spend</div>
+    <div id="mk-spend"></div>
   </section>
   <section class="view" id="view-refs">
     <div class="sh"><div><div class="st">Referrals &amp; partners</div><div class="ss">Every past client and every trade partner gets their own link. Anyone who comes in through it is credited to them, and when that job signs Eagle I reminds you to thank them. Finished jobs get a review request and a home file with care reminders on their own.</div></div></div>
@@ -331,6 +346,7 @@ function crView(v){
   if(v==='reports')rpLoad();
   if(v==='jobs')jbList();
   if(v==='refs')rfLoad();
+  if(v==='growth')mkLoad();
   try{history.replaceState(null,'','#'+v);}catch(e){}
   window.scrollTo(0,0);
 }
@@ -351,7 +367,7 @@ async function crInit(){
   }
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
-  crView(['pipeline','needs','jobs','estimates','auto','team','company','reports','refs'].includes(start)?start:'pipeline');
+  crView(['pipeline','needs','jobs','estimates','auto','team','company','reports','refs','growth'].includes(start)?start:'pipeline');
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
 }
@@ -703,7 +719,7 @@ async function coSave(btn){
 <script>
 /* ==================== PIPELINE (CRM) ==================== */
 const PL={data:null,filter:'open',playbooks:null,settings:null};
-const PL_SOURCES=[['manual','Added by hand'],['landing_page','Landing page'],['website','Website'],['phone','Phone call'],['referral','Referral'],['repeat','Past client'],['partner','Trade partner'],['houzz','Houzz'],['angi','Angi'],['thumbtack','Thumbtack'],['other','Other']];
+const PL_SOURCES=[['manual','Added by hand'],['landing_page','Landing page'],['website','Website'],['phone','Phone call'],['referral','Referral'],['repeat','Past client'],['partner','Trade partner'],['google_ads','Google Ads'],['google_lsa','Google Local Services'],['facebook','Facebook & Instagram'],['nextdoor','Nextdoor'],['houzz','Houzz'],['angi','Angi'],['thumbtack','Thumbtack'],['home_show','Home show'],['signs','Yard signs'],['other','Other']];
 const plSourceLabel=k=>(PL_SOURCES.find(s=>s[0]===k)||[k,k])[1];
 const plMoney=n=>n==null||n===''?'':'$'+Math.round(Number(n)).toLocaleString('en-US');
 function plAgo(ts){
@@ -950,6 +966,46 @@ async function rfSave(btn){const v=id=>document.getElementById(id).value;btn.dis
 async function rfAdd(btn){const v=id=>document.getElementById(id).value;btn.disabled=true;try{await plApi('/api/crm/partners',{body:{name:v('rf-name'),kind:v('rf-kind'),company:v('rf-co'),phone:v('rf-phone'),email:v('rf-email')}});['rf-name','rf-co','rf-phone','rf-email'].forEach(i=>document.getElementById(i).value='');document.getElementById('rf-msg').textContent='';rfLoad();}catch(e){document.getElementById('rf-msg').textContent=e.message;}btn.disabled=false;}
 async function rfPaid(id,paid){try{await plApi('/api/crm/rewards/'+id,{body:{paid}});rfLoad();}catch(e){showNotif('Could not save',e.message);}}
 async function rfArchive(id){if(!confirm('Remove this partner? Their link stops working; their past leads stay credited.'))return;try{await plApi('/api/crm/partners/'+id,{method:'DELETE'});rfLoad();}catch(e){showNotif('Could not remove',e.message);}}
+/* ---------- marketing & backlog ---------- */
+async function mkLoad(){
+  try{
+    const months=(document.getElementById('mk-months')||{}).value||12;
+    const d=await plApi('/api/crm/marketing?months='+months);const b=d.backlog;const manage=crCanManage();const dis=manage?'':' disabled';
+    const tile=(v,l)=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`;
+    const m0=n=>'$'+Math.round(n||0).toLocaleString();
+    document.getElementById('mk-backlog').innerHTML=`<div class="pl-pb">
+      <div class="sm" style="margin-top:0">Signed work still to do</div>
+      <div class="mk-big">${b.weeksBooked==null?m0(b.backlogValue):Math.round(b.weeksBooked)<1?'Nothing booked ahead':`Booked ${Math.round(b.weeksBooked)} week${Math.round(b.weeksBooked)===1?'':'s'} out`}</div>
+      <div class="mk-adv ${b.advice.level}">${uxEsc(b.advice.text)}</div>
+      <div class="pl-strip" style="margin-top:10px">${tile(m0(b.backlogValue),`Signed work not done (${b.jobs} job${b.jobs===1?'':'s'})`)}${tile(m0(b.pipelineWeighted),'Likely to sign from your pipeline')}${tile(b.monthlyCapacity?m0(b.monthlyCapacity):'—',b.capacitySource==='history'?'Done a month (from your last year)':'Your crew can do a month')}${tile(b.weeksWithPipeline==null?'—':Math.round(b.weeksWithPipeline)+' wks','Booked, counting likely wins')}</div>
+      <details style="margin-top:8px"${b.monthlyCapacity?'':' open'}><summary class="btn-xs" style="display:inline-flex;list-style:none;cursor:pointer">Your capacity &amp; targets</summary>
+        <div class="pl-form" style="margin-top:8px">
+          <div class="full"><label for="mk-cap">Work your crew can do in a month ($)</label><input id="mk-cap" class="cred-input" inputmode="decimal" value="${b.settings.monthlyCapacity||''}" placeholder="${b.capacitySource==='history'?'From your history: '+m0(b.monthlyCapacity):'e.g. 250,000'}"${dis}></div>
+          <div><label for="mk-lo">Ramp up below (weeks)</label><input id="mk-lo" class="cred-input" inputmode="numeric" value="${b.settings.lowWeeks}"${dis}></div>
+          <div><label for="mk-hi">Ease off above (weeks)</label><input id="mk-hi" class="cred-input" inputmode="numeric" value="${b.settings.highWeeks}"${dis}></div>
+        </div>
+        <div class="sm">Jobs underway count by the share of their schedule still to do. Leave capacity blank to use what you finished over the last year.</div>
+        ${manage?'<div class="vd-mbtns"><button class="btn-xs p" onclick="mkSaveCap(this)">Save</button></div>':''}</details>
+    </div>`;
+    const t=d.report.total;
+    document.getElementById('mk-tot').innerHTML=tile(m0(t.spend),'Spent')+tile(t.leads,'Leads')+tile(t.signed,'Signed')+tile(t.spend?(Math.round(t.paidSignedValue/t.spend*10)/10)+'×':'—','Signed per $1 of ads');
+    document.getElementById('mk-channels').innerHTML=d.report.channels.length?d.report.channels.map(c=>`<div class="pl-item"><div class="pl-card-top"><div class="pl-item-t">${uxEsc(d.labels[c.source]||c.source)}</div><div class="pl-card-val" style="font-size:14px">${m0(c.signedValue)}</div></div>
+      <div class="pl-item-d">${c.leads} lead${c.leads===1?'':'s'} · ${c.goodFits} good fit${c.goodFits===1?'':'s'} · ${c.visits} visit${c.visits===1?'':'s'} · ${c.signed} signed</div>
+      ${c.spend?`<div class="pl-tags"><span class="pl-tag">Spent ${m0(c.spend)}</span>${c.costPerLead!=null?`<span class="pl-tag">${m0(c.costPerLead)} a lead</span>`:''}<span class="pl-tag${c.signed?'':' warn'}">${c.costPerSigned!=null?m0(c.costPerSigned)+' a signed job':'nothing signed yet'}</span>${c.returnPerDollar!=null&&c.signed?`<span class="pl-tag${c.returnPerDollar>=5?' auto':''}">${c.returnPerDollar}× back</span>`:''}</div>`:''}</div>`).join(''):'<div class="pl-empty">No leads in this period yet.</div>';
+    const last=new Date();last.setDate(1);last.setMonth(last.getMonth()-1);const lm=last.toISOString().slice(0,7);
+    document.getElementById('mk-spend').innerHTML=(manage?`<div class="pl-pb"><div class="sm" style="margin-top:0">Enter what you spent on each channel each month. Eagle I reminds you on the 2nd.</div>
+      <div class="pl-form" style="margin-top:8px">
+        <div><label for="mk-m">Month</label><input id="mk-m" type="month" class="cred-input" value="${lm}"></div>
+        <div><label for="mk-src">Channel</label><select id="mk-src">${d.channels.map(([k,l])=>`<option value="${k}">${uxEsc(l)}</option>`).join('')}</select></div>
+        <div><label for="mk-amt">Amount ($)</label><input id="mk-amt" class="cred-input" inputmode="decimal"></div>
+        <div><label for="mk-note">Note</label><input id="mk-note" class="cred-input" placeholder="optional"></div>
+      </div><div class="vd-mbtns"><button class="btn btn-blue" onclick="mkAddSpend(this)">Save spend</button></div><div class="sm" id="mk-msg"></div></div>`:'')+
+      (d.spend.length?'<div class="pl-list" style="margin-top:8px">'+d.spend.map(x=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t" style="font-size:13px">${uxEsc(d.labels[x.source]||x.source)} · ${new Date(String(x.month).slice(0,10)+'T12:00:00Z').toLocaleDateString([], {month:'short',year:'numeric'})}</div>${x.note?`<div class="pl-item-d">${uxEsc(x.note)}</div>`:''}</div><div style="display:flex;gap:6px;align-items:center"><b>${m0(x.amount)}</b>${manage?`<button class="btn-xs" onclick="mkDelSpend('${x.id}')" aria-label="Delete">✕</button>`:''}</div></div></div>`).join('')+'</div>':'<div class="pl-empty" style="margin-top:8px">No spend entered yet.</div>');
+  }catch(e){document.getElementById('mk-backlog').innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function mkSaveCap(btn){const v=id=>document.getElementById(id).value;btn.disabled=true;try{await plApi('/api/crm/marketing/settings',{method:'PATCH',body:{monthlyCapacity:v('mk-cap'),lowWeeks:v('mk-lo'),highWeeks:v('mk-hi')}});showNotif('Saved','');mkLoad();}catch(e){showNotif('Could not save',e.message);btn.disabled=false;}}
+async function mkAddSpend(btn){const v=id=>document.getElementById(id).value;btn.disabled=true;try{await plApi('/api/crm/marketing/spend',{body:{month:v('mk-m'),source:v('mk-src'),amount:v('mk-amt'),note:v('mk-note')}});showNotif('Saved','');mkLoad();}catch(e){document.getElementById('mk-msg').textContent=e.message;btn.disabled=false;}}
+async function mkDelSpend(id){if(!confirm('Delete this spend entry?'))return;try{await plApi('/api/crm/marketing/spend/'+id,{method:'DELETE'});mkLoad();}catch(e){showNotif('Could not delete',e.message);}}
 const BK_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 async function bkLoad(){
   const el=document.getElementById('pl-booking');if(!el)return;
@@ -1297,7 +1353,7 @@ async function plLoadNeeds(){
     el.innerHTML=items.map(i=>`<div class="pl-item ${i.kind}"><div class="pl-item-t">${uxEsc(i.title)}</div><div class="pl-tl-meta">Flagged ${plAgo(i.created_at)} ago</div>
       ${i.deal_title?`<div class="pl-item-d">${uxEsc(i.deal_title)}${i.deal_stage?' · '+uxEsc(plStage(i.deal_stage).label):''}</div>`:''}
       ${i.detail?`<div class="pl-item-d">${uxEsc(i.detail)}</div>`:''}
-      <div class="pl-acts">${i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
+      <div class="pl-acts">${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&i.kind!=='referral'?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
         <button class="btn-xs" onclick="plInboxAct(${i.id},'done')">✓ Done</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',1)">Snooze 1 day</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',3)">3 days</button></div></div>`).join('');

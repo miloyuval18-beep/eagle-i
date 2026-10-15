@@ -93,10 +93,11 @@ fetch(api).then(r=>r.json().then(d=>{if(!r.ok)throw new Error(d.error&&d.error.m
   if(mode==='new')document.getElementById('who').hidden=false;
   document.getElementById('pick').hidden=false;render();
 })).catch(e=>{document.getElementById('tag').textContent=e.message||'This link is not valid.';});
+function pageTags(){const q=new URLSearchParams(location.search),o={};['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','gbraid','wbraid','fbclid','msclkid'].forEach(k=>{const v=q.get(k);if(v)o[k]=v;});if(document.referrer&&!document.referrer.startsWith(location.origin))o.referrer=document.referrer;return Object.keys(o).length?o:undefined;}
 async function book(){
   const b=document.getElementById('b'),err=document.getElementById('err');b.disabled=true;err.textContent='';
   const v=id=>(document.getElementById(id)||{}).value;
-  const body=mode==='new'?{slot,name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),notes:v('notes'),company_website:v('company_website')}:{slot};
+  const body=mode==='new'?{slot,name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),notes:v('notes'),company_website:v('company_website'),utm:pageTags()}:{slot};
   try{const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong.');
     document.getElementById('pick').hidden=true;const done=document.getElementById('done');done.hidden=false;done.innerHTML='✓ You’re booked for <b>'+fmtLong(d.at||slot)+'</b>.<br>We’ll send a reminder the day before.';
   }catch(x){err.textContent=x.message;b.disabled=false;}
