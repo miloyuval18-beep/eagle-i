@@ -76,7 +76,8 @@ select{width:auto;cursor:pointer}
 .pl-pill.sent{color:var(--accent);border-color:var(--accent)}
 .pl-pill.accepted{color:var(--green);border-color:var(--green);background:rgba(44,110,73,.08)}
 .pl-pill.declined{color:var(--red);border-color:var(--red)}
-.pl-item.estimate_accepted,.pl-item.payment{border-left:4px solid var(--green)}
+.pl-item.estimate_accepted,.pl-item.payment,.pl-item.job_done{border-left:4px solid var(--green)}
+.pl-item.vendor_insurance{border-left:4px solid var(--amber)}
 @media(max-width:520px){.es-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.cr-tab{padding:10px 8px;font-size:14px}.cr-nav{padding:0 6px;gap:0}.cr-company{display:none}}
 @media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.st{font-size:21px}}
@@ -140,6 +141,7 @@ select{width:auto;cursor:pointer}
     <button class="cr-menu-btn" id="cr-menu-btn" aria-haspopup="true" aria-expanded="false" onclick="crMenu()">Account ▾</button>
     <div class="cr-menu" id="cr-menu" role="menu">
       <div class="who" id="cr-who"></div>
+      <button onclick="crMenu(false);crView('auto')">Automations</button>
       <button id="cr-reports-link" onclick="crMenu(false);crView('reports')" hidden>Weekly reports</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
@@ -151,8 +153,8 @@ select{width:auto;cursor:pointer}
   <nav class="cr-nav" id="cr-nav" aria-label="CRM sections">
     <button class="cr-tab active" data-view="pipeline" onclick="crView('pipeline')">Pipeline</button>
     <button class="cr-tab" data-view="needs" onclick="crView('needs')">Today<span class="tbadge" id="pl-needs-badge">0</span></button>
-    <button class="cr-tab" data-view="estimates" onclick="crView('estimates')">Estimates</button>
-    <button class="cr-tab" data-view="auto" onclick="crView('auto')">Automations</button>
+    <button class="cr-tab" data-view="jobs" onclick="crView('jobs')">Jobs</button>
+    <button class="cr-tab" data-view="estimates" onclick="crView('estimates')">Money</button>
   </nav>
 </header>
 <main class="wrap" id="cr-main">
@@ -194,8 +196,23 @@ select{width:auto;cursor:pointer}
     <div class="pl-h">Playbooks</div>
     <div id="pl-playbooks"><div class="pl-empty">Loading…</div></div>
   </section>
+  <section class="view" id="view-jobs">
+    <div class="sh"><div><div class="st">Jobs</div><div class="ss">Every signed job: where it stands, what's next, and what's waiting on the homeowner. A signed contract gets its schedule laid out on its own.</div></div></div>
+    <div class="pl-list" id="jb-list"><div class="pl-empty">Loading…</div></div>
+    <div class="pl-h">Subs &amp; vendors</div>
+    <details class="pl-pb"><summary style="cursor:pointer;font-weight:800">＋ Add a sub or vendor</summary>
+      <div class="pl-form" style="margin-top:8px">
+        <div><label for="vd-name">Company</label><input id="vd-name" class="cred-input"></div><div><label for="vd-trade">Trade</label><input id="vd-trade" class="cred-input" placeholder="e.g. Electrician"></div>
+        <div><label for="vd-contact">Contact</label><input id="vd-contact" class="cred-input"></div><div><label for="vd-phone">Phone</label><input id="vd-phone" class="cred-input" type="tel" inputmode="tel"></div>
+        <div class="full"><label for="vd-email">Email</label><input id="vd-email" class="cred-input" type="email" inputmode="email"></div>
+        <div><label for="vd-lic">License #</label><input id="vd-lic" class="cred-input"></div><div><label for="vd-ins">Insurance expires</label><input id="vd-ins" class="cred-input" type="date"></div>
+      </div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="vdAdd(this)">Save</button></div><div class="sm" id="vd-msg"></div>
+    </details>
+    <div class="pl-list" id="vd-list" style="margin-top:8px"></div>
+  </section>
   <section class="view" id="view-estimates">
-    <div class="sh"><div><div class="st">Estimates</div><div class="ss">Design agreements and construction estimates. Start one from a deal. Sending it moves the deal along and starts that stage's follow-ups; when the homeowner accepts online, the deal moves to the next stage on its own.</div></div></div>
+    <div class="sh"><div><div class="st">Money</div><div class="ss">Estimates, invoices and your cost catalog. Design agreements and construction estimates. Start one from a deal. Sending it moves the deal along and starts that stage's follow-ups; when the homeowner accepts online, the deal moves to the next stage on its own.</div></div></div>
     <div class="pl-list" id="es-list"><div class="pl-empty">Loading…</div></div>
     <div class="pl-h">Invoices</div>
     <div class="pl-strip" id="iv-strip" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
@@ -279,6 +296,7 @@ function crView(v){
   if(v==='team')tmLoad();
   if(v==='estimates')esLoad();
   if(v==='reports')rpLoad();
+  if(v==='jobs')jbList();
   try{history.replaceState(null,'','#'+v);}catch(e){}
   window.scrollTo(0,0);
 }
@@ -299,7 +317,7 @@ async function crInit(){
   }
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
-  crView(['pipeline','needs','estimates','auto','team','company','reports'].includes(start)?start:'pipeline');
+  crView(['pipeline','needs','jobs','estimates','auto','team','company','reports'].includes(start)?start:'pipeline');
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
 }
@@ -762,6 +780,7 @@ async function plOpenDeal(id){
     <div class="pl-h">Estimates</div>
     <div id="pld-est"><div class="sm">Loading…</div></div>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button></div>
+    ${['signed','production','complete'].includes(x.stage)?`<div class="vd-mbtns" style="margin-top:14px"><button class="btn btn-blue" onclick="jbOpen('${x.id}')">🛠 Open the job: schedule, logs, change orders, selections</button></div>`:''}
     <div class="pl-h">Texts &amp; calls</div>
     <div id="pld-sms"><div class="sm">Loading…</div></div>
     <div class="pl-h">Invoices</div>
@@ -804,6 +823,116 @@ async function plDealEstimates(dealId){
   try{const {estimates}=await plApi('/api/crm/estimates?dealId='+dealId);el.innerHTML=estimates.length?'<div class="pl-list">'+estimates.map(esRow).join('')+'</div>':'<div class="sm">None yet.</div>';}
   catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
+/* ---------- jobs ---------- */
+const JB={vendors:[],dealId:null};
+const ymdOf=d=>d?String(d).slice(0,10):'';
+const fdate=d=>d?new Date(ymdOf(d)+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric'}):'';
+async function jbList(){
+  const el=document.getElementById('jb-list');
+  try{
+    const [{jobs},{vendors}]=await Promise.all([plApi('/api/crm/jobs'),plApi('/api/crm/vendors')]);JB.vendors=vendors;
+    el.innerHTML=jobs.length?jobs.map(j=>{const pct=j.phases?Math.round(j.done/j.phases*100):0;return `<button class="pl-card" onclick="jbOpen('${j.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${plMoney(j.value)}</div></div>
+      <div class="pl-card-sub">${uxEsc(j.contact_name)}${j.address?' · '+uxEsc(j.address):''}</div>
+      <div style="height:8px;background:var(--bg4);border-radius:6px;overflow:hidden;margin-top:8px" aria-label="${pct}% done"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>
+      <div class="pl-tags">${j.current_phase?`<span class="pl-tag">Now: ${uxEsc(j.current_phase)}</span>`:j.phases?'<span class="pl-tag auto">All phases done</span>':'<span class="pl-tag warn">No schedule yet</span>'}${j.finish?`<span class="pl-tag">Finish ${fdate(j.finish)}</span>`:''}${j.cos_waiting?`<span class="pl-tag warn">${j.cos_waiting} change order${j.cos_waiting>1?'s':''} waiting</span>`:''}${j.selections_open?`<span class="pl-tag warn">${j.selections_open} selection${j.selections_open>1?'s':''} open</span>`:''}</div></button>`;}).join(''):'<div class="pl-empty">No signed jobs yet. When a contract is signed, the job shows up here with its schedule.</div>';
+    vdRender();
+  }catch(e){el.innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
+}
+function vdRender(){
+  const el=document.getElementById('vd-list');if(!el)return;
+  const soon=d=>d&&new Date(ymdOf(d)+'T12:00:00Z')<new Date(Date.now()+30*86400000);
+  el.innerHTML=JB.vendors.length?JB.vendors.map(v=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(v.name)}</div><div class="pl-item-d">${uxEsc([v.trade,v.contact_name,v.phone,v.email].filter(Boolean).join(' · '))}</div>
+    <div class="pl-tags">${v.license_no?`<span class="pl-tag">Lic. ${uxEsc(v.license_no)}</span>`:''}${v.insurance_expires?`<span class="pl-tag${soon(v.insurance_expires)?' warn':''}">Insurance to ${fdate(v.insurance_expires)}</span>`:'<span class="pl-tag warn">No insurance on file</span>'}</div></div>
+    ${crCanManage()?`<button class="btn-xs" onclick="vdRemove('${v.id}')" aria-label="Remove ${uxEsc(v.name)}">Remove</button>`:''}</div></div>`).join(''):'<div class="pl-empty">No subs or vendors yet.</div>';
+}
+async function vdAdd(btn){
+  const v=id=>document.getElementById(id).value;btn.disabled=true;const m=document.getElementById('vd-msg');m.textContent='';
+  try{await plApi('/api/crm/vendors',{body:{name:v('vd-name'),trade:v('vd-trade'),contactName:v('vd-contact'),phone:v('vd-phone'),email:v('vd-email'),licenseNo:v('vd-lic'),insuranceExpires:v('vd-ins')||null}});['vd-name','vd-trade','vd-contact','vd-phone','vd-email','vd-lic','vd-ins'].forEach(id=>document.getElementById(id).value='');jbList();}
+  catch(e){m.textContent=e.message;}btn.disabled=false;
+}
+async function vdRemove(id){if(!confirm('Remove this vendor?'))return;try{await plApi('/api/crm/vendors/'+id,{method:'DELETE'});jbList();}catch(e){showNotif('Could not remove',e.message);}}
+
+async function jbOpen(dealId){
+  JB.dealId=dealId;uxOpen(uxHead('Loading the job…'));
+  let d,deal;
+  try{[d,{deal}]=await Promise.all([plApi('/api/crm/deals/'+dealId+'/job'),plApi('/api/crm/deals/'+dealId)]);JB.vendors=d.vendors;}catch(e){uxOpen(uxHead('Could not open the job',uxEsc(e.message)));return;}
+  const vopts=sel=>'<option value="">No vendor</option>'+d.vendors.map(v=>`<option value="${v.id}"${v.id===sel?' selected':''}>${uxEsc(v.name)}${v.trade?' ('+uxEsc(v.trade)+')':''}</option>`).join('');
+  const stOpts=s=>[['todo','To do'],['doing','In progress'],['done','Done']].map(([k,l])=>`<option value="${k}"${k===s?' selected':''}>${l}</option>`).join('');
+  const dot={todo:'○',doing:'◐',done:'●'};
+  const sched=d.schedule.map(i=>`<details class="es-line" data-item="${i.id}" style="padding:8px 10px"><summary style="cursor:pointer;display:flex;gap:8px;align-items:center;list-style:none"><span style="color:${i.status==='done'?'var(--green)':i.status==='doing'?'var(--accent)':'var(--ink3)'}">${dot[i.status]}</span><span style="flex:1;min-width:0;font-weight:700;${i.status==='done'?'color:var(--ink3)':''}">${uxEsc(i.title)}</span><span class="sm" style="margin:0;white-space:nowrap">${fdate(i.start_date)}${i.end_date&&ymdOf(i.end_date)!==ymdOf(i.start_date)?'–'+fdate(i.end_date):''}${i.vendor_name?' · '+uxEsc(i.vendor_name):''}</span></summary>
+    <div class="es-grid" style="grid-template-columns:1fr;margin-top:8px"><input class="cred-input" data-f="title" value="${uxEsc(i.title)}" aria-label="Phase"></div>
+    <div class="es-grid"><div><label>Start</label><input type="date" class="cred-input" data-f="startDate" value="${ymdOf(i.start_date)}"></div><div><label>End</label><input type="date" class="cred-input" data-f="endDate" value="${ymdOf(i.end_date)}"></div>
+    <div><label>Status</label><select data-f="status">${stOpts(i.status)}</select></div><div><label>Sub</label><select data-f="vendorId">${vopts(i.vendor_id)}</select></div></div>
+    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="jbSaveItem('${i.id}',this)">Save</button><label class="pl-switch" style="font-size:12px"><input type="checkbox" data-f="showHomeowner" ${i.show_homeowner?'checked':''}> Homeowner sees it</label><button class="btn-xs" style="margin-left:auto" onclick="jbDelItem('${i.id}')">Delete</button></div></details>`).join('');
+  const coRow=c=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">#${c.number} ${uxEsc(c.title)}</div><div class="pl-item-d">${Number(c.amount)>=0?'+':''}${esMoney(c.amount)}${c.days_added?` · +${c.days_added} days`:''}${c.approved_name?` · approved by ${uxEsc(c.approved_name)}`:''}</div></div><span class="pl-pill ${c.status==='approved'?'accepted':c.status==='declined'?'declined':c.status==='sent'?'sent':''}">${{draft:'Draft',sent:'Waiting for OK',approved:'Approved',declined:'Declined',void:'Cancelled'}[c.status]}</span></div>${c.status==='draft'?`<div class="pl-acts"><button class="btn-xs p" onclick="jbSendCO('${c.id}',this)">Send for approval</button></div>`:''}</div>`;
+  const selRow=s=>{const ch=s.chosen_index!=null?s.options[s.chosen_index]:null;return `<div class="pl-item"><div class="pl-item-t">${uxEsc(s.category)}</div><div class="pl-item-d">${Number(s.allowance)?'Allowance '+esMoney(s.allowance):'No allowance'}${s.due_date?' · choose by '+fdate(s.due_date):''} · ${s.options.length} option${s.options.length===1?'':'s'}</div>${ch?`<div class="pl-tags"><span class="pl-tag auto">✓ ${uxEsc(ch.name)} · ${esMoney(ch.price)}</span><button class="pl-tag" style="cursor:pointer;background:none" onclick="jbClearSel('${s.id}')">Clear</button></div>`:'<div class="pl-tags"><span class="pl-tag warn">Waiting for the homeowner</span></div>'}</div>`;};
+  const poRow=p=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">PO #${p.number} ${uxEsc(p.title)}</div><div class="pl-item-d">${uxEsc(p.vendor_name||'No vendor')}${p.needed_by?' · needed '+fdate(p.needed_by):''}</div></div><div style="text-align:right"><div class="pl-card-val">${esMoney(p.total)}</div><span class="pl-pill ${p.status==='received'?'accepted':p.status==='sent'?'sent':''}">${{draft:'Draft',sent:'Sent',received:'Received',void:'Cancelled'}[p.status]}</span></div></div>
+    <div class="pl-acts">${p.status!=='void'&&p.vendor_email?`<button class="btn-xs p" onclick="jbSendPO('${p.id}',this)">${p.status==='draft'?'Send to vendor':'Resend'}</button>`:''}${p.status==='sent'?`<button class="btn-xs" onclick="jbPOStatus('${p.id}','received')">Mark received</button>`:''}</div></div>`;
+  uxOpen(uxHead('🛠 '+uxEsc(deal.title),uxEsc(deal.contact_name)+(deal.property_address?' · '+uxEsc(deal.property_address):''))+`
+    <div class="pl-h">Schedule</div>
+    ${d.schedule.length?sched:`<div class="sm">No schedule yet.</div><div class="vd-mbtns"><input type="date" id="jb-start" class="cred-input" style="width:auto" aria-label="Start date"><button class="btn-xs p" onclick="jbTemplate(this)">Lay it out from my template</button></div>`}
+    <div class="vd-mbtns"><button class="btn-xs" onclick="jbAddItem()">＋ Add a phase</button>${d.schedule.length&&crCanManage()?'<button class="btn-xs" onclick="jbSaveTpl()">Save as my template</button>':''}</div>
+    <div class="pl-h">Daily log</div>
+    <textarea id="jb-log" class="cred-input" rows="3" placeholder="What happened on site today?"></textarea>
+    <div class="es-grid" style="grid-template-columns:1fr auto;align-items:center"><input id="jb-crew" class="cred-input" placeholder="Who was on site (optional)"><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="jb-share"> Share with homeowner</label></div>
+    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="jbLog(this)">Save log</button></div>
+    ${d.logs.length?'<ul class="pl-tl" style="margin-top:8px">'+d.logs.slice(0,15).map(l=>`<li>${uxEsc(l.body)}<div class="pl-tl-meta">${fdate(l.log_date)} · ${uxEsc(l.author||'')}${l.crew?' · crew: '+uxEsc(l.crew):''}${l.shared?' · shared':''}</div></li>`).join('')+'</ul>':''}
+    <div class="pl-h">Change orders</div>
+    <div class="pl-list">${d.cos.map(coRow).join('')||'<div class="sm">None yet.</div>'}</div>
+    <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New change order</summary>
+      <div class="pl-form" style="margin-top:8px"><div class="full"><label for="co-title">What's changing</label><input id="co-title" class="cred-input"></div>
+      <div><label for="co-amt">Price change ($, minus for a credit)</label><input id="co-amt" class="cred-input" inputmode="decimal"></div><div><label for="co-cost">Your cost ($)</label><input id="co-cost" class="cred-input" inputmode="decimal"></div>
+      <div><label for="co-days">Extra working days</label><input id="co-days" class="cred-input" inputmode="numeric" value="0"></div><div class="full"><label for="co-desc">Details for the homeowner</label><textarea id="co-desc" class="cred-input" rows="3"></textarea></div></div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="jbNewCO(this,true)">Create &amp; send for approval</button><button class="btn-xs" onclick="jbNewCO(this,false)">Save as draft</button></div></details>
+    <div class="pl-h">Selections</div>
+    <div class="pl-list">${d.selections.map(selRow).join('')||'<div class="sm">None yet. Add what the homeowner needs to choose (tile, fixtures, paint…); they pick in their portal.</div>'}</div>
+    <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New selection</summary>
+      <div class="pl-form" style="margin-top:8px"><div class="full"><label for="sl-cat">What to choose</label><input id="sl-cat" class="cred-input" placeholder="e.g. Kitchen backsplash tile"></div>
+      <div><label for="sl-allow">Allowance ($)</label><input id="sl-allow" class="cred-input" inputmode="decimal"></div><div><label for="sl-due">Choose by</label><input id="sl-due" type="date" class="cred-input"></div>
+      <div class="full"><label>Options (name and price, one per line, like “Zellige white, 2400”)</label><textarea id="sl-opts" class="cred-input" rows="4"></textarea></div></div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="jbNewSel(this)">Add selection</button></div></details>
+    <div class="pl-h">Purchase orders</div>
+    <div class="pl-list">${d.pos.map(poRow).join('')||'<div class="sm">None yet.</div>'}</div>
+    <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New purchase order</summary>
+      <div class="pl-form" style="margin-top:8px"><div><label for="po-v">Vendor</label><select id="po-v">${vopts(null)}</select></div><div><label for="po-cat">Cost type</label><select id="po-cat"><option>materials</option><option>subcontract</option><option>labor</option><option>equipment</option><option>other</option></select></div>
+      <div class="full"><label for="po-title">For</label><input id="po-title" class="cred-input" placeholder="e.g. Framing lumber"></div>
+      <div class="full"><label>Lines (description, quantity, unit cost; one per line)</label><textarea id="po-lines" class="cred-input" rows="4" placeholder="2x6x8 studs, 120, 6.85"></textarea></div>
+      <div><label for="po-need">Needed by</label><input id="po-need" type="date" class="cred-input"></div></div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="jbNewPO(this)">Create purchase order</button></div></details>
+    <div class="sm" id="jb-msg"></div>`);
+}
+const jbErr=e=>{const m=document.getElementById('jb-msg');if(m){m.textContent=e.message;m.scrollIntoView({block:'nearest'});}else showNotif('Problem',e.message);};
+async function jbTemplate(btn){btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/schedule/from-template',{body:{startDate:document.getElementById('jb-start').value||null}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
+async function jbSaveTpl(){try{const r=await plApi('/api/crm/deals/'+JB.dealId+'/schedule/save-template',{body:{}});showNotif('Template saved',r.phases+' phases. New jobs will use it.');}catch(e){jbErr(e);}}
+async function jbAddItem(){const t=prompt('Name the phase');if(!t)return;try{await plApi('/api/crm/deals/'+JB.dealId+'/schedule',{body:{title:t}});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
+async function jbSaveItem(id,btn){
+  const row=document.querySelector(`[data-item="${id}"]`);const b={};row.querySelectorAll('[data-f]').forEach(f=>b[f.dataset.f]=f.type==='checkbox'?f.checked:f.value||null);
+  btn.disabled=true;try{await plApi('/api/crm/schedule/'+id,{method:'PATCH',body:b});showNotif('Saved','');jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}
+}
+async function jbDelItem(id){if(!confirm('Delete this phase?'))return;try{await plApi('/api/crm/schedule/'+id,{method:'DELETE'});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
+async function jbLog(btn){const b=document.getElementById('jb-log').value;if(!b.trim())return;btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/logs',{body:{body:b,crew:document.getElementById('jb-crew').value,shared:document.getElementById('jb-share').checked}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
+async function jbNewCO(btn,send){
+  const v=id=>document.getElementById(id).value;btn.disabled=true;
+  try{const {co}=await plApi('/api/crm/deals/'+JB.dealId+'/change-orders',{body:{title:v('co-title'),amount:v('co-amt'),cost:v('co-cost')||0,daysAdded:v('co-days'),description:v('co-desc')}});
+    if(send){const r=await plApi('/api/crm/change-orders/'+co.id+'/send',{body:{}});showNotif('Sent for approval',r.emailed?'The homeowner got an email with the link.':'It’s waiting in their portal.');}
+    jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}
+}
+async function jbSendCO(id,btn){btn.disabled=true;try{const r=await plApi('/api/crm/change-orders/'+id+'/send',{body:{}});showNotif('Sent for approval',r.emailed?'Emailed with the portal link.':'Waiting in their portal.');jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
+const parseLines=t=>t.split('\n').map(l=>l.trim()).filter(Boolean);
+async function jbNewSel(btn){
+  const v=id=>document.getElementById(id).value;
+  const options=parseLines(v('sl-opts')).map(l=>{const m=l.match(/^(.*?)[,\t]\s*\$?([\d,.]+)\s*$/);return m?{name:m[1].trim(),price:m[2]}:{name:l,price:0};});
+  btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/selections',{body:{category:v('sl-cat'),allowance:v('sl-allow')||0,dueDate:v('sl-due')||null,options}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}
+}
+async function jbClearSel(id){if(!confirm('Clear the homeowner’s choice so they can choose again?'))return;try{await plApi('/api/crm/selections/'+id+'/clear',{body:{}});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
+async function jbNewPO(btn){
+  const v=id=>document.getElementById(id).value;
+  const lines=parseLines(v('po-lines')).map(l=>{const p=l.split(',').map(x=>x.trim());return p.length>=3?{description:p.slice(0,p.length-2).join(', '),quantity:p[p.length-2],unit_cost:p[p.length-1]}:{description:l,quantity:1,unit_cost:0};});
+  btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/pos',{body:{vendorId:v('po-v')||null,category:v('po-cat'),title:v('po-title'),lines,neededBy:v('po-need')||null}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}
+}
+async function jbSendPO(id,btn){btn.disabled=true;try{const r=await plApi('/api/crm/pos/'+id+'/send',{body:{}});showNotif('Sent','To '+r.to);jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
+async function jbPOStatus(id,status){try{await plApi('/api/crm/pos/'+id,{method:'PATCH',body:{status}});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
+
 /* ---------- texts & calls ---------- */
 async function smLoad(dealId){
   const el=document.getElementById('pld-sms');if(!el)return;

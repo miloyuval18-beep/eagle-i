@@ -794,7 +794,7 @@ describe('CRM core (lib/crm.js)', () => {
     assert.equal(crm.leadStatusForStage('new'), 'new');
   });
   test('settings fall back to safe defaults', () => {
-    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], smsForwardTo: null, missedCallText: null, missedCallApproved: null, backfilledAt: null });
+    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], smsForwardTo: null, missedCallText: null, missedCallApproved: null, scheduleTemplate: null, backfilledAt: null });
     assert.equal(crm.normalizeSettings({ waitingMinutes: 7 }).waitingMinutes, 30);
     assert.equal(crm.normalizeSettings({ waitingMinutes: '60' }).waitingMinutes, 60);
   });
@@ -1081,5 +1081,22 @@ describe('CRM texting (lib/crmSms.js)', () => {
     assert.deepEqual(pb.normalizeSteps([{ days: 1, subject: 'ignored', message: 'Hello', channel: 'sms' }]), [{ days: 1, subject: '', message: 'Hello', channel: 'sms' }]);
     assert.equal(pb.validateSteps([{ days: 0, message: 'Hi {name}', channel: 'sms' }]), null, 'texts need no subject');
     assert.match(pb.validateSteps([{ days: 0, message: 'x'.repeat(500), channel: 'sms' }]), /under 480/);
+  });
+});
+
+describe('CRM job schedule (lib/crmJobs.js)', () => {
+  const jobs = require('../lib/crmJobs');
+  test('phases are laid out back to back on working days', () => {
+    const rows = jobs.layOut([['Kickoff', 1], ['Demo', 3], ['Framing', 5]], '2026-10-17'); // a Saturday
+    assert.deepEqual(rows, [
+      { title: 'Kickoff', start: '2026-10-19', end: '2026-10-19' },
+      { title: 'Demo', start: '2026-10-20', end: '2026-10-22' },
+      { title: 'Framing', start: '2026-10-23', end: '2026-10-29' }
+    ]);
+  });
+  test('the built-in remodel template is sensible', () => {
+    assert.ok(jobs.DEFAULT_TEMPLATE.length >= 10);
+    assert.equal(jobs.DEFAULT_TEMPLATE[0][0], 'Kickoff meeting');
+    assert.equal(jobs.DEFAULT_TEMPLATE[jobs.DEFAULT_TEMPLATE.length - 1][0], 'Final walkthrough');
   });
 });

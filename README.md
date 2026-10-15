@@ -417,6 +417,18 @@ end with "Reply STOP to opt out."
 registration (brand + campaign) in Twilio so US carriers deliver business
 texts.
 
+**Running the job (step 11).** `lib/crmJobs.js`, `routes/crmJobs.js`, Jobs tab.
+A signed contract gets a schedule laid out on working days from the company's
+template (or the built-in remodel one; "Save as my template" on any job). Daily
+logs (shared ones become portal updates); subs & vendors with license and
+insurance expiry (expiring within 30 days → "Needs you"); purchase orders
+emailed to the vendor (feed job costing); change orders the homeowner approves
+in the portal by typed name (approved ones add to the deal value); selections
+with allowances the homeowner picks in the portal (over the allowance drafts a
+change order for the difference for the team to send). All phases done →
+"Needs you" suggests moving the deal to Complete. The tab bar is now Pipeline,
+Today, Jobs, Money; Automations moved to the Account menu.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

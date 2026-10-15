@@ -40,6 +40,14 @@ textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba
 .msg{font-size:14px;margin-top:8px;min-height:18px}
 .empty{font-size:14px;color:var(--ink3)}
 .foot{font-size:12px;color:var(--ink3);text-align:center;margin:16px 0 30px}
+.ph{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid #e3e7eb;font-size:15px}
+.ph:first-of-type{border-top:0}
+.dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--bdr);flex:0 0 auto;margin-top:6px}
+.dot.doing{border-color:var(--accent);background:#cfe0ef}.dot.done{border-color:var(--ok);background:var(--ok)}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1.5px solid var(--bdr);border-radius:10px;margin-top:8px;cursor:pointer}
+.opt input{margin-top:4px;width:18px;height:18px;flex:0 0 auto}
+.opt.chosen{border-color:var(--ok);background:rgba(44,110,73,.06)}
+input[type=text].nm{width:100%;border:1.5px solid var(--bdr2);border-radius:8px;padding:11px 12px;font-family:var(--f);font-size:16px;margin-top:8px}
 @media(max-width:420px){.grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -70,6 +78,7 @@ function render(){
     <div style="margin-top:10px"><span class="pill">${esc(p.project.status)}</span></div>
     ${p.nextVisit?`<div class="visit">📅 Next visit: <b>${new Date(p.nextVisit).toLocaleString([], {weekday:'long',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'})}</b></div>`:''}
   </div>
+  ${jobHtml(p)}
   <div class="card"><h2>Updates</h2>${p.updates.length?p.updates.map(u=>`<div class="up"><div class="up-b">${esc(u.body)}</div><div class="up-m">${esc(u.author||p.company.name)} · ${new Date(u.createdAt).toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'})}</div></div>`).join(''):'<div class="empty">Updates from your team will show up here.</div>'}</div>
   <div class="card"><h2>Photos</h2>${photos.length?`<div class="grid">${photos.map(f=>`<a href="${fileUrl(f.id)}" target="_blank" rel="noopener" title="${esc(f.caption||f.filename)}"><img src="${fileUrl(f.id)}" alt="${esc(f.caption||'Project photo')}" loading="lazy"></a>`).join('')}</div>`:'<div class="empty">No photos yet.</div>'}
     <div style="margin-top:12px"><label class="btn btn-o" style="cursor:pointer">📷 Add your photos<input type="file" accept="image/*" multiple style="display:none" onchange="upload(this)"></label><div class="msg" id="up-msg"></div></div></div>
@@ -79,6 +88,33 @@ function render(){
   <div class="card"><h2>Message ${esc(p.company.name||'us')}</h2>
     <textarea id="m" rows="4" placeholder="Questions, changes, anything on your mind…" aria-label="Your message"></textarea>
     <div style="margin-top:10px"><button class="btn" id="mb" onclick="send()">Send message</button></div><div class="msg" id="m-msg" role="status"></div></div>`;
+}
+function jobHtml(p){
+  const j=p.job||{schedule:[],changeOrders:[],selections:[]};let out='';
+  const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric'}):'';
+  const cos=j.changeOrders.filter(c=>c.status==='sent');
+  if(cos.length)out+=`<div class="card"><h2>Waiting for your OK</h2>${cos.map(c=>`<div style="border-top:1px solid #e3e7eb;padding-top:10px;margin-top:10px"><b>Change order #${c.number}: ${esc(c.title)}</b><div class="meta">${c.amount>=0?'Adds':'Credits'} ${money(Math.abs(c.amount))}${c.daysAdded?` · ${c.daysAdded} more working day${c.daysAdded===1?'':'s'}`:''}</div>${c.description?`<div class="up-b" style="margin-top:6px">${esc(c.description)}</div>`:''}
+    <input type="text" class="nm" id="co-${c.id}" placeholder="Type your full name to approve" autocomplete="name" value="${esc(p.project.customer||'')}">
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn" onclick="answerCO('${c.id}',true,this)">Approve</button><button class="btn btn-o" onclick="answerCO('${c.id}',false,this)">Decline</button></div></div>`).join('')}<div class="msg" id="co-msg"></div></div>`;
+  const open=j.selections.filter(s=>s.chosen==null),done=j.selections.filter(s=>s.chosen!=null);
+  if(j.selections.length)out+=`<div class="card"><h2>Your selections</h2>${open.map(s=>`<div style="margin-bottom:14px"><b>${esc(s.category)}</b>${s.allowance?` <span class="tag">Allowance ${money(s.allowance)}</span>`:''}${s.due?` <span class="tag">· choose by ${fd(s.due)}</span>`:''}${s.note?`<div class="meta">${esc(s.note)}</div>`:''}
+    ${s.options.map((o,i)=>`<label class="opt"><input type="radio" name="sel-${s.id}" value="${i}"><span><b>${esc(o.name)}</b> · ${money(o.price)}${s.allowance&&o.price>s.allowance?` <span class="tag">(${money(o.price-s.allowance)} over)</span>`:''}${o.note?`<br><span class="meta">${esc(o.note)}</span>`:''}</span></label>`).join('')}
+    <button class="btn" style="margin-top:8px" onclick="choose('${s.id}',this)">Choose</button></div>`).join('')}
+    ${done.map(s=>`<div class="row"><span>${esc(s.category)}</span><span class="tag">✓ ${esc((s.options[s.chosen]||{}).name||'')}</span></div>`).join('')}<div class="msg" id="sel-msg"></div></div>`;
+  if(j.schedule.length)out+=`<div class="card"><h2>Schedule</h2>${j.schedule.map(i=>`<div class="ph"><span class="dot ${i.status}"></span><span style="flex:1">${esc(i.title)}${i.status==='doing'?' <span class="tag">· in progress</span>':''}</span><span class="tag">${i.start?fd(i.start)+(i.end&&i.end!==i.start?' – '+fd(i.end):''):''}</span></div>`).join('')}<div class="small" style="font-size:12px;color:var(--ink3);margin-top:8px">Dates can shift with weather, inspections and deliveries. Your team will keep this up to date.</div></div>`;
+  return out;
+}
+async function answerCO(id,approve,btn){
+  const out=document.getElementById('co-msg');btn.disabled=true;out.textContent='';
+  try{const r=await fetch(`/api/crm-public/portal/${token}/change-orders/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({approve,name:(document.getElementById('co-'+id)||{}).value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);await load();}
+  catch(e){out.textContent=e.message||'Could not save. Please try again.';out.style.color='var(--err)';btn.disabled=false;}
+}
+async function choose(id,btn){
+  const pick=document.querySelector(`input[name="sel-${id}"]:checked`);const out=document.getElementById('sel-msg');
+  if(!pick){out.textContent='Pick one of the options first.';out.style.color='var(--err)';return;}
+  btn.disabled=true;
+  try{const r=await fetch(`/api/crm-public/portal/${token}/selections/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:+pick.value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);await load();const o=document.getElementById('sel-msg');if(o){o.textContent=d.over>0?`Saved. That's ${money(d.over)} over the allowance; your team will send a change order for the difference.`:'Saved. Thank you!';o.style.color='var(--ok)';}}
+  catch(e){out.textContent=e.message||'Could not save.';out.style.color='var(--err)';btn.disabled=false;}
 }
 async function send(){
   const m=document.getElementById('m'),b=document.getElementById('mb'),out=document.getElementById('m-msg');

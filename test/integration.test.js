@@ -1425,7 +1425,8 @@ describe('CRM Google Workspace', () => {
     assert.equal((await o.post('/api/crm/google/connect', { domain: 'example.test', adminEmail: 'a@example.test' })).status, 503);
     const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('gw-mem'), name: 'M', role: 'member' })).json();
     const m = makeClient();
-    await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    const joined = await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    assert.equal(joined.status, 200, await joined.clone().text());
     assert.equal((await m.get('/api/crm/google')).status, 200);
     assert.equal((await m.post('/api/crm/google/connect', { domain: 'example.test', adminEmail: 'a@example.test' })).status, 403);
     assert.equal((await m.delete('/api/crm/google')).status, 403);
@@ -1447,7 +1448,8 @@ describe('CRM weekly reports', () => {
     assert.deepEqual((await (await o.get('/api/crm/reports')).json()).reports, [], 'a "so far" report is not saved');
     const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('rep-mem'), name: 'M', role: 'member' })).json();
     const m = makeClient();
-    await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    const joined = await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    assert.equal(joined.status, 200, await joined.clone().text());
     assert.equal((await m.get('/api/crm/reports')).status, 403);
     assert.equal((await m.post('/api/crm/reports/now', {})).status, 403);
   });
@@ -1566,7 +1568,8 @@ describe('CRM invoices without online payments', () => {
     const inv2 = await (await o.post(`/api/crm/deals/${deal.id}/invoices`, { title: 'Extra', amount: 100 })).json();
     const t = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('inv-m'), name: 'M', role: 'member' })).json();
     const m = makeClient();
-    await m.post('/api/crm/join', { token: new URL(t.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    const joined = await m.post('/api/crm/join', { token: new URL(t.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' });
+    assert.equal(joined.status, 200, await joined.clone().text());
     assert.equal((await m.post(`/api/crm/invoices/${inv2.invoice.id}/void`, {})).status, 403);
     assert.equal((await m.post(`/api/crm/invoices/${invoice.id}/paid`, { via: 'check' })).status, 200, 'anyone can record a check');
     const list = (await (await o.get(`/api/crm/invoices?dealId=${deal.id}`)).json()).invoices;
@@ -1585,5 +1588,62 @@ describe('CRM Twilio webhooks', () => {
     const st = await (await o.get('/api/crm/sms')).json();
     assert.equal(st.available, false);
     assert.equal((await o.post('/api/crm/sms/number', { areaCode: '713' })).status, 503);
+  });
+});
+
+describe('CRM running the job', () => {
+  test('signing lays out the schedule; change orders and selections flow through the portal', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('job'), password: 'TestPass1234!', companyName: 'Job Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Jo Builder', title: 'Kitchen', value: 80000 })).json();
+    await o.patch(`/api/crm/deals/${deal.id}`, { stage: 'signed' });
+    let job = await (await o.get(`/api/crm/deals/${deal.id}/job`)).json();
+    assert.ok(job.schedule.length >= 10, 'schedule laid out on signing');
+    assert.equal(job.schedule[0].title, 'Kickoff meeting');
+    const jobs = (await (await o.get('/api/crm/jobs')).json()).jobs;
+    assert.equal(jobs[0].current_phase, 'Kickoff meeting');
+
+    // Finish every phase: Eagle I suggests closing the job.
+    for (const item of job.schedule) await o.patch(`/api/crm/schedule/${item.id}`, { title: item.title, startDate: String(item.start_date).slice(0, 10), endDate: String(item.end_date).slice(0, 10), status: 'done' });
+    assert.ok((await (await o.get('/api/crm/inbox')).json()).items.some(i => i.kind === 'job_done'));
+
+    // A shared daily log shows up in the portal.
+    await o.post(`/api/crm/deals/${deal.id}/logs`, { body: 'Cabinets set, level and shimmed.', shared: true });
+    await o.post(`/api/crm/deals/${deal.id}/logs`, { body: 'Internal: plumber late.', shared: false });
+    const { url } = await (await o.get(`/api/crm/deals/${deal.id}/portal`)).json();
+    const token = url.split('/p/')[1];
+    const homeowner = makeClient();
+    let portal = (await (await homeowner.get(`/api/crm-public/portal/${token}`)).json()).portal;
+    assert.ok(portal.updates.some(u => /Cabinets set/.test(u.body)));
+    assert.ok(!portal.updates.some(u => /plumber late/.test(u.body)), 'private logs stay private');
+    assert.ok(portal.job.schedule.length >= 10);
+
+    // Change order: sent, approved in the portal by typed name, job value goes up.
+    const { co } = await (await o.post(`/api/crm/deals/${deal.id}/change-orders`, { title: 'Add pot filler', amount: '1,200', cost: 650, daysAdded: 1 })).json();
+    assert.equal((await homeowner.post(`/api/crm-public/portal/${token}/change-orders/${co.id}`, { approve: true, name: 'Jo Builder' })).status, 400, 'drafts cannot be approved');
+    assert.equal((await o.post(`/api/crm/change-orders/${co.id}/send`, {})).status, 200);
+    portal = (await (await homeowner.get(`/api/crm-public/portal/${token}`)).json()).portal;
+    assert.equal(portal.job.changeOrders[0].status, 'sent');
+    assert.equal((await homeowner.post(`/api/crm-public/portal/${token}/change-orders/${co.id}`, { approve: true, name: 'J' })).status, 400, 'full name needed');
+    assert.equal((await homeowner.post(`/api/crm-public/portal/${token}/change-orders/${co.id}`, { approve: true, name: 'Jo Builder' })).status, 200);
+    const after = (await (await o.get(`/api/crm/deals/${deal.id}`)).json()).deal;
+    assert.equal(Number(after.value), 81200);
+
+    // Selection over allowance: a change order is drafted for the difference.
+    const { selection } = await (await o.post(`/api/crm/deals/${deal.id}/selections`, { category: 'Backsplash tile', allowance: 2000, options: [{ name: 'Subway white', price: 1500 }, { name: 'Zellige', price: 2600 }] })).json();
+    const pick = await homeowner.post(`/api/crm-public/portal/${token}/selections/${selection.id}`, { index: 1 });
+    assert.equal((await pick.json()).over, 600);
+    assert.equal((await homeowner.post(`/api/crm-public/portal/${token}/selections/${selection.id}`, { index: 0 })).status, 400, 'one choice');
+    job = await (await o.get(`/api/crm/deals/${deal.id}/job`)).json();
+    const drafted = job.cos.find(c => /Zellige/.test(c.title));
+    assert.equal(Number(drafted.amount), 600);
+    assert.equal(drafted.status, 'draft', 'the team checks it before it goes out');
+
+    // Vendors and purchase orders.
+    const { vendor } = await (await o.post('/api/crm/vendors', { name: 'Gulf Lumber', trade: 'Lumber', email: 'orders@gulf.test', insuranceExpires: new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10) })).json();
+    const { po } = await (await o.post(`/api/crm/deals/${deal.id}/pos`, { vendorId: vendor.id, title: 'Framing lumber', lines: [{ description: '2x6x8', quantity: 120, unit_cost: 6.85 }, { description: 'Nails', quantity: 2, unit_cost: 45 }] })).json();
+    assert.equal(Number(po.total), 912);
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/pos`, { title: 'Empty', lines: [] })).status, 400);
   });
 });
