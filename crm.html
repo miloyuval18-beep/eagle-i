@@ -156,6 +156,7 @@ select{width:auto;cursor:pointer}
       <button id="cr-reports-link" onclick="crMenu(false);crView('reports')" hidden>Weekly reports</button>
       <button onclick="crMenu(false);crView('refs')">Referrals &amp; partners</button>
       <button onclick="crMenu(false);crView('growth')">Marketing &amp; backlog</button>
+      <button onclick="crMenu(false);crView('setup')">Import &amp; setup</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
@@ -239,6 +240,14 @@ select{width:auto;cursor:pointer}
     <div class="ss" style="margin-bottom:10px">Your own items with cost and markup, ready to drop into any estimate. Homeowners only ever see prices.</div>
     <div id="cat-form"></div>
     <div class="pl-list" id="cat-list"><div class="pl-empty">Loading…</div></div>
+  </section>
+  <section class="view" id="view-setup">
+    <div class="sh"><div><div class="st">Import &amp; setup</div><div class="ss">Answer a few questions and Eagle I sets itself up for how you work. Bring in your contacts and jobs from Buildertrend, JobTread, another CRM or a spreadsheet.</div></div></div>
+    <div class="pl-h">Set Eagle I up for your business</div>
+    <div id="su-box"><div class="sm">Loading…</div></div>
+    <div class="pl-h">Import from your old system</div>
+    <div id="im-box"></div>
+    <div class="pl-list" id="im-list"></div>
   </section>
   <section class="view" id="view-growth">
     <div class="sh"><div><div class="st">Marketing &amp; backlog</div><div class="ss">Which channels bring in signed work and what each one costs, and how far out you’re booked, so you know when to spend more on ads and when to ease off.</div></div></div>
@@ -347,6 +356,7 @@ function crView(v){
   if(v==='jobs')jbList();
   if(v==='refs')rfLoad();
   if(v==='growth')mkLoad();
+  if(v==='setup')suLoad();
   try{history.replaceState(null,'','#'+v);}catch(e){}
   window.scrollTo(0,0);
 }
@@ -367,7 +377,7 @@ async function crInit(){
   }
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
-  crView(['pipeline','needs','jobs','estimates','auto','team','company','reports','refs','growth'].includes(start)?start:'pipeline');
+  crView(['pipeline','needs','jobs','estimates','auto','team','company','reports','refs','growth','setup'].includes(start)?start:'pipeline');
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
 }
@@ -380,7 +390,9 @@ async function plCheckSetup(){
   try{
     const {company}=await plApi('/api/crm/company');
     const el=document.getElementById('pl-setup-banner');
-    el.innerHTML=(company.address||'').trim().length<8?'<div class="pl-banner"><span>Add your business address before any automatic email can go out. It goes at the bottom of every email.</span><button class="btn-xs p" onclick="crView(\'company\')">Add it</button></div>':'';
+    let html=(company.address||'').trim().length<8?'<div class="pl-banner"><span>Add your business address before any automatic email can go out. It goes at the bottom of every email.</span><button class="btn-xs p" onclick="crView(\'company\')">Add it</button></div>':'';
+    if(crCanManage()){try{const su=await plApi('/api/crm/setup');if(!su.done)html+='<div class="pl-banner"><span>New here? Answer a few quick questions and Eagle I sets itself up for how you work, and brings in your old contacts.</span><button class="btn-xs p" onclick="crView(\'setup\')">Set up</button></div>';}catch(e){}}
+    el.innerHTML=html;
   }catch(e){}
 }
 /* ---------- weekly reports ---------- */
@@ -495,6 +507,7 @@ function esRender(){
     </div>
     <div class="es-grid" style="grid-template-columns:1fr auto;align-items:end"><div><label>Section (optional)</label><input class="cred-input" ${dis} value="${uxEsc(l.section)}" placeholder="e.g. Kitchen" oninput="esSet(${i},'section',this.value)"></div>
       <div class="es-price" id="es-p-${i}">${esMoney(esPrice(l,Number(e.default_markup_pct)||0))}</div></div>
+    ${l.guess?'<div class="sm" style="color:var(--amber);margin-top:4px">Price is an AI guess. Check your cost.</div>':''}
     ${locked?'':`<div style="text-align:right;margin-top:4px"><button class="btn-xs" onclick="esDel(${i})">Remove line</button></div>`}
   </div>`).join('');
   const t=esTotals();
@@ -508,6 +521,9 @@ function esRender(){
       <div class="full"><label for="es-intro">Note to the homeowner (optional)</label><textarea id="es-intro" class="cred-input" rows="3" ${dis} oninput="ES.cur.intro=this.value">${uxEsc(e.intro||'')}</textarea></div>
     </div>
     <div class="pl-h">Line items</div>
+    ${locked?'':`<details class="pl-pb" style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:800">✨ Draft lines from a description</summary>
+      <textarea id="es-scope" class="cred-input" rows="3" style="margin-top:8px" placeholder="e.g. Gut the 12x14 kitchen, new shaker cabinets, quartz counters, move the sink to the island, LVP floor, 6 can lights."></textarea>
+      <div class="vd-mbtns"><button class="btn-xs p" onclick="esDraft(this)">Draft the lines</button><span class="sm" style="margin:0">Uses your cost catalog where it fits. Nothing is saved until you press Save.</span></div><div class="sm" id="es-draft-msg"></div></details>`}
     <div id="es-lines">${lineHtml||'<div class="sm">No lines yet.</div>'}</div>
     ${locked?'':`<div class="vd-mbtns"><button class="btn-xs p" onclick="esAdd()">＋ Add a line</button>${ES.catalog.length?`<select onchange="esFromCat(this)" aria-label="Add from catalog"><option value="">＋ From catalog…</option>${ES.catalog.map(c=>`<option value="${c.id}">${uxEsc(c.name)} (${esMoney(c.unit_cost)}/${uxEsc(c.unit)})</option>`).join('')}</select>`:''}</div>`}
     <div class="pl-h">Pricing</div>
@@ -541,6 +557,13 @@ function esRefresh(){
 }
 function esSet(i,k,v){ES.cur.lines[i][k]=v;if(k!=='description'&&k!=='section')esRefresh();}
 function esAdd(){esCapture();ES.cur.lines.push({section:'',description:'',quantity:1,unit:'ea',unit_cost:0,markup_pct:Number(ES.cur.default_markup_pct)||0});esRender();const ins=document.querySelectorAll('#es-lines .es-line');if(ins.length)ins[ins.length-1].querySelector('input').focus();}
+async function esDraft(btn){
+  const scope=document.getElementById('es-scope').value;const m=document.getElementById('es-draft-msg');btn.disabled=true;btn.textContent='Drafting…';m.textContent='';
+  try{esCapture();const r=await plApi('/api/crm/estimates/'+ES.cur.id+'/draft',{body:{scope}});ES.cur.lines.push(...r.lines);esRender();
+    const mm=document.getElementById('es-draft-msg');if(mm)mm.innerHTML=`Added ${r.lines.length} lines. Check them, then Save.${r.assumptions.length?'<br>Assumed: '+r.assumptions.map(uxEsc).join('; '):''}`;
+    const d=document.querySelector('#es-draft-msg');if(d)d.closest('details').open=true;}
+  catch(e){m.textContent=e.message;btn.disabled=false;btn.textContent='Draft the lines';}
+}
 function esDel(i){esCapture();ES.cur.lines.splice(i,1);esRender();}
 function esFromCat(sel){
   const c=ES.catalog.find(x=>x.id===sel.value);if(!c)return;esCapture();
@@ -967,6 +990,72 @@ async function rfSave(btn){const v=id=>document.getElementById(id).value;btn.dis
 async function rfAdd(btn){const v=id=>document.getElementById(id).value;btn.disabled=true;try{await plApi('/api/crm/partners',{body:{name:v('rf-name'),kind:v('rf-kind'),company:v('rf-co'),phone:v('rf-phone'),email:v('rf-email')}});['rf-name','rf-co','rf-phone','rf-email'].forEach(i=>document.getElementById(i).value='');document.getElementById('rf-msg').textContent='';rfLoad();}catch(e){document.getElementById('rf-msg').textContent=e.message;}btn.disabled=false;}
 async function rfPaid(id,paid){try{await plApi('/api/crm/rewards/'+id,{body:{paid}});rfLoad();}catch(e){showNotif('Could not save',e.message);}}
 async function rfArchive(id){if(!confirm('Remove this partner? Their link stops working; their past leads stay credited.'))return;try{await plApi('/api/crm/partners/'+id,{method:'DELETE'});rfLoad();}catch(e){showNotif('Could not remove',e.message);}}
+/* ---------- import & setup ---------- */
+const IM={file:null,preview:null};
+async function suLoad(){
+  const box=document.getElementById('su-box');const manage=crCanManage();
+  try{
+    const d=await plApi('/api/crm/setup');
+    if(!manage){box.innerHTML='<div class="sm">Only the owner or an admin can change the setup.</div>';document.getElementById('im-box').innerHTML='';return;}
+    const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    box.innerHTML=`<details class="pl-pb"${d.done?'':' open'}><summary style="cursor:pointer;font-weight:800">${d.done?'✓ Done. Answer again to change things':'8 quick questions'}</summary>
+      <div class="pl-form" style="margin-top:8px">
+        <div class="full"><label>What do you build?</label><div style="display:flex;gap:10px;flex-wrap:wrap">${Object.entries(d.builds).map(([k,v])=>`<label class="pl-switch" style="font-size:13px"><input type="checkbox" data-subuild="${k}"> ${uxEsc(v)}</label>`).join('')}</div></div>
+        <div><label for="su-min">Smallest job you take ($)</label><input id="su-min" class="cred-input" inputmode="decimal" placeholder="e.g. 40,000"></div>
+        <div><label for="su-design">Do you sell design separately (a paid design agreement)?</label><select id="su-design"><option value="">Pick one</option><option value="yes">Yes</option><option value="no">No, we go straight to a proposal</option></select></div>
+        <div class="full"><label>Days you do site visits</label><div style="display:flex;gap:10px;flex-wrap:wrap">${days.map((x,i)=>`<label class="pl-switch" style="font-size:13px"><input type="checkbox" data-suday="${i}"${i>0&&i<6?' checked':''}> ${x}</label>`).join('')}</div></div>
+        <div><label for="su-start">Visits from</label><input id="su-start" type="time" class="cred-input" value="09:00"></div>
+        <div><label for="su-end">Until</label><input id="su-end" type="time" class="cred-input" value="16:00"></div>
+        <div><label for="su-reply">How fast should a new lead get a reply?</label><select id="su-reply"><option value="now">Within 15 minutes</option><option value="hour" selected>Within 30 minutes</option><option value="day">Within the hour</option></select></div>
+        <div><label for="su-war">Your workmanship warranty (months)</label><input id="su-war" class="cred-input" inputmode="numeric" value="12"></div>
+        <div><label for="su-cap">Work your crew can do in a month ($)</label><input id="su-cap" class="cred-input" inputmode="decimal" placeholder="e.g. 250,000"></div>
+        <div><label for="su-rev">Your Google review link</label><input id="su-rev" class="cred-input" type="url" placeholder="https://g.page/r/…"></div>
+        <div class="full"><label for="su-about">In a few sentences: your company and how you talk to clients</label><textarea id="su-about" class="cred-input" rows="3" placeholder="e.g. Family-owned since 2009. We keep it simple and honest, and we always pick up the phone."></textarea>
+          <div class="sm">${d.ai?'Eagle I uses this to rewrite your first emails in your voice, for you to approve.':'Saved for later. Automatic rewriting isn’t switched on on the server.'}</div></div>
+      </div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="suApply(this)">Set it up</button></div><div class="sm" id="su-msg"></div></details>`;
+  }catch(e){box.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+  imLoad();
+}
+async function suApply(btn){
+  const v=id=>document.getElementById(id).value;btn.disabled=true;btn.textContent='Setting up…';
+  const body={builds:[...document.querySelectorAll('[data-subuild]')].filter(i=>i.checked).map(i=>i.dataset.subuild),minJob:v('su-min'),paidDesign:v('su-design'),visitDays:[...document.querySelectorAll('[data-suday]')].filter(i=>i.checked).map(i=>+i.dataset.suday),visitStart:v('su-start'),visitEnd:v('su-end'),replySpeed:v('su-reply'),warrantyMonths:v('su-war'),monthlyCapacity:v('su-cap'),reviewUrl:v('su-rev'),about:v('su-about')};
+  try{const r=await plApi('/api/crm/setup',{body});document.getElementById('su-msg').innerHTML='<b>Done.</b><ul style="margin:6px 0 0 18px">'+r.notes.map(n=>'<li>'+uxEsc(n)+'</li>').join('')+'</ul>';btn.textContent='Set it up';btn.disabled=false;plCheckSetup();}
+  catch(e){document.getElementById('su-msg').textContent=e.message;btn.textContent='Set it up';btn.disabled=false;}
+}
+async function imLoad(){
+  if(!crCanManage())return;
+  const box=document.getElementById('im-box');
+  box.innerHTML=`<div class="pl-pb"><div class="sm" style="margin-top:0">Export your contacts or jobs as a spreadsheet (CSV or .xlsx) and choose it here. Nobody gets an email from the import, people already in Eagle I are joined up, and you can undo it.</div>
+    <div class="vd-mbtns"><label class="btn btn-blue" style="cursor:pointer">Choose a file<input type="file" accept=".csv,.tsv,.txt,.xlsx,text/csv" style="display:none" onchange="imPick(this)"></label></div><div id="im-prev"></div><div class="sm" id="im-msg"></div></div>`;
+  try{
+    const {imports}=await plApi('/api/crm/import');
+    document.getElementById('im-list').innerHTML=imports.map(i=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(i.filename||'Spreadsheet')}</div><div class="pl-item-d">${new Date(i.created_at).toLocaleDateString()} · ${i.deals_created} added · ${i.skipped} skipped${i.undone_at?' · undone':''}</div></div>${i.undone_at?'':`<button class="btn-xs" onclick="imUndo('${i.id}')">Undo</button>`}</div></div>`).join('');
+  }catch(e){}
+}
+async function imPick(input){
+  const f=input.files[0];if(!f)return;const m=document.getElementById('im-msg');m.textContent='';
+  if(f.size>8*1024*1024){m.textContent='That file is over 8 MB. Split it into smaller files.';return;}
+  m.textContent='Reading…';
+  try{
+    IM.file={filename:f.name,dataBase64:await flRead(f)};
+    const p=IM.preview=await plApi('/api/crm/import/preview',{body:IM.file});m.textContent='';
+    const opt=(i)=>`<select data-imcol="${i}" aria-label="Column ${i+1}"><option value="">Skip</option>${Object.entries(p.fields).map(([k,v])=>`<option value="${k}"${p.mapping[i]===k?' selected':''}>${uxEsc(v)}</option>`).join('')}</select>`;
+    document.getElementById('im-prev').innerHTML=`<div class="sm"><b>${p.rows}</b> rows. Check what each column is:</div>
+      <div class="pl-list" style="margin-top:6px">${p.headers.map((h,i)=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t" style="font-size:13px">${uxEsc(h||'(no header)')}</div><div class="pl-item-d">${uxEsc(p.sample.map(r=>r[i]).filter(Boolean).slice(0,2).join(' · ').slice(0,80))}</div></div>${opt(i)}</div></div>`).join('')}</div>
+      <div class="sm">Stages are read from words like “sold”, “in progress” or “lost”; anything else comes in as New.</div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="imRun(this)">Import ${p.rows} row${p.rows===1?'':'s'}</button></div>`;
+  }catch(e){m.textContent=e.message;}
+  input.value='';
+}
+async function imRun(btn){
+  const mapping={};document.querySelectorAll('[data-imcol]').forEach(s=>{if(s.value)mapping[s.dataset.imcol]=s.value;});
+  btn.disabled=true;btn.textContent='Importing…';const m=document.getElementById('im-msg');
+  try{const r=await plApi('/api/crm/import',{body:{...IM.file,mapping}});await imLoad();plLoad();
+    document.getElementById('im-msg').textContent=`Added ${r.created} deal${r.created===1?'':'s'}${r.skipped?`, skipped ${r.skipped} (no name, or already here)`:''}${r.truncated?'. Only the first 3,000 rows were read; import the rest as a second file':''}.`;}
+  catch(e){m.textContent=e.message;btn.disabled=false;btn.textContent='Import';}
+}
+async function imUndo(id){if(!confirm('Undo this import? Every deal it added is removed, along with people who have nothing else.'))return;try{const r=await plApi('/api/crm/import/'+id+'/undo',{body:{}});showNotif('Import undone',r.removed+' deals removed');imLoad();plLoad();}catch(e){showNotif('Could not undo',e.message);}}
 /* ---------- marketing & backlog ---------- */
 async function mkLoad(){
   try{
@@ -1281,8 +1370,9 @@ async function ptLoad(dealId){
     el.innerHTML=`<div class="sm" style="margin-top:0">A private page for the homeowner: status, visits, estimates, shared photos and your updates. They can message you and add photos there.</div>
       <div style="display:flex;gap:6px;margin-top:6px"><input id="pt-url" class="cred-input" readonly value="${uxEsc(d.url)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('pt-url')">Copy</button><a class="btn-xs" href="${uxEsc(d.url)}" target="_blank" rel="noopener">Open</a></div>
       <label for="pt-body" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Post an update</label>
-      <textarea id="pt-body" class="cred-input" rows="3" placeholder="e.g. Cabinets arrive Thursday; tile goes in next week."></textarea>
-      <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="ptPost('${dealId}',this)">Post</button><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="pt-email" checked> Also email it to them</label>${crCanManage()?`<button class="btn-xs" onclick="ptReset('${dealId}')" style="margin-left:auto">New link</button>`:''}</div>
+      ${d.draft?'<div class="sm" style="margin-top:2px">✨ Eagle I drafted this week’s update from the shared logs, the schedule and the photos. Read it over, then post.</div>':''}
+      <textarea id="pt-body" class="cred-input" rows="${d.draft?6:3}" placeholder="e.g. Cabinets arrive Thursday; tile goes in next week.">${uxEsc(d.draft||'')}</textarea>
+      <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="ptPost('${dealId}',this)">Post</button><button class="btn-xs" onclick="ptDraft('${dealId}',this)">✨ Draft this week’s update</button><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="pt-email" checked> Also email it to them</label>${crCanManage()?`<button class="btn-xs" onclick="ptReset('${dealId}')" style="margin-left:auto">New link</button>`:''}</div>
       <div class="sm" id="pt-msg"></div>
       ${d.updates.length?'<ul class="pl-tl" style="margin-top:8px">'+d.updates.map(u=>`<li>${uxEsc(u.body)}<div class="pl-tl-meta">${uxEsc(u.author||'')} · ${new Date(u.created_at).toLocaleString()}${u.emailed_at?' · emailed':''}</div></li>`).join('')+'</ul>':''}`;
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
@@ -1293,6 +1383,7 @@ async function ptPost(dealId,btn){
   try{const r=await plApi('/api/crm/deals/'+dealId+'/updates',{body:{body,email}});showNotif('Update posted',r.emailed?'And emailed to the homeowner.':'');ptLoad(dealId);}
   catch(e){document.getElementById('pt-msg').textContent=e.message;btn.disabled=false;ptLoad(dealId);}
 }
+async function ptDraft(dealId,btn){btn.disabled=true;btn.textContent='Drafting…';try{const r=await plApi('/api/crm/deals/'+dealId+'/update-draft',{body:{}});if(!r.draft){showNotif('Nothing new to share yet','No shared logs, finished phases or photos in the last week.');btn.disabled=false;btn.textContent='✨ Draft this week’s update';return;}ptLoad(dealId);}catch(e){showNotif('Could not draft it',e.message);btn.disabled=false;btn.textContent='✨ Draft this week’s update';}}
 async function ptReset(dealId){if(!confirm('Make a new portal link? The old one stops working.'))return;try{await plApi('/api/crm/deals/'+dealId+'/portal/reset',{body:{}});ptLoad(dealId);}catch(e){showNotif('Could not change it',e.message);}}
 
 async function plStageChanged(id,sel){
@@ -1354,7 +1445,7 @@ async function plLoadNeeds(){
     el.innerHTML=items.map(i=>`<div class="pl-item ${i.kind}"><div class="pl-item-t">${uxEsc(i.title)}</div><div class="pl-tl-meta">Flagged ${plAgo(i.created_at)} ago</div>
       ${i.deal_title?`<div class="pl-item-d">${uxEsc(i.deal_title)}${i.deal_stage?' · '+uxEsc(plStage(i.deal_stage).label):''}</div>`:''}
       ${i.detail?`<div class="pl-item-d">${uxEsc(i.detail)}</div>`:''}
-      <div class="pl-acts">${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&i.kind!=='referral'?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
+      <div class="pl-acts">${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
         <button class="btn-xs" onclick="plInboxAct(${i.id},'done')">✓ Done</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',1)">Snooze 1 day</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',3)">3 days</button></div></div>`).join('');

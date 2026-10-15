@@ -506,6 +506,31 @@ questionnaire, booking page, portal, estimate and invoice pages have an
 Español/English switch, starting from the contact's language, else the
 browser's.
 
+**Import, setup and AI helpers (step 17).** `lib/crmAssist.js`,
+`routes/crmAssist.js`, Account → Import & setup.
+- *Import:* CSV/TSV or .xlsx (up to 8 MB, 3,000 rows) from Buildertrend,
+  JobTread, another CRM or a sheet. Columns are guessed from the headers and
+  can be changed; stages, sources and dates (Excel serials too) are read from
+  the old tool's words. Rows come in as history: no automatic emails, no
+  waiting-lead alerts, matching people joined up, same person + project
+  skipped. Each import is a `crm_imports` row and its deals carry `import_id`,
+  so Undo removes them (and contacts left with nothing).
+- *Setup interview:* eight questions set the minimum job, visit days and hours,
+  design stages, the waiting-lead nudge, warranty, review link and monthly
+  capacity; with AI, the unapproved first emails are rewritten in the owner's
+  voice (placeholders checked; approved playbooks never touched). Owners and
+  admins see a "Set up" banner until it's done.
+- *Estimate drafts:* "Draft lines from a description" in the estimate editor;
+  catalog items are used with their own cost and markup, anything else is an
+  AI cost guess marked "check your cost". Nothing saves until Save.
+- *Weekly job updates:* Fridays from 10am Central, every job in production
+  gets a draft built from the week's shared logs, finished and upcoming phases
+  and new photos (never private logs), in the homeowner's language, plus a
+  "Read & send" item in Needs you. It waits in the deal's portal section;
+  posting clears it. "Draft this week's update" makes one any time. Without
+  `ANTHROPIC_API_KEY` the update is written plainly from the schedule, and the
+  estimate drafts and voice rewrite say they're off.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

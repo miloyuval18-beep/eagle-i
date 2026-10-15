@@ -76,7 +76,8 @@ router.get('/api/crm/deals/:id/portal', requireAuth, async (req, res) => {
     const updates = (await query(
       `SELECT u.id, u.body, u.created_at, u.emailed_at, COALESCE(us.name, us.email) AS author FROM crm_portal_updates u LEFT JOIN users us ON us.id = u.created_by
        WHERE u.deal_id = $1 ORDER BY u.created_at DESC LIMIT 50`, [req.params.id])).rows;
-    res.json({ url: `${baseUrlOf(req)}/p/${token}`, updates });
+    const draft = (await query('SELECT update_draft, update_draft_at FROM crm_deals WHERE id = $1', [req.params.id])).rows[0];
+    res.json({ url: `${baseUrlOf(req)}/p/${token}`, updates, draft: draft.update_draft || null, draftAt: draft.update_draft_at });
   } catch (err) { fail(res, err, 'Failed to load the portal'); }
 });
 

@@ -1254,3 +1254,40 @@ describe('CRM Spanish', () => {
     assert.equal(es.say('fr', 'inv_button'), 'View and pay', 'unknown language falls back to English');
   });
 });
+
+describe('CRM import, setup and helpers', () => {
+  const a = require('../lib/crmAssist');
+  test('CSV: quotes, commas and line breaks inside fields, tabs, a BOM', () => {
+    assert.deepEqual(a.parseCsv('﻿Name,Notes\r\n"Lee, Ann","said ""hi""\nagain"\r\nBo,x\n\n'), [['Name', 'Notes'], ['Lee, Ann', 'said "hi"\nagain'], ['Bo', 'x']]);
+    assert.deepEqual(a.parseCsv('a\tb\n1\t2'), [['a', 'b'], ['1', '2']]);
+  });
+  test('columns are guessed from common export headers', () => {
+    const m = a.guessMapping(['Client Name', 'Email Address', 'Mobile Phone', 'Street Address', 'City', 'Zip Code', 'Job Name', 'Contract Amount', 'Status', 'Lead Source', 'Notes', 'Date Created']);
+    assert.deepEqual(Object.values(m), ['name', 'email', 'phone', 'address', 'city', 'zip', 'title', 'value', 'stage', 'source', 'notes', 'created']);
+    const m2 = a.guessMapping(['First Name', 'Last Name', 'E-mail']);
+    assert.deepEqual(m2, { 0: 'first', 1: 'last', 2: 'email' });
+  });
+  test('stages, sources and dates from old tools', () => {
+    assert.equal(a.stageFrom('Sold'), 'signed'); assert.equal(a.stageFrom('In Progress'), 'production'); assert.equal(a.stageFrom('Closed Lost'), 'lost');
+    assert.equal(a.stageFrom('Closed Won'), 'complete'); assert.equal(a.stageFrom('Bid Sent'), 'proposal'); assert.equal(a.stageFrom('whatever'), 'new');
+    assert.equal(a.sourceFrom('HomeAdvisor'), 'angi'); assert.equal(a.sourceFrom('Neighbor referral'), 'referral'); assert.equal(a.sourceFrom('Google'), 'website'); assert.equal(a.sourceFrom(''), 'other');
+    assert.equal(a.dateFrom('2024-03-05').getUTCFullYear(), 2024);
+    assert.equal(a.dateFrom('45000').toISOString().slice(0, 10), '2023-03-15', 'Excel serial dates');
+    assert.equal(a.dateFrom('2099-01-01'), null); assert.equal(a.dateFrom('soon'), null);
+  });
+  test('the setup answers become settings', () => {
+    const p = a.setupPlan({ minJob: '$40,000', paidDesign: 'no', visitDays: [1, 3, 5], visitStart: '08:00', visitEnd: '15:00', replySpeed: 'now', warrantyMonths: '24', reviewUrl: 'https://g.page/r/x', monthlyCapacity: '300k' });
+    assert.equal(p.qualify.minJobValue, 40000);
+    assert.deepEqual(p.settings.hiddenStages, ['design_agreement', 'in_design']);
+    assert.deepEqual(p.qualify.booking.days, [1, 3, 5]); assert.equal(p.qualify.booking.start, '08:00');
+    assert.equal(p.settings.waitingMinutes, 15); assert.equal(p.lifetime.warrantyMonths, 24); assert.equal(p.lifetime.reviewUrl, 'https://g.page/r/x');
+    assert.equal(p.backlog.monthlyCapacity, undefined, '"300k" is not a number; nothing is set');
+    assert.deepEqual(a.setupPlan({}).settings, {});
+  });
+  test('the plain weekly update, in either language', () => {
+    const f = { firstName: 'Ana', done: [{ title: 'Framing' }], doing: [{ title: 'Rough plumbing' }], next: [{ title: 'Drywall' }], logs: [{ body: 'Inspection passed.' }] };
+    const en = a.updateByRules({ ...f, lang: 'en' });
+    assert.match(en, /Hi Ana/); assert.match(en, /Finished: Framing/); assert.match(en, /Coming up next: Drywall/); assert.match(en, /Inspection passed/);
+    assert.match(a.updateByRules({ ...f, lang: 'es' }), /Terminamos: Framing/);
+  });
+});

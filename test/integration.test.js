@@ -1798,3 +1798,32 @@ describe('CRM marketing and backlog', () => {
     assert.equal((await m.patch('/api/crm/marketing/settings', { monthlyCapacity: 1 })).status, 403);
   });
 });
+
+describe('CRM import and setup', () => {
+  test('owners import a spreadsheet and undo it; members cannot; setup applies; AI helpers say when they are off', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('imp'), password: 'TestPass1234!', companyName: 'Imp Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const file = { filename: 'jobs.csv', dataBase64: Buffer.from('Name,Email,Status,Amount\nAna Ruiz,ana@imp.test,Sold,50000\nBo Lee,bo@imp.test,Lead,\n').toString('base64') };
+    const prev = await (await o.post('/api/crm/import/preview', file)).json();
+    assert.equal(prev.rows, 2); assert.equal(prev.mapping['0'], 'name');
+    const imp = await (await o.post('/api/crm/import', { ...file, mapping: prev.mapping })).json();
+    assert.equal(imp.created, 2);
+    const pipe = await (await o.get('/api/crm/pipeline')).json();
+    assert.equal(pipe.deals.find(d => d.contact_name === 'Ana Ruiz').stage, 'signed');
+    assert.equal((await o.post('/api/crm/import/preview', { filename: 'x.xls', dataBase64: 'AAAA' })).status, 400);
+    const setup = await (await o.post('/api/crm/setup', { minJob: '30000', paidDesign: 'yes', replySpeed: 'day' })).json();
+    assert.ok(setup.notes.length);
+    assert.equal((await (await o.get('/api/crm/setup')).json()).done, true);
+    const { estimate } = await (await o.post(`/api/crm/deals/${pipe.deals[0].id}/estimates`, { kind: 'construction' })).json();
+    assert.equal((await o.post(`/api/crm/estimates/${estimate.id}/draft`, { scope: 'New quartz counters for the kitchen.' })).status, 503);
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('imp-m'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    assert.equal((await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' })).status, 200);
+    assert.equal((await m.post('/api/crm/import', file)).status, 403);
+    assert.equal((await m.post(`/api/crm/import/${imp.id}/undo`, {})).status, 403);
+    assert.equal((await m.post('/api/crm/setup', {})).status, 403);
+    assert.equal((await o.post(`/api/crm/import/${imp.id}/undo`, {})).status, 200);
+    assert.equal((await (await o.get('/api/crm/pipeline')).json()).deals.length, 0);
+  });
+});
