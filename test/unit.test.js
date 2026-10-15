@@ -1042,3 +1042,14 @@ describe('CRM weekly report (lib/crmReports.js)', () => {
     assert.match(subject, /^Your week: \$85,000 signed/);
   });
 });
+
+describe('CRM files (lib/crmPortal.js)', () => {
+  const pt = require('../lib/crmPortal');
+  test('file types come from the bytes, not the name', () => {
+    assert.equal(pt.sniffType(Buffer.from('%PDF-1.7 x')).type, 'application/pdf');
+    assert.equal(pt.sniffType(Buffer.from([0xff, 0xd8, 0xff, 0xe0])).type, 'image/jpeg');
+    assert.equal(pt.sniffType(Buffer.from('<html><script>')), null);
+    assert.equal(pt.safeFilename('../../etc/passwd.png', 'png'), '.._.._etc_passwd.png');
+    assert.equal(pt.safeFilename('', 'pdf'), 'file.pdf');
+  });
+});

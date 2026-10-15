@@ -712,6 +712,12 @@ async function plOpenDeal(id){
     <div class="pl-h">Estimates</div>
     <div id="pld-est"><div class="sm">Loading…</div></div>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button></div>
+    <div class="pl-h">Photos &amp; files</div>
+    <div id="pld-files"><div class="sm">Loading…</div></div>
+    <div class="vd-mbtns" style="margin-top:6px"><label class="btn-xs p" style="cursor:pointer">📷 Add photos or PDFs<input type="file" accept="image/*,application/pdf" multiple style="display:none" onchange="flUpload('${x.id}',this)"></label><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="pld-share" checked> Share with the homeowner</label></div>
+    <div class="sm" id="pld-up-msg"></div>
+    <div class="pl-h">Homeowner portal</div>
+    <div id="pld-portal"><div class="sm">Loading…</div></div>
     <div class="pl-h">Tasks</div>
     <div class="pl-list">${(d.tasks||[]).map(t=>tdRow(t,false)).join('')||'<div class="sm">No tasks yet.</div>'}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><input id="pld-task" class="cred-input" placeholder="Add a task…" style="flex:1;min-width:150px" onkeydown="if(event.key==='Enter')tdAdd('${x.id}')"><input id="pld-task-due" type="date" class="cred-input" style="width:auto" aria-label="Due date">${CR.team.length>1?`<select id="pld-task-who" aria-label="Who">${crOwnerOptions(x.owner_user_id||(CR.me&&CR.me.userId)).replace('Unassigned','Anyone')}</select>`:''}<button class="btn-xs p" onclick="tdAdd('${x.id}')">Add</button></div>
@@ -724,12 +730,61 @@ async function plOpenDeal(id){
     <div class="pl-h">History</div>
     <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${new Date(a.created_at).toLocaleString()}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
   plDealEstimates(x.id);
+  flLoad(x.id);
+  ptLoad(x.id);
 }
 async function plDealEstimates(dealId){
   const el=document.getElementById('pld-est');if(!el)return;
   try{const {estimates}=await plApi('/api/crm/estimates?dealId='+dealId);el.innerHTML=estimates.length?'<div class="pl-list">'+estimates.map(esRow).join('')+'</div>':'<div class="sm">None yet.</div>';}
   catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
+/* ---------- files & portal ---------- */
+async function flLoad(dealId){
+  const el=document.getElementById('pld-files');if(!el)return;
+  try{
+    const {files}=await plApi('/api/crm/deals/'+dealId+'/files');
+    const photos=files.filter(f=>f.kind==='photo'),docs=files.filter(f=>f.kind!=='photo');
+    el.innerHTML=(photos.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px">${photos.map(f=>`<div style="position:relative"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener"><img src="/api/crm/files/${f.id}" alt="${uxEsc(f.caption||f.filename)}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block"></a>
+      <button class="pl-tag" style="position:absolute;left:4px;bottom:4px;background:var(--bg2);cursor:pointer" onclick="flShare('${dealId}','${f.id}',${!f.shared})" title="${f.shared?'The homeowner can see this. Tap to hide.':'Only your team can see this. Tap to share.'}">${f.shared?'👁 Shared':'🔒 Team'}</button>${f.from_homeowner?'<span class="pl-tag" style="position:absolute;right:4px;top:4px;background:var(--bg2)">From them</span>':''}</div>`).join('')}</div>`:'')+
+      (docs.length?'<div class="pl-list" style="margin-top:8px">'+docs.map(f=>`<div class="pl-item" style="padding:8px 10px;display:flex;justify-content:space-between;gap:8px;align-items:center"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener" style="overflow-wrap:anywhere">📄 ${uxEsc(f.caption||f.filename)}</a><button class="btn-xs" onclick="flShare('${dealId}','${f.id}',${!f.shared})">${f.shared?'👁 Shared':'🔒 Team'}</button></div>`).join('')+'</div>':'')+
+      (!files.length?'<div class="sm">No photos or files yet.</div>':'');
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+function flRead(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});}
+async function flUpload(dealId,input){
+  const msg=document.getElementById('pld-up-msg');const files=[...input.files];const share=document.getElementById('pld-share').checked;
+  let ok=0;
+  for(const f of files){
+    msg.textContent=`Uploading ${f.name}…`;
+    if(f.size>8*1024*1024){msg.textContent=`${f.name} is over 8 MB.`;continue;}
+    try{await plApi('/api/crm/deals/'+dealId+'/files',{body:{filename:f.name,dataBase64:await flRead(f),shared:share}});ok++;}
+    catch(e){msg.textContent=e.message;}
+  }
+  if(ok)msg.textContent=`Added ${ok} file${ok>1?'s':''}.`;
+  input.value='';flLoad(dealId);
+}
+async function flShare(dealId,id,shared){try{await plApi('/api/crm/files/'+id,{method:'PATCH',body:{shared}});flLoad(dealId);}catch(e){showNotif('Could not change it',e.message);}}
+async function ptLoad(dealId){
+  const el=document.getElementById('pld-portal');if(!el)return;
+  try{
+    const d=await plApi('/api/crm/deals/'+dealId+'/portal');
+    el.innerHTML=`<div class="sm" style="margin-top:0">A private page for the homeowner: status, visits, estimates, shared photos and your updates. They can message you and add photos there.</div>
+      <div style="display:flex;gap:6px;margin-top:6px"><input id="pt-url" class="cred-input" readonly value="${uxEsc(d.url)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('pt-url')">Copy</button><a class="btn-xs" href="${uxEsc(d.url)}" target="_blank" rel="noopener">Open</a></div>
+      <label for="pt-body" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Post an update</label>
+      <textarea id="pt-body" class="cred-input" rows="3" placeholder="e.g. Cabinets arrive Thursday; tile goes in next week."></textarea>
+      <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="ptPost('${dealId}',this)">Post</button><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="pt-email" checked> Also email it to them</label>${crCanManage()?`<button class="btn-xs" onclick="ptReset('${dealId}')" style="margin-left:auto">New link</button>`:''}</div>
+      <div class="sm" id="pt-msg"></div>
+      ${d.updates.length?'<ul class="pl-tl" style="margin-top:8px">'+d.updates.map(u=>`<li>${uxEsc(u.body)}<div class="pl-tl-meta">${uxEsc(u.author||'')} · ${new Date(u.created_at).toLocaleString()}${u.emailed_at?' · emailed':''}</div></li>`).join('')+'</ul>':''}`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function ptPost(dealId,btn){
+  const body=document.getElementById('pt-body').value,email=document.getElementById('pt-email').checked;if(!body.trim())return;
+  btn.disabled=true;
+  try{const r=await plApi('/api/crm/deals/'+dealId+'/updates',{body:{body,email}});showNotif('Update posted',r.emailed?'And emailed to the homeowner.':'');ptLoad(dealId);}
+  catch(e){document.getElementById('pt-msg').textContent=e.message;btn.disabled=false;ptLoad(dealId);}
+}
+async function ptReset(dealId){if(!confirm('Make a new portal link? The old one stops working.'))return;try{await plApi('/api/crm/deals/'+dealId+'/portal/reset',{body:{}});ptLoad(dealId);}catch(e){showNotif('Could not change it',e.message);}}
+
 async function plStageChanged(id,sel){
   const stage=sel.value;let lostReason=null;
   if(stage==='lost'){

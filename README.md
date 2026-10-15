@@ -371,6 +371,16 @@ Lost always stay). Notes can be dictated (the browser's own speech-to-text);
 with "pick out" on, AI reads the note for the job value (only if none is set),
 the next step (becomes a task) and a site-visit time (only if none is set).
 
+**Files and the homeowner portal (step 8).** `lib/crmPortal.js`,
+`routes/crmPortal.js`, `public/portal.html`. Photos (JPEG/PNG/WebP) and PDFs on a
+deal, up to 8 MB each, type checked from the bytes, stored in Postgres
+(`crm_files`), each shared with the homeowner or kept to the team. Each deal has
+a private portal at `/p/<48-hex token>`: plain-words status, next visit,
+estimates, shared photos/documents and team updates; the homeowner can send a
+message (logged as a reply, stops follow-ups, lands in "Needs you", emails the
+deal owner) or add photos. Team updates can be emailed with the link. Playbooks
+can include `{portal_link}` (the starter welcome email does).
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

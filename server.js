@@ -49,6 +49,7 @@ const crmEstimateRoutes = require('./routes/crmEstimates');
 const crmIntakeRoutes = require('./routes/crmIntake');
 const crmGoogleRoutes = require('./routes/crmGoogle');
 const crmReportRoutes = require('./routes/crmReports');
+const crmPortalRoutes = require('./routes/crmPortal');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -170,6 +171,7 @@ app.use(crmEstimateRoutes); // after crmRoutes: their /api/crm/* routes rely on 
 app.use(crmIntakeRoutes);
 app.use(crmGoogleRoutes);
 app.use(crmReportRoutes);
+app.use(crmPortalRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));

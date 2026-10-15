@@ -1495,3 +1495,53 @@ describe('CRM tasks and Today', () => {
     assert.ok(d.activities.some(a => a.body === 'Inquiry → Bid sent'), 'the timeline uses the company’s names');
   });
 });
+
+describe('CRM files and homeowner portal', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  async function owner(label) {
+    const c = makeClient();
+    const r = await c.post('/api/auth/signup', { email: uniqueEmail(label), password: 'TestPass1234!', companyName: 'Portal Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    return c;
+  }
+  test('photos upload, only shared ones reach the portal, and the homeowner can write and add photos', async () => {
+    const o = await owner('portal');
+    const other = await owner('portal-other');
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Home Owner', title: 'Kitchen', email: 'ho@example.test' })).json();
+    const up1 = await (await o.post(`/api/crm/deals/${deal.id}/files`, { filename: 'shared.png', dataBase64: PNG, shared: true })).json();
+    const up2 = await (await o.post(`/api/crm/deals/${deal.id}/files`, { filename: 'team-only.png', dataBase64: PNG, shared: false })).json();
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/files`, { filename: 'evil.html', dataBase64: Buffer.from('<script>alert(1)</script>').toString('base64') })).status, 400);
+    const dl = await o.get(`/api/crm/files/${up1.file.id}`);
+    assert.equal(dl.status, 200);
+    assert.equal(dl.headers.get('content-type'), 'image/png');
+    assert.equal((await other.get(`/api/crm/files/${up1.file.id}`)).status, 404, 'another company cannot fetch it');
+
+    const { url } = await (await o.get(`/api/crm/deals/${deal.id}/portal`)).json();
+    const token = url.split('/p/')[1];
+    const homeowner = makeClient();
+    assert.equal((await homeowner.get(`/p/${token}`)).status, 200);
+    const v = (await (await homeowner.get(`/api/crm-public/portal/${token}`)).json()).portal;
+    assert.deepEqual(v.files.map(f => f.id), [up1.file.id], 'only shared files');
+    assert.equal(v.project.status, 'Getting started');
+    assert.ok(!/value|lost_reason|notes/.test(JSON.stringify(v.project)));
+    assert.equal((await homeowner.get(`/api/crm-public/portal/${token}/files/${up2.file.id}`)).status, 404, 'team-only file is not reachable');
+    assert.equal((await homeowner.get(`/api/crm-public/portal/${token}/files/${up1.file.id}`)).status, 200);
+
+    assert.equal((await homeowner.post(`/api/crm-public/portal/${token}/messages`, { message: 'Can we move the island?' })).status, 200);
+    assert.equal((await homeowner.post(`/api/crm-public/portal/${token}/files`, { filename: 'inspo.png', dataBase64: PNG })).status, 200);
+    const inbox = await (await o.get('/api/crm/inbox')).json();
+    assert.ok(inbox.items.some(i => /sent a message from their portal/.test(i.title)));
+    const files = (await (await o.get(`/api/crm/deals/${deal.id}/files`)).json()).files;
+    assert.ok(files.some(f => f.from_homeowner && f.shared), 'homeowner photos are shared and marked');
+
+    // Posting an update shows in the portal (email isn't configured in tests).
+    const post = await o.post(`/api/crm/deals/${deal.id}/updates`, { body: 'Cabinets arrive Thursday.', email: false });
+    assert.equal(post.status, 200);
+    const v2 = (await (await homeowner.get(`/api/crm-public/portal/${token}`)).json()).portal;
+    assert.equal(v2.updates[0].body, 'Cabinets arrive Thursday.');
+    // A new link retires the old one.
+    const reset = await (await o.post(`/api/crm/deals/${deal.id}/portal/reset`, {})).json();
+    assert.notEqual(reset.url, url);
+    assert.equal((await homeowner.get(`/api/crm-public/portal/${token}`)).status, 404);
+  });
+});

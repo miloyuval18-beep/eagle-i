@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Your Project</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- The homeowner's project portal from Eagle I CRM (routes/crmPortal.js).
+     Shows only what the team shared: status, visits, estimates, photos,
+     documents and updates. Never costs, notes or internal history. -->
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#14202b;--ink2:#3a4855;--ink3:#55636f;--bdr:#c3ccd4;--bdr2:#8794a0;--accent:#1f4e79;--accent2:#173b5c;--ok:#2c6e49;--err:#a12a1f;--f:'Nunito Sans',system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:18px;margin-bottom:14px}
+.co{font-size:14px;color:var(--ink3);overflow-wrap:anywhere}
+h1{font-size:23px;line-height:1.25;margin:4px 0;overflow-wrap:anywhere}
+h2{font-size:17px;margin-bottom:10px}
+.pill{display:inline-block;font-size:13px;font-weight:800;border-radius:999px;padding:3px 11px;background:rgba(31,78,121,.1);color:var(--accent);border:1px solid var(--accent)}
+.meta{font-size:14px;color:var(--ink2)}
+.visit{margin-top:12px;padding:10px 12px;border-radius:10px;background:#eef4fa;font-size:15px}
+.up{border-top:1px solid #e3e7eb;padding:12px 0}
+.up:first-of-type{border-top:0;padding-top:0}
+.up-b{white-space:pre-wrap;overflow-wrap:anywhere}
+.up-m{font-size:12px;color:var(--ink3);margin-top:4px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.grid a{display:block;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#e3e7eb}
+.grid img{width:100%;height:100%;object-fit:cover;display:block}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 0;border-top:1px solid #e3e7eb;font-size:15px}
+.row:first-child{border-top:0}
+.row a{color:var(--accent);font-weight:700;overflow-wrap:anywhere}
+.tag{font-size:12px;color:var(--ink3);white-space:nowrap}
+textarea{width:100%;border:1.5px solid var(--bdr2);border-radius:8px;padding:11px 12px;font-family:var(--f);font-size:16px;color:var(--ink);resize:vertical}
+textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
+.btn{display:inline-flex;justify-content:center;align-items:center;gap:6px;border:0;border-radius:8px;padding:12px 16px;font-family:var(--f);font-size:16px;font-weight:800;cursor:pointer;background:var(--accent);color:#fff}
+.btn:disabled{opacity:.5}
+.btn-o{background:#fff;border:1.5px solid var(--bdr2);color:var(--ink)}
+.msg{font-size:14px;margin-top:8px;min-height:18px}
+.empty{font-size:14px;color:var(--ink3)}
+.foot{font-size:12px;color:var(--ink3);text-align:center;margin:16px 0 30px}
+@media(max-width:420px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="card">Loading your project…</div></div>
+<div class="foot">Powered by Eagle I CRM</div>
+<script>
+const token=location.pathname.split('/').pop();
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fileUrl=id=>`/api/crm-public/portal/${token}/files/${id}`;
+let P=null;
+async function load(){
+  try{
+    const r=await fetch('/api/crm-public/portal/'+token);const d=await r.json();
+    if(!r.ok)throw new Error((d.error&&d.error.message)||'This link is not valid.');
+    P=d.portal;render();
+  }catch(e){document.getElementById('app').innerHTML='<div class="card">'+esc(e.message)+'</div>';}
+}
+function render(){
+  const p=P,photos=p.files.filter(f=>f.kind==='photo'),docs=p.files.filter(f=>f.kind==='document');
+  document.title=p.project.title+' · '+(p.company.name||'');
+  document.getElementById('app').innerHTML=`
+  <div class="card">
+    <div class="co">${esc(p.company.name)}${p.company.phone?' · '+esc(p.company.phone):''}</div>
+    <h1>${esc(p.project.title)}</h1>
+    <div class="meta">${esc(p.project.customer)}${p.project.address?' · '+esc(p.project.address):''}</div>
+    <div style="margin-top:10px"><span class="pill">${esc(p.project.status)}</span></div>
+    ${p.nextVisit?`<div class="visit">📅 Next visit: <b>${new Date(p.nextVisit).toLocaleString([], {weekday:'long',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'})}</b></div>`:''}
+  </div>
+  <div class="card"><h2>Updates</h2>${p.updates.length?p.updates.map(u=>`<div class="up"><div class="up-b">${esc(u.body)}</div><div class="up-m">${esc(u.author||p.company.name)} · ${new Date(u.createdAt).toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'})}</div></div>`).join(''):'<div class="empty">Updates from your team will show up here.</div>'}</div>
+  <div class="card"><h2>Photos</h2>${photos.length?`<div class="grid">${photos.map(f=>`<a href="${fileUrl(f.id)}" target="_blank" rel="noopener" title="${esc(f.caption||f.filename)}"><img src="${fileUrl(f.id)}" alt="${esc(f.caption||'Project photo')}" loading="lazy"></a>`).join('')}</div>`:'<div class="empty">No photos yet.</div>'}
+    <div style="margin-top:12px"><label class="btn btn-o" style="cursor:pointer">📷 Add your photos<input type="file" accept="image/*" multiple style="display:none" onchange="upload(this)"></label><div class="msg" id="up-msg"></div></div></div>
+  ${docs.length||p.estimates.length?`<div class="card"><h2>Documents</h2>
+    ${p.estimates.map(e=>`<div class="row"><a href="${esc(e.link)}">${esc(e.kind)} #${esc(e.number)}: ${esc(e.title)}</a><span class="tag">${esc(e.status)} · ${money(e.total)}</span></div>`).join('')}
+    ${docs.map(f=>`<div class="row"><a href="${fileUrl(f.id)}" target="_blank" rel="noopener">${esc(f.caption||f.filename)}</a><span class="tag">PDF</span></div>`).join('')}</div>`:''}
+  <div class="card"><h2>Message ${esc(p.company.name||'us')}</h2>
+    <textarea id="m" rows="4" placeholder="Questions, changes, anything on your mind…" aria-label="Your message"></textarea>
+    <div style="margin-top:10px"><button class="btn" id="mb" onclick="send()">Send message</button></div><div class="msg" id="m-msg" role="status"></div></div>`;
+}
+async function send(){
+  const m=document.getElementById('m'),b=document.getElementById('mb'),out=document.getElementById('m-msg');
+  if(!m.value.trim())return;b.disabled=true;out.textContent='';
+  try{const r=await fetch(`/api/crm-public/portal/${token}/messages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m.value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);m.value='';out.textContent='Sent. Your team will get back to you soon.';out.style.color='var(--ok)';}
+  catch(e){out.textContent=e.message||'Could not send. Please try again.';out.style.color='var(--err)';}
+  b.disabled=false;
+}
+function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});}
+async function upload(input){
+  const out=document.getElementById('up-msg');const files=[...input.files];if(!files.length)return;
+  out.textContent=`Uploading ${files.length} photo${files.length>1?'s':''}…`;out.style.color='';
+  let ok=0;
+  for(const f of files){
+    if(f.size>8*1024*1024){out.textContent=`${f.name} is over 8 MB.`;continue;}
+    try{const r=await fetch(`/api/crm-public/portal/${token}/files`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:f.name,dataBase64:await readFile(f)})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);ok++;}
+    catch(e){out.textContent=e.message||'Upload failed.';out.style.color='var(--err)';}
+  }
+  if(ok){await load();const o=document.getElementById('up-msg');if(o){o.textContent=`Added ${ok} photo${ok>1?'s':''}. Your team can see ${ok>1?'them':'it'} now.`;o.style.color='var(--ok)';}}
+}
+load();
+</script>
+</body>
+</html>
