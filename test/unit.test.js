@@ -794,7 +794,7 @@ describe('CRM core (lib/crm.js)', () => {
     assert.equal(crm.leadStatusForStage('new'), 'new');
   });
   test('settings fall back to safe defaults', () => {
-    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], smsForwardTo: null, missedCallText: null, missedCallApproved: null, scheduleTemplate: null, backfilledAt: null });
+    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], smsForwardTo: null, missedCallText: null, missedCallApproved: null, scheduleTemplate: null, minJobValue: null, booking: null, backfilledAt: null });
     assert.equal(crm.normalizeSettings({ waitingMinutes: 7 }).waitingMinutes, 30);
     assert.equal(crm.normalizeSettings({ waitingMinutes: '60' }).waitingMinutes, 60);
   });
@@ -1106,5 +1106,50 @@ describe('CRM job costing (lib/crmCosts.js)', () => {
   test('CSV export quotes commas and neutralises spreadsheet formulas', () => {
     const out = costs.csv([['Vendor', 'Note'], ['Home Depot, #455', '=HYPERLINK("http://evil")'], ['Plain', '+1 call']]);
     assert.equal(out, 'Vendor,Note\r\n"Home Depot, #455","\'=HYPERLINK(""http://evil"")"\r\nPlain,"\'+1 call"\r\n');
+  });
+});
+
+describe('CRM qualifying', () => {
+  const q = require('../lib/crmQualify');
+  test('a big budget in a pricey ZIP who wants to start soon is an A', () => {
+    const s = q.computeScore({ value: null, zipMedian: 750000, qualify: { budget: '100_250k', timeline: '1_3m', decision: 'all', answered_at: 'x' }, source: 'referral', hasEmail: true, hasPhone: true, minJobValue: 50000 });
+    assert.equal(s.grade, 'A');
+    assert.equal(s.score, 100);
+    assert.ok(s.reasons.every(r => typeof r.why === 'string' && Number.isInteger(r.points)));
+  });
+  test('a small job from someone just looking is a C, with reasons', () => {
+    const s = q.computeScore({ value: 8000, zipMedian: 200000, qualify: { timeline: 'just_looking' }, source: 'website', hasEmail: true, hasPhone: false, minJobValue: 25000 });
+    assert.equal(s.grade, 'C');
+    assert.ok(s.reasons.some(r => /well under/.test(r.why)));
+    assert.ok(s.reasons.some(r => /exploring/.test(r.why)));
+  });
+  test('knowing nothing lands in the middle', () => {
+    const s = q.computeScore({ minJobValue: 25000 });
+    assert.equal(s.score, 40);
+    assert.equal(s.grade, 'C');
+    assert.deepEqual(s.reasons, []);
+  });
+  test('the questionnaire budget beats the typed-in value', () => {
+    const s = q.computeScore({ value: 5000, qualify: { budget: '250k_plus' }, minJobValue: 25000 });
+    assert.ok(s.reasons[0].points > 0);
+  });
+  test('booking settings fall back to sane defaults', () => {
+    assert.deepEqual(q.bookingSettings(null), q.DEFAULT_BOOKING);
+    const b = q.bookingSettings({ days: [5, 1, 1, 9], start: '25:00', end: '08:00', duration: 5000, buffer: -3, notice: 'x', horizon: 90, userId: 'nope' });
+    assert.deepEqual(b.days, [1, 5]);
+    assert.equal(b.start, '09:00');
+    assert.equal(b.end, '16:00', 'an end before the start is ignored');
+    assert.equal(b.duration, 240);
+    assert.equal(b.buffer, 0);
+    assert.equal(b.notice, 24);
+    assert.equal(b.horizon, 60);
+    assert.equal(b.userId, null);
+  });
+  test('the brief by rules uses only what is known', () => {
+    const t = q.briefByRules({ contact_name: 'Maria', contact_phone: '713', qualify: { types: ['kitchen'], budget: '50_100k', timeline: 'asap', notes: 'Hates the tile' }, grade: 'A', score_reasons: [{ why: 'Budget fine' }] }, []);
+    assert.match(t, /Wants: Kitchen/);
+    assert.match(t, /\$50k–\$100k/);
+    assert.match(t, /Hates the tile/);
+    assert.doesNotMatch(t, /Address/);
   });
 });

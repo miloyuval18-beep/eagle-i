@@ -437,6 +437,21 @@ labor as hours × rate, manual entries). Spending more than 15 points ahead of
 schedule progress → "Needs you". Owners/admins export invoices or costs as CSV
 (`/api/crm/export`, formula-safe) for the accountant.
 
+**Qualifying and booking (step 13).** `lib/crmQualify.js`,
+`routes/crmQualify.js`. Every deal gets a fit score (0–100, grade A ≥65 / B ≥45
+/ C) with a plain reason for every point: budget against the company's
+smallest job, the ZIP's median home value, timeline, referral source,
+decision-makers, questionnaire answered. It rescores when value, address,
+source, email or phone change. The homeowner's questionnaire (`/q/<portal
+token>`, also `{qualify_link}` in playbooks; the starter new-lead reply
+includes it) fills in the deal; A/B moves New → Qualified on its own. Site
+visits are self-booked from `/b/<portal token>` (`{booking_link}`) or the
+company's public page `/book/<intake key>` (makes a lead first): slots come
+from the company's days/hours, visit length, travel buffer, minimum notice and
+horizon (Central time), minus visits already booked. Booking sets the visit
+(→ "Site visit set", reminders start) and writes a pre-visit brief (AI when
+`ANTHROPIC_API_KEY` is set, else from the facts) emailed to whoever is going.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

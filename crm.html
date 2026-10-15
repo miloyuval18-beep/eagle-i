@@ -102,6 +102,11 @@ select{width:auto;cursor:pointer}
 .pl-tag{font-size:11px;border:1px solid var(--bdr2);border-radius:4px;padding:1px 6px;color:var(--ink2);white-space:nowrap}
 .pl-tag.auto{color:var(--green);border-color:rgba(60,110,70,.4)}
 .pl-tag.warn{color:var(--amber);border-color:rgba(160,110,0,.5)}
+.pl-tag.gA{color:var(--green);border-color:rgba(60,110,70,.45);font-weight:800}
+.pl-tag.gB{color:var(--accent);border-color:var(--accent);font-weight:800}
+.pl-tag.gC{color:var(--ink2);font-weight:800}
+.fit-r{font-size:13px;display:flex;gap:8px;padding:2px 0}.fit-r b{min-width:34px;text-align:right}
+.fit-brief{white-space:pre-wrap;font-size:13.5px;line-height:1.5;background:var(--bg2,rgba(0,0,0,.03));border:1px solid var(--bdr2);border-radius:10px;padding:10px 12px;margin-top:6px}
 .pl-empty{text-align:center;padding:26px 12px;color:var(--ink3);font-size:13px;border:1px dashed var(--bdr2);border-radius:var(--r2)}
 .pl-banner{border:1px solid rgba(160,110,0,.5);background:rgba(160,110,0,.08);border-radius:var(--r2);padding:10px 12px;font-size:13px;margin-bottom:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
 .pl-form{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
@@ -191,6 +196,8 @@ select{width:auto;cursor:pointer}
     <div id="pl-stagenames"></div>
     <div class="pl-h">Get leads in automatically</div>
     <div id="pl-intake"><div class="sm">Loading…</div></div>
+    <div class="pl-h">Qualifying &amp; site-visit booking</div>
+    <div id="pl-booking"><div class="sm">Loading…</div></div>
     <div class="pl-h">What Eagle I did in the last 7 days</div>
     <div class="pl-strip" id="pl-week"></div>
     <div class="pl-h">Playbooks</div>
@@ -721,7 +728,7 @@ function plRender(){
   el.innerHTML=list.map(x=>{
     const st=plStage(x.stage);
     const waiting=x.stage==='new'&&!x.first_response_at;
-    const tags=[`<span class="pl-tag">${uxEsc(st.label)}</span>`,`<span class="pl-tag">${uxEsc(plSourceLabel(x.source))}</span>`,`<span class="pl-tag">${plAgo(x.stage_entered_at)} in stage</span>`];
+    const tags=[...(x.grade?[`<span class="pl-tag g${x.grade}" title="Fit score ${x.score}">Fit ${x.grade}</span>`]:[]),`<span class="pl-tag">${uxEsc(st.label)}</span>`,`<span class="pl-tag">${uxEsc(plSourceLabel(x.source))}</span>`,`<span class="pl-tag">${plAgo(x.stage_entered_at)} in stage</span>`];
     if(waiting)tags.push(`<span class="pl-tag warn">Waiting ${plAgo(x.created_at)}</span>`);
     if(x.site_visit_at&&new Date(x.site_visit_at)>new Date(Date.now()-86400000))tags.push(`<span class="pl-tag">📅 ${new Date(x.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span>`);
     if(CR.team.length>1)tags.push(`<span class="pl-tag">${x.owner_name?'👤 '+uxEsc(x.owner_name):'Unassigned'}</span>`);
@@ -790,6 +797,8 @@ async function plOpenDeal(id){
       ${x.contact_phone?`<a class="btn-xs" href="tel:${uxEsc(x.contact_phone)}">📞 Call</a>`:''}${x.contact_email?`<a class="btn-xs" href="mailto:${uxEsc(x.contact_email)}">✉️ Email</a>`:''}
       ${crCanManage()?`<button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="plDeleteDeal('${x.id}')">Delete</button>`:''}</div>
     <div class="sm" id="pld-msg"></div>
+    <div class="pl-h">Fit &amp; visit prep</div>
+    <div id="pld-fit"><div class="sm">Loading…</div></div>
     <div class="pl-h">Estimates</div>
     <div id="pld-est"><div class="sm">Loading…</div></div>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button></div>
@@ -826,10 +835,60 @@ async function plOpenDeal(id){
     <div class="pl-h">History</div>
     <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${new Date(a.created_at).toLocaleString()}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
   plDealEstimates(x.id);
+  fitLoad(x.id);
   flLoad(x.id);
   ptLoad(x.id);
   ivLoad(x.id);
   smLoad(x.id);
+}
+/* ---------- fit, questionnaire, booking ---------- */
+async function fitLoad(dealId){
+  const el=document.getElementById('pld-fit');if(!el)return;
+  try{
+    const f=await plApi('/api/crm/deals/'+dealId+'/fit');
+    const copy=(id,label,val)=>`<label for="${id}" style="font-size:12px;font-weight:700;display:block;margin-top:8px">${label}</label><div style="display:flex;gap:6px"><input id="${id}" class="cred-input" readonly value="${uxEsc(val)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('${id}')">Copy</button></div>`;
+    const a=f.answers;
+    el.innerHTML=`<div class="pl-pb">
+      ${f.grade?`<div class="pl-card-top"><div class="pl-item-t">Fit ${f.grade} · ${f.score}/100</div><button class="btn-xs" onclick="fitRescore('${dealId}')">Re-score</button></div>
+      <div style="margin-top:6px">${f.reasons.map(r=>`<div class="fit-r"><b style="color:${r.points>=0?'var(--green)':'var(--red)'}">${r.points>0?'+':''}${r.points}</b><span>${uxEsc(r.why)}</span></div>`).join('')||'<div class="sm">Not much to go on yet. The questionnaire fills this in.</div>'}</div>`:'<div class="sm" style="margin-top:0">Not scored yet.</div>'}
+      ${a?`<div class="pl-h" style="margin-top:12px;font-size:13px">Their answers</div><div class="sm" style="margin-top:0">${uxEsc(a.types.join(', '))} · ${uxEsc(a.budget)} · ${uxEsc(a.timeline)}${a.decision?' · '+uxEsc(a.decision):''}</div>${a.notes?`<div class="sm">“${uxEsc(a.notes)}”</div>`:''}`:`<div class="sm">They haven’t answered the questionnaire yet. The first automatic reply includes the link, or send it yourself:</div>`}
+      ${copy('fit-q','Questionnaire link',f.links.questionnaire)}
+      ${copy('fit-b','Link to book a site visit',f.links.booking)}
+      <div class="pl-card-top" style="margin-top:12px"><div class="pl-item-t" style="font-size:13px">Pre-visit brief</div><button class="btn-xs" onclick="fitBrief('${dealId}',this)">${f.brief?'Refresh':'Write it now'}</button></div>
+      ${f.brief?`<div class="fit-brief">${uxEsc(f.brief)}</div><div class="sm">Written ${new Date(f.briefAt).toLocaleString()}. Booking a visit writes a fresh one and emails it to whoever is going.</div>`:'<div class="sm">Eagle I writes this when a visit is booked and emails it to whoever is going.</div>'}
+    </div>`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function fitRescore(dealId){try{await plApi('/api/crm/deals/'+dealId+'/rescore',{body:{}});fitLoad(dealId);plLoad();}catch(e){showNotif('Could not score',e.message);}}
+async function fitBrief(dealId,btn){btn.disabled=true;btn.textContent='Writing…';try{await plApi('/api/crm/deals/'+dealId+'/brief',{body:{}});fitLoad(dealId);}catch(e){showNotif('Could not write the brief',e.message);btn.disabled=false;}}
+const BK_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+async function bkLoad(){
+  const el=document.getElementById('pl-booking');if(!el)return;
+  try{
+    const {minJobValue:m,booking:b}=await plApi('/api/crm/qualify/settings');const manage=crCanManage();const dis=manage?'':' disabled';
+    el.innerHTML=`<div class="pl-pb">
+      <div class="sm" style="margin-top:0">Every new lead gets a fit score (A, B or C) with the reasons. Leads who answer your questionnaire and score A or B move to Qualified on their own and can pick a site-visit time straight away. Booking sets the visit, starts its reminders, and emails a short brief to whoever is going.</div>
+      <div class="pl-form" style="margin-top:8px">
+        <div><label for="bk-min">Smallest job you take ($)</label><input id="bk-min" class="cred-input" inputmode="decimal" value="${m}"${dis}></div>
+        <div><label for="bk-who">Who does site visits</label><select id="bk-who"${dis}>${crOwnerOptions(b.userId).replace('Unassigned','Whoever owns the deal')}</select></div>
+        <div class="full"><label>Days</label><div style="display:flex;gap:10px;flex-wrap:wrap">${BK_DAYS.map((d,i)=>`<label class="pl-switch" style="font-size:13px"><input type="checkbox" data-bkday="${i}"${b.days.includes(i)?' checked':''}${dis}> ${d}</label>`).join('')}</div></div>
+        <div><label for="bk-start">First visit at</label><input id="bk-start" type="time" class="cred-input" value="${b.start}"${dis}></div>
+        <div><label for="bk-end">Done by</label><input id="bk-end" type="time" class="cred-input" value="${b.end}"${dis}></div>
+        <div><label for="bk-dur">Visit length (minutes)</label><input id="bk-dur" class="cred-input" inputmode="numeric" value="${b.duration}"${dis}></div>
+        <div><label for="bk-buf">Travel time between visits (minutes)</label><input id="bk-buf" class="cred-input" inputmode="numeric" value="${b.buffer}"${dis}></div>
+        <div><label for="bk-notice">Book at least (hours ahead)</label><input id="bk-notice" class="cred-input" inputmode="numeric" value="${b.notice}"${dis}></div>
+        <div><label for="bk-hor">Up to (days out)</label><input id="bk-hor" class="cred-input" inputmode="numeric" value="${b.horizon}"${dis}></div>
+      </div>
+      <div class="sm">Times are Houston (Central) time. Visits already on the calendar are blocked out.</div>
+      ${manage?'<div class="vd-mbtns"><button class="btn btn-blue" onclick="bkSave(this)">Save</button></div>':''}<div class="sm" id="bk-msg"></div>
+    </div>`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function bkSave(btn){
+  const v=id=>document.getElementById(id).value;btn.disabled=true;
+  const days=[...document.querySelectorAll('[data-bkday]')].filter(i=>i.checked).map(i=>+i.dataset.bkday);
+  try{await plApi('/api/crm/qualify/settings',{method:'PATCH',body:{minJobValue:v('bk-min'),booking:{days,start:v('bk-start'),end:v('bk-end'),duration:v('bk-dur'),buffer:v('bk-buf'),notice:v('bk-notice'),horizon:v('bk-hor'),userId:v('bk-who')||null}}});showNotif('Saved','');bkLoad();}
+  catch(e){document.getElementById('bk-msg').textContent=e.message;btn.disabled=false;}
 }
 async function plDealEstimates(dealId){
   const el=document.getElementById('pld-est');if(!el)return;
@@ -1216,6 +1275,7 @@ async function plLoadIntake(){
     el.innerHTML=`<div class="pl-pb">
       <div class="sm" style="margin-top:0">Every lead that comes in this way becomes a deal on its own, goes to the person you picked below, gets the instant reply (once you approve it), and your team gets an email right away.</div>
       ${copy('in-form','Your inquiry form (link to it from your website, Google profile or social pages)',d.formUrl)}
+      ${d.bookingUrl?copy('in-book','Your booking page: anyone can pick a site-visit time (put it on your website and Google profile)',d.bookingUrl):''}
       ${copy('in-embed','Or put the form right on your website (give this code to whoever runs your site)',d.embedCode)}
       ${d.forwardAddress?copy('in-fwd','Forward lead emails from Houzz, Angi, Thumbtack and others to this address',d.forwardAddress)+'<div class="sm">Tip: set up an automatic forward in your email for messages from those sites. Eagle I reads each one and ignores anything that isn’t a lead.</div>':'<div class="sm">Lead-email forwarding needs inbound email switched on for Eagle I. Ask your Eagle I admin.</div>'}
       ${crCanManage()?'<div class="vd-mbtns"><button class="btn-xs" onclick="plRotate()">Make a new link</button><span class="sm" style="margin:0">Use this if the form is getting spam. The old link and address stop working.</span></div>':''}
@@ -1226,6 +1286,7 @@ function plCopy(id){const i=document.getElementById(id);i.select();(navigator.cl
 async function plRotate(){if(!confirm('Make a new link? The old form link and forwarding address will stop working, so you’ll need to update your website.'))return;try{await plApi('/api/crm/intake/rotate',{body:{}});plLoadIntake();}catch(e){showNotif('Could not change it',e.message);}}
 async function plLoadAuto(){
   plLoadIntake();
+  bkLoad();
   if(!PL.data)plLoad().then(plRenderStageNames);else plRenderStageNames();
   try{
     const [pb,sum]=await Promise.all([plApi('/api/crm/playbooks'),plApi('/api/crm/summary')]);

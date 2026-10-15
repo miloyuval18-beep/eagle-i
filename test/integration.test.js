@@ -1673,3 +1673,49 @@ describe('CRM job costing and export', () => {
     assert.equal((await m.post(`/api/crm/deals/${deal.id}/costs`, { category: 'labor', hours: 8, rate: 40 })).status, 200, 'members can log costs');
   });
 });
+
+describe('CRM qualifying and booking', () => {
+  test('the questionnaire and booking pages work by link; settings are for managers; tokens are checked', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('fit'), password: 'TestPass1234!', companyName: 'Fit Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const st = await (await o.patch('/api/crm/qualify/settings', { minJobValue: '40000', booking: { days: [0, 1, 2, 3, 4, 5, 6], start: '08:00', end: '18:00', notice: 1 } })).json();
+    assert.equal(st.minJobValue, 40000);
+    assert.equal((await o.patch('/api/crm/qualify/settings', { minJobValue: 'x' })).status, 400);
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Kim Vo', email: 'kim@fit.test', title: 'Kitchen' })).json();
+    const fit = await (await o.get(`/api/crm/deals/${deal.id}/fit`)).json();
+    assert.ok(fit.grade);
+    const qToken = fit.links.questionnaire.split('/q/')[1];
+    assert.match(qToken, /^[0-9a-f]{48}$/);
+    const home = makeClient();
+    assert.equal((await home.get(`/q/${qToken}`)).status, 200);
+    assert.equal((await home.get('/api/crm-public/q/' + 'a'.repeat(48))).status, 404);
+    assert.equal((await home.post(`/api/crm-public/q/${qToken}`, { types: ['kitchen'], budget: 'lots', timeline: 'asap' })).status, 400);
+    const ans = await (await home.post(`/api/crm-public/q/${qToken}`, { types: ['kitchen'], budget: '100_250k', timeline: '1_3m', decision: 'all' })).json();
+    assert.equal(ans.canBook, true);
+    const bi = await (await home.get(`/api/crm-public/b/${qToken}`)).json();
+    assert.ok(bi.slots.length);
+    assert.equal((await home.post(`/api/crm-public/b/${qToken}`, { slot: bi.slots[0] })).status, 200);
+    const after = (await (await o.get(`/api/crm/deals/${deal.id}`)).json()).deal;
+    assert.equal(after.stage, 'site_visit');
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/brief`, {})).status, 200);
+    // The public booking page by intake key; the honeypot quietly drops bots.
+    const { formUrl, bookingUrl } = await (await o.get('/api/crm/intake')).json();
+    const key = bookingUrl.split('/book/')[1];
+    assert.equal(key, formUrl.split('/crm/f/')[1]);
+    assert.equal((await home.get(`/book/${key}`)).status, 200);
+    const pub = await (await home.get(`/api/crm-public/book/${key}`)).json();
+    assert.ok(!pub.slots.includes(bi.slots[0]), 'booked times are gone');
+    assert.equal((await home.post(`/api/crm-public/book/${key}`, { name: 'Bot', email: 'b@x.test', slot: pub.slots[0], company_website: 'spam' })).status, 200);
+    assert.equal((await home.post(`/api/crm-public/book/${key}`, { name: 'Lee Ann', email: 'lee@fit.test', slot: pub.slots[0] })).status, 200);
+    const pipe = await (await o.get('/api/crm/pipeline')).json();
+    assert.ok(pipe.deals.some(x => x.contact_name === 'Lee Ann' && x.stage === 'site_visit' && x.grade));
+    assert.ok(!pipe.deals.some(x => x.contact_name === 'Bot'));
+    // Members can't change booking rules.
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('fit-m'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    assert.equal((await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' })).status, 200);
+    assert.equal((await m.patch('/api/crm/qualify/settings', { minJobValue: 1 })).status, 403);
+    assert.equal((await m.get('/api/crm/qualify/settings')).status, 200);
+  });
+});
