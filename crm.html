@@ -229,6 +229,8 @@ select{width:auto;cursor:pointer}
       <div class="full"><label for="co-address">Business address</label><input id="co-address" class="cred-input" autocomplete="street-address" placeholder="Street, city, state, ZIP"></div>
     </div>
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="coSave(this)">Save</button><span class="sm" id="co-msg" style="margin:0"></span></div>
+    <div class="pl-h" style="margin-top:26px">Texting &amp; calls</div>
+    <div id="sms-box"><div class="sm">Loading…</div></div>
     <div class="pl-h" style="margin-top:26px">Online payments</div>
     <div id="pay-box"><div class="sm">Loading…</div></div>
     <div class="pl-h" style="margin-top:26px">Google Workspace email</div>
@@ -587,9 +589,34 @@ async function payLoad(){
 async function payConnect(btn){btn.disabled=true;try{const r=await plApi('/api/crm/payments/connect',{body:{}});location.href=r.url;}catch(e){showNotif('Could not open Stripe',e.message);btn.disabled=false;}}
 async function payRefresh(){try{await plApi('/api/crm/payments?refresh=1');}catch(e){}payLoad();}
 
+async function smsSetupLoad(){
+  const el=document.getElementById('sms-box');if(!el)return;
+  try{
+    const st=CR.sms=await plApi('/api/crm/sms');const manage=crCanManage();
+    if(!st.available){el.innerHTML='<div class="pl-banner"><span>Texting isn’t set up on the Eagle I server yet.</span></div>';return;}
+    if(!st.number){el.innerHTML=manage?`<div class="pl-pb"><div class="pl-item-t">Get a local number for your company</div><div class="sm">Calls to it ring your phone; customers can text it; Eagle I texts back anyone you miss.</div>
+      <div style="display:flex;gap:6px;margin-top:8px"><input id="sms-ac" class="cred-input" inputmode="numeric" maxlength="3" placeholder="Area code, e.g. 713" style="max-width:200px"><button class="btn btn-blue" onclick="smsGet(this)">Get a number</button></div><div class="sm" id="sms-msg"></div></div>`:'<div class="sm">No texting number yet. Ask your account owner or an admin.</div>';return;}
+    el.innerHTML=`<div class="pl-pb"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(st.numberPretty)}</div><div class="pl-item-d">Your company’s texting and calling number. Put it on your website, trucks and signs.</div></div><span class="pl-pill on">● On</span></div>
+      <label for="sms-fwd" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Calls ring this phone</label>
+      <input id="sms-fwd" class="cred-input" type="tel" inputmode="tel" value="${uxEsc(st.forwardTo||'')}" placeholder="Your cell or office, e.g. 713-555-0100" ${manage?'':'disabled'}>
+      <label for="sms-missed" style="font-size:12px;font-weight:700;display:block;margin-top:10px">When nobody picks up, text them this right away</label>
+      <textarea id="sms-missed" class="cred-input" rows="3" maxlength="300" ${manage?'':'disabled'}>${uxEsc(st.missedCallText)}</textarea>
+      <div class="sm">${st.missedCallApproved?'● Approved: going out after every missed call (once per caller every 12 hours).':'Not approved yet: nothing goes out until you approve the wording.'} You can use {company}.</div>
+      ${manage?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="smsSave(this,true)">Save${st.missedCallApproved?'':' & approve the text'}</button>${st.missedCallApproved?'<button class="btn-xs" onclick="smsSave(this,false,true)">Stop the missed-call text</button>':''}</div>`:''}<div class="sm" id="sms-msg"></div>
+      <div class="sm">US carriers require business texting to be registered (A2P 10DLC). Your Eagle I admin handles that once.</div></div>`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function smsGet(btn){btn.disabled=true;const m=document.getElementById('sms-msg');m.textContent='Finding a number…';try{await plApi('/api/crm/sms/number',{body:{areaCode:document.getElementById('sms-ac').value}});smsSetupLoad();}catch(e){m.textContent=e.message;btn.disabled=false;}}
+async function smsSave(btn,approve,stop){
+  btn.disabled=true;const m=document.getElementById('sms-msg');
+  try{await plApi('/api/crm/sms/settings',{method:'PATCH',body:stop?{approve:false}:{forwardTo:document.getElementById('sms-fwd').value,missedCallText:document.getElementById('sms-missed').value,approve}});smsSetupLoad();showNotif('Saved','');}
+  catch(e){m.textContent=e.message;btn.disabled=false;}
+}
+
 async function coLoad(){
   gwLoad();
   payLoad();
+  smsSetupLoad();
   document.querySelectorAll('#view-company input').forEach(i=>i.disabled=!crCanManage());
   document.querySelector('#view-company .btn-blue').hidden=!crCanManage();
   try{
@@ -714,7 +741,7 @@ async function plOpenDeal(id){
   const x=d.deal;
   const upcoming=d.automations.filter(a=>a.status==='pending');
   const actorLbl={owner:'Your team',eagle_i:'Eagle I',contact:x.contact_name};
-  const kindIcon={lead_in:'📥',note:'📝',stage:'➡️',email:'✉️',reply:'💬',system:'✏️'};
+  const kindIcon={lead_in:'📥',note:'📝',stage:'➡️',email:'✉️',reply:'💬',system:'✏️',text:'📱',call:'📞'};
   const zipInfo=x.zip_median_value?` · county median home value in ${uxEsc(x.property_zip)}: ${plMoney(x.zip_median_value)}`:'';
   uxOpen(uxHead(uxEsc(x.title),uxEsc(plSourceLabel(x.source))+' · added '+new Date(x.created_at).toLocaleDateString()+zipInfo)+
     `<div class="pl-form">
@@ -735,6 +762,8 @@ async function plOpenDeal(id){
     <div class="pl-h">Estimates</div>
     <div id="pld-est"><div class="sm">Loading…</div></div>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button></div>
+    <div class="pl-h">Texts &amp; calls</div>
+    <div id="pld-sms"><div class="sm">Loading…</div></div>
     <div class="pl-h">Invoices</div>
     <div id="pld-inv"><div class="sm">Loading…</div></div>
     <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New invoice</summary>
@@ -768,12 +797,37 @@ async function plOpenDeal(id){
   flLoad(x.id);
   ptLoad(x.id);
   ivLoad(x.id);
+  smLoad(x.id);
 }
 async function plDealEstimates(dealId){
   const el=document.getElementById('pld-est');if(!el)return;
   try{const {estimates}=await plApi('/api/crm/estimates?dealId='+dealId);el.innerHTML=estimates.length?'<div class="pl-list">'+estimates.map(esRow).join('')+'</div>':'<div class="sm">None yet.</div>';}
   catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
+/* ---------- texts & calls ---------- */
+async function smLoad(dealId){
+  const el=document.getElementById('pld-sms');if(!el)return;
+  try{
+    const [d,st]=await Promise.all([plApi('/api/crm/deals/'+dealId+'/messages'),CR.sms?Promise.resolve(CR.sms):plApi('/api/crm/sms').then(x=>CR.sms=x)]);
+    const thread=d.messages.map(m=>`<div style="display:flex;justify-content:${m.direction==='out'?'flex-end':'flex-start'};margin:4px 0"><div style="max-width:80%;padding:8px 11px;border-radius:14px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;${m.direction==='out'?'background:var(--accent);color:#fff':'background:var(--bg4)'}">${uxEsc(m.body)}<div style="font-size:11px;opacity:.75;margin-top:2px">${new Date(m.created_at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}${m.direction==='out'?(m.automated?' · Eagle I':m.sender?' · '+uxEsc(m.sender):''):''}</div></div></div>`).join('');
+    const calls=d.calls.length?'<div class="pl-tags" style="margin-top:6px">'+d.calls.slice(0,5).map(c=>`<span class="pl-tag${c.status==='missed'?' warn':''}">📞 ${c.status==='missed'?'Missed':'Answered'} ${new Date(c.created_at).toLocaleDateString([], {month:'short',day:'numeric'})}${c.texted_back?' · texted back':''}</span>`).join('')+'</div>':'';
+    let box='';
+    if(!st.available)box='<div class="sm">Texting isn’t set up on the Eagle I server yet.</div>';
+    else if(!st.number)box='<div class="sm">Get your company texting number in Company details to text from here.</div>';
+    else if(!d.phone)box='<div class="sm">Add a mobile number to this deal to text them.</div>';
+    else if(d.optedOut)box='<div class="sm">This person texted STOP, so they can’t be texted.</div>';
+    else box=`<div style="display:flex;gap:6px;margin-top:6px"><textarea id="sm-body" class="cred-input" rows="2" maxlength="600" placeholder="Text ${uxEsc(d.phone)} from ${uxEsc(st.numberPretty)}…"></textarea><button class="btn-xs p" onclick="smSend('${dealId}',this)">Send</button></div>
+      <label class="pl-switch" style="margin-top:6px;font-size:13px"><input type="checkbox" ${d.consent?'checked':''} onchange="smConsent('${dealId}',this.checked)"><span>They agreed to automatic texts (playbooks can text them)</span></label>`;
+    el.innerHTML=(thread?`<div style="max-height:320px;overflow-y:auto;padding:4px 0" id="sm-thread">${thread}</div>`:'<div class="sm">No texts yet.</div>')+calls+box;
+    const th=document.getElementById('sm-thread');if(th)th.scrollTop=th.scrollHeight;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function smSend(dealId,btn){
+  const b=document.getElementById('sm-body');if(!b.value.trim())return;btn.disabled=true;
+  try{await plApi('/api/crm/deals/'+dealId+'/messages',{body:{body:b.value}});smLoad(dealId);}catch(e){showNotif('Could not send',e.message);btn.disabled=false;}
+}
+async function smConsent(dealId,on){try{await plApi('/api/crm/deals/'+dealId+'/sms-consent',{body:{consent:on}});}catch(e){showNotif('Could not save',e.message);}}
+
 /* ---------- invoices ---------- */
 const IV_STATUS={draft:'Draft',sent:'Waiting for payment',paid:'Paid',void:'Cancelled'};
 const IV_KIND={deposit:'Deposit',progress:'Progress payment',final:'Final payment',other:'Invoice'};
@@ -1011,11 +1065,12 @@ function plRenderPlaybooks(){
   const el=document.getElementById('pl-playbooks');
   el.innerHTML=PL.playbooks.map(p=>{
     const pill=p.enabled&&p.approved?'<span class="pl-pill on">● On</span>':p.approved?'<span class="pl-pill">Off</span>':'<span class="pl-pill need">Needs your approval</span>';
-    return `<div class="pl-pb" id="pb-${p.id}"><div class="pl-pb-head"><div><div class="pl-item-t">${uxEsc(p.name)}</div><div class="pl-item-d">${p.trigger==='stage'?'When a deal moves to “'+uxEsc(p.stageLabel)+'”':uxEsc(p.stageLabel)} · ${p.steps.length} email${p.steps.length>1?'s':''}${p.sent?' · '+p.sent+' sent so far':''}${p.waiting?' · '+p.waiting+' scheduled':''}</div></div>${pill}</div>
-      ${p.steps.map((s,i)=>`<div class="pl-step"><div class="pl-step-row">Email ${i+1}: ${p.trigger==='stage'?`<input type="number" class="cred-input" min="0" max="365" value="${s.days}" data-k="days" data-i="${i}" aria-label="Days after entering the stage"> days ${uxEsc(p.when)}${i===0&&s.days===0?' (goes out right away)':''}`:`<input type="number" class="cred-input" min="-14" max="-1" value="${s.days}" data-k="days" data-i="${i}" aria-label="Days before"> (${Math.abs(s.days)} day${Math.abs(s.days)===1?'':'s'} ${uxEsc(p.when)})`}</div>
-        <input class="cred-input" data-k="subject" data-i="${i}" value="${uxEsc(s.subject)}" aria-label="Subject" style="margin-bottom:5px">
-        <textarea class="cred-input" data-k="message" data-i="${i}" rows="6" aria-label="Message" style="font-size:13px;line-height:1.5">${uxEsc(s.message)}</textarea></div>`).join('')}
-      <div class="sm">You can use ${(p.tokens||[]).map(t=>'{'+t+'}').join(', ')}. Your address and an unsubscribe link are added at the bottom of every email.</div>
+    return `<div class="pl-pb" id="pb-${p.id}"><div class="pl-pb-head"><div><div class="pl-item-t">${uxEsc(p.name)}</div><div class="pl-item-d">${p.trigger==='stage'?'When a deal moves to “'+uxEsc(p.stageLabel)+'”':uxEsc(p.stageLabel)} · ${p.steps.length} message${p.steps.length>1?'s':''}${p.sent?' · '+p.sent+' sent so far':''}${p.waiting?' · '+p.waiting+' scheduled':''}</div></div>${pill}</div>
+      ${p.steps.map((s,i)=>{const rg=PB_RANGE[p.trigger]||PB_RANGE.stage;const when=p.trigger==='stage'?`days ${uxEsc(p.when)}${i===0&&s.days===0?' (goes out right away)':''}`:p.trigger==='invoice_due'?`days from the due date (${s.days<0?Math.abs(s.days)+' before':s.days===0?'on the day':s.days+' after'})`:`(${Math.abs(s.days)} day${Math.abs(s.days)===1?'':'s'} ${uxEsc(p.when)})`;
+        return `<div class="pl-step"><div class="pl-step-row"><select data-k="channel" data-i="${i}" aria-label="Send as" onchange="plPbChannel(this)"><option value="email"${s.channel==='sms'?'':' selected'}>Email</option><option value="sms"${s.channel==='sms'?' selected':''}>Text</option></select> ${i+1}: <input type="number" class="cred-input" min="${rg[0]}" max="${rg[1]}" value="${s.days}" data-k="days" data-i="${i}" aria-label="Days"> ${when}</div>
+        <input class="cred-input" data-k="subject" data-i="${i}" value="${uxEsc(s.subject)}" aria-label="Subject" style="margin-bottom:5px${s.channel==='sms'?';display:none':''}">
+        <textarea class="cred-input" data-k="message" data-i="${i}" rows="${s.channel==='sms'?3:6}" aria-label="Message" style="font-size:13px;line-height:1.5">${uxEsc(s.message)}</textarea></div>`;}).join('')}
+      <div class="sm">You can use ${(p.tokens||[]).map(t=>'{'+t+'}').join(', ')}. Emails get your address and an unsubscribe link at the bottom. Texts only go to people who agreed to texts, and end with “Reply STOP to opt out.”</div>
       ${crCanManage()?`<div class="pl-acts">
         ${p.enabled&&p.approved?`<button class="btn-xs" onclick="plPbEnabled('${p.id}',false)">Switch off</button>`:`<button class="btn btn-blue" onclick="plPbApprove('${p.id}',this)">✓ Approve this wording &amp; switch on</button>`}
         <button class="btn-xs" onclick="plPbSave('${p.id}',this)">Save wording</button>
@@ -1024,13 +1079,15 @@ function plRenderPlaybooks(){
       </div>`:''}<div class="sm" id="pbmsg-${p.id}"></div></div>`;
   }).join('');
 }
+const PB_RANGE={stage:[0,365],meeting:[-14,-1],estimate_expiry:[-14,-1],invoice_due:[-7,30]};
 function plPbSteps(id){
   const box=document.getElementById('pb-'+id);const steps=[];
   box.querySelectorAll('[data-k]').forEach(f=>{const i=+f.dataset.i;steps[i]=steps[i]||{};steps[i][f.dataset.k]=f.dataset.k==='days'?parseInt(f.value,10):f.value;});
-  return steps;
+  return steps.map(st=>{const o={days:st.days,subject:st.channel==='sms'?'':st.subject,message:st.message};if(st.channel==='sms')o.channel='sms';return o;});
 }
+function plPbChannel(sel){const step=sel.closest('.pl-step');const sub=step.querySelector('[data-k="subject"]');sub.style.display=sel.value==='sms'?'none':'';step.querySelector('[data-k="message"]').rows=sel.value==='sms'?3:6;}
 function plPbDirty(id){
-  const p=PL.playbooks.find(x=>x.id===id);return JSON.stringify(plPbSteps(id))!==JSON.stringify(p.steps.map(s=>({days:s.days,subject:s.subject,message:s.message})));
+  const p=PL.playbooks.find(x=>x.id===id);return JSON.stringify(plPbSteps(id))!==JSON.stringify(p.steps.map(s=>{const o={days:s.days,subject:s.subject,message:s.message};if(s.channel==='sms')o.channel='sms';return o;}));
 }
 async function plPbSave(id,btn){
   const msg=document.getElementById('pbmsg-'+id);btn.disabled=true;

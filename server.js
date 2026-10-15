@@ -51,6 +51,7 @@ const crmGoogleRoutes = require('./routes/crmGoogle');
 const crmReportRoutes = require('./routes/crmReports');
 const crmPortalRoutes = require('./routes/crmPortal');
 const { router: crmPaymentRoutes, handleConnectWebhook } = require('./routes/crmPayments');
+const crmSmsRoutes = require('./routes/crmSms');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -176,6 +177,7 @@ app.use(crmGoogleRoutes);
 app.use(crmReportRoutes);
 app.use(crmPortalRoutes);
 app.use(crmPaymentRoutes);
+app.use(crmSmsRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));

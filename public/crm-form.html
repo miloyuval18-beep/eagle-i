@@ -52,6 +52,7 @@ textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.1
     <label for="name">Your name</label><input id="name" autocomplete="name" required>
     <label for="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email">
     <label for="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" inputmode="tel">
+    <div class="check"><input type="checkbox" id="sms_consent"><label for="sms_consent" style="margin:0;font-weight:400">OK to text me about my project. Message and data rates may apply; reply STOP to opt out.</label></div>
     <label for="address">Project address (optional)</label><input id="address" autocomplete="street-address">
     <label for="message">What are you planning?</label><textarea id="message" rows="4"></textarea>
     <div class="hp" aria-hidden="true"><label for="company_website">Leave this empty</label><input id="company_website" tabindex="-1" autocomplete="off"></div>
@@ -68,7 +69,7 @@ async function send(e){
   e.preventDefault();const b=document.getElementById('b'),err=document.getElementById('err');b.disabled=true;err.textContent='';
   const v=id=>document.getElementById(id).value;
   try{
-    const r=await fetch('/api/crm-public/forms/'+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),message:v('message'),company_website:v('company_website')})});
+    const r=await fetch('/api/crm-public/forms/'+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),message:v('message'),company_website:v('company_website'),sms_consent:document.getElementById('sms_consent').checked})});
     const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
     document.getElementById('f').hidden=true;document.getElementById('done').hidden=false;
   }catch(x){err.textContent=x.message;b.disabled=false;}

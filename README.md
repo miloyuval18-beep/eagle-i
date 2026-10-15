@@ -401,6 +401,22 @@ and add a Connect webhook for `checkout.session.completed` and
 `/api/stripe/connect-webhook`; put its signing secret in
 `STRIPE_CONNECT_WEBHOOK_SECRET`.
 
+**Texting and calls (step 10).** `lib/crmSms.js`, `routes/crmSms.js`. Through
+Eagle I's Twilio account (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`), each company
+buys a local number from the Company screen; its SMS/voice webhooks point at
+`/api/twilio/sms`, `/api/twilio/voice` and `/api/twilio/call-done`, which refuse
+anything without a valid `X-Twilio-Signature`. Calls ring the company's phone
+for 20 seconds; a missed call gets one text back (approve-once wording, at most
+once per number per 12 hours) and becomes a lead. Texts in from unknown numbers
+become leads; any text in counts as a reply. Two-way texting on each deal.
+Playbook steps can be texts (`channel: 'sms'`), which only go to contacts with
+`sms_consent` (the form's checkbox, or they texted first), never after STOP, and
+end with "Reply STOP to opt out."
+
+*Setup needed once:* a Twilio account with the two env vars set, and A2P 10DLC
+registration (brand + campaign) in Twilio so US carriers deliver business
+texts.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.
