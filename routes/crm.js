@@ -6,6 +6,7 @@ const { requireAuth } = require('../auth');
 const crm = require('../lib/crm');
 const playbooks = require('../lib/crmPlaybooks');
 const team = require('../lib/crmTeam');
+const tasks = require('../lib/crmTasks');
 
 const { query } = require('../db');
 
@@ -148,7 +149,7 @@ router.get('/api/crm/deals/:id', requireAuth, async (req, res) => {
   try {
     const deal = await crm.getDeal(req.tenantId, req.params.id);
     if (!deal) return res.status(404).json({ error: { message: 'Deal not found.' } });
-    res.json({ deal, ...(await crm.dealTimeline(req.tenantId, req.params.id)) });
+    res.json({ deal, ...(await crm.dealTimeline(req.tenantId, req.params.id)), tasks: await tasks.listForDeal(req.tenantId, req.params.id) });
   } catch (err) {
     if (/invalid input syntax for type uuid/.test(err.message)) return res.status(404).json({ error: { message: 'Deal not found.' } });
     fail(res, err, 'Failed to load the deal');
@@ -167,8 +168,8 @@ router.patch('/api/crm/deals/:id', requireAuth, async (req, res) => {
 
 router.post('/api/crm/deals/:id/notes', requireAuth, async (req, res) => {
   try {
-    await crm.addNote({ tenantId: req.tenantId, dealId: req.params.id, body: (req.body || {}).body, userId: req.userId });
-    res.json({ ok: true });
+    const r = await crm.addNote({ tenantId: req.tenantId, dealId: req.params.id, body: (req.body || {}).body, userId: req.userId, pickOut: !!(req.body || {}).pickOut, baseUrl: baseUrlOf(req) });
+    res.json({ ok: true, picked: r.picked });
   } catch (err) { fail(res, err, 'Failed to save the note'); }
 });
 
@@ -230,6 +231,8 @@ router.patch('/api/crm/settings', requireAuth, managersOnly, async (req, res) =>
   if (typeof b.paused === 'boolean') patch.paused = b.paused;
   if (typeof b.weeklySummary === 'boolean') patch.weeklySummary = b.weeklySummary;
   if (b.waitingMinutes !== undefined) patch.waitingMinutes = b.waitingMinutes;
+  if (b.stageLabels !== undefined) patch.stageLabels = b.stageLabels;
+  if (b.hiddenStages !== undefined) patch.hiddenStages = b.hiddenStages;
   try {
     if (b.leadOwnerUserId !== undefined) {
       if (b.leadOwnerUserId && !(await query('SELECT 1 FROM users WHERE id = $1 AND tenant_id = $2', [b.leadOwnerUserId, req.tenantId])).rows.length) {
@@ -246,6 +249,50 @@ router.get('/api/crm/summary', requireAuth, async (req, res) => {
     const start = new Date(end.getTime() - 7 * 86400000);
     res.json({ summary: await crm.buildWeeklySummary(req.tenantId, { start, end }) });
   } catch (err) { fail(res, err, 'Failed to load the summary'); }
+});
+
+// ---------- tasks and "Today" ----------
+
+// Everything that needs this person today: exceptions, their open tasks (and
+// unassigned ones), and site visits coming up this week.
+router.get('/api/crm/today', requireAuth, async (req, res) => {
+  try {
+    const everyone = req.query.all === '1' && team.isManager(req.crmUser.role);
+    const [inbox, open, visits] = await Promise.all([
+      crm.listInbox(req.tenantId),
+      tasks.listOpen(req.tenantId, { userId: everyone ? null : req.userId }),
+      query(
+        `SELECT d.id, d.title, d.site_visit_at, c.name AS contact_name, p.address FROM crm_deals d JOIN crm_contacts c ON c.id = d.contact_id
+         LEFT JOIN crm_properties p ON p.id = d.property_id
+         WHERE d.tenant_id = $1 AND d.site_visit_at BETWEEN now() - interval '2 hours' AND now() + interval '7 days' AND d.stage NOT IN ('lost', 'complete')
+           AND ($2::uuid IS NULL OR d.owner_user_id = $2::uuid OR d.owner_user_id IS NULL)
+         ORDER BY d.site_visit_at LIMIT 50`, [req.tenantId, everyone ? null : req.userId]).then(r => r.rows)
+    ]);
+    res.json({ inbox, tasks: open, visits });
+  } catch (err) { fail(res, err, 'Failed to load Today'); }
+});
+
+router.post('/api/crm/tasks', requireAuth, async (req, res) => {
+  const b = req.body || {};
+  try {
+    const t = await tasks.createTask({ tenantId: req.tenantId, dealId: b.dealId || null, title: b.title, dueAt: b.dueAt || null, assigneeUserId: b.assigneeUserId || null, createdBy: req.userId });
+    res.json({ ok: true, task: t });
+  } catch (err) { fail(res, err, 'Failed to add the task'); }
+});
+
+router.patch('/api/crm/tasks/:id', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, task: await tasks.updateTask({ tenantId: req.tenantId, id: req.params.id, patch: req.body || {}, userId: req.userId }) }); }
+  catch (err) {
+    if (/invalid input syntax for type uuid/.test(err.message)) return res.status(404).json({ error: { message: 'Task not found.' } });
+    fail(res, err, 'Failed to save the task');
+  }
+});
+
+router.delete('/api/crm/tasks/:id', requireAuth, async (req, res) => {
+  try {
+    if (!(await tasks.deleteTask({ tenantId: req.tenantId, id: req.params.id }))) return res.status(404).json({ error: { message: 'Task not found.' } });
+    res.json({ ok: true });
+  } catch (err) { fail(res, err, 'Failed to delete the task'); }
 });
 
 // ---------- team ----------

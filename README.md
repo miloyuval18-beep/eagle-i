@@ -360,6 +360,17 @@ emailed to owners and admins (the "weekly summary" switch), readable under
 Account → Weekly reports; "This week so far" writes an unsaved one on demand
 (5/day). This replaces the Phase 1 counts-only email.
 
+**Tasks, Today, stages, voice (step 7).** `lib/crmTasks.js`. Tasks on deals (due
+date, assignee); Eagle I adds some itself on stage changes (`AUTO_TASKS`: kickoff
+and deposit when signed, visit prep, final walkthrough), once per deal. The
+"Today" tab combines "Needs you", your open tasks (owners/admins can see the
+whole team's) and this week's site visits; its badge counts flagged items plus
+overdue tasks. Companies can rename stages and hide ones they don't use
+(`crm_settings.stageLabels` / `hiddenStages`; New, Contract signed, Complete and
+Lost always stay). Notes can be dictated (the browser's own speech-to-text);
+with "pick out" on, AI reads the note for the job value (only if none is set),
+the next step (becomes a task) and a site-visit time (only if none is set).
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

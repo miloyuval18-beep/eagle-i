@@ -1452,3 +1452,46 @@ describe('CRM weekly reports', () => {
     assert.equal((await m.post('/api/crm/reports/now', {})).status, 403);
   });
 });
+
+describe('CRM tasks and Today', () => {
+  test('signing a contract adds kickoff and deposit tasks once; tasks can be added, done and shown in Today', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('tasks'), password: 'TestPass1234!', companyName: 'Task Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Tess', title: 'Bath' })).json();
+    await o.patch(`/api/crm/deals/${deal.id}`, { stage: 'signed' });
+    await o.patch(`/api/crm/deals/${deal.id}`, { stage: 'proposal' });
+    await o.patch(`/api/crm/deals/${deal.id}`, { stage: 'signed' });
+    let d = await (await o.get(`/api/crm/deals/${deal.id}`)).json();
+    assert.deepEqual(d.tasks.map(t => t.title).sort(), ['Collect the deposit', 'Schedule the kickoff meeting'], 'created once, not twice');
+    assert.ok(d.tasks.every(t => t.source === 'auto'));
+    const add = await o.post('/api/crm/tasks', { dealId: deal.id, title: 'Order tile samples', dueAt: new Date(Date.now() - 86400000).toISOString() });
+    assert.equal(add.status, 200);
+    const { task } = await add.json();
+    assert.equal((await o.post('/api/crm/tasks', { title: '' })).status, 400);
+    let today = await (await o.get('/api/crm/today')).json();
+    assert.ok(today.tasks.some(t => t.title === 'Order tile samples' && t.deal_title === 'Bath'));
+    assert.equal((await o.patch(`/api/crm/tasks/${task.id}`, { done: true })).status, 200);
+    today = await (await o.get('/api/crm/today')).json();
+    assert.ok(!today.tasks.some(t => t.id === task.id));
+    d = await (await o.get(`/api/crm/deals/${deal.id}`)).json();
+    assert.ok(d.activities.some(a => a.body === 'Done: Order tile samples'));
+  });
+
+  test('stages can be renamed and hidden, but the core ones stay', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('stages'), password: 'TestPass1234!', companyName: 'Stage Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    await o.patch('/api/crm/settings', { stageLabels: { proposal: 'Bid sent', new: 'Inquiry', bogus: 'x' }, hiddenStages: ['design_agreement', 'in_design', 'signed'] });
+    const pipe = await (await o.get('/api/crm/pipeline')).json();
+    const by = Object.fromEntries(pipe.stages.map(s => [s.key, s]));
+    assert.equal(by.proposal.label, 'Bid sent');
+    assert.equal(by.new.label, 'Inquiry');
+    assert.equal(by.design_agreement.hidden, true);
+    assert.equal(by.signed.hidden, false, 'core stages cannot be hidden');
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Ren' })).json();
+    await o.patch(`/api/crm/deals/${deal.id}`, { stage: 'proposal' });
+    const d = await (await o.get(`/api/crm/deals/${deal.id}`)).json();
+    assert.ok(d.activities.some(a => a.body === 'Inquiry → Bid sent'), 'the timeline uses the company’s names');
+  });
+});

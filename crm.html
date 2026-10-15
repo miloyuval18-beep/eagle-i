@@ -150,7 +150,7 @@ select{width:auto;cursor:pointer}
   </div>
   <nav class="cr-nav" id="cr-nav" aria-label="CRM sections">
     <button class="cr-tab active" data-view="pipeline" onclick="crView('pipeline')">Pipeline</button>
-    <button class="cr-tab" data-view="needs" onclick="crView('needs')">Needs You<span class="tbadge" id="pl-needs-badge">0</span></button>
+    <button class="cr-tab" data-view="needs" onclick="crView('needs')">Today<span class="tbadge" id="pl-needs-badge">0</span></button>
     <button class="cr-tab" data-view="estimates" onclick="crView('estimates')">Estimates</button>
     <button class="cr-tab" data-view="auto" onclick="crView('auto')">Automations</button>
   </nav>
@@ -172,12 +172,21 @@ select{width:auto;cursor:pointer}
     <div class="pl-list" id="pl-list"><div class="pl-empty">Loading your pipeline…</div></div>
   </section>
   <section class="view" id="view-needs">
-    <div class="sh"><div><div class="st">Needs You</div><div class="ss">Only the things a person has to look at: a new lead nobody has picked up, a deal that has gone quiet, a reply to one of the automatic emails, or an email that could not be sent. Everything else Eagle I handles on its own.</div></div></div>
+    <div class="sh"><div><div class="st">Today</div><div class="ss">Only what needs a person: things Eagle I flagged, your tasks, and this week's site visits. Everything else is handled on its own.</div></div></div>
+    <div class="pl-h" style="margin-top:0">Needs you</div>
     <div class="pl-list" id="pl-needs"><div class="pl-empty">Loading…</div></div>
+    <div class="pl-h" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>Your tasks</span><span id="td-allwrap"></span></div>
+    <div class="pl-pb" style="padding:10px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="td-new" class="cred-input" placeholder="Add a task…" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')tdAdd()"><input id="td-due" type="date" class="cred-input" style="width:auto" aria-label="Due date"><button class="btn-xs p" onclick="tdAdd()">Add</button></div>
+    </div>
+    <div class="pl-list" id="td-tasks"></div>
+    <div class="pl-h">Site visits this week</div>
+    <div class="pl-list" id="td-visits"></div>
   </section>
   <section class="view" id="view-auto">
     <div class="sh"><div><div class="st">Automations</div><div class="ss">Each playbook sends emails when a deal reaches its stage. Nothing sends until you approve the exact wording. After that it runs on its own for every deal that enters the stage. If you change the wording, it switches off until you approve the new version.</div></div></div>
     <div class="section" id="pl-auto-settings"></div>
+    <div id="pl-stagenames"></div>
     <div class="pl-h">Get leads in automatically</div>
     <div id="pl-intake"><div class="sm">Loading…</div></div>
     <div class="pl-h">What Eagle I did in the last 7 days</div>
@@ -255,6 +264,7 @@ function crView(v){
   CR.view=v;
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
   document.querySelectorAll('.cr-tab').forEach(t=>{t.classList.toggle('active',t.dataset.view===v);t.setAttribute('aria-current',t.dataset.view===v?'page':'false');});
+  if(VN){try{VN.stop();}catch(e){}}
   if(v==='pipeline')plLoad();
   if(v==='needs')plLoadNeeds();
   if(v==='auto')plLoadAuto();
@@ -283,7 +293,7 @@ async function crInit(){
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
   crView(['pipeline','needs','estimates','auto','team','company','reports'].includes(start)?start:'pipeline');
-  plApi('/api/crm/inbox').then(d=>plBadge(d.items.length)).catch(()=>{});
+  plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
 }
 async function crActivate(btn){
@@ -618,7 +628,7 @@ function plRender(){
   ].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
   document.getElementById('pl-paused-banner').innerHTML=d.settings&&d.settings.paused?'<div class="pl-banner"><span>⏸ All automatic emails are paused. Nothing is being sent.</span><button class="btn-xs p" onclick="plSetting({paused:false})">Resume</button></div>':'';
   const mine=open.filter(x=>CR.me&&x.owner_user_id===CR.me.userId);
-  const chips=[['open','All open',open.length]].concat(CR.team.length>1?[['mine','My deals',mine.length]]:[]).concat(d.stages.map(s=>[s.key,s.label,d.counts[s.key]||0]));
+  const chips=[['open','All open',open.length]].concat(CR.team.length>1?[['mine','My deals',mine.length]]:[]).concat(d.stages.filter(s=>!s.hidden||d.counts[s.key]).map(s=>[s.key,s.label,d.counts[s.key]||0]));
   document.getElementById('pl-stages').innerHTML=chips.map(([k,l,n])=>`<button class="pl-chip${PL.filter===k?' active':''}" role="tab" aria-selected="${PL.filter===k}" onclick="PL.filter='${k}';plRender()">${uxEsc(l)}<b>${n}</b></button>`).join('');
   const q=(document.getElementById('pl-search').value||'').trim().toLowerCase();
   let list=PL.filter==='open'?open:PL.filter==='mine'?mine:d.deals.filter(x=>x.stage===PL.filter);
@@ -644,7 +654,7 @@ function plRender(){
 
 // A stored time as the value a datetime-local box expects, in this device's time zone.
 function plLocalInput(ts){const d=new Date(ts);const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;}
-function plStageOptions(sel){return (PL.data?PL.data.stages:[]).map(s=>`<option value="${s.key}"${s.key===sel?' selected':''}>${uxEsc(s.label)}</option>`).join('');}
+function plStageOptions(sel){return (PL.data?PL.data.stages:[]).filter(s=>!s.hidden||s.key===sel).map(s=>`<option value="${s.key}"${s.key===sel?' selected':''}>${uxEsc(s.label)}</option>`).join('');}
 function plSourceOptions(sel){return PL_SOURCES.map(([k,l])=>`<option value="${k}"${k===sel?' selected':''}>${uxEsc(l)}</option>`).join('');}
 function plField(id,label,val,attrs){return `<div class="${attrs&&attrs.full?'full':''}"><label for="${id}">${label}</label><input id="${id}" class="cred-input" value="${uxEsc(val==null?'':val)}" ${attrs&&attrs.type?'type="'+attrs.type+'"':''} ${attrs&&attrs.ph?'placeholder="'+uxEsc(attrs.ph)+'"':''} ${attrs&&attrs.mode?'inputmode="'+attrs.mode+'"':''}></div>`;}
 
@@ -702,9 +712,13 @@ async function plOpenDeal(id){
     <div class="pl-h">Estimates</div>
     <div id="pld-est"><div class="sm">Loading…</div></div>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button></div>
+    <div class="pl-h">Tasks</div>
+    <div class="pl-list">${(d.tasks||[]).map(t=>tdRow(t,false)).join('')||'<div class="sm">No tasks yet.</div>'}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><input id="pld-task" class="cred-input" placeholder="Add a task…" style="flex:1;min-width:150px" onkeydown="if(event.key==='Enter')tdAdd('${x.id}')"><input id="pld-task-due" type="date" class="cred-input" style="width:auto" aria-label="Due date">${CR.team.length>1?`<select id="pld-task-who" aria-label="Who">${crOwnerOptions(x.owner_user_id||(CR.me&&CR.me.userId)).replace('Unassigned','Anyone')}</select>`:''}<button class="btn-xs p" onclick="tdAdd('${x.id}')">Add</button></div>
     <div class="pl-h">Add a note</div>
-    <textarea id="pld-note" class="cred-input" rows="3" placeholder="What happened, what's next…"></textarea>
-    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="plAddNote('${x.id}',this)">Save note</button></div>
+    <div style="position:relative"><textarea id="pld-note" class="cred-input" rows="3" placeholder="What happened, what's next… or tap 🎤 and talk"></textarea></div>
+    <label class="pl-switch" style="margin-top:6px;font-size:13px"><input type="checkbox" id="pld-pick" checked><span>Let Eagle I pick out the job value, next step and visit time</span></label>
+    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="plAddNote('${x.id}',this)">Save note</button>${window.SpeechRecognition||window.webkitSpeechRecognition?`<button class="btn-xs" id="pld-mic" onclick="vnToggle()">🎤 Talk</button>`:''}</div>
     <div class="pl-h">Coming up automatically</div>
     ${upcoming.length?'<ul class="pl-tl">'+upcoming.map(a=>`<li class="eagle_i">✉️ ${uxEsc(a.playbook_name)}, email ${a.step}<div class="pl-tl-meta">${new Date(a.due_at)>new Date()?'Due '+new Date(a.due_at).toLocaleString():'Going out at the next chance (weekdays 9 to 5 Central)'}</div></li>`).join('')+'</ul>':`<div class="sm">Nothing scheduled.${x.contact_email?'':' This contact has no email address, so no automatic emails can go out.'}</div>`}
     <div class="pl-h">History</div>
@@ -739,8 +753,26 @@ async function plSaveDeal(id,btn){
 async function plAddNote(id,btn){
   const t=document.getElementById('pld-note');if(!t.value.trim())return;
   btn.disabled=true;
-  try{await plApi('/api/crm/deals/'+id+'/notes',{body:{body:t.value}});plLoad();plOpenDeal(id);}
+  try{
+    const pick=document.getElementById('pld-pick');
+    const r=await plApi('/api/crm/deals/'+id+'/notes',{body:{body:t.value,pickOut:!!(pick&&pick.checked)}});
+    if(r.picked&&r.picked.length)showNotif('Picked out from your note','Added '+r.picked.join(', ')+'.');
+    plLoad();plOpenDeal(id);
+  }
   catch(e){showNotif('Could not save the note',e.message);btn.disabled=false;}
+}
+// Voice notes: the phone's own speech-to-text fills the note box.
+let VN=null;
+function vnToggle(){
+  const btn=document.getElementById('pld-mic'),box=document.getElementById('pld-note');
+  if(VN){VN.stop();return;}
+  const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return;
+  VN=new R();VN.lang='en-US';VN.continuous=true;VN.interimResults=true;
+  const start=box.value?box.value.trim()+' ':'';
+  VN.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;box.value=start+t;};
+  VN.onend=()=>{VN=null;if(btn)btn.textContent='🎤 Talk';};
+  VN.onerror=e=>{showNotif('Could not listen',e.error==='not-allowed'?'Allow microphone access for this site in your browser settings.':e.error);};
+  VN.start();btn.textContent='⏹ Stop';
 }
 async function plDeleteDeal(id){
   if(!confirm('Delete this deal and its history? Its contact stays. This cannot be undone.'))return;
@@ -751,7 +783,8 @@ async function plLoadNeeds(){
   const el=document.getElementById('pl-needs');if(!el)return;
   try{
     if(!PL.data)await plLoad(); // stage names come from the pipeline
-    const {items}=await plApi('/api/crm/inbox');plBadge(items.length);
+    const today=await plApi('/api/crm/today'+(TD.all?'?all=1':''));
+    const items=today.inbox;tdRender(today);plBadge(items.length+tdOverdue(today.tasks));
     if(!items.length){el.innerHTML='<div class="pl-empty">Nothing needs you right now. 🎉</div>';return;}
     el.innerHTML=items.map(i=>`<div class="pl-item ${i.kind}"><div class="pl-item-t">${uxEsc(i.title)}</div><div class="pl-tl-meta">Flagged ${plAgo(i.created_at)} ago</div>
       ${i.deal_title?`<div class="pl-item-d">${uxEsc(i.deal_title)}${i.deal_stage?' · '+uxEsc(plStage(i.deal_stage).label):''}</div>`:''}
@@ -762,10 +795,59 @@ async function plLoadNeeds(){
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',3)">3 days</button></div></div>`).join('');
   }catch(e){el.innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
 }
+/* ---------- tasks ---------- */
+const TD={all:false};
+const tdOverdue=list=>list.filter(t=>t.due_at&&new Date(t.due_at)<new Date()).length;
+function tdDue(t){
+  if(!t.due_at)return '';
+  const d=new Date(t.due_at),now=new Date(),day=86400000;
+  const sod=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime();
+  const diff=Math.round((sod(d)-sod(now))/day);
+  const txt=diff===0?'Today':diff===1?'Tomorrow':diff===-1?'Yesterday':d.toLocaleDateString([], {weekday:diff>-7&&diff<7?'short':undefined,month:'short',day:'numeric'});
+  return `<span class="pl-tag${d<now&&!t.done_at?' warn':''}">${diff<0&&!t.done_at?'Overdue · ':''}${uxEsc(txt)}</span>`;
+}
+function tdRow(t,showDeal){
+  return `<div class="pl-item" style="padding:9px 11px"><label class="pl-switch" style="align-items:flex-start"><input type="checkbox" ${t.done_at?'checked':''} onchange="tdDone('${t.id}',this.checked)" aria-label="Done: ${uxEsc(t.title)}"><span style="min-width:0;flex:1"><span style="${t.done_at?'text-decoration:line-through;color:var(--ink3)':''}">${uxEsc(t.title)}</span>
+    <span class="pl-tags" style="margin-top:4px">${tdDue(t)}${t.source==='auto'?'<span class="pl-tag auto">Added by Eagle I</span>':t.source==='voice'?'<span class="pl-tag auto">From your note</span>':''}${CR.team.length>1?`<span class="pl-tag">${t.assignee_name?'👤 '+uxEsc(t.assignee_name):'Anyone'}</span>`:''}${showDeal&&t.deal_title?`<button class="pl-tag" style="cursor:pointer;background:none" onclick="event.preventDefault();plOpenDeal('${t.deal_id}')">${uxEsc(t.deal_title)}</button>`:''}</span></span></label></div>`;
+}
+function tdRender(d){
+  const wrap=document.getElementById('td-allwrap');
+  if(wrap)wrap.innerHTML=crCanManage()&&CR.team.length>1?`<label class="pl-switch" style="font-size:13px;font-weight:400"><input type="checkbox" ${TD.all?'checked':''} onchange="TD.all=this.checked;plLoadNeeds()"> Whole team</label>`:'';
+  document.getElementById('td-tasks').innerHTML=d.tasks.length?d.tasks.map(t=>tdRow(t,true)).join(''):'<div class="pl-empty">No open tasks.</div>';
+  document.getElementById('td-visits').innerHTML=d.visits.length?d.visits.map(v=>`<button class="pl-card" onclick="plOpenDeal('${v.id}')"><div class="pl-card-title">📅 ${new Date(v.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div><div class="pl-card-sub">${uxEsc(v.contact_name)} · ${uxEsc(v.title)}${v.address?' · '+uxEsc(v.address):''}</div></button>`).join(''):'<div class="pl-empty">No site visits booked this week.</div>';
+}
+async function tdAdd(dealId){
+  const ti=document.getElementById(dealId?'pld-task':'td-new'),du=document.getElementById(dealId?'pld-task-due':'td-due'),as=document.getElementById('pld-task-who');
+  if(!ti.value.trim())return;
+  try{
+    await plApi('/api/crm/tasks',{body:{title:ti.value,dueAt:du.value?new Date(du.value+'T17:00').toISOString():null,dealId:dealId||null,assigneeUserId:dealId?(as&&as.value||null):(CR.me&&CR.me.userId)}});
+    ti.value='';du.value='';
+    if(dealId)plOpenDeal(dealId);else plLoadNeeds();
+  }catch(e){showNotif('Could not add the task',e.message);}
+}
+async function tdDone(id,done){try{await plApi('/api/crm/tasks/'+id,{method:'PATCH',body:{done}});if(CR.view==='needs')plLoadNeeds();}catch(e){showNotif('Could not save',e.message);}}
+
 async function plInboxAct(id,action,days){
   try{await plApi('/api/crm/inbox/'+id,{body:{action,days}});plLoadNeeds();}catch(e){showNotif('Could not update',e.message);}
 }
 
+function plRenderStageNames(){
+  const el=document.getElementById('pl-stagenames');if(!el)return;
+  if(!crCanManage()||!PL.data){el.innerHTML='';return;}
+  const fixed=['new','signed','complete','lost'];
+  el.innerHTML=`<details class="pl-pb"><summary style="cursor:pointer;font-weight:800">Your pipeline stages</summary>
+    <div class="sm">Rename stages to match how you sell, and hide the ones you don't use. New, Contract signed, Complete and Lost always stay.</div>
+    ${PL.data.stages.map(s=>`<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><input class="cred-input" data-stage="${s.key}" value="${uxEsc(s.label)}" maxlength="40" aria-label="Name for ${uxEsc(s.label)}">${fixed.includes(s.key)?'<span class="sm" style="margin:0;min-width:52px">Always</span>':`<label class="pl-switch" style="font-size:13px;min-width:52px"><input type="checkbox" data-hide="${s.key}" ${s.hidden?'':'checked'}> Use</label>`}</div>`).join('')}
+    <div class="vd-mbtns"><button class="btn-xs p" onclick="plSaveStages(this)">Save stages</button></div></details>`;
+}
+async function plSaveStages(btn){
+  const labels={},hidden=[];
+  document.querySelectorAll('#pl-stagenames [data-stage]').forEach(i=>labels[i.dataset.stage]=i.value);
+  document.querySelectorAll('#pl-stagenames [data-hide]').forEach(i=>{if(!i.checked)hidden.push(i.dataset.hide);});
+  btn.disabled=true;
+  try{await plApi('/api/crm/settings',{method:'PATCH',body:{stageLabels:labels,hiddenStages:hidden}});await plLoad();plRenderStageNames();showNotif('Stages saved','');}
+  catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
+}
 async function plLoadIntake(){
   const el=document.getElementById('pl-intake');
   try{
@@ -784,6 +866,7 @@ function plCopy(id){const i=document.getElementById(id);i.select();(navigator.cl
 async function plRotate(){if(!confirm('Make a new link? The old form link and forwarding address will stop working, so you’ll need to update your website.'))return;try{await plApi('/api/crm/intake/rotate',{body:{}});plLoadIntake();}catch(e){showNotif('Could not change it',e.message);}}
 async function plLoadAuto(){
   plLoadIntake();
+  if(!PL.data)plLoad().then(plRenderStageNames);else plRenderStageNames();
   try{
     const [pb,sum]=await Promise.all([plApi('/api/crm/playbooks'),plApi('/api/crm/summary')]);
     PL.playbooks=pb.playbooks;PL.settings=pb.settings;PL.maxSteps=pb.maxSteps;
