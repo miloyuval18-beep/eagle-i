@@ -49,9 +49,11 @@ textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba
 .opt.chosen{border-color:var(--ok);background:rgba(44,110,73,.06)}
 input[type=text].nm{width:100%;border:1.5px solid var(--bdr2);border-radius:8px;padding:11px 12px;font-family:var(--f);font-size:16px;margin-top:8px}
 @media(max-width:420px){.grid{grid-template-columns:repeat(2,1fr)}}
+.lang{display:block;margin:0 0 -6px auto;background:none;border:0;color:var(--accent);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:6px 8px}
 </style>
 </head>
 <body>
+<div class="wrap"><button type="button" class="lang" id="lang-btn" onclick="toggleLang()">Español</button></div>
 <div class="wrap" id="app"><div class="card">Loading your project…</div></div>
 <div class="foot">Powered by Eagle I CRM</div>
 <script>
@@ -59,12 +61,43 @@ const token=location.pathname.split('/').pop();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fileUrl=id=>`/api/crm-public/portal/${token}/files/${id}`;
+const T={en:{loading:'Loading your project…',invalid:'This link is not valid.',nextVisit:'Next visit',updates:'Updates',noUpdates:'Updates from your team will show up here.',photos:'Photos',noPhotos:'No photos yet.',addPhotos:'📷 Add your photos',projectPhoto:'Project photo',documents:'Documents',
+  message:'Message {co}',us:'us',msgPh:'Questions, changes, anything on your mind…',yourMsg:'Your message',sendMsg:'Send message',sent:'Sent. Your team will get back to you soon.',cantSend:'Could not send. Please try again.',
+  homeFile:'Your home file',homeIntro:'What went into your home, with warranties and care. Keep this link; it’s yours.',installed:'installed {d}',goodThrough:'good through {d}',warrantyThrough:'warranty through {d}',care:'Care',careEvery:'Care every {n} month{s}',
+  refTitle:'Know someone planning a project?',refIntro:'Share your personal link. Anyone who reaches out through it is credited to you, so {co} can say thank you.',we:'we',share:'Share',copied:'Copied',
+  waiting:'Waiting for your OK',co:'Change order #{n}: {t}',adds:'Adds {a}',credits:'Credits {a}',moreDays:' · {n} more working day{s}',typeName:'Type your full name to approve',approve:'Approve',decline:'Decline',cantSave:'Could not save. Please try again.',
+  selections:'Your selections',allowance:'Allowance {a}',chooseBy:'· choose by {d}',over:'({a} over)',choose:'Choose',pickFirst:'Pick one of the options first.',savedOver:'Saved. That’s {a} over the allowance; your team will send a change order for the difference.',saved:'Saved. Thank you!',
+  schedule:'Schedule',inProgress:'· in progress',shift:'Dates can shift with weather, inspections and deliveries. Your team will keep this up to date.',
+  uploading:'Uploading {n} photo{s}…',tooBig:'{f} is over 8 MB.',upFail:'Upload failed.',added:'Added {n} photo{s}. Your team can see {them} now.',
+  status:{new:'Getting started',qualified:'Getting started',site_visit:'Site visit',design_agreement:'Design',in_design:'Design',proposal:'Proposal',signed:'Getting ready to build',production:'Under construction',complete:'Complete',lost:'Closed'},
+  estKind:{construction:'Estimate',design_agreement:'Design agreement'},estStatus:{accepted:'Accepted',declined:'Declined',draft:'Being updated',sent:'Waiting for you'},
+  cat:{finish:'Finish',appliance:'Appliance',system:'System',warranty:'Warranty',other:'Other'}},
+es:{loading:'Cargando su proyecto…',invalid:'Este enlace no es válido.',nextVisit:'Próxima visita',updates:'Novedades',noUpdates:'Aquí aparecerán las novedades de su equipo.',photos:'Fotos',noPhotos:'Todavía no hay fotos.',addPhotos:'📷 Agregar sus fotos',projectPhoto:'Foto del proyecto',documents:'Documentos',
+  message:'Escriba a {co}',us:'nosotros',msgPh:'Preguntas, cambios, lo que tenga en mente…',yourMsg:'Su mensaje',sendMsg:'Enviar mensaje',sent:'Enviado. Su equipo le responderá pronto.',cantSend:'No se pudo enviar. Por favor intente de nuevo.',
+  homeFile:'El expediente de su casa',homeIntro:'Lo que se instaló en su casa, con garantías y mantenimiento. Guarde este enlace; es suyo.',installed:'instalado el {d}',goodThrough:'válida hasta el {d}',warrantyThrough:'garantía hasta el {d}',care:'Mantenimiento',careEvery:'Mantenimiento cada {n} mes{es}',
+  refTitle:'¿Conoce a alguien que esté planeando un proyecto?',refIntro:'Comparta su enlace personal. Quien se comunique a través de él quedará registrado como su recomendación, para que {co} pueda darle las gracias.',we:'nosotros',share:'Compartir',copied:'Copiado',
+  waiting:'Esperando su aprobación',co:'Orden de cambio #{n}: {t}',adds:'Agrega {a}',credits:'Acredita {a}',moreDays:' · {n} día{s} hábil{es} más',typeName:'Escriba su nombre completo para aprobar',approve:'Aprobar',decline:'Rechazar',cantSave:'No se pudo guardar. Por favor intente de nuevo.',
+  selections:'Sus selecciones',allowance:'Presupuesto asignado {a}',chooseBy:'· escoger antes del {d}',over:'({a} de más)',choose:'Escoger',pickFirst:'Primero escoja una de las opciones.',savedOver:'Guardado. Son {a} por encima del presupuesto asignado; su equipo le enviará una orden de cambio por la diferencia.',saved:'Guardado. ¡Gracias!',
+  schedule:'Calendario',inProgress:'· en curso',shift:'Las fechas pueden cambiar por el clima, las inspecciones y las entregas. Su equipo lo mantendrá al día.',
+  uploading:'Subiendo {n} foto{s}…',tooBig:'{f} pesa más de 8 MB.',upFail:'No se pudo subir.',added:'Se agregaron {n} foto{s}. Su equipo ya puede verla{s}.',
+  status:{new:'Comenzando',qualified:'Comenzando',site_visit:'Visita al sitio',design_agreement:'Diseño',in_design:'Diseño',proposal:'Propuesta',signed:'Preparando la obra',production:'En construcción',complete:'Terminado',lost:'Cerrado'},
+  estKind:{construction:'Presupuesto',design_agreement:'Acuerdo de diseño'},estStatus:{accepted:'Aceptado',declined:'Rechazado',draft:'En revisión',sent:'Esperando su respuesta'},
+  cat:{finish:'Acabado',appliance:'Electrodoméstico',system:'Sistema',warranty:'Garantía',other:'Otro'}}};
+let L=(()=>{const q=new URLSearchParams(location.search).get('lang');if(q)return q==='es'?'es':'en';try{const s=localStorage.getItem('eaglei_lang');if(s)return s;}catch(e){}return /^es/i.test(navigator.language||'')?'es':'en';})();
+let chosenLang=!!new URLSearchParams(location.search).get('lang');try{if(localStorage.getItem('eaglei_lang'))chosenLang=true;}catch(e){}
+const t=(k,v)=>String((T[L]||T.en)[k]??T.en[k]??k).replace(/\{(\w+)\}/g,(m,x)=>(v||{})[x]??'');
+const tm=(group,key,fallback)=>((T[L]||T.en)[group]||{})[key]||fallback||key;
+const pl=n=>n===1?'':'s';
+const loc=()=>L==='es'?'es-US':'en-US';
+function toggleLang(){L=L==='es'?'en':'es';chosenLang=true;try{localStorage.setItem('eaglei_lang',L);}catch(e){}if(P)render();setLangBtn();}
+function setLangBtn(){document.documentElement.lang=L;document.getElementById('lang-btn').textContent=L==='es'?'English':'Español';}
+setLangBtn();document.querySelector('#app .card').textContent=t('loading');
 let P=null;
 async function load(){
   try{
     const r=await fetch('/api/crm-public/portal/'+token);const d=await r.json();
-    if(!r.ok)throw new Error((d.error&&d.error.message)||'This link is not valid.');
-    P=d.portal;render();
+    if(!r.ok)throw new Error((d.error&&d.error.message)||t('invalid'));
+    P=d.portal;if(P.lang==='es'&&!chosenLang)L='es';setLangBtn();render();
   }catch(e){document.getElementById('app').innerHTML='<div class="card">'+esc(e.message)+'</div>';}
 }
 function render(){
@@ -75,77 +108,77 @@ function render(){
     <div class="co">${esc(p.company.name)}${p.company.phone?' · '+esc(p.company.phone):''}</div>
     <h1>${esc(p.project.title)}</h1>
     <div class="meta">${esc(p.project.customer)}${p.project.address?' · '+esc(p.project.address):''}</div>
-    <div style="margin-top:10px"><span class="pill">${esc(p.project.status)}</span></div>
-    ${p.nextVisit?`<div class="visit">📅 Next visit: <b>${new Date(p.nextVisit).toLocaleString([], {weekday:'long',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'})}</b></div>`:''}
+    <div style="margin-top:10px"><span class="pill">${esc(tm('status',p.project.stageKey,p.project.status))}</span></div>
+    ${p.nextVisit?`<div class="visit">📅 ${esc(t('nextVisit'))}: <b>${new Date(p.nextVisit).toLocaleString(loc(), {weekday:'long',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'})}</b></div>`:''}
   </div>
   ${jobHtml(p)}
-  <div class="card"><h2>Updates</h2>${p.updates.length?p.updates.map(u=>`<div class="up"><div class="up-b">${esc(u.body)}</div><div class="up-m">${esc(u.author||p.company.name)} · ${new Date(u.createdAt).toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'})}</div></div>`).join(''):'<div class="empty">Updates from your team will show up here.</div>'}</div>
-  <div class="card"><h2>Photos</h2>${photos.length?`<div class="grid">${photos.map(f=>`<a href="${fileUrl(f.id)}" target="_blank" rel="noopener" title="${esc(f.caption||f.filename)}"><img src="${fileUrl(f.id)}" alt="${esc(f.caption||'Project photo')}" loading="lazy"></a>`).join('')}</div>`:'<div class="empty">No photos yet.</div>'}
-    <div style="margin-top:12px"><label class="btn btn-o" style="cursor:pointer">📷 Add your photos<input type="file" accept="image/*" multiple style="display:none" onchange="upload(this)"></label><div class="msg" id="up-msg"></div></div></div>
-  ${docs.length||p.estimates.length?`<div class="card"><h2>Documents</h2>
-    ${p.estimates.map(e=>`<div class="row"><a href="${esc(e.link)}">${esc(e.kind)} #${esc(e.number)}: ${esc(e.title)}</a><span class="tag">${esc(e.status)} · ${money(e.total)}</span></div>`).join('')}
+  <div class="card"><h2>${esc(t('updates'))}</h2>${p.updates.length?p.updates.map(u=>`<div class="up"><div class="up-b">${esc(u.body)}</div><div class="up-m">${esc(u.author||p.company.name)} · ${new Date(u.createdAt).toLocaleDateString(loc(), {month:'short',day:'numeric',year:'numeric'})}</div></div>`).join(''):`<div class="empty">${esc(t('noUpdates'))}</div>`}</div>
+  <div class="card"><h2>${esc(t('photos'))}</h2>${photos.length?`<div class="grid">${photos.map(f=>`<a href="${fileUrl(f.id)}" target="_blank" rel="noopener" title="${esc(f.caption||f.filename)}"><img src="${fileUrl(f.id)}" alt="${esc(f.caption||t('projectPhoto'))}" loading="lazy"></a>`).join('')}</div>`:`<div class="empty">${esc(t('noPhotos'))}</div>`}
+    <div style="margin-top:12px"><label class="btn btn-o" style="cursor:pointer">${esc(t('addPhotos'))}<input type="file" accept="image/*" multiple style="display:none" onchange="upload(this)"></label><div class="msg" id="up-msg"></div></div></div>
+  ${docs.length||p.estimates.length?`<div class="card"><h2>${esc(t('documents'))}</h2>
+    ${p.estimates.map(e=>`<div class="row"><a href="${esc(e.link)}${L==='es'?'?lang=es':''}">${esc(tm('estKind',e.kindKey,e.kind))} #${esc(e.number)}: ${esc(e.title)}</a><span class="tag">${esc(tm('estStatus',e.statusKey,e.status))} · ${money(e.total)}</span></div>`).join('')}
     ${docs.map(f=>`<div class="row"><a href="${fileUrl(f.id)}" target="_blank" rel="noopener">${esc(f.caption||f.filename)}</a><span class="tag">PDF</span></div>`).join('')}</div>`:''}
   ${homeHtml(p)}
-  <div class="card"><h2>Message ${esc(p.company.name||'us')}</h2>
-    <textarea id="m" rows="4" placeholder="Questions, changes, anything on your mind…" aria-label="Your message"></textarea>
-    <div style="margin-top:10px"><button class="btn" id="mb" onclick="send()">Send message</button></div><div class="msg" id="m-msg" role="status"></div></div>`;
+  <div class="card"><h2>${esc(t('message',{co:p.company.name||t('us')}))}</h2>
+    <textarea id="m" rows="4" placeholder="${esc(t('msgPh'))}" aria-label="${esc(t('yourMsg'))}"></textarea>
+    <div style="margin-top:10px"><button class="btn" id="mb" onclick="send()">${esc(t('sendMsg'))}</button></div><div class="msg" id="m-msg" role="status"></div></div>`;
 }
 function homeHtml(p){
   const h=p.home||{items:[]};let out='';
-  const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'}):'';
-  if(h.items.length)out+=`<div class="card"><h2>Your home file</h2><div class="meta" style="margin-bottom:8px">What went into your home, with warranties and care. Keep this link; it’s yours.</div>${h.items.map(i=>`<div style="border-top:1px solid #e3e7eb;padding:10px 0"><b>${esc(i.name)}</b>
-    <div class="tag" style="margin-top:2px">${esc(i.category)}${i.installedOn&&i.category!=='Warranty'?` · installed ${fd(i.installedOn)}`:''}${i.warrantyUntil?` · ${i.category==='Warranty'?'good':'warranty'} through ${fd(i.warrantyUntil)}`:''}</div>
-    ${i.details?`<div class="meta">${esc(i.details)}</div>`:''}${i.careNote?`<div class="meta">Care${i.careEveryMonths?` every ${i.careEveryMonths} month${i.careEveryMonths===1?'':'s'}`:''}: ${esc(i.careNote)}</div>`:''}</div>`).join('')}</div>`;
-  if(h.referralCode){const link=location.origin+'/r/'+h.referralCode;out+=`<div class="card"><h2>Know someone planning a project?</h2><div class="meta">Share your personal link. Anyone who reaches out through it is credited to you, so ${esc(p.company.name||'we')} can say thank you.</div>
-    <div style="display:flex;gap:8px;margin-top:10px"><input type="text" class="nm" id="ref-link" readonly value="${esc(link)}" onclick="this.select()" style="margin:0"><button class="btn btn-o" onclick="shareRef(this)">Share</button></div></div>`;}
+  const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString(loc(), {month:'short',day:'numeric',year:'numeric'}):'';
+  if(h.items.length)out+=`<div class="card"><h2>${esc(t('homeFile'))}</h2><div class="meta" style="margin-bottom:8px">${esc(t('homeIntro'))}</div>${h.items.map(i=>{const w=i.categoryKey==='warranty';return `<div style="border-top:1px solid #e3e7eb;padding:10px 0"><b>${esc(i.name)}</b>
+    <div class="tag" style="margin-top:2px">${esc(tm('cat',i.categoryKey,i.category))}${i.installedOn&&!w?' · '+esc(t('installed',{d:fd(i.installedOn)})):''}${i.warrantyUntil?' · '+esc(t(w?'goodThrough':'warrantyThrough',{d:fd(i.warrantyUntil)})):''}</div>
+    ${i.details?`<div class="meta">${esc(i.details)}</div>`:''}${i.careNote?`<div class="meta">${esc(i.careEveryMonths?t('careEvery',{n:i.careEveryMonths,s:pl(i.careEveryMonths),es:i.careEveryMonths===1?'':'es'}):t('care'))}: ${esc(i.careNote)}</div>`:''}</div>`;}).join('')}</div>`;
+  if(h.referralCode){const link=location.origin+'/r/'+h.referralCode;out+=`<div class="card"><h2>${esc(t('refTitle'))}</h2><div class="meta">${esc(t('refIntro',{co:p.company.name||t('we')}))}</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><input type="text" class="nm" id="ref-link" readonly value="${esc(link)}" onclick="this.select()" style="margin:0"><button class="btn btn-o" onclick="shareRef(this)">${esc(t('share'))}</button></div></div>`;}
   return out;
 }
-function shareRef(b){const l=document.getElementById('ref-link').value;if(navigator.share){navigator.share({title:(P.company.name||'')+' ',url:l}).catch(()=>{});return;}(navigator.clipboard?navigator.clipboard.writeText(l):Promise.reject()).then(()=>{b.textContent='Copied';}).catch(()=>{document.getElementById('ref-link').select();});}
+function shareRef(b){const l=document.getElementById('ref-link').value;if(navigator.share){navigator.share({title:(P.company.name||'')+' ',url:l}).catch(()=>{});return;}(navigator.clipboard?navigator.clipboard.writeText(l):Promise.reject()).then(()=>{b.textContent=t('copied');}).catch(()=>{document.getElementById('ref-link').select();});}
 function jobHtml(p){
   const j=p.job||{schedule:[],changeOrders:[],selections:[]};let out='';
-  const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric'}):'';
+  const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString(loc(), {month:'short',day:'numeric'}):'';
   const cos=j.changeOrders.filter(c=>c.status==='sent');
-  if(cos.length)out+=`<div class="card"><h2>Waiting for your OK</h2>${cos.map(c=>`<div style="border-top:1px solid #e3e7eb;padding-top:10px;margin-top:10px"><b>Change order #${c.number}: ${esc(c.title)}</b><div class="meta">${c.amount>=0?'Adds':'Credits'} ${money(Math.abs(c.amount))}${c.daysAdded?` · ${c.daysAdded} more working day${c.daysAdded===1?'':'s'}`:''}</div>${c.description?`<div class="up-b" style="margin-top:6px">${esc(c.description)}</div>`:''}
-    <input type="text" class="nm" id="co-${c.id}" placeholder="Type your full name to approve" autocomplete="name" value="${esc(p.project.customer||'')}">
-    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn" onclick="answerCO('${c.id}',true,this)">Approve</button><button class="btn btn-o" onclick="answerCO('${c.id}',false,this)">Decline</button></div></div>`).join('')}<div class="msg" id="co-msg"></div></div>`;
+  if(cos.length)out+=`<div class="card"><h2>${esc(t('waiting'))}</h2>${cos.map(c=>`<div style="border-top:1px solid #e3e7eb;padding-top:10px;margin-top:10px"><b>${esc(t('co',{n:c.number,t:c.title}))}</b><div class="meta">${esc(t(c.amount>=0?'adds':'credits',{a:money(Math.abs(c.amount))}))}${c.daysAdded?esc(t('moreDays',{n:c.daysAdded,s:pl(c.daysAdded),es:c.daysAdded===1?'':'es'})):''}</div>${c.description?`<div class="up-b" style="margin-top:6px">${esc(c.description)}</div>`:''}
+    <input type="text" class="nm" id="co-${c.id}" placeholder="${esc(t('typeName'))}" autocomplete="name" value="${esc(p.project.customer||'')}">
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn" onclick="answerCO('${c.id}',true,this)">${esc(t('approve'))}</button><button class="btn btn-o" onclick="answerCO('${c.id}',false,this)">${esc(t('decline'))}</button></div></div>`).join('')}<div class="msg" id="co-msg"></div></div>`;
   const open=j.selections.filter(s=>s.chosen==null),done=j.selections.filter(s=>s.chosen!=null);
-  if(j.selections.length)out+=`<div class="card"><h2>Your selections</h2>${open.map(s=>`<div style="margin-bottom:14px"><b>${esc(s.category)}</b>${s.allowance?` <span class="tag">Allowance ${money(s.allowance)}</span>`:''}${s.due?` <span class="tag">· choose by ${fd(s.due)}</span>`:''}${s.note?`<div class="meta">${esc(s.note)}</div>`:''}
-    ${s.options.map((o,i)=>`<label class="opt"><input type="radio" name="sel-${s.id}" value="${i}"><span><b>${esc(o.name)}</b> · ${money(o.price)}${s.allowance&&o.price>s.allowance?` <span class="tag">(${money(o.price-s.allowance)} over)</span>`:''}${o.note?`<br><span class="meta">${esc(o.note)}</span>`:''}</span></label>`).join('')}
-    <button class="btn" style="margin-top:8px" onclick="choose('${s.id}',this)">Choose</button></div>`).join('')}
+  if(j.selections.length)out+=`<div class="card"><h2>${esc(t('selections'))}</h2>${open.map(s=>`<div style="margin-bottom:14px"><b>${esc(s.category)}</b>${s.allowance?` <span class="tag">${esc(t('allowance',{a:money(s.allowance)}))}</span>`:''}${s.due?` <span class="tag">${esc(t('chooseBy',{d:fd(s.due)}))}</span>`:''}${s.note?`<div class="meta">${esc(s.note)}</div>`:''}
+    ${s.options.map((o,i)=>`<label class="opt"><input type="radio" name="sel-${s.id}" value="${i}"><span><b>${esc(o.name)}</b> · ${money(o.price)}${s.allowance&&o.price>s.allowance?` <span class="tag">${esc(t('over',{a:money(o.price-s.allowance)}))}</span>`:''}${o.note?`<br><span class="meta">${esc(o.note)}</span>`:''}</span></label>`).join('')}
+    <button class="btn" style="margin-top:8px" onclick="choose('${s.id}',this)">${esc(t('choose'))}</button></div>`).join('')}
     ${done.map(s=>`<div class="row"><span>${esc(s.category)}</span><span class="tag">✓ ${esc((s.options[s.chosen]||{}).name||'')}</span></div>`).join('')}<div class="msg" id="sel-msg"></div></div>`;
-  if(j.schedule.length)out+=`<div class="card"><h2>Schedule</h2>${j.schedule.map(i=>`<div class="ph"><span class="dot ${i.status}"></span><span style="flex:1">${esc(i.title)}${i.status==='doing'?' <span class="tag">· in progress</span>':''}</span><span class="tag">${i.start?fd(i.start)+(i.end&&i.end!==i.start?' – '+fd(i.end):''):''}</span></div>`).join('')}<div class="small" style="font-size:12px;color:var(--ink3);margin-top:8px">Dates can shift with weather, inspections and deliveries. Your team will keep this up to date.</div></div>`;
+  if(j.schedule.length)out+=`<div class="card"><h2>${esc(t('schedule'))}</h2>${j.schedule.map(i=>`<div class="ph"><span class="dot ${i.status}"></span><span style="flex:1">${esc(i.title)}${i.status==='doing'?` <span class="tag">${esc(t('inProgress'))}</span>`:''}</span><span class="tag">${i.start?fd(i.start)+(i.end&&i.end!==i.start?' – '+fd(i.end):''):''}</span></div>`).join('')}<div class="small" style="font-size:12px;color:var(--ink3);margin-top:8px">${esc(t('shift'))}</div></div>`;
   return out;
 }
 async function answerCO(id,approve,btn){
   const out=document.getElementById('co-msg');btn.disabled=true;out.textContent='';
   try{const r=await fetch(`/api/crm-public/portal/${token}/change-orders/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({approve,name:(document.getElementById('co-'+id)||{}).value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);await load();}
-  catch(e){out.textContent=e.message||'Could not save. Please try again.';out.style.color='var(--err)';btn.disabled=false;}
+  catch(e){out.textContent=e.message||t('cantSave');out.style.color='var(--err)';btn.disabled=false;}
 }
 async function choose(id,btn){
   const pick=document.querySelector(`input[name="sel-${id}"]:checked`);const out=document.getElementById('sel-msg');
-  if(!pick){out.textContent='Pick one of the options first.';out.style.color='var(--err)';return;}
+  if(!pick){out.textContent=t('pickFirst');out.style.color='var(--err)';return;}
   btn.disabled=true;
-  try{const r=await fetch(`/api/crm-public/portal/${token}/selections/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:+pick.value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);await load();const o=document.getElementById('sel-msg');if(o){o.textContent=d.over>0?`Saved. That's ${money(d.over)} over the allowance; your team will send a change order for the difference.`:'Saved. Thank you!';o.style.color='var(--ok)';}}
-  catch(e){out.textContent=e.message||'Could not save.';out.style.color='var(--err)';btn.disabled=false;}
+  try{const r=await fetch(`/api/crm-public/portal/${token}/selections/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:+pick.value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);await load();const o=document.getElementById('sel-msg');if(o){o.textContent=d.over>0?t('savedOver',{a:money(d.over)}):t('saved');o.style.color='var(--ok)';}}
+  catch(e){out.textContent=e.message||t('cantSave');out.style.color='var(--err)';btn.disabled=false;}
 }
 async function send(){
   const m=document.getElementById('m'),b=document.getElementById('mb'),out=document.getElementById('m-msg');
   if(!m.value.trim())return;b.disabled=true;out.textContent='';
-  try{const r=await fetch(`/api/crm-public/portal/${token}/messages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m.value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);m.value='';out.textContent='Sent. Your team will get back to you soon.';out.style.color='var(--ok)';}
-  catch(e){out.textContent=e.message||'Could not send. Please try again.';out.style.color='var(--err)';}
+  try{const r=await fetch(`/api/crm-public/portal/${token}/messages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m.value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);m.value='';out.textContent=t('sent');out.style.color='var(--ok)';}
+  catch(e){out.textContent=e.message||t('cantSend');out.style.color='var(--err)';}
   b.disabled=false;
 }
 function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});}
 async function upload(input){
   const out=document.getElementById('up-msg');const files=[...input.files];if(!files.length)return;
-  out.textContent=`Uploading ${files.length} photo${files.length>1?'s':''}…`;out.style.color='';
+  out.textContent=t('uploading',{n:files.length,s:pl(files.length)});out.style.color='';
   let ok=0;
   for(const f of files){
-    if(f.size>8*1024*1024){out.textContent=`${f.name} is over 8 MB.`;continue;}
+    if(f.size>8*1024*1024){out.textContent=t('tooBig',{f:f.name});continue;}
     try{const r=await fetch(`/api/crm-public/portal/${token}/files`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:f.name,dataBase64:await readFile(f)})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);ok++;}
-    catch(e){out.textContent=e.message||'Upload failed.';out.style.color='var(--err)';}
+    catch(e){out.textContent=e.message||t('upFail');out.style.color='var(--err)';}
   }
-  if(ok){await load();const o=document.getElementById('up-msg');if(o){o.textContent=`Added ${ok} photo${ok>1?'s':''}. Your team can see ${ok>1?'them':'it'} now.`;o.style.color='var(--ok)';}}
+  if(ok){await load();const o=document.getElementById('up-msg');if(o){o.textContent=t('added',{n:ok,s:pl(ok),them:ok>1?'them':'it'});o.style.color='var(--ok)';}}
 }
 load();
 </script>

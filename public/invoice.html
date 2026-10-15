@@ -27,29 +27,43 @@ h1{font-size:21px;line-height:1.3;margin:4px 0;overflow-wrap:anywhere}
 .err{color:var(--err);font-size:14px;margin-top:10px;min-height:18px}
 .small{font-size:13px;color:var(--ink3);margin-top:10px}
 .foot{font-size:12px;color:var(--ink3);text-align:center;margin:12px 0 30px}
+.lang{display:block;margin:0 0 6px auto;background:none;border:0;color:#1f4e79;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:6px 8px}
 </style>
 </head>
 <body>
-<div class="wrap"><div class="card" id="app">Loading…</div><div class="foot">Sent with Eagle I CRM</div></div>
+<div class="wrap"><button type="button" class="lang" id="lang-btn" onclick="toggleLang()">Español</button><div class="card" id="app">Loading…</div><div class="foot">Sent with Eagle I CRM</div></div>
 <script>
 const token=location.pathname.split('/').pop();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtDate=d=>d?new Date(String(d).slice(0,10)+'T12:00:00Z').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
+const T={en:{invoice:'Invoice',title:'Invoice #{n} from {co}',paid:'✓ <b>Paid</b> {a} on {d}. Thank you!',void:'This invoice was cancelled. Nothing is owed on it.',pay:'Pay {a}',howPay:'Pay by card, or by bank transfer (free for larger amounts, takes a few days to clear). Payments go directly to {co} through Stripe.',contact:'To pay, contact {co}{ph}{em}.',at:' at {p}',or:' or {e}',forWho:'For {n} · {p}',due:'Due {d}',invalid:'This invoice link is not valid.',cantStart:'Could not start the payment. Please try again.',loading:'Loading…',
+  kinds:{deposit:'Deposit',progress:'Progress payment',final:'Final payment',other:'Invoice'}},
+es:{invoice:'Factura',title:'Factura #{n} de {co}',paid:'✓ <b>Pagada</b> {a} el {d}. ¡Gracias!',void:'Esta factura fue cancelada. No se debe nada.',pay:'Pagar {a}',howPay:'Pague con tarjeta o por transferencia bancaria (gratis para montos grandes, tarda unos días en acreditarse). Los pagos van directamente a {co} a través de Stripe.',contact:'Para pagar, comuníquese con {co}{ph}{em}.',at:' al {p}',or:' o {e}',forWho:'Para {n} · {p}',due:'Vence el {d}',invalid:'Este enlace de factura no es válido.',cantStart:'No se pudo iniciar el pago. Por favor intente de nuevo.',loading:'Cargando…',
+  kinds:{deposit:'Depósito',progress:'Pago parcial',final:'Pago final',other:'Factura'}}};
+let L=(()=>{const q=new URLSearchParams(location.search).get('lang');if(q)return q==='es'?'es':'en';try{const s=localStorage.getItem('eaglei_lang');if(s)return s;}catch(e){}return /^es/i.test(navigator.language||'')?'es':'en';})();
+let chosenLang=!!new URLSearchParams(location.search).get('lang');try{if(localStorage.getItem('eaglei_lang'))chosenLang=true;}catch(e){}
+const t=(k,v)=>String((T[L]||T.en)[k]??T.en[k]??k).replace(/\{(\w+)\}/g,(m,x)=>(v||{})[x]??'');
+const loc=()=>L==='es'?'es-US':'en-US';
+let I=null;
+function setLangBtn(){document.documentElement.lang=L;document.getElementById('lang-btn').textContent=L==='es'?'English':'Español';}
+function toggleLang(){L=L==='es'?'en':'es';chosenLang=true;try{localStorage.setItem('eaglei_lang',L);}catch(e){}setLangBtn();if(I)render(I);}
+setLangBtn();document.getElementById('app').textContent=t('loading');
+const fmtDate=d=>d?new Date(String(d).slice(0,10)+'T12:00:00Z').toLocaleDateString(loc(),{month:'long',day:'numeric',year:'numeric'}):'';
 function render(i){
   const c=i.company||{};
-  document.title=`Invoice #${i.number} from ${c.name||''}`;
+  document.title=t('title',{n:i.number,co:c.name||''});
   let action='';
-  if(i.status==='paid')action=`<div class="paid">✓ <b>Paid</b> ${i.paidAmount!=null?money(i.paidAmount):''} on ${new Date(i.paidAt).toLocaleDateString('en-US',{month:'long',day:'numeric'})}. Thank you!</div>`;
-  else if(i.status==='void')action='<div class="small">This invoice was cancelled. Nothing is owed on it.</div>';
-  else if(i.payOnline)action=`<button class="btn" id="pay" onclick="pay()">Pay ${money(i.amount)}</button><div class="small">Pay by card, or by bank transfer (free for larger amounts, takes a few days to clear). Payments go directly to ${esc(c.name)} through Stripe.</div><div class="err" id="err" role="alert"></div>`;
-  else action=`<div class="small">To pay, contact ${esc(c.name)}${c.phone?' at '+esc(c.phone):''}${c.email?' or '+esc(c.email):''}.</div>`;
+  if(i.status==='paid')action=`<div class="paid">${t('paid',{a:i.paidAmount!=null?money(i.paidAmount):'',d:esc(new Date(i.paidAt).toLocaleDateString(loc(),{month:'long',day:'numeric'}))})}</div>`;
+  else if(i.status==='void')action=`<div class="small">${esc(t('void'))}</div>`;
+  else if(i.payOnline)action=`<button class="btn" id="pay" onclick="pay()">${esc(t('pay',{a:money(i.amount)}))}</button><div class="small">${esc(t('howPay',{co:c.name}))}</div><div class="err" id="err" role="alert"></div>`;
+  else action=`<div class="small">${esc(t('contact',{co:c.name,ph:c.phone?t('at',{p:c.phone}):'',em:c.email?t('or',{e:c.email}):''}))}</div>`;
+  const kind=((T[L]||T.en).kinds||{})[i.kindKey]||i.kind;
   document.getElementById('app').innerHTML=`<div class="co">${esc(c.name)}${c.address?' · '+esc(c.address):''}</div>
-    <div class="kind">${esc(i.kind)} · Invoice #${esc(i.number)}</div>
+    <div class="kind">${esc(kind)} · ${esc(t('invoice'))} #${esc(i.number)}</div>
     <h1>${esc(i.title)}</h1>
-    <div class="meta">For ${esc(i.customer)} · ${esc(i.project)}</div>
+    <div class="meta">${esc(t('forWho',{n:i.customer,p:i.project}))}</div>
     <div class="amt">${money(i.amount)}</div>
-    ${i.dueDate&&i.status!=='paid'?`<div class="meta">Due ${fmtDate(i.dueDate)}</div>`:''}
+    ${i.dueDate&&i.status!=='paid'?`<div class="meta">${esc(t('due',{d:fmtDate(i.dueDate)}))}</div>`:''}
     ${i.note?`<div class="note">${esc(i.note)}</div>`:''}
     ${action}`;
 }
@@ -57,15 +71,15 @@ async function load(){
   const session=new URLSearchParams(location.search).get('session');
   try{
     const r=await fetch('/api/crm-public/invoices/'+token+(session?'?session='+encodeURIComponent(session):''));const d=await r.json();
-    if(!r.ok)throw new Error((d.error&&d.error.message)||'This invoice link is not valid.');
-    render(d.invoice);
+    if(!r.ok)throw new Error((d.error&&d.error.message)||t('invalid'));
+    I=d.invoice;if(I.lang==='es'&&!chosenLang){L='es';setLangBtn();}render(I);
     if(session)history.replaceState(null,'',location.pathname);
   }catch(e){document.getElementById('app').textContent=e.message;}
 }
 async function pay(){
   const b=document.getElementById('pay'),err=document.getElementById('err');b.disabled=true;err.textContent='';
   try{const r=await fetch(`/api/crm-public/invoices/${token}/checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);location.href=d.url;}
-  catch(e){err.textContent=e.message||'Could not start the payment. Please try again.';b.disabled=false;}
+  catch(e){err.textContent=e.message||t('cantStart');b.disabled=false;}
 }
 load();
 </script>

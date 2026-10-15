@@ -490,6 +490,22 @@ mark it says which channel signs jobs cheapest; above the high mark, which to
 cut first. The weekly report carries it. CRM API responses are now
 `Cache-Control: no-store` and the CRM page `no-cache`.
 
+**Spanish for homeowners (step 16).** `lib/crmSpanish.js`. Each contact has a
+`language` (null = English, `es`), set by filling the inquiry form, booking page
+or questionnaire in Spanish, or on the deal sheet ("Reads"). Playbooks carry an
+optional `steps_es` (same messages and timing; only the words differ) that is
+approved together with the English: `playbookHash` includes it only when
+present, so existing approvals stay valid. Every starter has a Spanish version;
+"Add a Spanish version" in Automations fills in the starter's Spanish or, for
+reworded playbooks, an AI translation to read over (`POST
+/api/crm/playbooks/:id/spanish`; nothing is saved or sent). Spanish readers get
+the Spanish wording with dates in Spanish; changing the English message count
+drops the old Spanish and says so. The estimate, invoice, change-order and
+project-update emails use a phrasebook (`say(lang, key)`). The inquiry form,
+questionnaire, booking page, portal, estimate and invoice pages have an
+Español/English switch, starting from the contact's language, else the
+browser's.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

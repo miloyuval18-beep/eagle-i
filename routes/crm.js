@@ -199,8 +199,13 @@ router.get('/api/crm/playbooks', requireAuth, async (req, res) => {
 });
 
 router.put('/api/crm/playbooks/:id', requireAuth, managersOnly, async (req, res) => {
-  const { name, steps } = req.body || {};
-  try { res.json({ ok: true, ...(await playbooks.savePlaybook({ tenantId: req.tenantId, id: req.params.id, name, steps })) }); } catch (err) { fail(res, err, 'Failed to save the playbook'); }
+  const { name, steps, stepsEs } = req.body || {};
+  try { res.json({ ok: true, ...(await playbooks.savePlaybook({ tenantId: req.tenantId, id: req.params.id, name, steps, stepsEs })) }); } catch (err) { fail(res, err, 'Failed to save the playbook'); }
+});
+
+// A Spanish draft to read over (nothing is saved or sent).
+router.post('/api/crm/playbooks/:id/spanish', requireAuth, managersOnly, async (req, res) => {
+  try { res.json({ ok: true, ...(await playbooks.spanishDraft({ tenantId: req.tenantId, id: req.params.id, steps: (req.body || {}).steps || null })) }); } catch (err) { fail(res, err, 'Failed to draft the Spanish'); }
 });
 
 router.post('/api/crm/playbooks/:id/approve', requireAuth, managersOnly, async (req, res) => {
@@ -217,7 +222,7 @@ router.post('/api/crm/playbooks/:id/reset', requireAuth, managersOnly, async (re
 
 router.post('/api/crm/playbooks/:id/preview', requireAuth, async (req, res) => {
   try {
-    const r = await playbooks.sendPreview({ tenantId: req.tenantId, id: req.params.id, step: parseInt((req.body || {}).step, 10) || 1, baseUrl: baseUrlOf(req) });
+    const r = await playbooks.sendPreview({ tenantId: req.tenantId, id: req.params.id, step: parseInt((req.body || {}).step, 10) || 1, lang: (req.body || {}).lang === 'es' ? 'es' : 'en', baseUrl: baseUrlOf(req) });
     res.json({ ok: true, ...r });
   } catch (err) {
     if (/RESEND_API_KEY/.test(err.message)) return res.status(503).json({ error: { message: 'Email sending is not configured yet.' } });

@@ -828,6 +828,7 @@ async function plOpenDeal(id){
       ${plField('pld-name','Name',x.contact_name)}${plField('pld-phone','Phone',x.contact_phone,{type:'tel',mode:'tel'})}
       ${plField('pld-email','Email',x.contact_email,{type:'email',mode:'email',full:true})}
       ${plField('pld-address','Property address',x.property_address,{full:true})}
+      <div class="full"><label for="pld-lang">Reads</label><select id="pld-lang"><option value="en">English</option><option value="es"${x.contact_language==='es'?' selected':''}>Español: automatic emails and their pages in Spanish</option></select></div>
       <div class="full"><label for="pld-visit">Site visit</label><input id="pld-visit" type="datetime-local" class="cred-input" value="${x.site_visit_at?plLocalInput(x.site_visit_at):''}"></div>
       <div class="${CR.team.length>1?'':'full'}"><label for="pld-source">Where it came from</label><select id="pld-source">${plSourceOptions(x.source)}</select></div>
       ${CR.team.length>1?`<div><label for="pld-owner">Who's handling it</label><select id="pld-owner">${crOwnerOptions(x.owner_user_id)}</select></div>`:''}
@@ -1310,7 +1311,7 @@ async function plSaveDeal(id,btn){
   const v=k=>document.getElementById(k).value;
   btn.disabled=true;
   try{
-    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),source:v('pld-source'),siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{})}});
+    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),language:v('pld-lang'),source:v('pld-source'),siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{})}});
     document.getElementById('pld-msg').textContent='Saved.';btn.disabled=false;plLoad();
   }catch(e){document.getElementById('pld-msg').textContent=e.message;btn.disabled=false;}
 }
@@ -1462,14 +1463,36 @@ function plRenderPlaybooks(){
         <input class="cred-input" data-k="subject" data-i="${i}" value="${uxEsc(s.subject)}" aria-label="Subject" style="margin-bottom:5px${s.channel==='sms'?';display:none':''}">
         <textarea class="cred-input" data-k="message" data-i="${i}" rows="${s.channel==='sms'?3:6}" aria-label="Message" style="font-size:13px;line-height:1.5">${uxEsc(s.message)}</textarea></div>`;}).join('')}
       <div class="sm">You can use ${(p.tokens||[]).map(t=>'{'+t+'}').join(', ')}. Emails get your address and an unsubscribe link at the bottom. Texts only go to people who agreed to texts, and end with “Reply STOP to opt out.”</div>
+      <div id="pbes-${p.id}">${pbEsHtml(p,p.stepsEs)}</div>
       ${crCanManage()?`<div class="pl-acts">
         ${p.enabled&&p.approved?`<button class="btn-xs" onclick="plPbEnabled('${p.id}',false)">Switch off</button>`:`<button class="btn btn-blue" onclick="plPbApprove('${p.id}',this)">✓ Approve this wording &amp; switch on</button>`}
         <button class="btn-xs" onclick="plPbSave('${p.id}',this)">Save wording</button>
-        <button class="btn-xs" onclick="plPbPreview('${p.id}',this)">Send me a preview</button>
+        <button class="btn-xs" onclick="plPbPreview('${p.id}',this)">Send me a preview</button>${p.stepsEs?`<button class="btn-xs" onclick="plPbPreview('${p.id}',this,'es')">Preview in Spanish</button>`:''}
         <button class="btn-xs" onclick="plPbReset('${p.id}')">Back to original wording</button>
       </div>`:''}<div class="sm" id="pbmsg-${p.id}"></div></div>`;
   }).join('');
 }
+// The Spanish version: same messages and timing as the English, only the words differ.
+function pbEsHtml(p,es){
+  const manage=crCanManage();
+  if(!es||!es.length)return manage?`<div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs" onclick="pbEsDraft('${p.id}',this)">＋ Add a Spanish version</button><span class="sm" style="margin:0">For homeowners who read Spanish.</span></div>`:'';
+  return `<details class="pl-pb" style="margin-top:8px" data-es-on="1"${es&&!p.stepsEs?' open':''}><summary style="cursor:pointer;font-weight:800">Español <span class="sm" style="font-weight:400">· for contacts who read Spanish (approved together with the English)</span></summary>
+    ${es.map((x,i)=>`<div class="pl-step"><div class="pl-step-row">${i+1}:</div>
+      <input class="cred-input" data-es="subject" data-i="${i}" value="${uxEsc(x.subject||'')}" aria-label="Spanish subject" style="margin-bottom:5px${(p.steps[i]||{}).channel==='sms'?';display:none':''}"${manage?'':' readonly'}>
+      <textarea class="cred-input" data-es="message" data-i="${i}" rows="5" aria-label="Spanish message" style="font-size:13px;line-height:1.5"${manage?'':' readonly'}>${uxEsc(x.message||'')}</textarea></div>`).join('')}
+    ${manage?`<div class="vd-mbtns"><button class="btn-xs" onclick="pbEsRemove('${p.id}')">Remove the Spanish version</button></div>`:''}</details>`;
+}
+function plPbEs(id){
+  const box=document.querySelector('#pbes-'+id+' [data-es-on]');if(!box)return undefined;
+  const out=[];box.querySelectorAll('[data-es]').forEach(f=>{const i=+f.dataset.i;out[i]=out[i]||{};out[i][f.dataset.es]=f.value;});return out;
+}
+async function pbEsDraft(id,btn){
+  btn.disabled=true;btn.textContent='Writing the Spanish…';
+  try{const r=await plApi('/api/crm/playbooks/'+id+'/spanish',{body:{steps:plPbSteps(id)}});const p=PL.playbooks.find(x=>x.id===id);document.getElementById('pbes-'+id).innerHTML=pbEsHtml(p,r.stepsEs);
+    const m=document.getElementById('pbmsg-'+id);if(m)m.textContent=(r.from==='ai'?'Translated automatically. ':'')+'Read it over, then save or approve.';}
+  catch(e){btn.disabled=false;btn.textContent='＋ Add a Spanish version';showNotif('Could not draft the Spanish',e.message);}
+}
+async function pbEsRemove(id){if(!confirm('Remove the Spanish version? Spanish readers will get the English. This switches the playbook off until you approve it again.'))return;try{await plApi('/api/crm/playbooks/'+id,{method:'PUT',body:{steps:plPbSteps(id),stepsEs:[]}});plLoadAuto();}catch(e){showNotif('Could not remove it',e.message);}}
 const PB_RANGE={stage:[0,365],meeting:[-14,-1],estimate_expiry:[-14,-1],invoice_due:[-7,30],home_care:[0,14],warranty_end:[-60,-1]};
 function plPbSteps(id){
   const box=document.getElementById('pb-'+id);const steps=[];
@@ -1478,25 +1501,27 @@ function plPbSteps(id){
 }
 function plPbChannel(sel){const step=sel.closest('.pl-step');const sub=step.querySelector('[data-k="subject"]');sub.style.display=sel.value==='sms'?'none':'';step.querySelector('[data-k="message"]').rows=sel.value==='sms'?3:6;}
 function plPbDirty(id){
-  const p=PL.playbooks.find(x=>x.id===id);return JSON.stringify(plPbSteps(id))!==JSON.stringify(p.steps.map(s=>{const o={days:s.days,subject:s.subject,message:s.message};if(s.channel==='sms')o.channel='sms';return o;}));
+  const p=PL.playbooks.find(x=>x.id===id);const es=plPbEs(id);
+  if(es!==undefined&&JSON.stringify(es.map(x=>({subject:x.subject,message:x.message})))!==JSON.stringify((p.stepsEs||[]).map(x=>({subject:x.subject,message:x.message}))))return true;
+  return JSON.stringify(plPbSteps(id))!==JSON.stringify(p.steps.map(s=>{const o={days:s.days,subject:s.subject,message:s.message};if(s.channel==='sms')o.channel='sms';return o;}));
 }
 async function plPbSave(id,btn){
   const msg=document.getElementById('pbmsg-'+id);btn.disabled=true;
-  try{const r=await plApi('/api/crm/playbooks/'+id,{method:'PUT',body:{steps:plPbSteps(id)}});await plLoadAuto();const m=document.getElementById('pbmsg-'+id);if(m)m.textContent=r.changed?'Saved. Approve the new wording to switch it back on.':'No changes to save.';}
+  try{const r=await plApi('/api/crm/playbooks/'+id,{method:'PUT',body:{steps:plPbSteps(id),stepsEs:plPbEs(id)}});await plLoadAuto();const m=document.getElementById('pbmsg-'+id);if(m)m.textContent=(r.changed?'Saved. Approve the new wording to switch it back on.':'No changes to save.')+(r.spanishRemoved?' The Spanish version was removed because the number of messages changed; add it again below.':'');}
   catch(e){msg.textContent=e.message;btn.disabled=false;}
 }
 async function plPbApprove(id,btn){
   const msg=document.getElementById('pbmsg-'+id);btn.disabled=true;
   try{
-    if(plPbDirty(id))await plApi('/api/crm/playbooks/'+id,{method:'PUT',body:{steps:plPbSteps(id)}});
+    if(plPbDirty(id))await plApi('/api/crm/playbooks/'+id,{method:'PUT',body:{steps:plPbSteps(id),stepsEs:plPbEs(id)}});
     await plApi('/api/crm/playbooks/'+id+'/approve',{body:{}});
     await plLoadAuto();showNotif('Playbook switched on','It will run for every deal that enters this stage from now on.');
   }catch(e){msg.textContent=e.message;btn.disabled=false;}
 }
 async function plPbEnabled(id,on){try{await plApi('/api/crm/playbooks/'+id+'/enabled',{body:{enabled:on}});plLoadAuto();}catch(e){showNotif('Could not switch it',e.message);}}
-async function plPbPreview(id,btn){
+async function plPbPreview(id,btn,lang){
   const msg=document.getElementById('pbmsg-'+id);btn.disabled=true;
-  try{const r=await plApi('/api/crm/playbooks/'+id+'/preview',{body:{step:1}});msg.textContent='Preview of email 1 sent to '+r.to+'.';}catch(e){msg.textContent=e.message;}
+  try{const r=await plApi('/api/crm/playbooks/'+id+'/preview',{body:{step:1,lang:lang||'en'}});msg.textContent=(lang==='es'?'Spanish preview':'Preview')+' of message 1 sent to '+r.to+'.';}catch(e){msg.textContent=e.message;}
   btn.disabled=false;
 }
 async function plPbReset(id){

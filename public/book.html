@@ -51,55 +51,76 @@ textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius
 .ok{font-size:16px;text-align:center;padding:16px 0}
 .hp{position:absolute;left:-5000px;width:1px;height:1px;overflow:hidden}
 [hidden]{display:none!important}
+.lang{display:block;margin:-12px -8px 4px auto;background:none;border:0;color:var(--accent);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer;padding:6px 8px}
 </style>
 </head>
 <body>
 <main class="card">
-  <div class="brand" id="co" style="font-size:20px">Book a visit</div>
-  <div class="tag" id="tag">Loading…</div>
+  <button type="button" class="lang" id="lang-btn" onclick="toggleLang()">Español</button>
+  <div class="brand" id="co" style="font-size:20px" data-t="title">Book a visit</div>
+  <div class="tag" id="tag" data-t="loading">Loading…</div>
   <div id="pick" hidden>
-    <div class="q">Pick a day</div><div class="days" id="days"></div>
-    <div class="q">Pick a time</div><div class="times" id="times"></div>
+    <div class="q" data-t="pickDay">Pick a day</div><div class="days" id="days"></div>
+    <div class="q" data-t="pickTime">Pick a time</div><div class="times" id="times"></div>
     <div id="who" hidden>
-      <label for="name">Your name</label><input id="name" autocomplete="name">
-      <label for="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email">
-      <label for="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" inputmode="tel">
-      <label for="address">Project address</label><input id="address" autocomplete="street-address">
-      <label for="notes">What's the project?</label><textarea id="notes" rows="2"></textarea>
+      <label for="name" data-t="name">Your name</label><input id="name" autocomplete="name">
+      <label for="email" data-t="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email">
+      <label for="phone" data-t="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" inputmode="tel">
+      <label for="address" data-t="address">Project address</label><input id="address" autocomplete="street-address">
+      <label for="notes" data-t="notes">What's the project?</label><textarea id="notes" rows="2"></textarea>
       <div class="hp" aria-hidden="true"><input id="company_website" tabindex="-1" autocomplete="off"></div>
     </div>
-    <button class="btn" id="b" onclick="book()">Book this time</button><div class="err" id="err" role="alert"></div>
+    <button class="btn" id="b" onclick="book()" data-t="bookIt">Book this time</button><div class="err" id="err" role="alert"></div>
   </div>
   <div id="done" hidden class="ok"></div>
 </main>
 <script>
 const parts=location.pathname.split('/');const mode=parts[1]==='book'?'new':'deal';const key=parts.pop();
 const api=mode==='new'?'/api/crm-public/book/'+key:'/api/crm-public/b/'+key;
-let S=[],day=null,slot=null;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const T={en:{title:'Book a visit',loading:'Loading…',pickDay:'Pick a day',pickTime:'Pick a time',name:'Your name',email:'Email',phone:'Phone',address:'Project address',notes:'What’s the project?',bookIt:'Book this time',
+  booked:'You’re booked for <b>{when}</b>. Need a different time? Pick one below.',intro:'A {min}-minute visit to see the space and talk through your project. Times are Central.',none:'No open times right now. Please call or message us and we’ll find one.',invalid:'This link is not valid.',oops:'Something went wrong.',
+  done:'✓ You’re booked for <b>{when}</b>.<br>We’ll send a reminder the day before.',needName:'Please add your name.',needReach:'Please add an email or phone number.'},
+es:{title:'Programe una visita',loading:'Cargando…',pickDay:'Escoja un día',pickTime:'Escoja una hora',name:'Su nombre',email:'Correo electrónico',phone:'Teléfono',address:'Dirección del proyecto',notes:'¿De qué se trata el proyecto?',bookIt:'Reservar esta hora',
+  booked:'Su visita está programada para el <b>{when}</b>. ¿Necesita otra hora? Escoja una abajo.',intro:'Una visita de {min} minutos para ver el espacio y hablar de su proyecto. Horario del centro (Houston).',none:'No hay horarios disponibles en este momento. Llámenos o escríbanos y encontraremos uno.',invalid:'Este enlace no es válido.',oops:'Algo salió mal.',
+  done:'✓ Su visita está programada para el <b>{when}</b>.<br>Le enviaremos un recordatorio el día anterior.',needName:'Por favor escriba su nombre.',needReach:'Por favor escriba un correo o teléfono.'}};
+let L=(()=>{const q=new URLSearchParams(location.search).get('lang');if(q)return q==='es'?'es':'en';try{const s=localStorage.getItem('eaglei_lang');if(s)return s;}catch(e){}return /^es/i.test(navigator.language||'')?'es':'en';})();
+const t=(k,v)=>String((T[L]||T.en)[k]??T.en[k]??k).replace(/\{(\w+)\}/g,(m,x)=>(v||{})[x]??'');
+const loc=()=>L==='es'?'es-US':'en-US';
+let S=[],day=null,slot=null,D=null;
 const dkey=iso=>new Date(iso).toLocaleDateString('en-CA',{timeZone:'America/Chicago'});
-const fmtTime=iso=>new Date(iso).toLocaleTimeString([], {hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'});
-const fmtLong=iso=>new Date(iso).toLocaleString([], {weekday:'long',month:'long',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'});
+const fmtTime=iso=>new Date(iso).toLocaleTimeString(loc(), {hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'});
+const fmtLong=iso=>new Date(iso).toLocaleString(loc(), {weekday:'long',month:'long',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'});
 function render(){
+  document.documentElement.lang=L;
+  document.querySelectorAll('[data-t]').forEach(e=>{e.textContent=t(e.dataset.t);});
+  document.getElementById('lang-btn').textContent=L==='es'?'English':'Español';
+  if(!D)return;
+  document.getElementById('co').textContent=D.company;
+  const tag=document.getElementById('tag');
+  if(!S.length)tag.textContent=t('none');else if(D.booked)tag.innerHTML=t('booked',{when:esc(fmtLong(D.booked))});else tag.textContent=t('intro',{min:D.duration});
   const days=[...new Set(S.map(dkey))];if(!day)day=days[0];
-  document.getElementById('days').innerHTML=days.map(d=>{const dt=new Date(d+'T12:00:00Z');return `<button class="day${d===day?' on':''}" onclick="day='${d}';slot=null;render()">${dt.toLocaleDateString([], {weekday:'short',timeZone:'UTC'})}<br><b>${dt.toLocaleDateString([], {month:'short',day:'numeric',timeZone:'UTC'})}</b></button>`;}).join('');
+  document.getElementById('days').innerHTML=days.map(d=>{const dt=new Date(d+'T12:00:00Z');return `<button class="day${d===day?' on':''}" onclick="day='${d}';slot=null;render()">${dt.toLocaleDateString(loc(), {weekday:'short',timeZone:'UTC'})}<br><b>${dt.toLocaleDateString(loc(), {month:'short',day:'numeric',timeZone:'UTC'})}</b></button>`;}).join('');
   document.getElementById('times').innerHTML=S.filter(s=>dkey(s)===day).map(s=>`<button class="time${s===slot?' on':''}" onclick="slot='${s}';render()">${fmtTime(s)}</button>`).join('');
   document.getElementById('b').disabled=!slot;
 }
+function toggleLang(){L=L==='es'?'en':'es';try{localStorage.setItem('eaglei_lang',L);}catch(e){}render();}
+render();
 fetch(api).then(r=>r.json().then(d=>{if(!r.ok)throw new Error(d.error&&d.error.message);
-  document.getElementById('co').textContent=d.company;
-  if(d.booked){document.getElementById('tag').innerHTML='You’re booked for <b>'+fmtLong(d.booked)+'</b>. Need a different time? Pick one below.';}
-  else document.getElementById('tag').textContent=`A ${d.duration}-minute visit to see the space and talk through your project. Times are Central.`;
-  S=d.slots;if(!S.length){document.getElementById('tag').textContent='No open times right now. Please call or message us and we’ll find one.';return;}
-  if(mode==='new')document.getElementById('who').hidden=false;
-  document.getElementById('pick').hidden=false;render();
-})).catch(e=>{document.getElementById('tag').textContent=e.message||'This link is not valid.';});
+  D=d;S=d.slots;if(d.lang==='es'&&!new URLSearchParams(location.search).get('lang'))L='es';
+  if(S.length){if(mode==='new')document.getElementById('who').hidden=false;document.getElementById('pick').hidden=false;}
+  render();
+})).catch(e=>{document.getElementById('tag').textContent=e.message||t('invalid');});
 function pageTags(){const q=new URLSearchParams(location.search),o={};['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','gbraid','wbraid','fbclid','msclkid'].forEach(k=>{const v=q.get(k);if(v)o[k]=v;});if(document.referrer&&!document.referrer.startsWith(location.origin))o.referrer=document.referrer;return Object.keys(o).length?o:undefined;}
 async function book(){
-  const b=document.getElementById('b'),err=document.getElementById('err');b.disabled=true;err.textContent='';
+  const b=document.getElementById('b'),err=document.getElementById('err');err.textContent='';
   const v=id=>(document.getElementById(id)||{}).value;
-  const body=mode==='new'?{slot,name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),notes:v('notes'),company_website:v('company_website'),utm:pageTags()}:{slot};
-  try{const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong.');
-    document.getElementById('pick').hidden=true;const done=document.getElementById('done');done.hidden=false;done.innerHTML='✓ You’re booked for <b>'+fmtLong(d.at||slot)+'</b>.<br>We’ll send a reminder the day before.';
+  if(mode==='new'&&!String(v('name')||'').trim()){err.textContent=t('needName');return;}
+  if(mode==='new'&&!String(v('email')||'').trim()&&!String(v('phone')||'').trim()){err.textContent=t('needReach');return;}
+  b.disabled=true;
+  const body=mode==='new'?{slot,name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),notes:v('notes'),company_website:v('company_website'),utm:pageTags(),lang:L}:{slot};
+  try{const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||t('oops'));
+    document.getElementById('pick').hidden=true;const done=document.getElementById('done');done.hidden=false;done.innerHTML=t('done',{when:esc(fmtLong(d.at||slot))});
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
 </script>

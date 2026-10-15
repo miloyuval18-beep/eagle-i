@@ -54,11 +54,13 @@ input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 
 .banner.warn{background:#fff6e0;border:1px solid #c79a2b}
 .foot{font-size:12px;color:var(--ink3);text-align:center;margin:18px 0 30px}
 [hidden]{display:none!important}
+.lang{display:block;margin:0 0 6px auto;background:none;border:0;color:var(--accent);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer;padding:6px 8px}
 @media print{body{background:#fff}.no-print{display:none!important}.card{border:0;padding:0}}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <button type="button" class="lang no-print" id="lang-btn" onclick="toggleLang()">Español</button>
   <div id="msg"></div>
   <div id="doc"><div class="card">Loading your estimate…</div></div>
   <div class="card no-print" id="act" hidden></div>
@@ -69,62 +71,79 @@ const token=location.pathname.split('/').pop();
 let E=null,PREVIEW=false;
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtDate=d=>d?new Date(String(d).slice(0,10)+'T12:00:00Z').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
+const T={en:{estimate:'Estimate',design_agreement:'Design agreement',from:'{k} from {co}',accepted:'Accepted',declined:'Declined',expired:'Expired',draftPreview:'Draft preview',updating:'Being updated',preparedFor:'Prepared for {n}',validUntil:'Valid until {d}',other:'Other',subtotal:'Subtotal',tax:'Tax ({p}%)',total:'Total',dueAtSigning:'Due at signing ({p}%)',terms:'Terms',acceptedBy:'Accepted by {n} on {d}',
+  download:'⬇ Download PDF',print:'Print',previewNote:'This is how your customer sees it. Opening it yourself doesn’t count as a view.',ready:'Ready to go ahead?',typeName:'Type your full name to accept',iAccept:'I accept this {k} for {t}{terms}.',andTerms:' and its terms',acceptBtn:'Accept {k}',notGoing:'Not going ahead? Let us know',anything:'Anything we should know? (optional)',decline:'Decline',
+  nextDeposit:'Next: the deposit',depositAsk:'To get started, {co} asks for {a} now.',payDeposit:'Pay the deposit',beingUpdated:'This estimate is being updated. You’ll get an email when the new version is ready.',expiredMsg:'This estimate has expired. Please contact {co}{ph} for an updated one.',at:' at {p}',
+  tick:'Tick the box to confirm.',thanks:'<b>Thank you!</b> {co} has been notified and will be in touch about next steps.',thanksDecline:'Thanks for letting us know. We’ve passed it on.',loading:'Loading your estimate…',oops:'Something went wrong. Please try again.'},
+es:{estimate:'Presupuesto',design_agreement:'Acuerdo de diseño',from:'{k} de {co}',accepted:'Aceptado',declined:'Rechazado',expired:'Vencido',draftPreview:'Vista previa del borrador',updating:'En revisión',preparedFor:'Preparado para {n}',validUntil:'Válido hasta el {d}',other:'Otros',subtotal:'Subtotal',tax:'Impuesto ({p}%)',total:'Total',dueAtSigning:'A pagar al firmar ({p}%)',terms:'Términos',acceptedBy:'Aceptado por {n} el {d}',
+  download:'⬇ Descargar PDF',print:'Imprimir',previewNote:'Así lo ve su cliente. Abrirlo usted mismo no cuenta como una vista.',ready:'¿Listo para seguir adelante?',typeName:'Escriba su nombre completo para aceptar',iAccept:'Acepto este {k} por {t}{terms}.',andTerms:' y sus términos',acceptBtn:'Aceptar {k}',notGoing:'¿No va a seguir adelante? Avísenos',anything:'¿Algo que debamos saber? (opcional)',decline:'Rechazar',
+  nextDeposit:'Siguiente paso: el depósito',depositAsk:'Para empezar, {co} solicita {a} ahora.',payDeposit:'Pagar el depósito',beingUpdated:'Este presupuesto se está actualizando. Recibirá un correo cuando la nueva versión esté lista.',expiredMsg:'Este presupuesto venció. Por favor comuníquese con {co}{ph} para obtener uno actualizado.',at:' al {p}',
+  tick:'Marque la casilla para confirmar.',thanks:'<b>¡Gracias!</b> Le avisamos a {co} y se comunicarán con usted para los siguientes pasos.',thanksDecline:'Gracias por avisarnos. Ya se lo hicimos saber al equipo.',loading:'Cargando su presupuesto…',oops:'Algo salió mal. Por favor intente de nuevo.'}};
+let L=(()=>{const q=new URLSearchParams(location.search).get('lang');if(q)return q==='es'?'es':'en';try{const s=localStorage.getItem('eaglei_lang');if(s)return s;}catch(e){}return /^es/i.test(navigator.language||'')?'es':'en';})();
+let chosenLang=!!new URLSearchParams(location.search).get('lang');try{if(localStorage.getItem('eaglei_lang'))chosenLang=true;}catch(e){}
+const t=(k,v)=>String((T[L]||T.en)[k]??T.en[k]??k).replace(/\{(\w+)\}/g,(m,x)=>(v||{})[x]??'');
+const loc=()=>L==='es'?'es-US':'en-US';
+const kindOf=e=>t(e.kind==='design_agreement'?'design_agreement':'estimate');
+function setLangBtn(){document.documentElement.lang=L;document.getElementById('lang-btn').textContent=L==='es'?'English':'Español';}
+function toggleLang(){L=L==='es'?'en':'es';chosenLang=true;try{localStorage.setItem('eaglei_lang',L);}catch(e){}setLangBtn();if(E)render();}
+setLangBtn();document.querySelector('#doc .card').textContent=t('loading');
+const fmtDate=d=>d?new Date(String(d).slice(0,10)+'T12:00:00Z').toLocaleDateString(loc(),{month:'long',day:'numeric',year:'numeric'}):'';
 async function api(url,body){
   const r=await fetch(url,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});
   let d={};try{d=await r.json();}catch(e){}
-  if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
+  if(!r.ok)throw new Error((d.error&&d.error.message)||t('oops'));
   return d;
 }
 function render(){
   const e=E,c=e.company||{};
-  document.title=(e.kindLabel||'Estimate')+' from '+(c.name||'');
-  const status=e.status==='accepted'?'<span class="pill ok">Accepted</span>':e.status==='declined'?'<span class="pill bad">Declined</span>':e.expired?'<span class="pill bad">Expired</span>':e.status==='draft'?(PREVIEW?'<span class="pill">Draft preview</span>':'<span class="pill">Being updated</span>'):'';
+  const K=kindOf(e),k=K.toLowerCase();
+  document.title=t('from',{k:K,co:c.name||''});
+  const status=e.status==='accepted'?`<span class="pill ok">${t('accepted')}</span>`:e.status==='declined'?`<span class="pill bad">${t('declined')}</span>`:e.expired?`<span class="pill bad">${t('expired')}</span>`:e.status==='draft'?(PREVIEW?`<span class="pill">${t('draftPreview')}</span>`:`<span class="pill">${t('updating')}</span>`):'';
   document.getElementById('doc').innerHTML=`<div class="card">
     <div class="head"><div><div class="co">${esc(c.name)}</div><div class="co-sub">${esc([c.address,c.phone,c.email].filter(Boolean).join(' · '))}</div></div>${status}</div>
-    <div style="margin-top:18px"><div class="kind">${esc(e.kindLabel)} #${esc(e.number)}</div><h1>${esc(e.title)}</h1>
-    <div class="meta">Prepared for ${esc(e.customer.name)}${e.customer.address?' · '+esc(e.customer.address):''}${e.validUntil?'<br>Valid until '+fmtDate(e.validUntil):''}</div></div>
+    <div style="margin-top:18px"><div class="kind">${esc(K)} #${esc(e.number)}</div><h1>${esc(e.title)}</h1>
+    <div class="meta">${esc(t('preparedFor',{n:e.customer.name}))}${e.customer.address?' · '+esc(e.customer.address):''}${e.validUntil?'<br>'+esc(t('validUntil',{d:fmtDate(e.validUntil)})):''}</div></div>
     ${e.intro?`<div class="intro">${esc(e.intro)}</div>`:''}
-    ${e.sections.map(s=>`<div class="sec">${s.name||e.sections.length>1?`<div class="sec-h"><span>${esc(s.name||'Other')}</span>${e.showLinePrices?'':`<span>${money(s.total)}</span>`}</div>`:''}
-      ${s.lines.map(l=>`<div class="line"><div class="d">${esc(l.description)}${Number(l.quantity)!==1||l.unit!=='ea'?`<div class="q">${Number(l.quantity).toLocaleString('en-US')} ${esc(l.unit)}</div>`:''}</div>${l.price!=null?`<div class="p">${money(l.price)}</div>`:''}</div>`).join('')}</div>`).join('')}
+    ${e.sections.map(s=>`<div class="sec">${s.name||e.sections.length>1?`<div class="sec-h"><span>${esc(s.name||t('other'))}</span>${e.showLinePrices?'':`<span>${money(s.total)}</span>`}</div>`:''}
+      ${s.lines.map(l=>`<div class="line"><div class="d">${esc(l.description)}${Number(l.quantity)!==1||l.unit!=='ea'?`<div class="q">${Number(l.quantity).toLocaleString(loc())} ${esc(l.unit)}</div>`:''}</div>${l.price!=null?`<div class="p">${money(l.price)}</div>`:''}</div>`).join('')}</div>`).join('')}
     <div class="tot">
-      ${e.tax?`<div><span>Subtotal</span><span>${money(e.subtotal)}</span></div><div><span>Tax (${e.taxPct}%)</span><span>${money(e.tax)}</span></div>`:''}
-      <div class="grand"><span>Total</span><span>${money(e.total)}</span></div>
-      ${e.depositPct?`<div><span>Due at signing (${e.depositPct}%)</span><span>${money(e.deposit)}</span></div>`:''}
+      ${e.tax?`<div><span>${t('subtotal')}</span><span>${money(e.subtotal)}</span></div><div><span>${t('tax',{p:e.taxPct})}</span><span>${money(e.tax)}</span></div>`:''}
+      <div class="grand"><span>${t('total')}</span><span>${money(e.total)}</span></div>
+      ${e.depositPct?`<div><span>${t('dueAtSigning',{p:e.depositPct})}</span><span>${money(e.deposit)}</span></div>`:''}
     </div>
-    ${e.terms?`<div class="sec"><h2>Terms</h2><div class="terms">${esc(e.terms)}</div></div>`:''}
-    ${e.status==='accepted'?`<div class="sec meta">Accepted by ${esc(e.acceptedName)} on ${new Date(e.acceptedAt).toLocaleString('en-US')}</div>`:''}
+    ${e.terms?`<div class="sec"><h2>${t('terms')}</h2><div class="terms">${esc(e.terms)}</div></div>`:''}
+    ${e.status==='accepted'?`<div class="sec meta">${esc(t('acceptedBy',{n:e.acceptedName,d:new Date(e.acceptedAt).toLocaleString(loc())}))}</div>`:''}
   </div>`;
   const act=document.getElementById('act');act.hidden=false;
-  const dl=`<div class="row"><button class="btn btn-o" onclick="pdf()">⬇ Download PDF</button><button class="btn btn-l" onclick="print()">Print</button></div>`;
-  if(PREVIEW){act.innerHTML='<p class="meta">This is how your customer sees it. Opening it yourself doesn’t count as a view.</p><div style="margin-top:10px">'+dl+'</div>';return;}
+  const dl=`<div class="row"><button class="btn btn-o" onclick="pdf()">${t('download')}</button><button class="btn btn-l" onclick="print()">${t('print')}</button></div>`;
+  if(PREVIEW){act.innerHTML='<p class="meta">'+esc(t('previewNote'))+'</p><div style="margin-top:10px">'+dl+'</div>';return;}
   if(e.status==='sent'&&!e.expired){
-    act.innerHTML=`<h2>Ready to go ahead?</h2>
-      <label for="nm">Type your full name to accept</label><input type="text" id="nm" autocomplete="name" value="${esc(e.customer.name||'')}">
-      <div class="check"><input type="checkbox" id="ag"><label for="ag" style="margin:0;font-weight:400;font-size:14px">I accept this ${esc((e.kindLabel||'estimate').toLowerCase())} for ${money(e.total)}${e.terms?' and its terms':''}.</label></div>
-      <button class="btn btn-p" id="acc" onclick="accept()">Accept ${esc((e.kindLabel||'estimate').toLowerCase())}</button><div class="err" id="err" role="alert"></div>
+    act.innerHTML=`<h2>${t('ready')}</h2>
+      <label for="nm">${t('typeName')}</label><input type="text" id="nm" autocomplete="name" value="${esc(e.customer.name||'')}">
+      <div class="check"><input type="checkbox" id="ag"><label for="ag" style="margin:0;font-weight:400;font-size:14px">${esc(t('iAccept',{k,t:money(e.total),terms:e.terms?t('andTerms'):''}))}</label></div>
+      <button class="btn btn-p" id="acc" onclick="accept()">${esc(t('acceptBtn',{k}))}</button><div class="err" id="err" role="alert"></div>
       <div style="margin-top:12px">${dl}</div>
-      <div style="margin-top:6px"><button class="btn btn-l" onclick="showDecline()">Not going ahead? Let us know</button></div>
-      <div id="dec" hidden><label for="why">Anything we should know? (optional)</label><textarea id="why" rows="3"></textarea><button class="btn btn-o" style="margin-top:10px" onclick="decline()">Decline</button></div>`;
+      <div style="margin-top:6px"><button class="btn btn-l" onclick="showDecline()">${t('notGoing')}</button></div>
+      <div id="dec" hidden><label for="why">${t('anything')}</label><textarea id="why" rows="3"></textarea><button class="btn btn-o" style="margin-top:10px" onclick="decline()">${t('decline')}</button></div>`;
   }else{
     if(e.status==='accepted'&&e.depositInvoice&&!e.depositInvoice.paid){
-      act.innerHTML=`<h2>Next: the deposit</h2><p class="meta">To get started, ${esc(c.name)} asks for ${money(e.depositInvoice.amount)} now.</p><a class="btn btn-p" style="text-decoration:none" href="${esc(e.depositInvoice.link)}">Pay the deposit</a><div style="margin-top:12px">${dl}</div>`;
+      act.innerHTML=`<h2>${t('nextDeposit')}</h2><p class="meta">${esc(t('depositAsk',{co:c.name,a:money(e.depositInvoice.amount)}))}</p><a class="btn btn-p" style="text-decoration:none" href="${esc(e.depositInvoice.link)}${L==='es'?'?lang=es':''}">${t('payDeposit')}</a><div style="margin-top:12px">${dl}</div>`;
       return;
     }
-    act.innerHTML=(e.status==='draft'?'<p class="meta">This estimate is being updated. You’ll get an email when the new version is ready.</p>':e.expired?`<p class="meta">This estimate has expired. Please contact ${esc(c.name)}${c.phone?' at '+esc(c.phone):''} for an updated one.</p>`:'')+'<div style="margin-top:8px">'+dl+'</div>';
+    act.innerHTML=(e.status==='draft'?`<p class="meta">${esc(t('beingUpdated'))}</p>`:e.expired?`<p class="meta">${esc(t('expiredMsg',{co:c.name,ph:c.phone?t('at',{p:c.phone}):''}))}</p>`:'')+'<div style="margin-top:8px">'+dl+'</div>';
   }
 }
 function banner(html,kind){document.getElementById('msg').innerHTML=`<div class="banner ${kind}">${html}</div>`;window.scrollTo(0,0);}
 function showDecline(){document.getElementById('dec').hidden=false;}
 async function accept(){
   const err=document.getElementById('err'),b=document.getElementById('acc');err.textContent='';
-  if(!document.getElementById('ag').checked){err.textContent='Tick the box to confirm.';return;}
+  if(!document.getElementById('ag').checked){err.textContent=t('tick');return;}
   b.disabled=true;
-  try{const d=await api(`/api/crm-public/estimates/${token}/accept`,{name:document.getElementById('nm').value});E=d.estimate;render();banner(`<b>Thank you!</b> ${esc(E.company.name)} has been notified and will be in touch about next steps.`,'ok');}
+  try{const d=await api(`/api/crm-public/estimates/${token}/accept`,{name:document.getElementById('nm').value});E=d.estimate;render();banner(t('thanks',{co:esc(E.company.name)}),'ok');}
   catch(x){err.textContent=x.message;b.disabled=false;}
 }
 async function decline(){
-  try{const d=await api(`/api/crm-public/estimates/${token}/decline`,{reason:document.getElementById('why').value});E=d.estimate;render();banner('Thanks for letting us know. We’ve passed it on.','warn');}
+  try{const d=await api(`/api/crm-public/estimates/${token}/decline`,{reason:document.getElementById('why').value});E=d.estimate;render();banner(esc(t('thanksDecline')),'warn');}
   catch(x){alert(x.message);}
 }
 function pdf(){
@@ -133,13 +152,13 @@ function pdf(){
   const e=E,c=e.company||{};const W=612,M=48;let y=M;
   const line=(t,o={})=>{doc.setFont('helvetica',o.bold?'bold':'normal');doc.setFontSize(o.size||10);const parts=doc.splitTextToSize(String(t||''),o.w||W-2*M);for(const p of parts){if(y>740){doc.addPage();y=M;}doc.text(p,o.x||M,y,o.right?{align:'right'}:undefined);y+=(o.size||10)*1.35;}};
   line(c.name,{bold:true,size:16});line([c.address,c.phone,c.email].filter(Boolean).join(' · '),{size:9});y+=10;
-  line(`${e.kindLabel} #${e.number}`,{bold:true,size:9});line(e.title,{bold:true,size:14});
-  line(`Prepared for ${e.customer.name}${e.customer.address?' · '+e.customer.address:''}`,{size:10});
-  if(e.validUntil)line('Valid until '+fmtDate(e.validUntil),{size:10});
+  line(`${kindOf(e)} #${e.number}`,{bold:true,size:9});line(e.title,{bold:true,size:14});
+  line(`${t('preparedFor',{n:e.customer.name})}${e.customer.address?' · '+e.customer.address:''}`,{size:10});
+  if(e.validUntil)line(t('validUntil',{d:fmtDate(e.validUntil)}),{size:10});
   if(e.intro){y+=6;line(e.intro);}
   y+=8;
   for(const s of e.sections){
-    if(s.name||e.sections.length>1){y+=6;if(y>730){doc.addPage();y=M;}doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(s.name||'Other',M,y);if(!e.showLinePrices)doc.text(money(s.total),W-M,y,{align:'right'});y+=4;doc.line(M,y,W-M,y);y+=14;}
+    if(s.name||e.sections.length>1){y+=6;if(y>730){doc.addPage();y=M;}doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(s.name||t('other'),M,y);if(!e.showLinePrices)doc.text(money(s.total),W-M,y,{align:'right'});y+=4;doc.line(M,y,W-M,y);y+=14;}
     for(const l of s.lines){
       const d=l.description+(Number(l.quantity)!==1||l.unit!=='ea'?`  (${Number(l.quantity).toLocaleString('en-US')} ${l.unit})`:'');
       const parts=doc.splitTextToSize(d,W-2*M-90);if(y+parts.length*13>740){doc.addPage();y=M;}
@@ -149,14 +168,14 @@ function pdf(){
   }
   y+=10;if(y>700){doc.addPage();y=M;}
   const tr=(k,v,b)=>{doc.setFont('helvetica',b?'bold':'normal');doc.setFontSize(b?13:10);doc.text(k,W-M-200,y);doc.text(v,W-M,y,{align:'right'});y+=b?18:14;};
-  if(e.tax){tr('Subtotal',money(e.subtotal));tr(`Tax (${e.taxPct}%)`,money(e.tax));}
-  tr('Total',money(e.total),true);if(e.depositPct)tr(`Due at signing (${e.depositPct}%)`,money(e.deposit));
-  if(e.terms){y+=10;line('Terms',{bold:true,size:11});line(e.terms,{size:9});}
-  if(e.status==='accepted'){y+=8;line(`Accepted by ${e.acceptedName} on ${new Date(e.acceptedAt).toLocaleString('en-US')}`,{size:9});}
+  if(e.tax){tr(t('subtotal'),money(e.subtotal));tr(t('tax',{p:e.taxPct}),money(e.tax));}
+  tr(t('total'),money(e.total),true);if(e.depositPct)tr(t('dueAtSigning',{p:e.depositPct}),money(e.deposit));
+  if(e.terms){y+=10;line(t('terms'),{bold:true,size:11});line(e.terms,{size:9});}
+  if(e.status==='accepted'){y+=8;line(t('acceptedBy',{n:e.acceptedName,d:new Date(e.acceptedAt).toLocaleString(loc())}),{size:9});}
   doc.save(`${(c.name||'Estimate').replace(/[^a-z0-9]+/gi,'-')}-${e.number}.pdf`);
 }
 (async()=>{
-  try{const d=await api('/api/crm-public/estimates/'+token);E=d.estimate;PREVIEW=!!d.preview;render();}
+  try{const d=await api('/api/crm-public/estimates/'+token);E=d.estimate;PREVIEW=!!d.preview;if(E.lang==='es'&&!chosenLang){L='es';setLangBtn();}render();}
   catch(x){document.getElementById('doc').innerHTML='<div class="card">'+esc(x.message)+'</div>';}
 })();
 </script>

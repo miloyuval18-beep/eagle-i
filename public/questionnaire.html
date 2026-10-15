@@ -51,48 +51,83 @@ textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius
 .ok{font-size:16px;text-align:center;padding:16px 0}
 .hp{position:absolute;left:-5000px;width:1px;height:1px;overflow:hidden}
 [hidden]{display:none!important}
+.lang{display:block;margin:-12px -8px 4px auto;background:none;border:0;color:var(--accent);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer;padding:6px 8px}
 </style>
 </head>
 <body>
 <main class="card">
-  <div class="brand" id="co" style="font-size:20px">Your project</div>
-  <div class="tag" id="tag">Loading…</div>
+  <button type="button" class="lang" id="lang-btn" onclick="toggleLang()">Español</button>
+  <div class="brand" id="co" style="font-size:20px" data-t="yourProject">Your project</div>
+  <div class="tag" id="tag" data-t="loading">Loading…</div>
   <form id="f" onsubmit="send(event)" hidden>
-    <div class="q">What are you planning? (pick any)</div><div id="types"></div>
-    <div class="q">Rough budget</div><div id="budgets"></div>
-    <div class="q">When would you like to start?</div><div id="timelines"></div>
-    <div class="q">Who decides?</div>
-    <label class="opt"><input type="radio" name="decision" value="all"> Everyone who decides can be at the visit</label>
-    <label class="opt"><input type="radio" name="decision" value="partly"> Not everyone can be there</label>
-    <label class="opt"><input type="radio" name="decision" value="solo"> Just me</label>
-    <div class="q" id="addr-q">Project address</div><input id="address" autocomplete="street-address" placeholder="Street, city, ZIP">
-    <div class="q">Anything else we should know?</div><textarea id="notes" rows="3" placeholder="Must-haves, style, problems with the space…"></textarea>
-    <button class="btn" id="b">Send</button><div class="err" id="err" role="alert"></div>
+    <div class="q" data-t="qTypes">What are you planning? (pick any)</div><div id="types"></div>
+    <div class="q" data-t="qBudget">Rough budget</div><div id="budgets"></div>
+    <div class="q" data-t="qStart">When would you like to start?</div><div id="timelines"></div>
+    <div class="q" data-t="qWho">Who decides?</div>
+    <label class="opt"><input type="radio" name="decision" value="all"> <span data-t="dAll">Everyone who decides can be at the visit</span></label>
+    <label class="opt"><input type="radio" name="decision" value="partly"> <span data-t="dPartly">Not everyone can be there</span></label>
+    <label class="opt"><input type="radio" name="decision" value="solo"> <span data-t="dSolo">Just me</span></label>
+    <div class="q" id="addr-q" data-t="qAddr">Project address</div><input id="address" autocomplete="street-address" data-tp="phAddr" placeholder="Street, city, ZIP">
+    <div class="q" data-t="qNotes">Anything else we should know?</div><textarea id="notes" rows="3" data-tp="phNotes" placeholder="Must-haves, style, problems with the space…"></textarea>
+    <button class="btn" id="b" data-t="send">Send</button><div class="err" id="err" role="alert"></div>
   </form>
   <div id="done" hidden class="ok"></div>
 </main>
 <script>
 const token=location.pathname.split('/').pop();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const opts=(name,obj,type)=>Object.entries(obj).map(([k,v])=>`<label class="opt"><input type="${type}" name="${name}" value="${k}"> ${esc(v)}</label>`).join('');
+const T={en:{yourProject:'Your project',loading:'Loading…',qTypes:'What are you planning? (pick any)',qBudget:'Rough budget',qStart:'When would you like to start?',qWho:'Who decides?',dAll:'Everyone who decides can be at the visit',dPartly:'Not everyone can be there',dSolo:'Just me',qAddr:'Project address',phAddr:'Street, city, ZIP',qNotes:'Anything else we should know?',phNotes:'Must-haves, style, problems with the space…',send:'Send',
+  hi:'Hi {name}, a few quick questions so we come prepared.',again:'Thanks, we have your answers. You can update them below.',invalid:'This link is not valid.',oops:'Something went wrong.',needType:'Pick at least one kind of project.',needBudget:'Pick a budget range (or “Not sure yet”).',needStart:'Pick when you’d like to start.',
+  thanksBook:'Thank you! <b>Next: pick a time for us to come see the space.</b>',chooseTime:'Choose a visit time',thanks:'Thank you! Someone from our team will be in touch soon.',
+  types:{kitchen:'Kitchen',bath:'Bathroom',addition:'Addition',whole_home:'Whole-home remodel',outdoor:'Outdoor living',new_home:'New home',other:'Something else'},
+  budgets:{under_25k:'Under $25k','25_50k':'$25k–$50k','50_100k':'$50k–$100k','100_250k':'$100k–$250k','250k_plus':'$250k+',not_sure:'Not sure yet'},
+  timelines:{asap:'As soon as possible','1_3m':'In 1–3 months','3_6m':'In 3–6 months','6_12m':'In 6–12 months',just_looking:'Just exploring'}},
+es:{yourProject:'Su proyecto',loading:'Cargando…',qTypes:'¿Qué está planeando? (escoja todo lo que aplique)',qBudget:'Presupuesto aproximado',qStart:'¿Cuándo le gustaría empezar?',qWho:'¿Quién toma la decisión?',dAll:'Todos los que deciden pueden estar en la visita',dPartly:'No todos pueden estar',dSolo:'Solo yo',qAddr:'Dirección del proyecto',phAddr:'Calle, ciudad, código postal',qNotes:'¿Algo más que debamos saber?',phNotes:'Lo indispensable, el estilo, problemas del espacio…',send:'Enviar',
+  hi:'Hola {name}, unas preguntas rápidas para llegar preparados.',again:'Gracias, ya tenemos sus respuestas. Puede actualizarlas abajo.',invalid:'Este enlace no es válido.',oops:'Algo salió mal.',needType:'Escoja al menos un tipo de proyecto.',needBudget:'Escoja un rango de presupuesto (o “Todavía no sé”).',needStart:'Escoja cuándo le gustaría empezar.',
+  thanksBook:'¡Gracias! <b>Siguiente paso: escoja un horario para que vayamos a ver el espacio.</b>',chooseTime:'Escoger horario de visita',thanks:'¡Gracias! Alguien de nuestro equipo se comunicará con usted pronto.',
+  types:{kitchen:'Cocina',bath:'Baño',addition:'Ampliación',whole_home:'Remodelación de toda la casa',outdoor:'Espacio exterior',new_home:'Casa nueva',other:'Otra cosa'},
+  budgets:{under_25k:'Menos de $25k','25_50k':'$25k–$50k','50_100k':'$50k–$100k','100_250k':'$100k–$250k','250k_plus':'Más de $250k',not_sure:'Todavía no sé'},
+  timelines:{asap:'Lo antes posible','1_3m':'En 1–3 meses','3_6m':'En 3–6 meses','6_12m':'En 6–12 meses',just_looking:'Solo estoy explorando'}}};
+let L=(()=>{const q=new URLSearchParams(location.search).get('lang');if(q)return q==='es'?'es':'en';try{const s=localStorage.getItem('eaglei_lang');if(s)return s;}catch(e){}return /^es/i.test(navigator.language||'')?'es':'en';})();
+let chosen=false,D=null;
+const t=(k,v)=>String((T[L]||T.en)[k]??T.en[k]??k).replace(/\{(\w+)\}/g,(m,x)=>(v||{})[x]??'');
+const opts=(name,keys,type,labels)=>keys.map(k=>`<label class="opt"><input type="${type}" name="${name}" value="${k}"> ${esc(labels[k]||k)}</label>`).join('');
+function render(){
+  document.documentElement.lang=L;
+  document.querySelectorAll('[data-t]').forEach(e=>{e.textContent=t(e.dataset.t);});
+  document.querySelectorAll('[data-tp]').forEach(e=>{e.placeholder=t(e.dataset.tp);});
+  document.getElementById('lang-btn').textContent=L==='es'?'English':'Español';
+  if(!D)return;
+  document.getElementById('co').textContent=D.company;
+  document.getElementById('tag').textContent=D.answered?t('again'):t('hi',{name:String(D.name||'').split(' ')[0]});
+  const keep=n=>[...document.querySelectorAll(`input[name="${n}"]:checked`)].map(i=>i.value);
+  const was={types:keep('types'),budget:keep('budget'),timeline:keep('timeline')};
+  const L2=T[L]||T.en;
+  document.getElementById('types').innerHTML=opts('types',Object.keys(D.types),'checkbox',{...D.types,...L2.types});
+  document.getElementById('budgets').innerHTML=opts('budget',Object.keys(D.budgets),'radio',{...D.budgets,...L2.budgets});
+  document.getElementById('timelines').innerHTML=opts('timeline',Object.keys(D.timelines),'radio',{...D.timelines,...L2.timelines});
+  for(const [n,vals] of Object.entries(was))vals.forEach(v=>{const i=document.querySelector(`input[name="${n}"][value="${v}"]`);if(i)i.checked=true;});
+}
+function toggleLang(){L=L==='es'?'en':'es';chosen=true;try{localStorage.setItem('eaglei_lang',L);}catch(e){}render();}
+render();
 fetch('/api/crm-public/q/'+token).then(r=>r.json().then(d=>{if(!r.ok)throw new Error(d.error&&d.error.message);
-  document.getElementById('co').textContent=d.company;
-  document.getElementById('tag').textContent=d.answered?'Thanks, we have your answers. You can update them below.':`Hi ${String(d.name||'').split(' ')[0]}, a few quick questions so we come prepared.`;
-  document.getElementById('types').innerHTML=opts('types',d.types,'checkbox');
-  document.getElementById('budgets').innerHTML=opts('budget',d.budgets,'radio');
-  document.getElementById('timelines').innerHTML=opts('timeline',d.timelines,'radio');
+  D=d;if(d.lang==='es'&&!new URLSearchParams(location.search).get('lang'))L='es';
   if(d.address){document.getElementById('address').hidden=true;document.getElementById('addr-q').hidden=true;}
-  document.getElementById('f').hidden=false;
-})).catch(e=>{document.getElementById('tag').textContent=e.message||'This link is not valid.';});
+  render();document.getElementById('f').hidden=false;
+})).catch(e=>{document.getElementById('tag').textContent=e.message||t('invalid');});
 async function send(e){
-  e.preventDefault();const b=document.getElementById('b'),err=document.getElementById('err');b.disabled=true;err.textContent='';
+  e.preventDefault();const b=document.getElementById('b'),err=document.getElementById('err');err.textContent='';
   const val=n=>(document.querySelector(`input[name="${n}"]:checked`)||{}).value;
-  const body={types:[...document.querySelectorAll('input[name="types"]:checked')].map(i=>i.value),budget:val('budget'),timeline:val('timeline'),decision:val('decision'),address:document.getElementById('address').value,notes:document.getElementById('notes').value};
+  const body={types:[...document.querySelectorAll('input[name="types"]:checked')].map(i=>i.value),budget:val('budget'),timeline:val('timeline'),decision:val('decision'),address:document.getElementById('address').value,notes:document.getElementById('notes').value,lang:L};
+  if(!body.types.length){err.textContent=t('needType');return;}
+  if(!body.budget){err.textContent=t('needBudget');return;}
+  if(!body.timeline){err.textContent=t('needStart');return;}
+  b.disabled=true;
   try{
     const r=await fetch('/api/crm-public/q/'+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();
-    if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong.');
+    if(!r.ok)throw new Error((d.error&&d.error.message)||t('oops'));
     document.getElementById('f').hidden=true;const done=document.getElementById('done');done.hidden=false;
-    done.innerHTML=d.canBook?'Thank you! <b>Next: pick a time for us to come see the space.</b><a class="btn" style="display:block;text-decoration:none;margin-top:14px" href="/b/'+token+'">Choose a visit time</a>':'Thank you! Someone from our team will be in touch soon.';
+    done.innerHTML=d.canBook?t('thanksBook')+'<a class="btn" style="display:block;text-decoration:none;margin-top:14px" href="/b/'+token+'">'+esc(t('chooseTime'))+'</a>':esc(t('thanks'));
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
 </script>

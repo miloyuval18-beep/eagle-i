@@ -1219,3 +1219,38 @@ describe('CRM marketing', () => {
     assert.equal(mk.backlogAdvice({ weeksBooked: null, lowWeeks: 8, highWeeks: 20 }).level, 'unknown');
   });
 });
+
+describe('CRM Spanish', () => {
+  const pb = require('../lib/crmPlaybooks');
+  const es = require('../lib/crmSpanish');
+  const steps = [{ days: 3, subject: 'Hi', message: 'Hello {name}' }];
+  test('a playbook without Spanish keeps its old fingerprint; Spanish is part of what is approved', () => {
+    const plain = pb.playbookHash('proposal', steps);
+    assert.equal(pb.playbookHash('proposal', steps, 'stage', null), plain);
+    assert.equal(pb.playbookHash('proposal', steps, 'stage', []), plain);
+    const withEs = pb.playbookHash('proposal', steps, 'stage', [{ subject: 'Hola', message: 'Hola {name}' }]);
+    assert.notEqual(withEs, plain);
+    assert.notEqual(pb.playbookHash('proposal', steps, 'stage', [{ subject: 'Hola', message: 'Hola de nuevo' }]), withEs);
+    const row = { stage: 'proposal', steps, steps_es: [{ subject: 'Hola', message: 'Hola {name}' }], approved_hash: withEs };
+    assert.equal(pb.isApproved(row), true);
+    assert.equal(pb.isApproved({ ...row, steps_es: [{ subject: 'Hola', message: 'Cambiado' }] }), false);
+  });
+  test('the Spanish version must match the English steps and use only allowed fields', () => {
+    assert.equal(pb.validateEs(null, steps), null);
+    assert.match(pb.validateEs([{ subject: 'a', message: 'b' }, { subject: 'c', message: 'd' }], steps), /same number/);
+    assert.match(pb.validateEs([{ subject: '', message: 'b' }], steps), /Spanish Email 1 needs a subject/);
+    assert.match(pb.validateEs([{ subject: 'a', message: '{estimate_link}' }], steps), /not available/);
+  });
+  test('every starter playbook has a valid Spanish version', () => {
+    for (const p of pb.DEFAULT_PLAYBOOKS) {
+      assert.ok(p.stepsEs, p.key);
+      assert.equal(pb.validateEs(p.stepsEs, p.steps, p.trigger), null, p.key);
+    }
+  });
+  test('the phrasebook fills in words in either language', () => {
+    assert.equal(es.say('es', 'hi', { first: 'Ana' }), 'Hola Ana:');
+    assert.equal(es.say('en', 'hi', { first: 'Ana' }), 'Hi Ana,');
+    assert.equal(es.say('es', 'inv_subject', { number: 7, company: 'Co', amount: '$5' }), 'Factura #7 de Co: $5');
+    assert.equal(es.say('fr', 'inv_button'), 'View and pay', 'unknown language falls back to English');
+  });
+});
