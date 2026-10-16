@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Eagle I CRM</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/crm-manifest.webmanifest">
+<meta name="theme-color" content="#1f4e79">
+<link rel="apple-touch-icon" href="/crm-apple-touch.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Eagle I">
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <!-- Eagle I CRM: its own product and app, separate from the Eagle I marketing
      dashboard (index.html). API: routes/crm.js. -->
@@ -80,7 +85,7 @@ select{width:auto;cursor:pointer}
 .pl-item.vendor_insurance,.pl-item.over_budget{border-left:4px solid var(--amber)}
 .pl-item.referral{border-left:4px solid var(--green)}
 .pl-item.unhappy{border-left:4px solid var(--red)}
-.pl-item.draw_ready{border-left:4px solid var(--amber)}
+.pl-item.draw_ready,.pl-item.weather{border-left:4px solid var(--amber)}
 .mk-big{font-size:28px;font-weight:800;letter-spacing:-.01em}
 .mk-adv{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px;line-height:1.45;border:1px solid var(--bdr2)}
 .mk-adv.ramp{border-color:rgba(160,110,0,.5);background:rgba(160,110,0,.07)}
@@ -159,6 +164,7 @@ select{width:auto;cursor:pointer}
       <button onclick="crMenu(false);crView('refs')">Referrals &amp; partners</button>
       <button onclick="crMenu(false);crView('growth')">Marketing &amp; backlog</button>
       <button onclick="crMenu(false);crView('setup')">Import &amp; setup</button>
+      <button onclick="crMenu(false);dyOpen()">My calendar &amp; morning email</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
@@ -252,6 +258,8 @@ select{width:auto;cursor:pointer}
     <div class="pl-h">Import from your old system</div>
     <div id="im-box"></div>
     <div class="pl-list" id="im-list"></div>
+    <div class="pl-h">Possible duplicates</div>
+    <div class="pl-list" id="dup-list"></div>
   </section>
   <section class="view" id="view-growth">
     <div class="sh"><div><div class="st">Marketing &amp; backlog</div><div class="ss">Which channels bring in signed work and what each one costs, and how far out you’re booked, so you know when to spend more on ads and when to ease off.</div></div></div>
@@ -364,6 +372,26 @@ function crView(v){
   try{history.replaceState(null,'','#'+v);}catch(e){}
   window.scrollTo(0,0);
 }
+// On a phone, Eagle I can sit on the home screen like an app.
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/crm-sw.js',{scope:'/crm'}).catch(()=>{});});}
+async function dyOpen(){
+  uxOpen(uxHead('Loading…'));
+  try{
+    const d=await plApi('/api/crm/me/daily');
+    const g='https://calendar.google.com/calendar/r?cid='+encodeURIComponent(d.webcalUrl);
+    uxOpen(uxHead('My calendar & morning email','Your Eagle I day, where you already look.')+`
+      <div class="pl-h">Your calendar</div>
+      <div class="sm" style="margin-top:0">Your site visits (with the address and brief), the job phases you’re on and your tasks show up in your phone’s calendar and stay up to date on their own.</div>
+      <div class="vd-mbtns"><a class="btn btn-blue" style="text-decoration:none" href="${uxEsc(g)}" target="_blank" rel="noopener">Add to Google Calendar</a><a class="btn-xs" href="${uxEsc(d.webcalUrl)}">Add to Apple Calendar</a></div>
+      <label for="dy-url" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Or paste this link into any calendar app (keep it private)</label>
+      <div style="display:flex;gap:6px"><input id="dy-url" class="cred-input" readonly value="${uxEsc(d.calendarUrl)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('dy-url')">Copy</button></div>
+      <div class="vd-mbtns"><button class="btn-xs" onclick="dyReset()">Make a new link</button><span class="sm" style="margin:0">The old one stops working.</span></div>
+      <div class="pl-h">Morning email</div>
+      <label class="pl-switch"><input type="checkbox" ${d.digestOn?'checked':''} onchange="dyDigest(this.checked)"><span>At 7am, Monday to Saturday: today’s visits, tasks due, phases starting, and what’s waiting for you. Nothing on? No email.</span></label>`);
+  }catch(e){uxOpen(uxHead('Could not load this',uxEsc(e.message)));}
+}
+async function dyReset(){if(!confirm('Make a new calendar link? Calendars using the old one stop updating until you add the new one.'))return;try{await plApi('/api/crm/me/calendar/reset',{body:{}});dyOpen();}catch(e){showNotif('Could not do that',e.message);}}
+async function dyDigest(on){try{await plApi('/api/crm/me/digest',{method:'PATCH',body:{on}});showNotif(on?'Morning email on':'Morning email off','');}catch(e){showNotif('Could not save',e.message);}}
 async function crInit(){
   let me;
   try{const r=await fetch('/api/crm/me');if(r.status===401){location.href='/crm/login';return;}me=await r.json();}
@@ -1029,7 +1057,21 @@ async function suApply(btn){
   try{const r=await plApi('/api/crm/setup',{body});document.getElementById('su-msg').innerHTML='<b>Done.</b><ul style="margin:6px 0 0 18px">'+r.notes.map(n=>'<li>'+uxEsc(n)+'</li>').join('')+'</ul>';btn.textContent='Set it up';btn.disabled=false;plCheckSetup();}
   catch(e){document.getElementById('su-msg').textContent=e.message;btn.textContent='Set it up';btn.disabled=false;}
 }
+async function dupLoad(){
+  const el=document.getElementById('dup-list');if(!el)return;
+  try{const {groups}=await plApi('/api/crm/duplicates');
+    el.innerHTML=groups.length?groups.map((g,gi)=>`<div class="pl-item"><div class="pl-item-d" style="margin-bottom:6px">Same ${uxEsc(g.why)}:</div>${g.people.map((p,i)=>`<label class="pl-switch" style="font-size:13px;margin:4px 0"><input type="radio" name="dup-${gi}" value="${p.id}"${i===0?' checked':''}><span><b>${uxEsc(p.name)}</b> · ${uxEsc([p.email,p.phone,p.address].filter(Boolean).join(' · '))} · ${p.deals} deal${p.deals===1?'':'s'}</span></label>`).join('')}
+      ${crCanManage()?`<div class="pl-acts"><button class="btn-xs p" onclick="dupMerge(${gi},this)">Merge into the one picked</button></div>`:''}</div>`).join(''):'<div class="pl-empty">No duplicates found.</div>';
+    el.dataset.groups=JSON.stringify(groups.map(g=>g.people.map(p=>p.id)));
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function dupMerge(gi,btn){
+  const ids=JSON.parse(document.getElementById('dup-list').dataset.groups)[gi];const keep=(document.querySelector(`input[name="dup-${gi}"]:checked`)||{}).value;
+  if(!confirm('Merge these into one person? Their deals, emails and history move over. This can’t be undone.'))return;
+  btn.disabled=true;try{const r=await plApi('/api/crm/duplicates/merge',{body:{keepId:keep,mergeIds:ids.filter(x=>x!==keep)}});showNotif('Merged',r.merged+' duplicate'+(r.merged===1?'':'s'));dupLoad();plLoad();}catch(e){showNotif('Could not merge',e.message);btn.disabled=false;}
+}
 async function imLoad(){
+  dupLoad();
   if(!crCanManage())return;
   const box=document.getElementById('im-box');
   box.innerHTML=`<div class="pl-pb"><div class="sm" style="margin-top:0">Export your contacts or jobs as a spreadsheet (CSV or .xlsx) and choose it here. Nobody gets an email from the import, people already in Eagle I are joined up, and you can undo it.</div>

@@ -549,6 +549,27 @@ browser's.
 - `crm.saveSettings` and the first-load backfill now keep settings other parts
   of the CRM store alongside (they used to drop them).
 
+**The CRM in the team's day (step 19).** `lib/crmDaily.js`, `routes/crmDaily.js`.
+- *Calendar link:* Account → My calendar & morning email. A private
+  `/cal/<token>.ics` (RFC 5545, escaped and folded) with the person's site
+  visits (address, phone, brief), their job phases and their dated tasks;
+  owners and admins get every visit and phase. One-tap Google/Apple add; a new
+  link retires the old.
+- *Morning email:* 7–11am Central, Monday–Saturday, once a day per person:
+  today's visits with briefs, phases starting, tasks due or overdue, and their
+  Needs-you count. Empty days send nothing; anyone can switch theirs off.
+- *Rain:* once a morning, outdoor phases (roofing, framing, concrete, decks...)
+  in the next three days are checked against the National Weather Service
+  forecast for the house (geocoded once via the Census geocoder, cached on the
+  property). 60%+ daytime rain → Needs you, once per phase per day.
+- *Duplicates:* Import & setup lists people sharing an email, a phone, or a
+  name and address; merging moves every row that points at the merged contacts
+  (found from the database's own foreign keys) in one transaction.
+- *Home-screen app:* `crm-manifest.webmanifest`, icons and `crm-sw.js` (pages
+  always from the network, the last good copy offline, `/api` never cached).
+- Security: the server no longer serves the project folder itself (source,
+  migrations and config were downloadable); a test keeps it that way.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

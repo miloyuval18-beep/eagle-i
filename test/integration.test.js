@@ -1864,3 +1864,30 @@ describe('Server source is never served', () => {
     assert.equal((await c.get('/favicon.svg')).status, 200, 'public files still are');
   });
 });
+
+describe('CRM calendar link, morning email, duplicates and the home-screen app', () => {
+  test('each person gets a private calendar; the morning email can be switched off; only managers merge', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('day'), password: 'TestPass1234!', companyName: 'Day Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const d = await (await o.get('/api/crm/me/daily')).json();
+    assert.match(d.calendarUrl, /\/cal\/[0-9a-f]{48}\.ics$/); assert.match(d.webcalUrl, /^webcal:/); assert.equal(d.digestOn, true);
+    const cal = await makeClient().get(new URL(d.calendarUrl).pathname);
+    assert.equal(cal.status, 200); assert.match(cal.headers.get('content-type'), /text\/calendar/);
+    assert.match(await cal.text(), /BEGIN:VCALENDAR/);
+    assert.equal((await makeClient().get('/cal/' + 'b'.repeat(48) + '.ics')).status, 404);
+    const fresh = await (await o.post('/api/crm/me/calendar/reset', {})).json();
+    assert.notEqual(fresh.calendarUrl, d.calendarUrl);
+    assert.equal((await makeClient().get(new URL(d.calendarUrl).pathname)).status, 404, 'the old link stops');
+    assert.equal((await (await o.patch('/api/crm/me/digest', { on: false })).json()).on, false);
+    assert.equal((await (await o.get('/api/crm/me/daily')).json()).digestOn, false);
+    assert.deepEqual((await (await o.get('/api/crm/duplicates')).json()).groups, []);
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('day-m'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    assert.equal((await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' })).status, 200);
+    assert.equal((await m.post('/api/crm/duplicates/merge', { keepId: 'x', mergeIds: ['y'] })).status, 403);
+    const man = await makeClient().get('/crm-manifest.webmanifest');
+    assert.equal(man.status, 200); assert.equal(JSON.parse(await man.text()).start_url, '/crm');
+    assert.equal((await makeClient().get('/crm-sw.js')).status, 200);
+  });
+});
