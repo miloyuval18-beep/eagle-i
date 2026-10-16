@@ -1827,3 +1827,29 @@ describe('CRM import and setup', () => {
     assert.equal((await (await o.get('/api/crm/pipeline')).json()).deals.length, 0);
   });
 });
+
+describe('CRM payment schedule and check-ins', () => {
+  test('signing lays out draws; milestones invoice; the check-in page answers by link; managers own the switches', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('draw'), password: 'TestPass1234!', companyName: 'Draw Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Cy Park', email: 'cy@draw.test', title: 'Bath', value: 50000, stage: 'proposal' })).json();
+    await o.patch(`/api/crm/deals/${deal.id}`, { stage: 'signed' });
+    const d = await (await o.get(`/api/crm/deals/${deal.id}/draws`)).json();
+    assert.equal(d.draws.length, 3); assert.equal(d.contract, 50000); assert.ok(d.phases.length > 5);
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/draws`, { title: 'Bad', pct: 0 })).status, 400);
+    const first = d.draws.find(w => w.pct != null);
+    const inv = await (await o.post(`/api/crm/draws/${first.id}/invoice`, {})).json();
+    assert.equal(Number(inv.invoice.amount), 15000); assert.equal(inv.sent, false);
+    assert.equal((await o.post(`/api/crm/draws/${first.id}/invoice`, {})).status, 400, 'once');
+    assert.equal((await o.get('/pulse/' + 'a'.repeat(48))).status, 200);
+    assert.equal((await o.get('/api/crm-public/pulse/' + 'a'.repeat(48))).status, 404);
+    const inv2 = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('draw-m'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    assert.equal((await m.post('/api/crm/join', { token: new URL(inv2.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' })).status, 200);
+    assert.equal((await m.patch('/api/crm/draws/settings', { autoSend: true })).status, 403);
+    assert.equal((await m.patch('/api/crm/pulse/settings', { on: true })).status, 403);
+    assert.equal((await o.patch('/api/crm/pulse/settings', { on: true })).status, 200);
+    assert.equal((await (await m.get('/api/crm/pulse/settings')).json()).on, true);
+  });
+});

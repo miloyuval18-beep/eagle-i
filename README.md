@@ -531,6 +531,24 @@ browser's.
   `ANTHROPIC_API_KEY` the update is written plainly from the schedule, and the
   estimate drafts and voice rewrite say they're off.
 
+**Draws and homeowner check-ins (step 18).** `lib/crmDraws.js`,
+`lib/crmPulse.js`, `routes/crmDrawsPulse.js`.
+- *Payment schedule:* `crm_draws` per job: a share of the contract (or "the
+  rest"), tied to a schedule phase, to the job being Complete, or by hand.
+  Signing lays the company's standard (or the built-in 30% at rough-in, 30% at
+  cabinets, the rest at completion) against the schedule by phase name.
+  Marking that phase done makes the invoice for the contract as it stands then,
+  due in a week; with "send milestone invoices on their own" it goes straight
+  out, otherwise it waits in Needs you. Claimed atomically, so a phase saved
+  twice bills once. "Make this my standard" saves a job's draws.
+- *Check-ins:* switched on in Automations (approving the fixed wording). Every
+  14 days during construction, weekdays 9–5 Central, the homeowner gets a
+  one-tap 1–5 email in their language (`/pulse/<token>?s=N`), never after an
+  unsubscribe. 3 or lower → Needs you ("unhappy") plus an email to the deal
+  owner; answers show on the deal and in the weekly report.
+- `crm.saveSettings` and the first-load backfill now keep settings other parts
+  of the CRM store alongside (they used to drop them).
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

@@ -79,6 +79,8 @@ select{width:auto;cursor:pointer}
 .pl-item.estimate_accepted,.pl-item.payment,.pl-item.job_done{border-left:4px solid var(--green)}
 .pl-item.vendor_insurance,.pl-item.over_budget{border-left:4px solid var(--amber)}
 .pl-item.referral{border-left:4px solid var(--green)}
+.pl-item.unhappy{border-left:4px solid var(--red)}
+.pl-item.draw_ready{border-left:4px solid var(--amber)}
 .mk-big{font-size:28px;font-weight:800;letter-spacing:-.01em}
 .mk-adv{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px;line-height:1.45;border:1px solid var(--bdr2)}
 .mk-adv.ramp{border-color:rgba(160,110,0,.5);background:rgba(160,110,0,.07)}
@@ -205,6 +207,8 @@ select{width:auto;cursor:pointer}
     <div id="pl-stagenames"></div>
     <div class="pl-h">Get leads in automatically</div>
     <div id="pl-intake"><div class="sm">Loading…</div></div>
+    <div class="pl-h">Homeowner check-ins during construction</div>
+    <div id="pl-pulse"></div>
     <div class="pl-h">Qualifying &amp; site-visit booking</div>
     <div id="pl-booking"><div class="sm">Loading…</div></div>
     <div class="pl-h">What Eagle I did in the last 7 days</div>
@@ -887,6 +891,7 @@ async function plOpenDeal(id){
     <div class="sm" id="pld-up-msg"></div>
     <div class="pl-h">Homeowner portal</div>
     <div id="pld-portal"><div class="sm">Loading…</div></div>
+    <div id="pld-pulse"></div>
     <div class="pl-h">Referrals${['signed','production','complete'].includes(x.stage)?' &amp; home file':''}</div>
     <div id="pld-life" data-stage="${x.stage}"><div class="sm">Loading…</div></div>
     <div class="pl-h">Tasks</div>
@@ -903,6 +908,7 @@ async function plOpenDeal(id){
   plDealEstimates(x.id);
   fitLoad(x.id);
   lfLoad(x.id);
+  puLoad(x.id);
   flLoad(x.id);
   ptLoad(x.id);
   ivLoad(x.id);
@@ -1178,6 +1184,8 @@ async function jbOpen(dealId){
   uxOpen(uxHead('🛠 '+uxEsc(deal.title),uxEsc(deal.contact_name)+(deal.property_address?' · '+uxEsc(deal.property_address):''))+`
     <div class="pl-h">Money on this job</div>
     <div id="jc-box"><div class="sm">Loading…</div></div>
+    <div class="pl-h">Payment schedule</div>
+    <div id="dw-box"><div class="sm">Loading…</div></div>
     <div class="pl-h">Schedule</div>
     ${d.schedule.length?sched:`<div class="sm">No schedule yet.</div><div class="vd-mbtns"><input type="date" id="jb-start" class="cred-input" style="width:auto" aria-label="Start date"><button class="btn-xs p" onclick="jbTemplate(this)">Lay it out from my template</button></div>`}
     <div class="vd-mbtns"><button class="btn-xs" onclick="jbAddItem()">＋ Add a phase</button>${d.schedule.length&&crCanManage()?'<button class="btn-xs" onclick="jbSaveTpl()">Save as my template</button>':''}</div>
@@ -1210,7 +1218,60 @@ async function jbOpen(dealId){
       <div class="vd-mbtns"><button class="btn btn-blue" onclick="jbNewPO(this)">Create purchase order</button></div></details>
     <div class="sm" id="jb-msg"></div>`);
   jcLoad(dealId);
+  dwLoad(dealId);
 }
+async function puSettings(){
+  const el=document.getElementById('pl-pulse');if(!el)return;
+  try{const d=await plApi('/api/crm/pulse/settings');const manage=crCanManage();
+    el.innerHTML=`<div class="pl-pb"><div class="pl-card-top"><div class="pl-item-t">“How is it going?” every ${d.everyDays} days</div><span class="pl-pill ${d.on?'on':''}">${d.on?'● On':'Off'}</span></div>
+      <div class="sm">While a job is under construction, the homeowner gets a short email (in their language) asking them to tap 1 to 5, with room for a comment. A 3 or lower lands in Needs you and emails whoever owns the deal, while there’s still time to fix it.</div>
+      <div class="fit-brief" style="margin-top:8px">Hi Maria,
+
+Quick question from your company: how is your kitchen project going so far? Tap a number.
+
+[1] [2] [3] [4] [5]
+1 = Not happy · 5 = Very happy
+
+Every answer goes straight to the team, and if something isn’t right we want to fix it now.</div>
+      ${manage?`<div class="vd-mbtns"><button class="btn ${d.on?'btn-xs':'btn-blue'}" onclick="puToggle(${!d.on})">${d.on?'Switch off':'✓ Approve this wording &amp; switch on'}</button></div>`:''}</div>`;}
+  catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function puToggle(on){try{await plApi('/api/crm/pulse/settings',{method:'PATCH',body:{on}});puSettings();}catch(e){showNotif('Could not save',e.message);}}
+async function puLoad(dealId){
+  const el=document.getElementById('pld-pulse');if(!el)return;
+  try{const {pulses}=await plApi('/api/crm/deals/'+dealId+'/pulses');if(!pulses.length){el.innerHTML='';return;}
+    el.innerHTML=`<div class="pl-h">Homeowner check-ins</div><div class="pl-list">${pulses.map(p=>`<div class="pl-item${p.score!=null&&p.score<=3?' unhappy':''}" style="padding:8px 10px"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t" style="font-size:13px">${p.score==null?'No answer yet':p.score+' out of 5'}</div>${p.comment?`<div class="pl-item-d">“${uxEsc(p.comment)}”</div>`:''}</div><span class="sm" style="margin:0">${new Date(p.sent_at).toLocaleDateString()}</span></div></div>`).join('')}</div>`;}
+  catch(e){el.innerHTML='';}
+}
+/* ---------- payment schedule (draws) ---------- */
+async function dwLoad(dealId){
+  const el=document.getElementById('dw-box');if(!el)return;
+  try{
+    const d=await plApi('/api/crm/deals/'+dealId+'/draws');const manage=crCanManage();
+    const trig=w=>w.on_complete?'when the job is marked Complete':w.phase_title?`when “${uxEsc(w.phase_title)}” is done`:'by hand';
+    const st=w=>w.invoice_id?`<span class="pl-pill ${w.invoice_status==='paid'?'accepted':'sent'}">${w.invoice_status==='paid'?'Paid':w.invoice_status==='sent'?'Invoiced':'Invoice drafted'} #${w.invoice_number}</span>`:'<span class="pl-pill">Waiting</span>';
+    const phaseOpts=sel=>`<option value="">By hand</option>${d.phases.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>When “${uxEsc(p.title)}” is done</option>`).join('')}<option value="complete"${sel==='complete'?' selected':''}>When the job is marked Complete</option>`;
+    el.innerHTML=`<div class="sm" style="margin-top:0">Each payment is invoiced on its own when its phase is marked done, for the contract as it stands then (approved change orders included). ${d.autoSend?'Invoices go straight to the homeowner.':'Invoices wait in Needs you for one tap.'}</div>
+      <div class="pl-strip" style="margin-top:8px"><div class="pl-tile"><div class="pl-tile-v">${esMoney(d.contract)}</div><div class="pl-tile-l">Contract</div></div><div class="pl-tile"><div class="pl-tile-v">${esMoney(d.billed)}</div><div class="pl-tile-l">Invoiced</div></div><div class="pl-tile"><div class="pl-tile-v">${esMoney(d.paid)}</div><div class="pl-tile-l">Paid</div></div></div>
+      ${d.draws.length?'<div class="pl-list">'+d.draws.map(w=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t" style="font-size:13px">${uxEsc(w.title)}</div><div class="pl-item-d">${w.pct==null?'The rest of the contract':Number(w.pct)+'% of the contract ('+esMoney(d.contract*Number(w.pct)/100)+')'} · ${trig(w)}</div></div>${st(w)}</div>
+        ${w.invoice_id?'':`<div class="pl-acts"><button class="btn-xs p" onclick="dwInvoice('${w.id}','${dealId}',this)">Invoice now</button><button class="btn-xs" onclick="dwDel('${w.id}','${dealId}')">Remove</button></div>`}</div>`).join('')+'</div>'
+        :`<div class="vd-mbtns"><button class="btn-xs p" onclick="dwStandard('${dealId}')">Use ${d.customTemplate?'your':'the standard'} payment schedule</button></div>`}
+      ${d.draws.length&&(d.pctTotal>100||(!d.hasRest&&d.pctTotal<100))?`<div class="sm" style="color:var(--amber)">These add up to ${d.pctTotal}% of the contract${d.hasRest?' plus the rest':''}. ${d.pctTotal>100?'That’s more than the contract.':'Add a “the rest” payment so nothing is left unbilled.'}</div>`:''}
+      <details style="margin-top:6px"><summary class="btn-xs" style="display:inline-flex;list-style:none;cursor:pointer">＋ Add a payment</summary>
+        <div class="pl-form" style="margin-top:8px"><div class="full"><label for="dw-title">What it’s for</label><input id="dw-title" class="cred-input" placeholder="e.g. Drywall complete"></div>
+        <div><label for="dw-pct">Share of contract (%)</label><input id="dw-pct" class="cred-input" inputmode="decimal" placeholder="e.g. 25"></div>
+        <div><label class="pl-switch" style="font-size:13px;margin-top:22px"><input type="checkbox" id="dw-rest"> The rest of the contract</label></div>
+        <div class="full"><label for="dw-trig">Invoice it</label><select id="dw-trig">${phaseOpts('')}</select></div></div>
+        <div class="vd-mbtns"><button class="btn-xs p" onclick="dwAdd('${dealId}',this)">Add payment</button></div><div class="sm" id="dw-msg"></div></details>
+      ${manage?`<div class="vd-mbtns" style="margin-top:6px"><label class="pl-switch" style="font-size:13px"><input type="checkbox" ${d.autoSend?'checked':''} onchange="dwAuto(this.checked,'${dealId}')"> Send milestone invoices to the homeowner on their own (all jobs)</label>${d.draws.length?`<button class="btn-xs" onclick="dwSaveTpl('${dealId}')">Make this my standard</button>`:''}</div>`:''}`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function dwStandard(dealId){try{await plApi('/api/crm/deals/'+dealId+'/draws/standard',{body:{}});dwLoad(dealId);}catch(e){showNotif('Could not do that',e.message);}}
+async function dwAdd(dealId,btn){const v=id=>document.getElementById(id);btn.disabled=true;try{await plApi('/api/crm/deals/'+dealId+'/draws',{body:{title:v('dw-title').value,pct:v('dw-pct').value,rest:v('dw-rest').checked,trigger:v('dw-trig').value}});dwLoad(dealId);}catch(e){document.getElementById('dw-msg').textContent=e.message;btn.disabled=false;}}
+async function dwDel(id,dealId){if(!confirm('Remove this payment from the schedule?'))return;try{await plApi('/api/crm/draws/'+id,{method:'DELETE'});dwLoad(dealId);}catch(e){showNotif('Could not remove it',e.message);}}
+async function dwInvoice(id,dealId,btn){btn.disabled=true;try{const r=await plApi('/api/crm/draws/'+id+'/invoice',{body:{}});showNotif(r.sent?'Invoice sent':'Invoice drafted','#'+r.invoice.number+' · '+esMoney(r.invoice.amount)+(r.sent?'':'. Send it from the deal.'));dwLoad(dealId);jcLoad(dealId);}catch(e){showNotif('Could not invoice it',e.message);btn.disabled=false;}}
+async function dwAuto(on,dealId){try{await plApi('/api/crm/draws/settings',{method:'PATCH',body:{autoSend:on}});dwLoad(dealId);}catch(e){showNotif('Could not save',e.message);}}
+async function dwSaveTpl(dealId){try{const r=await plApi('/api/crm/deals/'+dealId+'/draws/save-template',{body:{}});showNotif('Saved as your standard',r.draws+' payments, used for every new signed job');}catch(e){showNotif('Could not save',e.message);}}
 async function jcLoad(dealId){
   const el=document.getElementById('jc-box');if(!el)return;
   try{
@@ -1524,6 +1585,7 @@ async function plRotate(){if(!confirm('Make a new link? The old form link and fo
 async function plLoadAuto(){
   plLoadIntake();
   bkLoad();
+  puSettings();
   if(!PL.data)plLoad().then(plRenderStageNames);else plRenderStageNames();
   try{
     const [pb,sum]=await Promise.all([plApi('/api/crm/playbooks'),plApi('/api/crm/summary')]);

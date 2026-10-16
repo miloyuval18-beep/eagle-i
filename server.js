@@ -58,6 +58,7 @@ const crmQualifyRoutes = require('./routes/crmQualify');
 const crmLifetimeRoutes = require('./routes/crmLifetime');
 const crmMarketingRoutes = require('./routes/crmMarketing');
 const crmAssistRoutes = require('./routes/crmAssist');
+const crmDrawsPulseRoutes = require('./routes/crmDrawsPulse');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -193,6 +194,7 @@ app.use(crmQualifyRoutes);
 app.use(crmLifetimeRoutes);
 app.use(crmMarketingRoutes);
 app.use(crmAssistRoutes);
+app.use(crmDrawsPulseRoutes);
 app.use(stripeRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
