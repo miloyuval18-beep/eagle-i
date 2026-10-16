@@ -1891,3 +1891,21 @@ describe('CRM calendar link, morning email, duplicates and the home-screen app',
     assert.equal((await makeClient().get('/crm-sw.js')).status, 200);
   });
 });
+
+describe('CRM sub confirmations and cash flow', () => {
+  test('cash flow loads; the sub page needs a real link; managers own the switch', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('sub'), password: 'TestPass1234!', companyName: 'Sub Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const cf = await (await o.get('/api/crm/cashflow')).json();
+    assert.equal(cf.weeks.length, 8); assert.equal(cf.overdue, 0);
+    assert.equal((await o.get('/sub/' + 'c'.repeat(48))).status, 200);
+    assert.equal((await makeClient().get('/api/crm-public/sub/' + 'c'.repeat(48))).status, 404);
+    assert.equal((await makeClient().post('/api/crm-public/sub/' + 'c'.repeat(48), { yes: true })).status, 404);
+    assert.equal((await (await o.patch('/api/crm/subs/settings', { on: true })).json()).on, true);
+    const inv = await (await o.post('/api/crm/team/invites', { email: uniqueEmail('sub-m'), name: 'M', role: 'member' })).json();
+    const m = makeClient();
+    assert.equal((await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'M', password: 'MemberPass123!' })).status, 200);
+    assert.equal((await m.patch('/api/crm/subs/settings', { on: false })).status, 403);
+  });
+});

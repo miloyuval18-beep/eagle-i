@@ -85,7 +85,9 @@ select{width:auto;cursor:pointer}
 .pl-item.vendor_insurance,.pl-item.over_budget{border-left:4px solid var(--amber)}
 .pl-item.referral{border-left:4px solid var(--green)}
 .pl-item.unhappy{border-left:4px solid var(--red)}
-.pl-item.draw_ready,.pl-item.weather{border-left:4px solid var(--amber)}
+.pl-item.draw_ready,.pl-item.weather,.pl-item.sub_conflict{border-left:4px solid var(--amber)}
+.cf-row{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:center;font-size:12px;margin:6px 0}
+.cf-bar{height:10px;border-radius:5px;background:var(--green);min-width:2px}.cf-bar.out{background:var(--red);opacity:.75}
 .mk-big{font-size:28px;font-weight:800;letter-spacing:-.01em}
 .mk-adv{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px;line-height:1.45;border:1px solid var(--bdr2)}
 .mk-adv.ramp{border-color:rgba(160,110,0,.5);background:rgba(160,110,0,.07)}
@@ -215,6 +217,8 @@ select{width:auto;cursor:pointer}
     <div id="pl-intake"><div class="sm">Loading…</div></div>
     <div class="pl-h">Homeowner check-ins during construction</div>
     <div id="pl-pulse"></div>
+    <div class="pl-h">Subs confirm their dates</div>
+    <div id="pl-subs"></div>
     <div class="pl-h">Qualifying &amp; site-visit booking</div>
     <div id="pl-booking"><div class="sm">Loading…</div></div>
     <div class="pl-h">What Eagle I did in the last 7 days</div>
@@ -240,6 +244,8 @@ select{width:auto;cursor:pointer}
   <section class="view" id="view-estimates">
     <div class="sh"><div><div class="st">Money</div><div class="ss">Estimates, invoices and your cost catalog. Design agreements and construction estimates. Start one from a deal. Sending it moves the deal along and starts that stage's follow-ups; when the homeowner accepts online, the deal moves to the next stage on its own.</div></div></div>
     <div class="pl-list" id="es-list"><div class="pl-empty">Loading…</div></div>
+    <div class="pl-h">Cash flow, next 8 weeks</div>
+    <div id="cf-box"><div class="sm">Loading…</div></div>
     <div class="pl-h">Invoices</div>
     <div class="pl-strip" id="iv-strip" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
     <div class="pl-list" id="iv-list"></div>
@@ -473,6 +479,7 @@ async function esLoad(){
     ES.catalog=cat.items;ES.units=cat.units;
     document.getElementById('es-list').innerHTML=estimates.length?estimates.map(esRow).join(''):'<div class="pl-empty">No estimates yet. Open a deal and tap “Construction estimate” or “Design agreement”.</div>';
     esRenderCatalog(cat.categories);
+    cfLoad();
     plApi('/api/crm/costing').then(({jobs})=>{
       document.getElementById('jc-all').innerHTML=jobs.length?jobs.map(j=>`<button class="pl-card" onclick="jbOpen('${j.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${j.marginPct==null?'—':j.marginPct+'%'}</div></div>
         <div class="pl-card-sub">Contract ${esMoney(j.contract)} · spent ${esMoney(j.actual)}${j.hasBudget?' of '+esMoney(j.budget)+' budget':''}</div>
@@ -1214,7 +1221,7 @@ async function jbOpen(dealId){
   const vopts=sel=>'<option value="">No vendor</option>'+d.vendors.map(v=>`<option value="${v.id}"${v.id===sel?' selected':''}>${uxEsc(v.name)}${v.trade?' ('+uxEsc(v.trade)+')':''}</option>`).join('');
   const stOpts=s=>[['todo','To do'],['doing','In progress'],['done','Done']].map(([k,l])=>`<option value="${k}"${k===s?' selected':''}>${l}</option>`).join('');
   const dot={todo:'○',doing:'◐',done:'●'};
-  const sched=d.schedule.map(i=>`<details class="es-line" data-item="${i.id}" style="padding:8px 10px"><summary style="cursor:pointer;display:flex;gap:8px;align-items:center;list-style:none"><span style="color:${i.status==='done'?'var(--green)':i.status==='doing'?'var(--accent)':'var(--ink3)'}">${dot[i.status]}</span><span style="flex:1;min-width:0;font-weight:700;${i.status==='done'?'color:var(--ink3)':''}">${uxEsc(i.title)}</span><span class="sm" style="margin:0;white-space:nowrap">${fdate(i.start_date)}${i.end_date&&ymdOf(i.end_date)!==ymdOf(i.start_date)?'–'+fdate(i.end_date):''}${i.vendor_name?' · '+uxEsc(i.vendor_name):''}</span></summary>
+  const sched=d.schedule.map(i=>`<details class="es-line" data-item="${i.id}" style="padding:8px 10px"><summary style="cursor:pointer;display:flex;gap:8px;align-items:center;list-style:none"><span style="color:${i.status==='done'?'var(--green)':i.status==='doing'?'var(--accent)':'var(--ink3)'}">${dot[i.status]}</span><span style="flex:1;min-width:0;font-weight:700;${i.status==='done'?'color:var(--ink3)':''}">${uxEsc(i.title)}</span><span class="sm" style="margin:0;white-space:nowrap">${fdate(i.start_date)}${i.end_date&&ymdOf(i.end_date)!==ymdOf(i.start_date)?'–'+fdate(i.end_date):''}${i.vendor_name?' · '+uxEsc(i.vendor_name):''}${i.confirm_status==='confirmed'?' <span title="Sub confirmed" style="color:var(--green)">✓</span>':i.confirm_status==='conflict'?' <span title="Sub can’t make it" style="color:var(--red)">✕</span>':i.confirm_status==='sent'?' <span title="Waiting for the sub to confirm">…</span>':''}</span></summary>
     <div class="es-grid" style="grid-template-columns:1fr;margin-top:8px"><input class="cred-input" data-f="title" value="${uxEsc(i.title)}" aria-label="Phase"></div>
     <div class="es-grid"><div><label>Start</label><input type="date" class="cred-input" data-f="startDate" value="${ymdOf(i.start_date)}"></div><div><label>End</label><input type="date" class="cred-input" data-f="endDate" value="${ymdOf(i.end_date)}"></div>
     <div><label>Status</label><select data-f="status">${stOpts(i.status)}</select></div><div><label>Sub</label><select data-f="vendorId">${vopts(i.vendor_id)}</select></div></div>
@@ -1278,6 +1285,24 @@ Every answer goes straight to the team, and if something isn’t right we want t
       ${manage?`<div class="vd-mbtns"><button class="btn ${d.on?'btn-xs':'btn-blue'}" onclick="puToggle(${!d.on})">${d.on?'Switch off':'✓ Approve this wording &amp; switch on'}</button></div>`:''}</div>`;}
   catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
+async function scSettings(){
+  const el=document.getElementById('pl-subs');if(!el)return;
+  try{const d=await plApi('/api/crm/subs/settings');const manage=crCanManage();
+    el.innerHTML=`<div class="pl-pb"><div class="pl-card-top"><div class="pl-item-t">Three days before a phase starts</div><span class="pl-pill ${d.on?'on':''}">${d.on?'● On':'Off'}</span></div>
+      <div class="sm">The sub on the phase gets the job, the address and the dates, with “I’ll be there” and “Can’t make it” buttons. “Can’t make it”, or no answer by the day before, lands in Needs you. Moving the dates asks again.</div>
+      <div class="fit-brief" style="margin-top:8px">Please confirm: Tile & flooring at 12 Oak Ln, Thursday, November 6
+
+Hi Gulf Tile,
+
+Your company has you down for Tile & flooring on the Garcia kitchen job:
+Thursday, November 6 to Friday, November 7
+12 Oak Ln, Houston TX 77024
+
+[I’ll be there]  [Can’t make it]</div>
+      ${manage?`<div class="vd-mbtns"><button class="btn ${d.on?'btn-xs':'btn-blue'}" onclick="scToggle(${!d.on})">${d.on?'Switch off':'✓ Approve this wording &amp; switch on'}</button></div>`:''}</div>`;}
+  catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function scToggle(on){try{await plApi('/api/crm/subs/settings',{method:'PATCH',body:{on}});scSettings();}catch(e){showNotif('Could not save',e.message);}}
 async function puToggle(on){try{await plApi('/api/crm/pulse/settings',{method:'PATCH',body:{on}});puSettings();}catch(e){showNotif('Could not save',e.message);}}
 async function puLoad(dealId){
   const el=document.getElementById('pld-pulse');if(!el)return;
@@ -1408,6 +1433,18 @@ async function smSend(dealId,btn){
 }
 async function smConsent(dealId,on){try{await plApi('/api/crm/deals/'+dealId+'/sms-consent',{body:{consent:on}});}catch(e){showNotif('Could not save',e.message);}}
 
+async function cfLoad(){
+  const el=document.getElementById('cf-box');if(!el)return;
+  try{
+    const c=await plApi('/api/crm/cashflow');const m0=n=>'$'+Math.round(n||0).toLocaleString();
+    const max=Math.max(1,...c.weeks.map(w=>Math.max(w.in,w.out)));
+    const tIn=c.weeks.reduce((n,w)=>n+w.in,0),tOut=c.weeks.reduce((n,w)=>n+w.out,0);
+    el.innerHTML=`<div class="pl-strip"><div class="pl-tile"><div class="pl-tile-v">${m0(tIn)}</div><div class="pl-tile-l">Expected in</div></div><div class="pl-tile"><div class="pl-tile-v">${m0(tOut)}</div><div class="pl-tile-l">Going out on POs</div></div>${c.overdue?`<div class="pl-tile" style="border-color:var(--red)"><div class="pl-tile-v">${m0(c.overdue)}</div><div class="pl-tile-l">Overdue now</div></div>`:''}</div>
+      <div class="pl-pb" style="margin-top:8px">${c.weeks.map(w=>`<details><summary class="cf-row" style="list-style:none;cursor:pointer"><span>${new Date(w.week+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric',timeZone:'UTC'})}</span><span>${w.in?`<div class="cf-bar" style="width:${Math.round(w.in/max*100)}%" title="In ${m0(w.in)}"></div>`:''}${w.out?`<div class="cf-bar out" style="width:${Math.round(w.out/max*100)}%;margin-top:2px" title="Out ${m0(w.out)}"></div>`:''}<span class="sm" style="margin:0">${w.in?'In '+m0(w.in):''}${w.in&&w.out?' · ':''}${w.out?'Out '+m0(w.out):''}${!w.in&&!w.out?'Nothing expected':''}</span></span></summary>
+        ${w.items.length?'<ul style="margin:0 0 8px 70px;font-size:12px;padding-left:14px">'+w.items.map(i=>`<li>${i.side==='in'?'+':'−'}${m0(i.amount)} · ${uxEsc(i.label)}</li>`).join('')+'</ul>':''}</details>`).join('')}
+        <div class="sm">Expected-in counts invoices sent (by due date) and milestone payments not yet invoiced (a week after their phase ends). Tap a week for the details.</div></div>`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
 function exGo(kind){const f=document.getElementById('ex-from').value,t=document.getElementById('ex-to').value;location.href=`/api/crm/export?kind=${kind}&from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}`;}
 
 /* ---------- invoices ---------- */
@@ -1628,6 +1665,7 @@ async function plLoadAuto(){
   plLoadIntake();
   bkLoad();
   puSettings();
+  scSettings();
   if(!PL.data)plLoad().then(plRenderStageNames);else plRenderStageNames();
   try{
     const [pb,sum]=await Promise.all([plApi('/api/crm/playbooks'),plApi('/api/crm/summary')]);

@@ -570,6 +570,19 @@ browser's.
 - Security: the server no longer serves the project folder itself (source,
   migrations and config were downloadable); a test keeps it that way.
 
+**Subs confirm their dates, and cash flow (step 20).** `lib/crmSubs.js`,
+`routes/crmSubs.js`.
+- *Sub confirmations:* switched on in Automations. Three days before a phase
+  with a sub on it (weekdays 9–5 Central), the sub gets the job, address and
+  dates with "I'll be there" / "Can't make it" (`/sub/<token>`). Can't make it,
+  or no answer by the day before → Needs you ("sub_conflict"). New dates or a
+  different sub retire the link and ask again. The schedule shows ✓ / ✕ / … per
+  phase.
+- *Cash flow:* Money → next 8 weeks by week: sent invoices by due date (overdue
+  ones totalled up front), milestone payments not yet invoiced (a week after
+  their phase ends; "the rest" net of what's billed and the other pending
+  draws), and sent purchase orders by their needed-by date.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.
