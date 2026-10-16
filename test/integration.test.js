@@ -1853,3 +1853,14 @@ describe('CRM payment schedule and check-ins', () => {
     assert.equal((await (await m.get('/api/crm/pulse/settings')).json()).on, true);
   });
 });
+
+describe('Server source is never served', () => {
+  test('code, config and docs in the project folder are not downloadable', async () => {
+    const c = makeClient();
+    for (const p of ['/server.js', '/lib/crm.js', '/routes/crm.js', '/render.yaml', '/package.json', '/db.js', '/auth.js', '/migrations/1760400000000_crm_core.js', '/README.md', '/.env', '/crm.html']) {
+      const r = await c.get(p);
+      assert.notEqual(r.status, 200, `${p} must not be served (got ${r.status})`);
+    }
+    assert.equal((await c.get('/favicon.svg')).status, 200, 'public files still are');
+  });
+});

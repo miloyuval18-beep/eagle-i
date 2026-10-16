@@ -235,8 +235,9 @@ app.get(['/', '/index.html'], async (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Everything else static (none of it should contain per-tenant secrets).
-app.use(express.static(path.join(__dirname), { index: false }));
+// Nothing else from the project folder is served: the pages above have their
+// own routes and public/ holds the rest. (Serving the folder itself exposed the
+// server's source code, migrations and config to anyone who asked.)
 
 // Last-resort handler for any route that calls next(err) instead of handling
 // its own error (every route in this codebase currently self-handles via
