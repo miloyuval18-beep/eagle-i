@@ -1,7 +1,7 @@
 {
   "name": "eagle-i",
   "version": "2.0.0",
-  "description": "Eagle I — multi-tenant AI marketing command center",
+  "description": "Eagle I \u2014 multi-tenant AI marketing command center",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
@@ -10,7 +10,8 @@
     "test": "node --test test/*.test.js",
     "migrate": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
-    "migrate:create": "node-pg-migrate create"
+    "migrate:create": "node-pg-migrate create",
+    "test:scenarios": "sh test/scenarios/run.sh"
   },
   "engines": {
     "node": ">=18"
