@@ -583,6 +583,43 @@ browser's.
   their phase ends; "the rest" net of what's billed and the other pending
   draws), and sent purchase orders by their needed-by date.
 
+**Ask Eagle I: the assistant (step 21).** `lib/crmAssistant.js`,
+`lib/crmBids.js`, `lib/crmCheckins.js`, `routes/crmAssistant.js`.
+- *The chat:* the ✦ button on every CRM screen (or ⌘/Ctrl-K) opens a
+  conversation, full screen on phones and a side panel on desktop. Typed or by
+  voice, with PDFs/photos attached (`crm_ai_files`, sniffed by content, 8 MB).
+  Progress streams back as newline-delimited JSON. Conversations are per person
+  (`crm_ai_threads`/`crm_ai_messages`, the API content stored as-is so thinking
+  blocks go back unchanged; files shown to the model are replaced by a note in
+  stored history).
+- *Tools over the one database* (Claude tool use, `createMessage` in
+  `lib/anthropic.js`, model `CRM_AI_MODEL`, default `claude-sonnet-5-5`):
+  search, deals, pipeline, team, **team_activity** (what a person did, from
+  notes, stage moves, Gmail-synced emails, texts, tasks, site logs, files,
+  costs, estimates and check-ins; members only their own), Needs you, what's
+  coming up, money, subs, reading plans (PDF/image straight to the model),
+  bids and the weekly numbers. Internal changes happen at once: tasks, notes,
+  **log_work** (site log plus phases started or finished, which can bill a
+  milestone), visits, stages, new deals, draft estimates from a scope, saving
+  attachments to a deal.
+- *Anything outside the company* (bid requests, emails and texts to the
+  homeowner, portal updates, sending an estimate) becomes a card
+  (`crm_ai_actions`) the person taps to send. Only that person can confirm it.
+  If nothing goes out, the card stays to retry.
+- *Bid requests:* "send these plans to all the framers" matches subs by trade.
+  Each gets a private `/bid/<token>` page with only the chosen files and the
+  area (street address once awarded) to send a price and a note. Bids land on
+  the deal ("Bids from subs", pick one) and in Needs you.
+- *End-of-day check-in:* weekdays 5–8pm Central, "what did you get done
+  today?" with a `reply+day-<id>@` address. A reply from the person's own
+  address is stored, and with AI on it's filed as them (internal tools only,
+  in their "End-of-day updates" conversation). Switch: Account → My calendar &
+  morning email.
+- Without `ANTHROPIC_API_KEY` the chat says so; everything else works.
+  `ANTHROPIC_BASE_URL` can point at a proxy (or a local stand-in for testing).
+- Scenarios now live in `test/scenarios/` (`npm run test:scenarios`, local
+  database only).
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

@@ -1291,3 +1291,25 @@ describe('CRM import, setup and helpers', () => {
     assert.match(a.updateByRules({ ...f, lang: 'es' }), /Terminamos: Framing/);
   });
 });
+
+describe('CRM assistant pieces', () => {
+  const A = require('../lib/crmAssistant');
+  const C = require('../lib/crmCheckins');
+  test('every tool has a description, a schema and either a run or prepare+execute', () => {
+    for (const [name, t] of Object.entries(A.TOOLS)) {
+      assert.ok(t.description && t.input_schema && t.input_schema.type === 'object', name);
+      assert.ok(t.confirm ? (t.prepare && t.execute) : t.run, name);
+      assert.ok(A.LABELS[name], `label for ${name}`);
+    }
+    const outside = Object.entries(A.TOOLS).filter(([, t]) => t.confirm).map(([n]) => n).sort();
+    assert.deepEqual(outside, ['email_homeowner', 'post_portal_update', 'send_bid_request', 'send_estimate', 'text_homeowner']);
+  });
+  test('files shown to the model are not kept in the history', () => {
+    const kept = A.stripMedia([{ type: 'tool_result', tool_use_id: 'x', content: [{ type: 'text', text: 'File: a.pdf' }, { type: 'document', source: { type: 'base64', data: 'AAAA' } }] }]);
+    assert.equal(kept[0].content[1].type, 'text'); assert.match(kept[0].content[1].text, /read_file again/);
+  });
+  test('an emailed reply keeps only what they wrote', () => {
+    assert.equal(C.replyBody('Did the tile.\nGrout tomorrow.\n\nOn Mon, Oct 20, Eagle I <x@y> wrote:\n> What did you get done?'), 'Did the tile.\nGrout tomorrow.');
+    assert.equal(C.replyBody('> only quoted'), '');
+  });
+});

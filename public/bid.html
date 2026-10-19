@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Bid Request</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6f8;--card:#ffffff;--soft:#eef1f4;
+  --ink:#14202b;--ink2:#3a4855;--ink3:#55636f;
+  --bdr:#c3ccd4;--bdr2:#8794a0;--accent:#1f4e79;--accent2:#173b5c;--err:#a12a1f;
+  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-font-smoothing:antialiased}
+.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:28px 24px;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
+.brand{font-size:24px;font-weight:800;text-align:center;color:var(--ink)}
+.brand span{color:var(--accent)}
+.tag{font-size:14px;color:var(--ink3);text-align:center;margin:4px 0 20px}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--soft);border-radius:9px;padding:4px}
+.tab{flex:1;text-align:center;padding:10px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700;color:var(--ink3);border:0;background:transparent;font-family:var(--f)}
+.tab.active{background:var(--accent);color:#fff}
+label{display:block;font-size:13px;font-weight:700;color:var(--ink2);margin:12px 0 5px}
+input{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:16px;color:var(--ink);outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
+.check{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--ink2)}
+.check input{width:18px;height:18px;margin-top:2px;flex:0 0 auto}
+.check a,.forgot{color:var(--accent)}
+.btn{width:100%;margin-top:18px;padding:13px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-family:var(--f);font-size:16px;font-weight:800;cursor:pointer}
+.btn:hover{background:var(--accent2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--err);font-size:14px;margin-top:10px;min-height:20px}
+.forgot{display:inline-block;margin-top:10px;font-size:14px}
+.foot{font-size:13px;color:var(--ink3);text-align:center;margin-top:18px}
+.foot a{color:var(--ink2)}
+[hidden]{display:none!important}
+.opt{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1.5px solid var(--bdr2);border-radius:10px;margin-top:8px;cursor:pointer;font-size:15px}
+.opt input{width:18px;height:18px;flex:0 0 auto}
+.opt:has(input:checked){border-color:var(--accent);background:rgba(31,78,121,.06)}
+textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:16px;color:var(--ink);outline:none;resize:vertical}
+.q{font-weight:800;font-size:15px;margin-top:18px}
+.days{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-top:10px}
+.day{flex:0 0 auto;border:1.5px solid var(--bdr2);border-radius:10px;padding:8px 10px;text-align:center;cursor:pointer;background:#fff;font-family:var(--f);font-size:13px;color:var(--ink)}
+.day.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.times{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.time{border:1.5px solid var(--bdr2);border-radius:8px;padding:10px 4px;text-align:center;cursor:pointer;background:#fff;font-family:var(--f);font-size:15px;color:var(--ink)}
+.time.on{border-color:var(--accent);background:rgba(31,78,121,.1);font-weight:800}
+.ok{font-size:16px;text-align:center;padding:16px 0}
+.hp{position:absolute;left:-5000px;width:1px;height:1px;overflow:hidden}
+[hidden]{display:none!important}
+.lang{display:block;margin:-12px -8px 4px auto;background:none;border:0;color:var(--accent);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer;padding:6px 8px}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
+.sc{border:1.5px solid var(--bdr2);border-radius:10px;padding:14px 0;text-align:center;font-family:var(--f);font-size:20px;font-weight:800;background:#fff;color:var(--ink);cursor:pointer}
+.sc.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.ends{display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin-top:6px}
+.file{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--bdr2);border-radius:10px;margin-top:8px;color:var(--ink);text-decoration:none;font-weight:700}
+.file span{font-weight:400;color:var(--ink3);font-size:13px;margin-left:auto}
+.scope{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:12px;margin-top:10px;font-size:15px}
+.amt{font-size:22px;font-weight:800}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand" id="co" style="font-size:20px">…</div>
+  <div class="tag" id="tag"></div>
+  <div id="f" hidden>
+    <div class="q" id="job"></div>
+    <div id="msg" class="scope" hidden></div>
+    <div id="scope" class="scope" hidden></div>
+    <div id="due" class="tag" style="text-align:left;margin:10px 0 0"></div>
+    <div class="q" id="fh" hidden>Plans and files</div><div id="files"></div>
+    <div class="q" style="margin-top:20px">Your price ($)</div>
+    <input id="amount" inputmode="decimal" placeholder="e.g. 18,500" class="amt">
+    <div class="q">Notes (what’s included, exclusions, timing)</div><textarea id="note" rows="4"></textarea>
+    <button class="btn" id="send" onclick="go(false,this)">Send my price</button>
+    <button class="btn" style="background:#fff;color:var(--ink);border:1.5px solid var(--bdr2);margin-top:10px" onclick="go(true,this)">Pass on this one</button>
+    <div class="err" id="err" role="alert"></div>
+  </div>
+  <div id="done" hidden class="ok"></div>
+</main>
+<script>
+const token=location.pathname.split('/').pop();
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+let D=null;
+async function go(decline,btn){
+  const err=document.getElementById('err');err.textContent='';btn.disabled=true;
+  try{const r=await fetch('/api/crm-public/bid/'+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:document.getElementById('amount').value,note:document.getElementById('note').value,decline})});const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
+    document.getElementById('f').hidden=true;const el=document.getElementById('done');el.hidden=false;el.textContent=decline?`Thanks for letting ${D.company} know.`:`Thanks! ${D.company} has your price of ${money(document.getElementById('amount').value.replace(/[$,\s]/g,''))}. You can come back to this link to change it.`;}
+  catch(e){err.textContent=e.message;btn.disabled=false;}
+}
+fetch('/api/crm-public/bid/'+token).then(r=>r.json().then(d=>{if(!r.ok)throw new Error(d.error&&d.error.message);
+  D=d;document.getElementById('co').textContent=d.company;
+  document.getElementById('tag').textContent=`Hi ${d.vendor}${d.status==='awarded'?', the job is yours!':d.status==='submitted'?', we have your price. You can change it below.':''}`;
+  document.getElementById('job').textContent=d.job+(d.area?' · '+d.area:'')+(d.address?' · '+d.address:'');
+  if(d.message){const m=document.getElementById('msg');m.hidden=false;m.textContent=d.message;}
+  if(d.scope){const s=document.getElementById('scope');s.hidden=false;s.textContent=d.scope;}
+  if(d.due)document.getElementById('due').textContent='Please send your price by '+new Date(d.due+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'})+'.';
+  if(d.files.length){document.getElementById('fh').hidden=false;document.getElementById('files').innerHTML=d.files.map(f=>`<a class="file" href="/api/crm-public/bid/${token}/files/${f.id}" target="_blank" rel="noopener">📄 ${esc(f.filename)}<span>${Math.max(1,Math.round(f.size/1024))} KB</span></a>`).join('');}
+  if(d.amount)document.getElementById('amount').value=d.amount;if(d.note)document.getElementById('note').value=d.note;
+  if(d.status==='awarded'){document.getElementById('send').hidden=true;}
+  document.getElementById('f').hidden=false;
+})).catch(e=>{document.getElementById('tag').textContent=e.message||'This link is no longer active.';});
+</script>
+</body>
+</html>

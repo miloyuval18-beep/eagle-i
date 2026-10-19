@@ -29,7 +29,7 @@ const { getVerifiedFromAddress } = require('../lib/sendingDomain');
 // Matches only the reply+<kind>-<uuid>@... local-part this app generates
 // itself (lib/email.js's buildReplyToAddress) — an inbound address in any
 // other shape is ignored rather than trusted.
-const REPLY_ADDRESS_RE = /^reply\+(vendor|review|partner|crm)-([0-9a-f-]{36})@/i;
+const REPLY_ADDRESS_RE = /^reply\+(vendor|review|partner|crm|day)-([0-9a-f-]{36})@/i;
 // Eagle I CRM's lead-forwarding address (lib/crmIntake.js): lead-<24 hex>@...
 const LEAD_ADDRESS_RE = /^lead-([0-9a-f]{24})@/i;
 
@@ -153,6 +153,10 @@ async function processInboundEmail(data, { baseUrl = '' } = {}) {
       const row = result.rows[0];
       await forwardToTenant(row.tenant_id, `${row.customer_name} replied`, full, senderAddress(full.from) || row.customer_email);
     }
+  } else if (kind === 'day') {
+    // Someone answered "what did you get done today?" (lib/crmCheckins.js).
+    const r = await require('../lib/crmCheckins').handleReply({ checkinId: id, fromEmail: senderAddress(full.from), text: full.text || htmlToText(full.html) });
+    if (!r.ok) console.log('[inboundEmail] check-in reply not filed:', r.reason);
   } else if (kind === 'crm') {
     // A reply to one of the pipeline's automatic emails (lib/crmPlaybooks.js).
     const text = full.text || htmlToText(full.html);

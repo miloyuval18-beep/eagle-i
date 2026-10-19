@@ -1909,3 +1909,33 @@ describe('CRM sub confirmations and cash flow', () => {
     assert.equal((await m.patch('/api/crm/subs/settings', { on: false })).status, 403);
   });
 });
+
+describe('CRM assistant and bids', () => {
+  test('conversations are private; files are checked; without an AI key it says so; the bid page needs a real link', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('ask'), password: 'TestPass1234!', companyName: 'Ask Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const home = await (await o.get('/api/crm/assistant/home')).json();
+    assert.ok(home.chips.length >= 3); assert.equal(typeof home.ai, 'boolean');
+    const { thread } = await (await o.post('/api/crm/assistant/threads', {})).json();
+    assert.ok(thread.id);
+    const f = await (await o.post('/api/crm/assistant/files', { filename: 'plans.pdf', dataBase64: Buffer.from('%PDF-1.4 test').toString('base64') })).json();
+    assert.equal(f.file.content_type, 'application/pdf');
+    assert.equal((await o.post('/api/crm/assistant/files', { filename: 'x.exe', dataBase64: Buffer.from('MZ').toString('base64') })).status, 400);
+    if (!process.env.ANTHROPIC_API_KEY) {
+      const m = await o.post(`/api/crm/assistant/threads/${thread.id}/messages`, { text: 'hi' });
+      assert.equal(m.status, 503); assert.match((await m.json()).error.message, /AI key/);
+    }
+    const other = makeClient();
+    const r2 = await other.post('/api/auth/signup', { email: uniqueEmail('ask2'), password: 'TestPass1234!', companyName: 'Other Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r2.json()).tenantId);
+    assert.equal((await other.get(`/api/crm/assistant/threads/${thread.id}`)).status, 404, 'another company can’t open it');
+    assert.equal((await other.post(`/api/crm/assistant/actions/00000000-0000-0000-0000-000000000000`, { approve: true })).status, 404);
+    assert.equal((await o.delete(`/api/crm/assistant/threads/${thread.id}`)).status, 200);
+    assert.equal((await (await o.patch('/api/crm/me/checkin', { on: false })).json()).on, false);
+    assert.equal((await (await o.get('/api/crm/me/checkin')).json()).on, false);
+    assert.equal((await o.get('/bid/' + 'd'.repeat(48))).status, 200);
+    assert.equal((await makeClient().get('/api/crm-public/bid/' + 'd'.repeat(48))).status, 404);
+    assert.equal((await makeClient().get('/api/crm-public/bid/' + 'd'.repeat(48) + '/files/00000000-0000-0000-0000-000000000000')).status, 404);
+  });
+});

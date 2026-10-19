@@ -42,7 +42,7 @@ a{color:var(--accent)}
 .cr-nav::-webkit-scrollbar{display:none}
 .cr-tab{flex:0 0 auto;border:0;background:none;font:inherit;font-weight:700;font-size:15px;color:var(--ink3);padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
 .cr-tab.active{color:var(--ink);border-bottom-color:var(--accent)}
-.wrap{max-width:1080px;margin:0 auto;padding:18px 16px 60px}
+.wrap{max-width:1080px;margin:0 auto;padding:18px 16px 96px}
 .view{display:none}.view.active{display:block}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--fh);font-size:15px;font-weight:800;padding:10px 16px;border-radius:var(--r);border:none;cursor:pointer}
 .btn-blue{background:var(--accent);color:#fff}
@@ -151,6 +151,72 @@ select{width:auto;cursor:pointer}
 .pl-switch{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer}
 .pl-switch input{width:18px;height:18px;flex:0 0 auto}
 @media(max-width:600px){.pl-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.pl-form{grid-template-columns:1fr}.pl-tile-v{font-size:17px}}
+
+/* ---------- Ask Eagle I ---------- */
+.ai-fab{position:fixed;right:18px;bottom:18px;z-index:70;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:13px 18px 13px 15px;font:inherit;font-weight:800;font-size:15px;color:#fff;cursor:pointer;
+  background:linear-gradient(135deg,#1f4e79 0%,#2a6f97 55%,#3c9d9b 100%);box-shadow:0 10px 28px rgba(31,78,121,.35),0 2px 6px rgba(20,32,43,.18);transition:transform .15s ease,box-shadow .15s ease}
+.ai-fab:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(31,78,121,.42)}
+.ai-fab .spark{font-size:18px;line-height:1}
+.ai-fab.hide{display:none}
+.ai-shade{position:fixed;inset:0;background:rgba(14,24,34,.38);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s}
+.ai-shade.open{opacity:1;pointer-events:auto}
+.ai-panel{position:fixed;top:0;right:0;bottom:0;width:min(480px,100vw);z-index:90;background:#f7f9fb;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .25s cubic-bezier(.2,.8,.2,1);box-shadow:-12px 0 40px rgba(14,24,34,.18)}
+.ai-panel.open{transform:none}
+@media(max-width:640px){.ai-panel{width:100vw}}
+.ai-head{display:flex;align-items:center;gap:10px;padding:14px 14px 12px;color:#fff;background:linear-gradient(135deg,#173b5c 0%,#1f4e79 50%,#2a6f97 100%)}
+.ai-head .t{font-weight:800;font-size:17px;flex:1;display:flex;align-items:center;gap:8px}
+.ai-head .t small{font-weight:600;font-size:12px;opacity:.8}
+.ai-hb{border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:9px;width:36px;height:36px;font-size:17px;cursor:pointer;display:grid;place-items:center}
+.ai-hb:hover{background:rgba(255,255,255,.24)}
+.ai-body{flex:1;overflow-y:auto;padding:16px 14px 8px;scroll-behavior:smooth}
+.ai-hello{padding:18px 4px 6px}
+.ai-hello .g{font-size:26px;font-weight:800;letter-spacing:-.01em;background:linear-gradient(90deg,#173b5c,#2a6f97 60%,#3c9d9b);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ai-hello .s{color:var(--ink3);font-size:15px;margin-top:4px}
+.ai-chips{display:grid;grid-template-columns:1fr;gap:8px;margin-top:16px}
+.ai-chip{text-align:left;border:1px solid #d9e1e8;background:#fff;border-radius:12px;padding:11px 13px;font:inherit;font-size:14px;color:var(--ink);cursor:pointer;box-shadow:0 1px 2px rgba(20,32,43,.04);transition:border-color .12s,transform .12s}
+.ai-chip:hover{border-color:#2a6f97;transform:translateY(-1px)}
+.ai-msg{display:flex;margin:10px 0}
+.ai-msg.me{justify-content:flex-end}
+.ai-b{max-width:86%;padding:10px 13px;border-radius:16px;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.ai-msg.me .ai-b{background:linear-gradient(135deg,#1f4e79,#2a6f97);color:#fff;border-bottom-right-radius:5px}
+.ai-msg.bot .ai-b{background:#fff;border:1px solid #e1e7ec;border-bottom-left-radius:5px;box-shadow:0 1px 3px rgba(20,32,43,.05)}
+.ai-b ul{margin:4px 0 4px 18px}.ai-b li{margin:2px 0}.ai-b p+p{margin-top:8px}.ai-b code{background:#eef1f4;border-radius:4px;padding:0 4px;font-size:13px}
+.ai-b .h{font-weight:800;margin-top:6px}
+.ai-files{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.ai-file{font-size:12px;background:rgba(255,255,255,.18);border-radius:999px;padding:3px 9px}
+.ai-msg.bot .ai-file,.ai-att .ai-file{background:#eef3f7;color:var(--ink2)}
+.ai-steps{font-size:12px;color:var(--ink3);margin:2px 2px 0;display:flex;flex-wrap:wrap;gap:4px 10px}
+.ai-steps span::before{content:'✓ ';color:var(--green)}
+.ai-think{display:flex;align-items:center;gap:10px;color:var(--ink3);font-size:13px;padding:6px 2px}
+.ai-dots{display:inline-flex;gap:4px}.ai-dots i{width:7px;height:7px;border-radius:50%;background:#2a6f97;opacity:.3;animation:aiDot 1.1s infinite}
+.ai-dots i:nth-child(2){animation-delay:.18s}.ai-dots i:nth-child(3){animation-delay:.36s}
+@keyframes aiDot{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+.ai-card{background:#fff;border:1.5px solid #2a6f97;border-radius:14px;padding:12px 13px;margin:8px 0 4px;box-shadow:0 4px 14px rgba(31,78,121,.10)}
+.ai-card .ct{font-weight:800;font-size:14px}
+.ai-card .cl{font-size:13px;color:var(--ink2);margin-top:4px}
+.ai-card .pv{white-space:pre-wrap;font-size:13px;background:#f4f7fa;border-radius:8px;padding:8px 10px;margin-top:8px;max-height:160px;overflow:auto}
+.ai-card .cb{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.ai-card .st{font-size:13px;font-weight:700;margin-top:8px}
+.ai-card.done{border-color:var(--green)}.ai-card.cancelled,.ai-card.failed{border-color:#c3ccd4;opacity:.85}
+.ai-foot{padding:10px 12px 12px;background:#fff;border-top:1px solid #e1e7ec}
+.ai-att{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.ai-att .ai-file button{border:0;background:none;cursor:pointer;margin-left:4px;color:var(--ink3)}
+.ai-comp{display:flex;align-items:flex-end;gap:6px;background:#f4f7fa;border:1.5px solid #d9e1e8;border-radius:16px;padding:6px}
+.ai-comp:focus-within{border-color:#2a6f97;background:#fff}
+.ai-comp textarea{flex:1;min-width:0;border:0;background:transparent;resize:none;font:inherit;font-size:16px;line-height:1.45;height:36px;max-height:140px;padding:6px 6px;outline:none;color:var(--ink);overflow-y:hidden}
+.ai-ib{border:0;background:none;width:36px;height:36px;border-radius:10px;font-size:18px;cursor:pointer;color:var(--ink3);display:grid;place-items:center;flex:0 0 auto}
+.ai-ib:hover{background:#e8eef3}
+.ai-ib.rec{color:#fff;background:var(--red);animation:aiPulse 1.2s infinite}
+@keyframes aiPulse{0%,100%{box-shadow:0 0 0 0 rgba(161,42,31,.4)}50%{box-shadow:0 0 0 6px rgba(161,42,31,0)}}
+.ai-send{border:0;width:38px;height:38px;border-radius:12px;color:#fff;font-size:18px;cursor:pointer;background:linear-gradient(135deg,#1f4e79,#2a6f97);flex:0 0 auto}
+.ai-send:disabled{opacity:.4;cursor:default}
+.ai-hint{font-size:11px;color:var(--ink3);text-align:center;margin-top:6px}
+.ai-hist{position:absolute;inset:64px 0 0 0;background:#f7f9fb;z-index:2;overflow-y:auto;padding:10px 12px;display:none}
+.ai-hist.open{display:block}
+.ai-hrow{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e1e7ec;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer}
+.ai-hrow .n{flex:1;min-width:0;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-hrow .d{font-size:12px;color:var(--ink3)}
+.ai-off{background:#fff;border:1px dashed #c3ccd4;border-radius:12px;padding:14px;margin-top:16px;font-size:14px;color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -393,10 +459,14 @@ async function dyOpen(){
       <div style="display:flex;gap:6px"><input id="dy-url" class="cred-input" readonly value="${uxEsc(d.calendarUrl)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('dy-url')">Copy</button></div>
       <div class="vd-mbtns"><button class="btn-xs" onclick="dyReset()">Make a new link</button><span class="sm" style="margin:0">The old one stops working.</span></div>
       <div class="pl-h">Morning email</div>
-      <label class="pl-switch"><input type="checkbox" ${d.digestOn?'checked':''} onchange="dyDigest(this.checked)"><span>At 7am, Monday to Saturday: today’s visits, tasks due, phases starting, and what’s waiting for you. Nothing on? No email.</span></label>`);
+      <label class="pl-switch"><input type="checkbox" ${d.digestOn?'checked':''} onchange="dyDigest(this.checked)"><span>At 7am, Monday to Saturday: today’s visits, tasks due, phases starting, and what’s waiting for you. Nothing on? No email.</span></label>
+      <div class="pl-h">End-of-day check-in</div>
+      <label class="pl-switch"><input type="checkbox" id="dy-ci" onchange="dyCheckin(this.checked)"><span>Weekdays at 5pm: “What did you get done today?” Reply in your own words and Eagle I files it on the right jobs, so nobody has to type it up twice.</span></label>`);
+    plApi('/api/crm/me/checkin').then(c=>{const i=document.getElementById('dy-ci');if(i)i.checked=c.on;}).catch(()=>{});
   }catch(e){uxOpen(uxHead('Could not load this',uxEsc(e.message)));}
 }
 async function dyReset(){if(!confirm('Make a new calendar link? Calendars using the old one stop updating until you add the new one.'))return;try{await plApi('/api/crm/me/calendar/reset',{body:{}});dyOpen();}catch(e){showNotif('Could not do that',e.message);}}
+async function dyCheckin(on){try{await plApi('/api/crm/me/checkin',{method:'PATCH',body:{on}});showNotif(on?'Check-in on':'Check-in off','');}catch(e){showNotif('Could not save',e.message);}}
 async function dyDigest(on){try{await plApi('/api/crm/me/digest',{method:'PATCH',body:{on}});showNotif(on?'Morning email on':'Morning email off','');}catch(e){showNotif('Could not save',e.message);}}
 async function crInit(){
   let me;
@@ -927,6 +997,7 @@ async function plOpenDeal(id){
     <div class="pl-h">Homeowner portal</div>
     <div id="pld-portal"><div class="sm">Loading…</div></div>
     <div id="pld-pulse"></div>
+    <div id="pld-bids"></div>
     <div class="pl-h">Referrals${['signed','production','complete'].includes(x.stage)?' &amp; home file':''}</div>
     <div id="pld-life" data-stage="${x.stage}"><div class="sm">Loading…</div></div>
     <div class="pl-h">Tasks</div>
@@ -944,6 +1015,7 @@ async function plOpenDeal(id){
   fitLoad(x.id);
   lfLoad(x.id);
   puLoad(x.id);
+  bdLoad(x.id);
   flLoad(x.id);
   ptLoad(x.id);
   ivLoad(x.id);
@@ -1269,6 +1341,14 @@ async function jbOpen(dealId){
   jcLoad(dealId);
   dwLoad(dealId);
 }
+async function bdLoad(dealId){
+  const el=document.getElementById('pld-bids');if(!el)return;
+  try{const {bids}=await plApi('/api/crm/deals/'+dealId+'/bids');if(!bids.length){el.innerHTML='';return;}
+    const st={sent:'Sent',viewed:'Opened',submitted:'Bid in',declined:'Passed',awarded:'Picked'};
+    el.innerHTML=`<div class="pl-h">Bids from subs</div><div class="pl-list">${bids.map(b=>`<div class="pl-item"${b.status==='awarded'?' style="border-left:4px solid var(--green)"':''}><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(b.vendor)}${b.trade?` · <span class="sm" style="margin:0">${uxEsc(b.trade)}</span>`:''}</div><div class="pl-item-d">${st[b.status]||b.status}${b.submitted_at?' '+new Date(b.submitted_at).toLocaleDateString():b.viewed_at?' '+new Date(b.viewed_at).toLocaleDateString():''}${b.bid_note?` · “${uxEsc(b.bid_note)}”`:''}</div></div><div style="text-align:right"><div class="pl-card-val">${b.amount!=null?esMoney(b.amount):'—'}</div>${b.status==='submitted'?`<button class="btn-xs p" onclick="bdAward('${b.id}','${dealId}')">Pick</button>`:''}</div></div></div>`).join('')}</div>`;}
+  catch(e){el.innerHTML='';}
+}
+async function bdAward(id,dealId){if(!confirm('Pick this bid?'))return;try{await plApi('/api/crm/bids/'+id+'/award',{body:{}});bdLoad(dealId);}catch(e){showNotif('Could not pick it',e.message);}}
 async function puSettings(){
   const el=document.getElementById('pl-pulse');if(!el)return;
   try{const d=await plApi('/api/crm/pulse/settings');const manage=crCanManage();
@@ -1766,6 +1846,156 @@ async function plSetting(patch){
   catch(e){showNotif('Could not save',e.message);}
 }
 crInit();
+</script>
+
+<button class="ai-fab" id="ai-fab" onclick="aiOpen()" aria-label="Ask Eagle I"><span class="spark">✦</span> Ask Eagle I</button>
+<div class="ai-shade" id="ai-shade" onclick="aiClose()"></div>
+<aside class="ai-panel" id="ai-panel" role="dialog" aria-label="Ask Eagle I" aria-modal="true">
+  <div class="ai-head"><div class="t"><span>✦</span> Eagle I <small>your CRM assistant</small></div>
+    <button class="ai-hb" onclick="aiHistory()" title="Past conversations" aria-label="Past conversations">☰</button>
+    <button class="ai-hb" onclick="aiNew()" title="New conversation" aria-label="New conversation">＋</button>
+    <button class="ai-hb" onclick="aiClose()" title="Close" aria-label="Close">✕</button></div>
+  <div class="ai-hist" id="ai-hist"></div>
+  <div class="ai-body" id="ai-body"></div>
+  <div class="ai-foot">
+    <div class="ai-att" id="ai-att"></div>
+    <div class="ai-comp">
+      <label class="ai-ib" title="Attach plans or photos" aria-label="Attach plans or photos">📎<input type="file" accept="application/pdf,image/*,.csv,.txt" multiple hidden onchange="aiAttach(this)"></label>
+      <textarea id="ai-in" rows="1" placeholder="Ask or tell Eagle I…" aria-label="Message Eagle I" oninput="aiGrow(this)" onkeydown="aiKey(event)"></textarea>
+      <button class="ai-ib" id="ai-mic" onclick="aiMic()" title="Talk" aria-label="Talk" hidden>🎤</button>
+      <button class="ai-send" id="ai-go" onclick="aiSend()" aria-label="Send">↑</button>
+    </div>
+    <div class="ai-hint">Eagle I asks before anything goes to a homeowner or a sub.</div>
+  </div>
+</aside>
+
+<script>
+/* ---------- Ask Eagle I ---------- */
+const AI={thread:null,busy:false,files:[],home:null,rec:null};
+function aiMd(t){
+  const e=uxEsc(String(t||''));
+  const lines=e.split('\n');let out='',list=null;
+  const inl=x=>x.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>');
+  for(const l of lines){
+    const b=/^\s*(?:[-•*]|\d+\.)\s+(.*)$/.exec(l);
+    if(b){if(!list){out+='<ul>';list=1;}out+='<li>'+inl(b[1])+'</li>';continue;}
+    if(list){out+='</ul>';list=null;}
+    const h=/^#{1,4}\s+(.*)$/.exec(l);
+    if(h){out+='<div class="h">'+inl(h[1])+'</div>';continue;}
+    out+=l.trim()?'<p>'+inl(l)+'</p>':'';
+  }
+  if(list)out+='</ul>';
+  return out;
+}
+function aiOpen(){
+  document.getElementById('ai-panel').classList.add('open');document.getElementById('ai-shade').classList.add('open');document.getElementById('ai-fab').classList.add('hide');
+  document.getElementById('ai-mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  if(!AI.thread&&!document.getElementById('ai-body').children.length)aiHome();
+  setTimeout(()=>document.getElementById('ai-in').focus(),250);
+  try{history.replaceState(null,'','#ask');}catch(e){}
+}
+function aiClose(){document.getElementById('ai-panel').classList.remove('open');document.getElementById('ai-shade').classList.remove('open');document.getElementById('ai-fab').classList.remove('hide');document.getElementById('ai-hist').classList.remove('open');try{history.replaceState(null,'','#'+(CR.view||'pipeline'));}catch(e){}}
+async function aiHome(){
+  const el=document.getElementById('ai-body');
+  el.innerHTML='<div class="ai-think"><span class="ai-dots"><i></i><i></i><i></i></span></div>';
+  try{
+    const h=AI.home=await plApi('/api/crm/assistant/home');
+    el.innerHTML=`<div class="ai-hello"><div class="g">${uxEsc(h.greeting)}</div><div class="s">Ask about any job, person or number, send plans out for bids, or just tell me what happened today. I’ll file it.</div>
+      ${h.ai?'':'<div class="ai-off">The assistant needs its AI key on the server (ANTHROPIC_API_KEY) before it can answer. Everything else in Eagle I works without it.</div>'}
+      <div class="ai-chips">${h.chips.map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div></div>`;
+  }catch(e){el.innerHTML='<div class="ai-off">'+uxEsc(e.message)+'</div>';}
+}
+function aiChip(b){const t=b.textContent;const i=document.getElementById('ai-in');if(/…$/.test(t)){i.value=t.replace(/…$/,' ');i.focus();aiGrow(i);return;}i.value=t;aiSend();}
+function aiGrow(t){t.style.height='36px';const h=Math.min(140,Math.max(36,t.scrollHeight));t.style.height=h+'px';t.style.overflowY=t.scrollHeight>140?'auto':'hidden';}
+function aiKey(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();aiSend();}}
+function aiScroll(){const b=document.getElementById('ai-body');b.scrollTop=b.scrollHeight;}
+function aiAttRender(){document.getElementById('ai-att').innerHTML=AI.files.map((f,i)=>`<span class="ai-file">${f.uploading?'⏳':'📄'} ${uxEsc(f.filename)}<button onclick="AI.files.splice(${i},1);aiAttRender()" aria-label="Remove">✕</button></span>`).join('');}
+async function aiAttach(input){
+  for(const f of [...input.files].slice(0,5)){
+    if(f.size>8*1024*1024){showNotif('Too big',f.name+' is over 8 MB.');continue;}
+    const item={filename:f.name,uploading:true};AI.files.push(item);aiAttRender();
+    try{const r=await plApi('/api/crm/assistant/files',{body:{filename:f.name,dataBase64:await flRead(f)}});Object.assign(item,r.file,{uploading:false});}
+    catch(e){AI.files.splice(AI.files.indexOf(item),1);showNotif('Could not attach '+f.name,e.message);}
+    aiAttRender();
+  }
+  input.value='';
+}
+function aiBubble(role,html,extra=''){const d=document.createElement('div');d.className='ai-msg '+(role==='user'?'me':'bot');d.innerHTML=`<div style="max-width:100%;display:flex;flex-direction:column;align-items:${role==='user'?'flex-end':'flex-start'}"><div class="ai-b">${html}</div>${extra}</div>`;document.getElementById('ai-body').appendChild(d);aiScroll();return d;}
+function aiCard(a){
+  const s=a.summary||{};const st=a.status;
+  return `<div class="ai-card ${st}" id="aic-${a.id}"><div class="ct">${uxEsc(s.title||'Ready to send')}</div>
+    ${(s.to||[]).length?`<div class="cl"><b>To:</b> ${s.to.map(uxEsc).join(', ')}</div>`:''}
+    ${(s.files||[]).length?`<div class="ai-files">${s.files.map(f=>`<span class="ai-file">📄 ${uxEsc(f)}</span>`).join('')}</div>`:''}
+    ${(s.lines||[]).map(l=>`<div class="cl">${uxEsc(l)}</div>`).join('')}
+    ${s.preview?`<div class="pv">${uxEsc(s.preview)}</div>`:''}
+    ${st==='pending'?`<div class="cb"><button class="btn btn-blue" onclick="aiDecide('${a.id}',true,this)">${uxEsc(s.button||'Send')}</button><button class="btn-xs" onclick="aiDecide('${a.id}',false,this)">Cancel</button></div>`
+      :`<div class="st" style="color:${st==='done'?'var(--green)':'var(--ink3)'}">${st==='done'?'✓ '+uxEsc((a.result&&a.result.text)||'Done'):st==='failed'?'Didn’t go: '+uxEsc((a.result&&a.result.text)||''):'Cancelled'}</div>`}</div>`;
+}
+async function aiDecide(id,approve,btn){
+  btn.disabled=true;btn.textContent=approve?'Sending…':'…';
+  try{const r=await plApi('/api/crm/assistant/actions/'+id,{body:{approve}});const el=document.getElementById('aic-'+id);if(el)el.outerHTML=aiCard({id,status:r.status,result:r.result,summary:AI.cards[id]||{}});if(approve)showNotif('Sent',r.result&&r.result.text||'');}
+  catch(e){showNotif('Could not send',e.message);btn.disabled=false;btn.textContent='Try again';}
+}
+AI.cards={};
+function aiShowReply(r){
+  const extra=(r.steps&&r.steps.length?`<div class="ai-steps">${r.steps.map(x=>`<span>${uxEsc(x)}</span>`).join('')}</div>`:'')+(r.actions||[]).map(a=>{AI.cards[a.id]=a.summary;return aiCard(a);}).join('');
+  aiBubble('assistant',aiMd(r.text||'Done.'),extra);
+}
+async function aiSend(){
+  if(AI.busy)return;
+  const inp=document.getElementById('ai-in');const text=inp.value.trim();
+  if(AI.files.some(f=>f.uploading)){showNotif('One moment','Still attaching the file.');return;}
+  if(!text&&!AI.files.length)return;
+  AI.busy=true;document.getElementById('ai-go').disabled=true;
+  const body=document.getElementById('ai-body');
+  if(!AI.thread){body.innerHTML='';try{AI.thread=(await plApi('/api/crm/assistant/threads',{body:{}})).thread.id;}catch(e){showNotif('Could not start',e.message);AI.busy=false;document.getElementById('ai-go').disabled=false;return;}}
+  const files=AI.files.splice(0);aiAttRender();
+  aiBubble('user',uxEsc(text||'').replace(/\n/g,'<br>')+(files.length?`<div class="ai-files">${files.map(f=>`<span class="ai-file">📄 ${uxEsc(f.filename)}</span>`).join('')}</div>`:''));
+  inp.value='';aiGrow(inp);
+  const think=document.createElement('div');think.className='ai-think';think.innerHTML='<span class="ai-dots"><i></i><i></i><i></i></span><span id="ai-step">Thinking…</span>';body.appendChild(think);aiScroll();
+  try{
+    const res=await fetch('/api/crm/assistant/threads/'+AI.thread+'/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,fileIds:files.map(f=>f.id)})});
+    if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error((d.error&&d.error.message)||'Something went wrong.');}
+    const reader=res.body.getReader();const dec=new TextDecoder();let buf='',done=null;
+    for(;;){const {value,done:end}=await reader.read();if(end)break;buf+=dec.decode(value,{stream:true});let i;
+      while((i=buf.indexOf('\n'))>=0){const ln=buf.slice(0,i);buf=buf.slice(i+1);if(!ln.trim())continue;const ev=JSON.parse(ln);
+        if(ev.type==='step'){const s=document.getElementById('ai-step');if(s)s.textContent=ev.label+'…';}
+        else if(ev.type==='done')done=ev;else if(ev.type==='error')throw new Error(ev.message);}}
+    think.remove();
+    if(done)aiShowReply(done);
+  }catch(e){think.remove();aiBubble('assistant','<span style="color:var(--red)">'+uxEsc(e.message)+'</span>');}
+  AI.busy=false;document.getElementById('ai-go').disabled=false;inp.focus();
+}
+function aiNew(){AI.thread=null;AI.files=[];aiAttRender();document.getElementById('ai-hist').classList.remove('open');aiHome();}
+async function aiHistory(){
+  const h=document.getElementById('ai-hist');if(h.classList.toggle('open')===false)return;
+  h.innerHTML='<div class="ai-think"><span class="ai-dots"><i></i><i></i><i></i></span></div>';
+  try{const {threads}=await plApi('/api/crm/assistant/threads');
+    h.innerHTML=threads.length?threads.map(t=>`<div class="ai-hrow" onclick="aiLoad('${t.id}')"><div class="n">${uxEsc(t.title||'Conversation')}</div><div class="d">${new Date(t.updated_at).toLocaleDateString([], {month:'short',day:'numeric'})}</div><button class="btn-xs" onclick="event.stopPropagation();aiDel('${t.id}')" aria-label="Delete">✕</button></div>`).join(''):'<div class="ai-off">No conversations yet.</div>';}
+  catch(e){h.innerHTML='<div class="ai-off">'+uxEsc(e.message)+'</div>';}
+}
+async function aiLoad(id){
+  document.getElementById('ai-hist').classList.remove('open');
+  const body=document.getElementById('ai-body');body.innerHTML='';
+  try{const v=await plApi('/api/crm/assistant/threads/'+id);AI.thread=id;
+    for(const m of v.messages){if(m.role==='user')aiBubble('user',uxEsc(m.text||'').replace(/\n/g,'<br>')+((m.files||[]).length?`<div class="ai-files">${m.files.map(f=>`<span class="ai-file">📄 ${uxEsc(f.filename)}</span>`).join('')}</div>`:''));else aiShowReply(m);}
+    if(!v.messages.length)aiHome();}
+  catch(e){showNotif('Could not open it',e.message);aiHome();}
+}
+async function aiDel(id){if(!confirm('Delete this conversation?'))return;try{await plApi('/api/crm/assistant/threads/'+id,{method:'DELETE'});if(AI.thread===id)aiNew();aiHistory();aiHistory();}catch(e){showNotif('Could not delete',e.message);}}
+function aiMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
+  const btn=document.getElementById('ai-mic');
+  if(AI.rec){AI.rec.stop();return;}
+  const r=AI.rec=new SR();r.lang=document.documentElement.lang==='es'?'es-US':'en-US';r.interimResults=true;r.continuous=true;
+  const inp=document.getElementById('ai-in');const start=inp.value?inp.value+' ':'';let finalText='';
+  r.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=t+' ';else interim+=t;}inp.value=start+finalText+interim;aiGrow(inp);};
+  r.onend=()=>{AI.rec=null;btn.classList.remove('rec');btn.textContent='🎤';inp.focus();};
+  r.onerror=()=>{};
+  btn.classList.add('rec');btn.textContent='■';r.start();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ai-panel').classList.contains('open'))aiClose();if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();aiOpen();}});
+window.addEventListener('load',()=>{if(location.hash==='#ask')setTimeout(aiOpen,400);});
 </script>
 </body>
 </html>
