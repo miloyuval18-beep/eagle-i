@@ -1,0 +1,41 @@
+/* Eagle I design system for the pages homeowners, subs and new users see
+   (portal, estimate, invoice, bid, booking, questionnaire, check-in, sign-in,
+   join, website form). Loaded after each page's own styles: same tokens and
+   finish as the CRM, so everything from Eagle I looks like one product. */
+:root{
+  --bg:#f5f7fa;--card:#ffffff;--soft:#f2f4f7;
+  --ink:#101828;--ink2:#344054;--ink3:#5b6577;
+  --bdr:#e4e7ec;--bdr2:#a3acba;
+  --accent:#1d4f91;--accent2:#163d70;
+  --ok:#067647;--err:#b42318;
+  --f:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --sh2:0 1px 3px rgba(16,24,40,.07),0 1px 2px rgba(16,24,40,.04);
+  --sh3:0 12px 24px -8px rgba(16,24,40,.14),0 4px 8px -4px rgba(16,24,40,.06);
+}
+body{font-family:var(--f);background:var(--bg);color:var(--ink);font-feature-settings:'cv11','ss01';letter-spacing:-.003em;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::selection{background:#d6e4f5}
+.card{border:1px solid var(--bdr);border-radius:16px;box-shadow:var(--sh2);background:var(--card)}
+h1{font-weight:700;letter-spacing:-.025em}
+h2{font-weight:600;letter-spacing:-.015em}
+.co,.brand{font-weight:700;letter-spacing:-.02em}
+.btn{font-weight:600;border-radius:10px;letter-spacing:-.005em;min-height:46px;transition:background .15s,box-shadow .15s}
+.btn:not(.btn-o):not(.btn-l){box-shadow:var(--sh2),inset 0 1px 0 rgba(255,255,255,.12)}
+.btn-o{border:1px solid var(--bdr2)!important;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.btn-o:hover{background:var(--soft)}
+input[type=text],input[type=email],input[type=tel],input[type=password],input[type=number],input[type=date],input[type=time],input:not([type]),textarea,select{border:1px solid var(--bdr2);border-radius:10px;box-shadow:0 1px 2px rgba(16,24,40,.05);font-family:var(--f);font-size:16px}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(29,79,145,.16)}
+input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
+.pill{font-weight:600;border-radius:999px}
+.pill.ok{color:var(--ok);border-color:#abefc6;background:#ecfdf3}
+.pill.bad{color:var(--err);border-color:#fecdca;background:#fef3f2}
+.tag{font-variant-numeric:tabular-nums}
+.tot,.line .p,.amount,.money{font-variant-numeric:tabular-nums}
+.banner{border-radius:12px}
+.banner.ok{background:#ecfdf3;border-color:#abefc6}
+.banner.warn{background:#fffaeb;border-color:#fedf89}
+.opt{border:1px solid var(--bdr);border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.05);background:#fff}
+.opt:hover{border-color:var(--bdr2)}
+.visit{background:#eef4fb;border:1px solid #d3e2f3}
+.lang{font-weight:600}
+.foot{color:var(--ink3)}
