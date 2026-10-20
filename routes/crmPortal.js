@@ -66,7 +66,11 @@ router.post('/api/crm/deals/:id/files', requireAuth, async (req, res) => {
 // The same, with the raw bytes as the body (big files: no base64 on the way).
 // The name, folder and sharing come in headers.
 // Only application/octet-stream is read (a cross-site form can't send that without the browser asking first).
-router.post('/api/crm/deals/:id/files/raw', requireAuth, express.raw({ type: 'application/octet-stream', limit: '52mb' }), async (req, res) => {
+const rawFile = (req, res, next) => express.raw({ type: 'application/octet-stream', limit: '52mb' })(req, res, (err) => {
+  if (!err) return next();
+  res.status(err.type === 'entity.too.large' ? 413 : 400).json({ error: { message: err.type === 'entity.too.large' ? 'That file is too big. The limit is 50 MB.' : 'The upload didn’t come through. Please try again.' } });
+});
+router.post('/api/crm/deals/:id/files/raw', requireAuth, rawFile, async (req, res) => {
   try {
     if (!req.is('application/octet-stream')) return res.status(415).json({ error: { message: 'Send the file as application/octet-stream.' } });
     if (!(await dealInTenant(req, res))) return;

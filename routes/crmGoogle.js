@@ -11,6 +11,8 @@ const { query } = require('../db');
 const router = express.Router();
 
 function fail(res, err, what) {
+  // A malformed id is just "not found", never a server error.
+  if (/invalid input syntax for type (uuid|bigint|integer)/.test(err.message || '')) return res.status(404).json({ error: { message: 'Not found.' } });
   const status = err.status || 500;
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }

@@ -973,11 +973,12 @@ async function tmLoad(){
       <div class="full"><label for="tm-role">Role</label><select id="tm-role"><option value="member">Member: works deals</option><option value="admin">Admin: also manages the team, company and automatic emails</option></select></div>
     </div>
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="tmInvite(this)">Send invitation</button></div><div class="sm" id="tm-msg"></div></div>`:'');
+  TMN={};d.members.forEach(m=>TMN[m.id]=m.name||m.email);
   list.innerHTML=d.members.map(m=>{
     const me=CR.me&&m.id===CR.me.userId;
     const canEdit=manage&&m.role!=='owner'&&!me;
     return `<div class="pl-item"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(m.name||m.email)}${me?' (you)':''}</div><div class="pl-item-d">${uxEsc(m.email)} · ${m.open_deals} open deal${m.open_deals===1?'':'s'}</div></div><span class="pl-pill${m.role==='owner'?' on':''}">${TM_ROLE[m.role]||m.role}</span></div>
-      ${canEdit?`<div class="pl-acts"><select onchange="tmRole('${m.id}',this.value)" aria-label="Role for ${uxEsc(m.name||m.email)}"><option value="member"${m.role==='member'?' selected':''}>Member</option><option value="admin"${m.role==='admin'?' selected':''}>Admin</option></select><button class="btn-xs" style="color:var(--red)" onclick="tmRemove('${m.id}','${uxEsc(m.name||m.email)}')">Remove</button></div>`:''}</div>`;
+      ${canEdit?`<div class="pl-acts"><select onchange="tmRole('${m.id}',this.value)" aria-label="Role for ${uxEsc(m.name||m.email)}"><option value="member"${m.role==='member'?' selected':''}>Member</option><option value="admin"${m.role==='admin'?' selected':''}>Admin</option></select><button class="btn-xs" style="color:var(--red)" onclick="tmRemove('${m.id}')">Remove</button></div>`:''}</div>`;
   }).join('');
   document.getElementById('tm-invites').innerHTML=d.invites.length?'<div class="pl-h">Waiting to join</div><div class="pl-list">'+d.invites.map(i=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(i.name||i.email)}</div><div class="pl-item-d">${uxEsc(i.email)} · ${TM_ROLE[i.role]} · invited ${new Date(i.created_at).toLocaleDateString()}, link works until ${new Date(i.expires_at).toLocaleDateString()}</div>${manage?`<div class="pl-acts"><button class="btn-xs" onclick="tmCancel('${i.id}')">Cancel invitation</button></div>`:''}</div>`).join('')+'</div>':'';
 }
@@ -995,7 +996,8 @@ async function tmSaveName(btn){
   try{await plApi('/api/crm/me',{method:'PATCH',body:{name:v}});CR.me.name=v.trim();tmLoad();}catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
 }
 async function tmRole(id,role){try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{role}});showNotif('Role changed','');tmLoad();}catch(e){showNotif('Could not change the role',e.message);tmLoad();}}
-async function tmRemove(id,name){
+let TMN={};
+async function tmRemove(id){const name=TMN[id]||'this person';
   if(!confirm('Remove '+name+'? Their login stops working right away. Their deals become unassigned and their history stays.'))return;
   try{await plApi('/api/crm/team/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not remove',e.message);}
 }
