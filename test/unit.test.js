@@ -1313,3 +1313,35 @@ describe('CRM assistant pieces', () => {
     assert.equal(C.replyBody('> only quoted'), '');
   });
 });
+
+describe('Old Excel (.xls) files', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const { readXlsFirstSheet, rk } = require('../lib/xlsReader');
+  test('reads text, numbers, dates and accents from the first sheet only', () => {
+    const rows = readXlsFirstSheet(fs.readFileSync(path.join(__dirname, 'fixtures', 'leads.xls')));
+    assert.deepEqual(rows[0], ['Client Name', 'Email', 'Phone', 'Job Name', 'Contract Amount', 'Status', 'Date Created', 'Notes']);
+    assert.deepEqual(rows[1].slice(0, 7), ['Ana Ruiz', 'ana@xls.test', '713-555-0111', 'Kitchen remodel', '85000', 'Sold', '45749']);
+    assert.equal(rows[1][7], 'Wants quartz, “no” carpet');
+    assert.equal(rows[2][4], '22000.5');
+    assert.equal(rows[3][0], 'José Núñez');
+    assert.equal(rows.length, 4, 'the second sheet is not read');
+    assert.equal(require('../lib/crmAssist').dateFrom(rows[1][6]).toISOString().slice(0, 10), '2025-04-02');
+  });
+  test('long shared-string tables split across records come back whole', () => {
+    const rows = readXlsFirstSheet(fs.readFileSync(path.join(__dirname, 'fixtures', 'big.xls')));
+    assert.equal(rows.length, 700);
+    for (const i of [1, 7, 350, 699]) assert.equal(rows[i][1], ('Long note about the project, row ' + i + '. ').repeat(6) + (i % 7 === 0 ? 'é' : ''));
+  });
+  test('compact numbers (RK) decode', () => {
+    assert.equal(rk((42 << 2) | 2), 42);
+    assert.equal(rk((1234 << 2) | 3), 12.34);
+  });
+  test('anything else is turned away politely', () => {
+    assert.throws(() => readXlsFirstSheet(Buffer.from('not an excel file at all, just text that is long enough to check')), /isn’t an Excel/);
+  });
+  test('the importer previews an .xls straight away', () => {
+    const p = require('../lib/crmAssist').previewImport({ filename: 'leads.xls', dataBase64: fs.readFileSync(path.join(__dirname, 'fixtures', 'leads.xls')).toString('base64') });
+    assert.equal(p.rows, 3); assert.equal(p.mapping[0], 'name'); assert.equal(p.mapping[5], 'stage');
+  });
+});

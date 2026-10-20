@@ -75,6 +75,8 @@ textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius
   <div id="done" hidden class="ok"></div>
 </main>
 <script>
+(()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
+
 const parts=location.pathname.split('/');const mode=parts[1]==='book'?'new':'deal';const key=parts.pop();
 const api=mode==='new'?'/api/crm-public/book/'+key:'/api/crm-public/b/'+key;
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

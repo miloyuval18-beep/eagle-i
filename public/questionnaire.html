@@ -74,6 +74,8 @@ textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius
   <div id="done" hidden class="ok"></div>
 </main>
 <script>
+(()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
+
 const token=location.pathname.split('/').pop();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const T={en:{yourProject:'Your project',loading:'Loading…',qTypes:'What are you planning? (pick any)',qBudget:'Rough budget',qStart:'When would you like to start?',qWho:'Who decides?',dAll:'Everyone who decides can be at the visit',dPartly:'Not everyone can be there',dSolo:'Just me',qAddr:'Project address',phAddr:'Street, city, ZIP',qNotes:'Anything else we should know?',phNotes:'Must-haves, style, problems with the space…',send:'Send',

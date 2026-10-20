@@ -184,6 +184,16 @@ app.use(redditLeadsRoutes);
 // CRM answers are live business data (and the homeowner's private pages):
 // never let a browser or proxy show a stale copy.
 app.use(['/api/crm', '/api/crm-public'], (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+// A homeowner's page in Spanish (header X-Lang: es) gets its error messages in Spanish.
+app.use('/api/crm-public', (req, res, next) => {
+  if (String(req.get('x-lang') || '').toLowerCase() !== 'es') return next();
+  const json = res.json.bind(res);
+  res.json = (body) => {
+    if (body && body.error && typeof body.error.message === 'string') body = { ...body, error: { ...body.error, message: require('./lib/crmSpanish').translateError('es', body.error.message) } };
+    return json(body);
+  };
+  next();
+});
 app.use(crmRoutes);
 app.use(crmEstimateRoutes); // after crmRoutes: their /api/crm/* routes rely on that sign-in check
 app.use(crmIntakeRoutes);

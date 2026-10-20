@@ -1227,7 +1227,7 @@ async function imLoad(){
   if(!crCanManage())return;
   const box=document.getElementById('im-box');
   box.innerHTML=`<div class="pl-pb"><div class="sm" style="margin-top:0">Export your contacts or jobs as a spreadsheet (CSV or .xlsx) and choose it here. Nobody gets an email from the import, people already in Eagle I are joined up, and you can undo it.</div>
-    <div class="vd-mbtns"><label class="btn btn-blue" style="cursor:pointer">Choose a file<input type="file" accept=".csv,.tsv,.txt,.xlsx,text/csv" style="display:none" onchange="imPick(this)"></label></div><div id="im-prev"></div><div class="sm" id="im-msg"></div></div>`;
+    <div class="vd-mbtns"><label class="btn btn-blue" style="cursor:pointer">Choose a file<input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv" style="display:none" onchange="imPick(this)"></label></div><div id="im-prev"></div><div class="sm" id="im-msg"></div></div>`;
   try{
     const {imports}=await plApi('/api/crm/import');
     document.getElementById('im-list').innerHTML=imports.map(i=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(i.filename||'Spreadsheet')}</div><div class="pl-item-d">${new Date(i.created_at).toLocaleDateString()} · ${i.deals_created} added · ${i.skipped} skipped${i.undone_at?' · undone':''}</div></div>${i.undone_at?'':`<button class="btn-xs" onclick="imUndo('${i.id}')">Undo</button>`}</div></div>`).join('');
@@ -1514,7 +1514,8 @@ async function jcLoad(dealId){
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
 async function jcReceipt(dealId,input){
-  const f=input.files[0];if(!f)return;const m=document.getElementById('jc-msg');
+  let f=input.files[0];if(!f)return;const m=document.getElementById('jc-msg');
+  try{f=await prepFile(f);}catch(e){m.textContent=e.message;return;}
   if(f.size>8*1024*1024){m.textContent='That photo is over 8 MB.';return;}
   m.textContent='Reading the receipt…';
   try{
@@ -1642,12 +1643,29 @@ async function flLoad(dealId){
       (!files.length?'<div class="sm">No photos or files yet.</div>':'');
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
+// Photos from a phone: HEIC (iPhone) becomes JPEG, and very large photos are
+// shrunk, in the browser, before they're sent. Other files pass through.
+async function prepFile(f){
+  const heic=/image\/hei[cf]/i.test(f.type)||/\.hei[cf]$/i.test(f.name);
+  const bigPhoto=/^image\/(jpeg|png|webp)$/i.test(f.type)&&f.size>4*1024*1024;
+  if(!heic&&!bigPhoto)return f;
+  let bmp;
+  try{bmp=await createImageBitmap(f);}
+  catch(e){if(heic)throw new Error(f.name+' is an iPhone HEIC photo this browser can’t open. On the iPhone: Settings → Camera → Formats → Most Compatible, or share it as JPEG.');return f;}
+  const scale=Math.min(1,2560/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas');c.width=Math.round(bmp.width*scale);c.height=Math.round(bmp.height*scale);
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85));
+  if(!blob)return f;
+  return new File([blob],f.name.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
+}
 function flRead(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});}
 async function flUpload(dealId,input){
   const msg=document.getElementById('pld-up-msg');const files=[...input.files];const share=document.getElementById('pld-share').checked;
   let ok=0;
-  for(const f of files){
+  for(let f of files){
     msg.textContent=`Uploading ${f.name}…`;
+    try{f=await prepFile(f);}catch(e){msg.textContent=e.message;continue;}
     if(f.size>8*1024*1024){msg.textContent=`${f.name} is over 8 MB.`;continue;}
     try{await plApi('/api/crm/deals/'+dealId+'/files',{body:{filename:f.name,dataBase64:await flRead(f),shared:share}});ok++;}
     catch(e){msg.textContent=e.message;}
@@ -1986,7 +2004,8 @@ function aiKey(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefa
 function aiScroll(){const b=document.getElementById('ai-body');b.scrollTop=b.scrollHeight;}
 function aiAttRender(){document.getElementById('ai-att').innerHTML=AI.files.map((f,i)=>`<span class="ai-file">${f.uploading?'⏳':'📄'} ${uxEsc(f.filename)}<button onclick="AI.files.splice(${i},1);aiAttRender()" aria-label="Remove">✕</button></span>`).join('');}
 async function aiAttach(input){
-  for(const f of [...input.files].slice(0,5)){
+  for(let f of [...input.files].slice(0,5)){
+    try{f=await prepFile(f);}catch(e){showNotif('Can’t attach that photo',e.message);continue;}
     if(f.size>8*1024*1024){showNotif('Too big',f.name+' is over 8 MB.');continue;}
     const item={filename:f.name,uploading:true};AI.files.push(item);aiAttRender();
     try{const r=await plApi('/api/crm/assistant/files',{body:{filename:f.name,dataBase64:await flRead(f)}});Object.assign(item,r.file,{uploading:false});}

@@ -33,6 +33,8 @@ h1{font-size:21px;line-height:1.3;margin:4px 0;overflow-wrap:anywhere}
 <body>
 <div class="wrap"><button type="button" class="lang" id="lang-btn" onclick="toggleLang()">Español</button><div class="card" id="app">Loading…</div><div class="foot">Sent with Eagle I CRM</div></div>
 <script>
+(()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
+
 const token=location.pathname.split('/').pop();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});

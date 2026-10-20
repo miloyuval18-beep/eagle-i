@@ -1951,3 +1951,15 @@ describe('CRM plans and billing', () => {
     assert.equal((await o.post('/api/crm/deals', { name: 'Still works', title: 'x' })).status, 200);
   });
 });
+
+describe('Spanish for homeowners, all the way', () => {
+  test('errors on homeowner pages come back in Spanish when the page asks; the unsubscribe page speaks Spanish too', async () => {
+    const c = makeClient();
+    const en = await c.get('/api/crm-public/q/' + 'e'.repeat(48));
+    assert.equal((await en.json()).error.message, 'This link is not valid.');
+    const es = await c.raw('/api/crm-public/q/' + 'e'.repeat(48), { method: 'GET', headers: { 'X-Lang': 'es' } });
+    assert.equal((await es.json()).error.message, 'Este enlace no es válido.');
+    const page = await (await c.get('/unsubscribe?t=x&e=y&s=z&lang=es')).text();
+    assert.match(page, /Este enlace no es válido/);
+  });
+});

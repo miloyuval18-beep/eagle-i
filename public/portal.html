@@ -57,6 +57,8 @@ input[type=text].nm{width:100%;border:1.5px solid var(--bdr2);border-radius:8px;
 <div class="wrap" id="app"><div class="card">Loading your project…</div></div>
 <div class="foot">Powered by Eagle I CRM</div>
 <script>
+(()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
+
 const token=location.pathname.split('/').pop();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -168,12 +170,29 @@ async function send(){
   catch(e){out.textContent=e.message||t('cantSend');out.style.color='var(--err)';}
   b.disabled=false;
 }
+// Photos from a phone: HEIC (iPhone) becomes JPEG, and very large photos are
+// shrunk, in the browser, before they're sent. Other files pass through.
+async function prepFile(f){
+  const heic=/image\/hei[cf]/i.test(f.type)||/\.hei[cf]$/i.test(f.name);
+  const bigPhoto=/^image\/(jpeg|png|webp)$/i.test(f.type)&&f.size>4*1024*1024;
+  if(!heic&&!bigPhoto)return f;
+  let bmp;
+  try{bmp=await createImageBitmap(f);}
+  catch(e){if(heic)throw new Error(f.name+' is an iPhone HEIC photo this browser can’t open. On the iPhone: Settings → Camera → Formats → Most Compatible, or share it as JPEG.');return f;}
+  const scale=Math.min(1,2560/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas');c.width=Math.round(bmp.width*scale);c.height=Math.round(bmp.height*scale);
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85));
+  if(!blob)return f;
+  return new File([blob],f.name.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
+}
 function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});}
 async function upload(input){
   const out=document.getElementById('up-msg');const files=[...input.files];if(!files.length)return;
   out.textContent=t('uploading',{n:files.length,s:pl(files.length)});out.style.color='';
   let ok=0;
-  for(const f of files){
+  for(let f of files){
+    try{f=await prepFile(f);}catch(e){out.textContent=e.message;out.style.color='var(--err)';continue;}
     if(f.size>8*1024*1024){out.textContent=t('tooBig',{f:f.name});continue;}
     try{const r=await fetch(`/api/crm-public/portal/${token}/files`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:f.name,dataBase64:await readFile(f)})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);ok++;}
     catch(e){out.textContent=e.message||t('upFail');out.style.color='var(--err)';}

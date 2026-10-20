@@ -24,16 +24,27 @@ function parseParams(req) {
   return { tenantId: String(t), email: normEmail(e), sig: String(s) };
 }
 
+// The same page in Spanish for homeowners who read Spanish (?lang=es).
+const T = {
+  en: { badT: 'Link not valid', bad: '<h1>This link isn\'t valid</h1><p>It may have been copied incorrectly. Reply to the original email and ask to be removed instead.</p>', title: 'Unsubscribe', ask: (e) => `<h1>Stop emails to ${esc(e)}?</h1><p>You'll no longer receive outreach emails from this sender.</p>`, btn: 'Unsubscribe',
+    doneT: 'Unsubscribed', done: (e) => `<h1>You're unsubscribed</h1><p>${esc(e)} won't receive further outreach emails from this sender.</p>`, failT: 'Something went wrong', fail: '<h1>Something went wrong</h1><p>Please reply to the original email and ask to be removed.</p>' },
+  es: { badT: 'Enlace no válido', bad: '<h1>Este enlace no es válido</h1><p>Puede que se haya copiado mal. Responda al correo original y pida que lo quiten de la lista.</p>', title: 'Cancelar suscripción', ask: (e) => `<h1>¿Dejar de enviar correos a ${esc(e)}?</h1><p>Ya no recibirá correos automáticos de este remitente.</p>`, btn: 'Cancelar suscripción',
+    doneT: 'Suscripción cancelada', done: (e) => `<h1>Su suscripción fue cancelada</h1><p>${esc(e)} ya no recibirá más correos automáticos de este remitente.</p>`, failT: 'Algo salió mal', fail: '<h1>Algo salió mal</h1><p>Por favor responda al correo original y pida que lo quiten de la lista.</p>' }
+};
+const tr = (req) => (req.query.lang === 'es' ? T.es : T.en);
+
 router.get('/unsubscribe', (req, res) => {
   const p = parseParams(req);
-  if (!p) return res.status(400).send(page('Link not valid', '<h1>This link isn\'t valid</h1><p>It may have been copied incorrectly. Reply to the original email and ask to be removed instead.</p>'));
-  res.send(page('Unsubscribe', `<h1>Stop emails to ${esc(p.email)}?</h1><p>You'll no longer receive outreach emails from this sender.</p>
-<form method="POST" action="/unsubscribe?${new URLSearchParams({ t: p.tenantId, e: p.email, s: p.sig }).toString()}"><button type="submit">Unsubscribe</button></form>`));
+  const t = tr(req);
+  if (!p) return res.status(400).send(page(t.badT, t.bad));
+  res.send(page(t.title, `${t.ask(p.email)}
+<form method="POST" action="/unsubscribe?${new URLSearchParams({ t: p.tenantId, e: p.email, s: p.sig, ...(req.query.lang === 'es' ? { lang: 'es' } : {}) }).toString()}"><button type="submit">${t.btn}</button></form>`));
 });
 
 router.post('/unsubscribe', async (req, res) => {
   const p = parseParams(req);
-  if (!p) return res.status(400).send(page('Link not valid', '<h1>This link isn\'t valid</h1>'));
+  const t = tr(req);
+  if (!p) return res.status(400).send(page(t.badT, t.bad));
   try {
     await query(
       `INSERT INTO outreach_suppressions (tenant_id, email) VALUES ($1, $2)
@@ -44,10 +55,10 @@ router.post('/unsubscribe', async (req, res) => {
     await cancelQueued(p.tenantId, p.email, 'opted_out');
     await require('../lib/leadSequence').cancelForEmail(p.tenantId, p.email, 'opted_out');
     await require('../lib/crmPlaybooks').cancelForEmail(p.tenantId, p.email, 'opted_out');
-    res.send(page('Unsubscribed', `<h1>You're unsubscribed</h1><p>${esc(p.email)} won't receive further outreach emails from this sender.</p>`));
+    res.send(page(t.doneT, t.done(p.email)));
   } catch (err) {
     console.error('Unsubscribe failed:', err.message);
-    res.status(500).send(page('Something went wrong', '<h1>Something went wrong</h1><p>Please reply to the original email and ask to be removed.</p>'));
+    res.status(500).send(page(t.failT, t.fail));
   }
 });
 

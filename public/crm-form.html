@@ -64,6 +64,8 @@ textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.1
   <div class="ok" id="done" hidden data-t="done">Thanks! We got your message and will be in touch soon.</div>
 </main>
 <script>
+(()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
+
 const key=location.pathname.split('/').pop();
 const T={en:{contact:'Contact us',contactCo:'Contact {co}',tag:'Tell us about your project and we’ll be in touch shortly.',name:'Your name',email:'Email',phone:'Phone',sms:'OK to text me about my project. Message and data rates may apply; reply STOP to opt out.',address:'Project address (optional)',message:'What are you planning?',send:'Send',done:'Thanks! We got your message and will be in touch soon.',needName:'Please add your name.',needReach:'Please add an email or phone number so we can reach you.',oops:'Something went wrong. Please try again.'},
 es:{contact:'Contáctenos',contactCo:'Contacte a {co}',tag:'Cuéntenos sobre su proyecto y nos comunicaremos con usted muy pronto.',name:'Su nombre',email:'Correo electrónico',phone:'Teléfono',sms:'Acepto recibir mensajes de texto sobre mi proyecto. Pueden aplicarse tarifas de mensajes y datos; responda STOP para cancelar.',address:'Dirección del proyecto (opcional)',message:'¿Qué está planeando?',send:'Enviar',done:'¡Gracias! Recibimos su mensaje y nos comunicaremos pronto.',needName:'Por favor escriba su nombre.',needReach:'Por favor escriba un correo o teléfono para comunicarnos con usted.',oops:'Algo salió mal. Por favor intente de nuevo.'}};

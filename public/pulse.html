@@ -73,6 +73,8 @@ textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius
   <div id="done" hidden class="ok"></div>
 </main>
 <script>
+(()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
+
 const token=location.pathname.split('/').pop();
 const T={en:{ask:'How is your project going so far?',lo:'1 = Not happy',hi:'5 = Very happy',cq:'Anything you’d like the team to know? (optional)',send:'Send',thanks:'Thank you! The team has your answer.',thanksLow:'Thank you for telling us. Someone from the team will reach out soon to make it right.',invalid:'This link is not valid.',pick:'Tap a number first.',oops:'Something went wrong. Please try again.'},
 es:{ask:'¿Cómo va su proyecto hasta ahora?',lo:'1 = Nada contento',hi:'5 = Muy contento',cq:'¿Algo que quiera que el equipo sepa? (opcional)',send:'Enviar',thanks:'¡Gracias! El equipo ya tiene su respuesta.',thanksLow:'Gracias por decirnos. Alguien del equipo se comunicará pronto para arreglarlo.',invalid:'Este enlace no es válido.',pick:'Primero toque un número.',oops:'Algo salió mal. Por favor intente de nuevo.'}};

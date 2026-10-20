@@ -656,6 +656,21 @@ Account → Plan & billing.
   automatic emails keep going), with a banner. Seat limits apply to new
   invites, and the assistant stops at the month's allowance.
 
+**Loose ends tied (step 24).**
+- *Phone photos:* every upload (deal files, receipts, the assistant, the
+  homeowner's portal) runs through `prepFile` in the browser: iPhone HEIC
+  becomes JPEG where the browser can open it (else a plain explanation), and
+  photos over 4 MB are shrunk to 2560 px JPEG instead of being turned away.
+- *Old Excel:* `lib/xlsReader.js` reads .xls (Excel 97–2003) with no
+  dependency: the compound-file container (FAT, DIFAT, mini stream) and BIFF8
+  records (shared strings across CONTINUE records, labels, numbers, RK/MULRK,
+  formulas' last values). The importer takes .xls like .xlsx and .csv.
+  Fixtures in `test/fixtures/` were written with the xlwt library.
+- *Spanish, the rest of the way:* homeowner pages send `X-Lang: es` and
+  `/api/crm-public` answers with Spanish error messages (`ERRORS_ES`); Spanish
+  automatic emails and check-ins carry a Spanish footer and link to a Spanish
+  unsubscribe page (`?lang=es`, outside the signature).
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.
