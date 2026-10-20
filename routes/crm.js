@@ -71,7 +71,14 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
     // A removed team member's old session stops working at once.
     if (!me || me.tenant_id !== req.tenantId) return res.status(401).json({ error: { message: 'Not logged in.' } });
     req.crmUser = me;
-    if (await crm.hasCrm(req.tenantId)) return next();
+    if (await crm.hasCrm(req.tenantId)) {
+      // After the trial (with billing switched on) the CRM is read-only until a plan is chosen.
+      if (!['GET', 'HEAD'].includes(req.method) && !/^\/api\/crm\/(billing|me)(\/|$)/.test(req.originalUrl.split('?')[0])) {
+        const a = await require('../lib/crmBilling').accessFor(req.tenantId);
+        if (a.locked) return res.status(402).json({ error: { message: a.reason, code: 'billing' } });
+      }
+      return next();
+    }
     res.status(403).json({ error: { message: 'Eagle I CRM is not switched on for this company.', code: 'no_crm' } });
   } catch (err) { fail(res, err, 'Failed to check your account'); }
 });
@@ -316,7 +323,7 @@ router.get('/api/crm/team', requireAuth, async (req, res) => {
 
 router.post('/api/crm/team/invites', requireAuth, managersOnly, async (req, res) => {
   const { email, name, role } = req.body || {};
-  try { res.json({ ok: true, ...(await team.createInvite({ tenantId: req.tenantId, invitedBy: req.userId, email, name, role: role || 'member', baseUrl: baseUrlOf(req) })) }); }
+  try { await require('../lib/crmBilling').checkSeat(req.tenantId); res.json({ ok: true, ...(await team.createInvite({ tenantId: req.tenantId, invitedBy: req.userId, email, name, role: role || 'member', baseUrl: baseUrlOf(req) })) }); }
   catch (err) { fail(res, err, 'Failed to send the invitation'); }
 });
 

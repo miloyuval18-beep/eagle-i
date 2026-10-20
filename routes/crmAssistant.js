@@ -40,6 +40,7 @@ router.post('/api/crm/assistant/threads/:tid/messages', requireAuth, async (req,
   if (!process.env.ANTHROPIC_API_KEY && !require('../lib/anthropic').hasClientOverride?.()) {
     return res.status(503).json({ error: { message: 'The assistant isn’t switched on yet: the server needs its AI key (ANTHROPIC_API_KEY).' } });
   }
+  try { await require('../lib/crmBilling').checkAi(req.tenantId); } catch (e) { return res.status(e.status || 402).json({ error: { message: e.message } }); }
   res.set({ 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
   res.flushHeaders();
   const line = (o) => { try { res.write(JSON.stringify(o) + '\n'); } catch (e) { /* closed */ } };

@@ -1939,3 +1939,15 @@ describe('CRM assistant and bids', () => {
     assert.equal((await makeClient().get('/api/crm-public/bid/' + 'd'.repeat(48) + '/files/00000000-0000-0000-0000-000000000000')).status, 404);
   });
 });
+
+describe('CRM plans and billing', () => {
+  test('a new company is on a trial; without Stripe nothing locks and checkout says billing is not set up', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('bill'), password: 'TestPass1234!', companyName: 'Bill Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const b = await (await o.get('/api/crm/billing')).json();
+    assert.equal(b.status, 'trialing'); assert.ok(b.trialDaysLeft >= 13); assert.equal(b.locked, false); assert.equal(b.plans.length, 3);
+    if (!process.env.STRIPE_SECRET_KEY) assert.equal((await o.post('/api/crm/billing/checkout', { plan: 'team' })).status, 503);
+    assert.equal((await o.post('/api/crm/deals', { name: 'Still works', title: 'x' })).status, 200);
+  });
+});

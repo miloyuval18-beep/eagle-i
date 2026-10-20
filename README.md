@@ -635,6 +635,27 @@ browser's.
   `claude-sonnet-5` when the API says a model doesn't exist, and remembers the
   one that answers. Owners get "Test the AI connection" in the assistant.
 
+**Plans and billing (step 23).** `lib/crmBilling.js`, `routes/crmBilling.js`,
+Account → Plan & billing.
+- Plans (placeholders, change with env vars, no code change): Builder $199/mo
+  (3 people), Team $399/mo (10 people), Company $699/mo (everyone); yearly = 10
+  months. Names, prices and seats: `CRM_PLAN_{BUILDER,TEAM,COMPANY}_{NAME,PRICE,SEATS}`.
+  Every plan has every feature; the assistant has a monthly message allowance.
+- Every company gets a 14-day trial (`tenants.crm_trial_ends_at`; companies
+  already on the CRM got one from the day this shipped).
+- Stripe: products and prices are created on first checkout (lookup key
+  `eaglei_crm_<plan>_<interval>_<price>`), so there is nothing to set up in the
+  dashboard. Checkout carries the remaining trial over; the Stripe billing
+  portal handles cards, invoices, plan changes and cancelling. The existing
+  `/api/stripe/webhook` routes CRM events (metadata `product: crm`) to
+  `handleEvent`: add `customer.subscription.created/updated/deleted` to that
+  webhook in Stripe.
+- Nothing locks unless `STRIPE_SECRET_KEY` is set **and** `CRM_BILLING_ENFORCE=true`.
+  Then an ended trial, a cancelled plan, or a payment 7+ days past due makes
+  the CRM read-only (changes return 402 with the reason; billing still works;
+  automatic emails keep going), with a banner. Seat limits apply to new
+  invites, and the assistant stops at the month's allowance.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

@@ -66,6 +66,8 @@ async function handleWebhook(req, res) {
   loadPlanMap();
 
   try {
+    // Eagle I CRM's own plans (lib/crmBilling.js) are handled there.
+    if (await require('../lib/crmBilling').handleEvent(event)) return res.json({ received: true });
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const tenantId = session.client_reference_id;
