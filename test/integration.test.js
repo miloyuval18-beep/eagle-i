@@ -1578,16 +1578,10 @@ describe('CRM invoices without online payments', () => {
   });
 });
 
-describe('CRM Twilio webhooks', () => {
-  test('unsigned webhooks are refused; texting says plainly when it is not set up', async () => {
-    const r = await makeClient().raw('/api/twilio/sms', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'From=%2B17135550101&To=%2B17135550199&Body=hi' });
-    assert.equal(r.status, 403);
-    const o = makeClient();
-    const s = await o.post('/api/auth/signup', { email: uniqueEmail('sms'), password: 'TestPass1234!', companyName: 'SMS Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
-    trackTenant((await s.json()).tenantId);
-    const st = await (await o.get('/api/crm/sms')).json();
-    assert.equal(st.available, false);
-    assert.equal((await o.post('/api/crm/sms/number', { areaCode: '713' })).status, 503);
+describe('CRM has no texting', () => {
+  test('the old texting endpoints are gone', async () => {
+    const r = await makeClient().raw('/api/twilio/sms', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'From=%2B17135550101&Body=hi' });
+    assert.notEqual(r.status, 200);
   });
 });
 

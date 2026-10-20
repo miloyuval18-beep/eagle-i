@@ -54,7 +54,6 @@ textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.1
     <label for="name" data-t="name">Your name</label><input id="name" autocomplete="name" required>
     <label for="email" data-t="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email">
     <label for="phone" data-t="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" inputmode="tel">
-    <div class="check"><input type="checkbox" id="sms_consent"><label for="sms_consent" style="margin:0;font-weight:400" data-t="sms">OK to text me about my project. Message and data rates may apply; reply STOP to opt out.</label></div>
     <label for="address" data-t="address">Project address (optional)</label><input id="address" autocomplete="street-address">
     <label for="message" data-t="message">What are you planning?</label><textarea id="message" rows="4"></textarea>
     <div class="hp" aria-hidden="true"><label for="company_website">Leave this empty</label><input id="company_website" tabindex="-1" autocomplete="off"></div>
@@ -67,8 +66,8 @@ textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.1
 (()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
 
 const key=location.pathname.split('/').pop();
-const T={en:{contact:'Contact us',contactCo:'Contact {co}',tag:'Tell us about your project and we’ll be in touch shortly.',name:'Your name',email:'Email',phone:'Phone',sms:'OK to text me about my project. Message and data rates may apply; reply STOP to opt out.',address:'Project address (optional)',message:'What are you planning?',send:'Send',done:'Thanks! We got your message and will be in touch soon.',needName:'Please add your name.',needReach:'Please add an email or phone number so we can reach you.',oops:'Something went wrong. Please try again.'},
-es:{contact:'Contáctenos',contactCo:'Contacte a {co}',tag:'Cuéntenos sobre su proyecto y nos comunicaremos con usted muy pronto.',name:'Su nombre',email:'Correo electrónico',phone:'Teléfono',sms:'Acepto recibir mensajes de texto sobre mi proyecto. Pueden aplicarse tarifas de mensajes y datos; responda STOP para cancelar.',address:'Dirección del proyecto (opcional)',message:'¿Qué está planeando?',send:'Enviar',done:'¡Gracias! Recibimos su mensaje y nos comunicaremos pronto.',needName:'Por favor escriba su nombre.',needReach:'Por favor escriba un correo o teléfono para comunicarnos con usted.',oops:'Algo salió mal. Por favor intente de nuevo.'}};
+const T={en:{contact:'Contact us',contactCo:'Contact {co}',tag:'Tell us about your project and we’ll be in touch shortly.',name:'Your name',email:'Email',phone:'Phone',address:'Project address (optional)',message:'What are you planning?',send:'Send',done:'Thanks! We got your message and will be in touch soon.',needName:'Please add your name.',needReach:'Please add an email or phone number so we can reach you.',oops:'Something went wrong. Please try again.'},
+es:{contact:'Contáctenos',contactCo:'Contacte a {co}',tag:'Cuéntenos sobre su proyecto y nos comunicaremos con usted muy pronto.',name:'Su nombre',email:'Correo electrónico',phone:'Teléfono',address:'Dirección del proyecto (opcional)',message:'¿Qué está planeando?',send:'Enviar',done:'¡Gracias! Recibimos su mensaje y nos comunicaremos pronto.',needName:'Por favor escriba su nombre.',needReach:'Por favor escriba un correo o teléfono para comunicarnos con usted.',oops:'Algo salió mal. Por favor intente de nuevo.'}};
 let L=(()=>{const q=new URLSearchParams(location.search).get('lang');if(q)return q==='es'?'es':'en';try{const s=localStorage.getItem('eaglei_lang');if(s)return s;}catch(e){}return /^es/i.test(navigator.language||'')?'es':'en';})();
 let CO='';
 const t=(k,v)=>((T[L]||T.en)[k]||T.en[k]||k).replace(/\{(\w+)\}/g,(m,x)=>(v||{})[x]??'');
@@ -84,7 +83,7 @@ async function send(e){
   if(!v('name').trim()){err.textContent=t('needName');b.disabled=false;return;}
   if(!v('email').trim()&&!v('phone').trim()){err.textContent=t('needReach');b.disabled=false;return;}
   try{
-    const r=await fetch('/api/crm-public/forms/'+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),message:v('message'),company_website:v('company_website'),ref:new URLSearchParams(location.search).get('ref')||undefined,utm:pageTags(),sms_consent:document.getElementById('sms_consent').checked,lang:L})});
+    const r=await fetch('/api/crm-public/forms/'+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:v('name'),email:v('email'),phone:v('phone'),address:v('address'),message:v('message'),company_website:v('company_website'),ref:new URLSearchParams(location.search).get('ref')||undefined,utm:pageTags(),lang:L})});
     const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||t('oops'));
     document.getElementById('f').hidden=true;document.getElementById('done').hidden=false;
   }catch(x){err.textContent=x.message;b.disabled=false;}

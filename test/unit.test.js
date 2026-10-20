@@ -794,7 +794,7 @@ describe('CRM core (lib/crm.js)', () => {
     assert.equal(crm.leadStatusForStage('new'), 'new');
   });
   test('settings fall back to safe defaults', () => {
-    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], smsForwardTo: null, missedCallText: null, missedCallApproved: null, scheduleTemplate: null, minJobValue: null, booking: null, referralReward: null, reviewUrl: null, warrantyMonths: null, monthlyCapacity: null, backlogLowWeeks: null, backlogHighWeeks: null, backfilledAt: null });
+    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], scheduleTemplate: null, minJobValue: null, booking: null, referralReward: null, reviewUrl: null, warrantyMonths: null, monthlyCapacity: null, backlogLowWeeks: null, backlogHighWeeks: null, backfilledAt: null });
     assert.equal(crm.normalizeSettings({ waitingMinutes: 7 }).waitingMinutes, 30);
     assert.equal(crm.normalizeSettings({ waitingMinutes: '60' }).waitingMinutes, 60);
   });
@@ -1054,33 +1054,15 @@ describe('CRM files (lib/crmPortal.js)', () => {
   });
 });
 
-describe('CRM texting (lib/crmSms.js)', () => {
-  const sms = require('../lib/crmSms');
-  test('US numbers become E.164; others are refused', () => {
-    assert.equal(sms.e164('(713) 555-0101'), '+17135550101');
-    assert.equal(sms.e164('1-713-555-0101'), '+17135550101');
-    assert.equal(sms.e164('555-0101'), null);
-    assert.equal(sms.e164('+44 20 7946 0958'), null);
-    assert.equal(sms.pretty('+17135550101'), '(713) 555-0101');
-  });
-  test('Twilio webhook signatures are checked against the exact URL and fields', () => {
-    process.env.TWILIO_ACCOUNT_SID = 'ACtest'; process.env.TWILIO_AUTH_TOKEN = 'secret-token';
-    const url = 'https://app.test/api/twilio/sms';
-    const params = { From: '+17135550101', To: '+17135550199', Body: 'Hi' };
-    const sig = sms.signatureFor(url, params, 'secret-token');
-    assert.equal(sms.validSignature(url, params, sig), true);
-    assert.equal(sms.validSignature(url, { ...params, Body: 'Hi!' }, sig), false, 'a changed field fails');
-    assert.equal(sms.validSignature(url + '?x=1', params, sig), false, 'a different URL fails');
-    assert.equal(sms.validSignature(url, params, ''), false);
-    delete process.env.TWILIO_ACCOUNT_SID; delete process.env.TWILIO_AUTH_TOKEN;
-  });
-  test('text steps keep email fingerprints unchanged and have their own limits', () => {
+describe('CRM playbooks are email-only', () => {
+  test('old text steps become emails and keep the fingerprint they were approved with', () => {
     const pb = require('../lib/crmPlaybooks');
     const email = [{ days: 1, subject: 'Hi', message: 'Hello' }];
-    assert.deepEqual(pb.normalizeSteps(email), [{ days: 1, subject: 'Hi', message: 'Hello' }], 'no channel field on email steps');
-    assert.deepEqual(pb.normalizeSteps([{ days: 1, subject: 'ignored', message: 'Hello', channel: 'sms' }]), [{ days: 1, subject: '', message: 'Hello', channel: 'sms' }]);
-    assert.equal(pb.validateSteps([{ days: 0, message: 'Hi {name}', channel: 'sms' }]), null, 'texts need no subject');
-    assert.match(pb.validateSteps([{ days: 0, message: 'x'.repeat(500), channel: 'sms' }]), /under 480/);
+    assert.deepEqual(pb.normalizeSteps(email), [{ days: 1, subject: 'Hi', message: 'Hello' }]);
+    const legacy = [{ days: 1, subject: 'ignored', message: 'Hello', channel: 'sms' }];
+    assert.deepEqual(pb.normalizeSteps(legacy), [{ days: 1, subject: 'ignored', message: 'Hello' }], 'no channel left');
+    assert.notEqual(pb.playbookHash('new', legacy), pb.playbookHash('new', [{ days: 1, subject: '', message: 'Hello' }]), 'legacy fingerprint is kept as it was');
+    assert.match(pb.validateSteps([{ days: 0, message: 'Hi {name}', channel: 'sms' }]), /needs a subject/, 'every step needs a subject now');
   });
 });
 
@@ -1302,7 +1284,7 @@ describe('CRM assistant pieces', () => {
       assert.ok(A.LABELS[name], `label for ${name}`);
     }
     const outside = Object.entries(A.TOOLS).filter(([, t]) => t.confirm).map(([n]) => n).sort();
-    assert.deepEqual(outside, ['email_homeowner', 'post_portal_update', 'send_bid_request', 'send_change_order', 'send_estimate', 'send_invoice', 'send_purchase_order', 'text_homeowner']);
+    assert.deepEqual(outside, ['email_homeowner', 'post_portal_update', 'send_bid_request', 'send_change_order', 'send_estimate', 'send_invoice', 'send_purchase_order']);
   });
   test('files shown to the model are not kept in the history', () => {
     const kept = A.stripMedia([{ type: 'tool_result', tool_use_id: 'x', content: [{ type: 'text', text: 'File: a.pdf' }, { type: 'document', source: { type: 'base64', data: 'AAAA' } }] }]);
