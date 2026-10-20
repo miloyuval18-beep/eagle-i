@@ -420,6 +420,23 @@ minutes (Drive's changes feed): uploads go up, files dropped or moved in Drive
 come down, deletes go to Drive's trash. Files up to 8 MB keep a copy in Eagle I;
 bigger ones live only in Drive and are fetched when opened.
 
+**Sign in with Google (personal Gmail).** `lib/crmGoogle.js`. For companies
+without Google Workspace, each person taps "Sign in with Google" (Company
+details, or their own settings) and allows Eagle I to read their email; the
+owner can also allow Drive, and that account's Drive then holds the "Eagle I
+Projects" folder. Refresh tokens are kept per mailbox, encrypted with
+`SOCIAL_CREDENTIALS_KEY`. With no company domain, "the company" is everyone who
+signed in, so a customer on gmail.com is still the customer.
+
+*Setup needed once:* a Google Cloud OAuth client (Web application) in
+`GOOGLE_CRM_CLIENT_ID` / `GOOGLE_CRM_CLIENT_SECRET` (the marketing side's
+`GOOGLE_GBP_*` client is used if these aren't set), with the redirect URI
+`https://<host>/api/crm/google/oauth/callback` (or set `GOOGLE_CRM_REDIRECT_URI`),
+the Gmail and Drive APIs enabled, and the `gmail.readonly` and `drive` scopes
+on the consent screen. Both are Google "restricted" scopes: until Google
+verifies the app, sign-in shows an "unverified app" warning and is limited to
+100 users (and test users must be listed while the app is in Testing).
+
 **Email only (step 10).** Eagle I CRM doesn't text. Everything that reaches a
 homeowner or a sub goes by email: playbook steps (old text steps saved before
 this change go out as emails with the same approved words), the assistant's

@@ -463,8 +463,8 @@ body{background:linear-gradient(180deg,#eaf1f7 0,#f4f6f8 360px) no-repeat,var(--
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="coSave(this)">Save</button><span class="sm" id="co-msg" style="margin:0"></span></div>
     <div class="pl-h" style="margin-top:26px">Online payments</div>
     <div id="pay-box"><div class="sm">Loading…</div></div>
-    <div class="pl-h" style="margin-top:26px">Google Workspace email</div>
-    <div class="ss" style="margin-bottom:10px">Connect your company’s Google Workspace and every email between your team and a customer lands on that customer’s deal by itself. A customer’s email stops the follow-ups; your team’s email to a new lead counts as picking it up. Only emails with people in your CRM are kept (who, when, subject and a short preview). Personal mail and attachments are never stored.</div>
+    <div class="pl-h" style="margin-top:26px">Google: email &amp; Drive</div>
+    <div class="ss" style="margin-bottom:10px">Connect Google and every email between your team and a customer lands on that customer’s deal by itself. A customer’s email stops the follow-ups; your team’s email to a new lead counts as picking it up. Only emails with people in your CRM are kept (who, when, subject and what was written). Personal mail and attachments are never stored. Optionally, keep every job’s files in Google Drive too.</div>
     <div id="gw"><div class="sm">Loading…</div></div>
   </section>
 </main>
@@ -531,11 +531,16 @@ async function dyOpen(){
       <label for="dy-url" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Or paste this link into any calendar app (keep it private)</label>
       <div style="display:flex;gap:6px"><input id="dy-url" class="cred-input" readonly value="${uxEsc(d.calendarUrl)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('dy-url')">Copy</button></div>
       <div class="vd-mbtns"><button class="btn-xs" onclick="dyReset()">Make a new link</button><span class="sm" style="margin:0">The old one stops working.</span></div>
+      <div id="dy-gmail"></div>
       <div class="pl-h">Morning email</div>
       <label class="pl-switch"><input type="checkbox" ${d.digestOn?'checked':''} onchange="dyDigest(this.checked)"><span>At 7am, Monday to Saturday: today’s visits, tasks due, phases starting, and what’s waiting for you. Nothing on? No email.</span></label>
       <div class="pl-h">End-of-day check-in</div>
       <label class="pl-switch"><input type="checkbox" id="dy-ci" onchange="dyCheckin(this.checked)"><span>Weekdays at 5pm: “What did you get done today?” Reply in your own words and Eagle I files it on the right jobs, so nobody has to type it up twice.</span></label>`);
     plApi('/api/crm/me/checkin').then(c=>{const i=document.getElementById('dy-ci');if(i)i.checked=c.on;}).catch(()=>{});
+    plApi('/api/crm/google').then(g=>{const el=document.getElementById('dy-gmail');if(!el)return;const c=g.connection;const mine=g.mailboxes.find(m=>m.mine&&m.signed_in);g.mailboxes.forEach(m=>GWM[m.id]=m.email);
+      if(c&&c.kind==='workspace'){el.innerHTML='<div class="pl-h">Your email</div><div class="sm" style="margin-top:0">Your company’s Google Workspace is connected, so your customer emails already land on their deals.</div>';return;}
+      if(!g.signIn)return;
+      el.innerHTML='<div class="pl-h">Your Gmail</div>'+(mine?`<div class="sm" style="margin-top:0">✓ Connected as ${uxEsc(mine.email)}: your emails with customers land on their deals. <button class="btn-xs" onclick="gwRemove(${mine.id})">Disconnect</button></div>`:`<div class="sm" style="margin-top:0">Connect your Gmail and your emails with customers land on the right deals by themselves, and replies stop the follow-ups.</div><div class="vd-mbtns">${gBtn('Connect my Gmail','gwSignIn(false)',false)}</div>`);}).catch(()=>{});
   }catch(e){uxOpen(uxHead('Could not load this',uxEsc(e.message)));}
 }
 async function dyReset(){if(!confirm('Make a new calendar link? Calendars using the old one stop updating until you add the new one.'))return;try{await plApi('/api/crm/me/calendar/reset',{body:{}});dyOpen();}catch(e){showNotif('Could not do that',e.message);}}
@@ -556,6 +561,10 @@ async function crInit(){
     document.getElementById('cr-activate').hidden=false;
     return;
   }
+  // Back from signing in with Google.
+  {const q=new URLSearchParams(location.search);if(q.get('google')||q.get('google_error')){
+    setTimeout(()=>{if(q.get('google_error'))showNotif('Google',q.get('google_error'));else showNotif('Google connected',q.get('google')+(q.get('drive')==='on'?' · project files now go to Google Drive':' · reading recent customer email now'));},300);
+    try{history.replaceState(null,'','/crm#company');}catch(e){}}}
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
   crView(['pipeline','needs','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing'].includes(start)?start:'pipeline');
@@ -844,32 +853,49 @@ async function tmRemove(id,name){
 async function tmCancel(id){try{await plApi('/api/crm/team/invites/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not cancel',e.message);}}
 
 /* ---------- Google Workspace ---------- */
+const G_LOGO='<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" style="flex:0 0 auto"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 38.2 44 33 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+const gBtn=(label,onclick,primary=true)=>`<button class="${primary?'btn btn-blue':'btn-xs p'}" style="display:inline-flex;align-items:center;gap:8px" onclick="${onclick}"><span style="background:#fff;border-radius:4px;padding:2px;display:inline-flex">${G_LOGO}</span>${label}</button>`;
+function gwSignIn(drive){const t=document.getElementById('gw-drive-too');const d=drive===undefined?!!(t&&t.checked):drive;location.href='/api/crm/google/oauth/start'+(d?'?drive=1':'');}
+const GWM={};
+async function gwRemove(id){const email=GWM[id]||'this mailbox';if(!confirm(`Stop reading ${email}? Eagle I’s access is handed back to Google. Emails already on deals stay there.`))return;try{await plApi('/api/crm/google/mailboxes/'+id,{method:'DELETE'});gwLoad();}catch(e){showNotif('Could not remove it',e.message);}}
 async function gwLoad(){
   const el=document.getElementById('gw');if(!el)return;
   let d;try{d=await plApi('/api/crm/google');}catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';return;}
   const manage=crCanManage();
-  if(!d.configured){el.innerHTML='<div class="pl-banner"><span>Google Workspace access isn’t set up on the Eagle I server yet.</span></div>';return;}
+  if(!d.configured&&!d.signIn){el.innerHTML='<div class="pl-banner"><span>Google isn’t set up on the Eagle I server yet.</span></div>';return;}
   const c=d.connection;
-  if(!c){
-    if(!manage){el.innerHTML='<div class="sm">Not connected. Ask your account owner or an admin to connect it.</div>';return;}
-    el.innerHTML=`<div class="pl-pb">
-      <div class="pl-item-t">Step 1: Allow Eagle I in your Google Admin console</div>
+  const workspaceSteps=`<div class="pl-item-t">Step 1: Allow Eagle I in your Google Admin console</div>
       <ol style="margin:8px 0 0 18px;font-size:14px;color:var(--ink2)"><li>Open <a href="https://admin.google.com/ac/owl/domainwidedelegation" target="_blank" rel="noopener">admin.google.com → Security → API controls → Domain-wide delegation</a></li><li>Click <b>Add new</b> and paste these two values. Email access is read-only; the Drive scope lets Eagle I keep each job’s files in a company Drive. You can remove it there any time.</li></ol>
       <label for="gw-cid" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Client ID</label><div style="display:flex;gap:6px"><input id="gw-cid" class="cred-input" readonly value="${uxEsc(d.clientId||'')}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('gw-cid')">Copy</button></div>
       <label for="gw-sc" style="font-size:12px;font-weight:700;display:block;margin-top:8px">OAuth scopes</label><div style="display:flex;gap:6px"><input id="gw-sc" class="cred-input" readonly value="${uxEsc(d.scopes.join(','))}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('gw-sc')">Copy</button></div>
       <div class="pl-item-t" style="margin-top:16px">Step 2: Connect</div>
       <div class="pl-form" style="margin-top:6px"><div><label for="gw-dom">Your email domain</label><input id="gw-dom" class="cred-input" placeholder="levihomes.com"></div><div><label for="gw-adm">A Google admin’s email</label><input id="gw-adm" class="cred-input" type="email" inputmode="email" placeholder="you@levihomes.com"></div></div>
-      <div class="vd-mbtns"><button class="btn btn-blue" onclick="gwConnect(this)">Connect</button></div><div class="sm" id="gw-msg"></div></div>`;
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="gwConnect(this)">Connect</button></div><div class="sm" id="gw-msg"></div>`;
+  if(!c){
+    el.innerHTML=`<div class="pl-pb">
+      ${d.signIn?`<div class="pl-item-t">Sign in with Google</div><div class="sm" style="margin-top:2px">For Gmail or any Google account. Each person signs in once, and their emails with customers land on the right deals by themselves.</div>
+        ${manage?`<label class="pl-switch" style="margin-top:8px;font-size:14px"><input type="checkbox" id="gw-drive-too" checked><span>Also keep every job’s files in my Google Drive</span></label>`:''}
+        <div class="vd-mbtns" style="margin-top:8px">${gBtn('Sign in with Google','gwSignIn()')}</div>
+        <div class="sm">Google will ask you to allow Eagle I to read your email${manage?' (and use Google Drive, if ticked)':''}. Only emails with people in your CRM are kept. You can remove access any time in your Google account.</div>`:''}
+      ${d.configured&&manage?`<details style="margin-top:14px"${d.signIn?'':' open'}><summary style="cursor:pointer;font-weight:800">${d.signIn?'Company on Google Workspace? Connect every mailbox at once':'Connect Google Workspace'}</summary><div style="margin-top:10px">${workspaceSteps}</div></details>`:''}
+      ${!manage&&!d.signIn?'<div class="sm">Not connected. Ask your account owner or an admin to connect it.</div>':''}</div>`;
     return;
   }
+  const mbox=m=>`<div class="pl-item" style="padding:8px 10px"><div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span style="min-width:0;overflow-wrap:anywhere"><b>${uxEsc(m.name||m.email)}</b>${m.mine?' <span class="pl-tag auto">You</span>':''}<br><span class="sm" style="margin:0">${uxEsc(m.email)} · ${m.logged} customer email${m.logged===1?'':'s'} logged${m.drive?' · ☁️ Drive':''}${m.status==='error'&&m.last_error?' · ⚠ '+uxEsc(m.last_error):''}</span></span>
+    ${c.kind==='signin'?((m.mine||manage)?`<button class="btn-xs" onclick="gwRemove(${m.id})">Remove</button>`:''):`<label class="pl-switch"><input type="checkbox" ${m.included?'checked':''} ${manage?'':'disabled'} onchange="gwInclude(${m.id},this.checked)"></label>`}</div></div>`;
+  d.mailboxes.forEach(m=>GWM[m.id]=m.email);
   const inc=d.mailboxes.filter(m=>m.included).length;
+  const head=c.kind==='signin'
+    ?`<div class="pl-item-t">Signed in with Google</div><div class="pl-item-d">${d.mailboxes.length} ${d.mailboxes.length===1?'person':'people'} connected${c.last_synced_at?' · last read '+new Date(c.last_synced_at).toLocaleString():''}</div>`
+    :`<div class="pl-item-t">${uxEsc(c.domain)}</div><div class="pl-item-d">${c.status==='connected'?'Connected':'Problem'} · reading ${inc} of ${d.mailboxes.length} mailboxes${c.last_synced_at?' · last read '+new Date(c.last_synced_at).toLocaleString():''}</div>`;
   el.innerHTML=`<div class="pl-pb">
-    <div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(c.domain)}</div><div class="pl-item-d">${c.status==='connected'?'Connected':'Problem'} · reading ${inc} of ${d.mailboxes.length} mailboxes${c.last_synced_at?' · last read '+new Date(c.last_synced_at).toLocaleString():''}</div></div><span class="pl-pill ${c.status==='connected'?'on':'need'}">${c.status==='connected'?'● On':'Needs attention'}</span></div>
+    <div class="pl-card-top"><div>${head}</div><span class="pl-pill ${c.status==='connected'?'on':'need'}">${c.status==='connected'?'● On':'Needs a look'}</span></div>
     ${c.last_error?`<div class="pl-banner" style="margin-top:8px"><span>${uxEsc(c.last_error)}</span></div>`:''}
-    ${manage?`<div class="vd-mbtns"><button class="btn-xs p" onclick="gwSync(this)">Read email now</button><button class="btn-xs" style="color:var(--red)" onclick="gwDisconnect()">Disconnect</button></div>`:''}
+    <div class="vd-mbtns">${c.kind==='signin'&&!d.mineConnected?gBtn('Connect my Gmail','gwSignIn(false)',false):''}${manage?`<button class="btn-xs${c.kind==='signin'&&!d.mineConnected?'':' p'}" onclick="gwSync(this)">Read email now</button>${c.kind==='workspace'?'<button class="btn-xs" style="color:var(--red)" onclick="gwDisconnect()">Disconnect</button>':''}`:''}</div>
+    ${c.kind==='signin'?'<div class="sm">Everyone on your team can connect their own Gmail here (or from their own settings) so their customer emails land on deals too.</div>':''}
     <div id="gw-drive"></div>
     <div class="pl-h" style="font-size:14px">Mailboxes</div>
-    <div class="pl-list">${d.mailboxes.map(m=>`<div class="pl-item" style="padding:8px 10px"><label class="pl-switch" style="justify-content:space-between"><span style="min-width:0;overflow-wrap:anywhere"><b>${uxEsc(m.name||m.email)}</b><br><span class="sm" style="margin:0">${uxEsc(m.email)} · ${m.logged} customer email${m.logged===1?'':'s'} logged${m.status==='error'&&m.last_error?' · ⚠ '+uxEsc(m.last_error):''}</span></span><input type="checkbox" ${m.included?'checked':''} ${manage?'':'disabled'} onchange="gwInclude(${m.id},this.checked)" aria-label="Read ${uxEsc(m.email)}"></label></div>`).join('')}</div>
+    <div class="pl-list">${d.mailboxes.map(mbox).join('')||'<div class="sm">None yet.</div>'}</div>
   </div>`;
   dvLoad();
 }
@@ -1223,6 +1249,11 @@ async function dvLoad(){
   const el=document.getElementById('gw-drive');if(!el)return;
   let d;try{d=await plApi('/api/crm/drive');}catch(e){el.innerHTML='';return;}
   const manage=crCanManage();
+  if(!d.on&&d.kind==='signin'){
+    el.innerHTML=`<div class="pl-h" style="font-size:14px">Google Drive</div><div class="sm" style="margin-top:0">Keep every job’s files in ${d.account?uxEsc(d.account)+'’s':'your'} Google Drive: an “Eagle I Projects” folder with a folder per job (Plans, Permits, Contracts, Photos…), kept in step both ways. Files up to 50 MB of any kind.</div>
+      ${manage?(d.needsSignIn?`<div class="vd-mbtns">${gBtn('Sign in and allow Google Drive','gwSignIn(true)',false)}</div>`:`<div class="vd-mbtns"><button class="btn-xs p" onclick="dvEnable(this)">Switch on Google Drive</button></div>`)+'<div class="sm" id="dv-msg"></div>':''}`;
+    return;
+  }
   if(!d.on){
     el.innerHTML=`<div class="pl-h" style="font-size:14px">Google Drive</div><div class="sm" style="margin-top:0">Keep every job’s files in your company’s Google Drive: a folder per job (Plans, Permits, Contracts, Photos, Selections, Receipts, Warranties), filled from Eagle I and kept in step both ways. Files up to 50 MB of any kind. Homeowners still see shared files in their portal without a Google account.</div>
       <div class="sm">Before switching on, make sure your Google admin added the Drive scope to Eagle I in Domain-wide delegation: <code style="overflow-wrap:anywhere">${uxEsc(d.scope)}</code></div>
@@ -1230,7 +1261,7 @@ async function dvLoad(){
     return;
   }
   el.innerHTML=`<div class="pl-h" style="font-size:14px">Google Drive</div>
-    <div class="pl-card-top"><div><div class="pl-item-t">${d.sharedDrive?'Shared drive':'Folder'} “Eagle I Projects”</div><div class="pl-item-d">${d.inDrive} file${d.inDrive===1?'':'s'} in Drive${d.waiting?` · ${d.waiting} still copying over`:''}${d.syncedAt?' · checked '+new Date(d.syncedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):''}</div></div><span class="pl-pill ${d.error?'need':'on'}">${d.error?'Needs a look':'● On'}</span></div>
+    <div class="pl-card-top"><div><div class="pl-item-t">${d.sharedDrive?'Shared drive':'Folder'} “Eagle I Projects”${d.account?` <span class="sm" style="margin:0;font-weight:400">in ${uxEsc(d.account)}’s Drive</span>`:''}</div><div class="pl-item-d">${d.inDrive} file${d.inDrive===1?'':'s'} in Drive${d.waiting?` · ${d.waiting} still copying over`:''}${d.syncedAt?' · checked '+new Date(d.syncedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):''}</div></div><span class="pl-pill ${d.error?'need':'on'}">${d.error?'Needs a look':'● On'}</span></div>
     ${d.error?`<div class="pl-banner" style="margin-top:8px"><span>${uxEsc(d.error)}</span></div>`:''}
     <div class="vd-mbtns">${d.link?`<a class="btn-xs p" href="${uxEsc(d.link)}" target="_blank" rel="noopener">Open in Drive</a>`:''}${manage?`<button class="btn-xs" onclick="dvSync(this)">Sync now</button><button class="btn-xs" onclick="dvDisable()">Switch off</button>`:''}</div>`;
 }
