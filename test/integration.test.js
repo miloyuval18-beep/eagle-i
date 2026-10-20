@@ -1963,3 +1963,21 @@ describe('Spanish for homeowners, all the way', () => {
     assert.match(page, /Este enlace no es válido/);
   });
 });
+
+describe('CRM coach', () => {
+  test('the coach panel loads; drafting a reply needs something to reply to; email and voice log are checked', async () => {
+    const o = makeClient();
+    const r = await o.post('/api/auth/signup', { email: uniqueEmail('coach'), password: 'TestPass1234!', companyName: 'Coach Co', industry: 'home_services', acceptedTerms: true, product: 'crm' });
+    trackTenant((await r.json()).tenantId);
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Kim Vo', title: 'Bath' })).json();
+    const c = await (await o.get(`/api/crm/deals/${deal.id}/coach`)).json();
+    assert.equal(c.latestEmail, null); assert.equal(typeof c.ai, 'boolean');
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/draft-reply`, {})).status, 400);
+    const nm = await (await o.post(`/api/crm/deals/${deal.id}/next-move`, {})).json();
+    assert.ok(nm.advice);
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/email`, { subject: 'Hi', message: 'Hello' })).status, 400, 'no email address on file');
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/voice-log`, { text: '' })).status, 400);
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/voice-log`, { text: 'Measured the bathroom.' })).status, 200);
+    assert.equal((await o.get('/api/crm/nudges/00000000-0000-0000-0000-000000000000')).status, 404);
+  });
+});

@@ -84,7 +84,12 @@ select{width:auto;cursor:pointer}
 .pl-item.estimate_accepted,.pl-item.payment,.pl-item.job_done{border-left:4px solid var(--green)}
 .pl-item.vendor_insurance,.pl-item.over_budget{border-left:4px solid var(--amber)}
 .pl-item.referral{border-left:4px solid var(--green)}
-.pl-item.unhappy{border-left:4px solid var(--red)}
+.pl-item.unhappy,.pl-item.site_issue{border-left:4px solid var(--red)}
+.pl-item.collect{border-left:4px solid var(--amber)}
+.cc-box{background:linear-gradient(180deg,#f2f7fb,#ffffff);border:1px solid #c9d8e6;border-radius:14px;padding:12px 14px}
+.cc-box .lbl{font-size:12px;font-weight:800;color:#2a6f97;letter-spacing:.02em;text-transform:uppercase;margin-top:10px}
+.cc-box .lbl:first-child{margin-top:0}
+.cc-lines{white-space:pre-wrap;font-size:14px;line-height:1.5;margin-top:3px}
 .pl-item.draw_ready,.pl-item.weather,.pl-item.sub_conflict{border-left:4px solid var(--amber)}
 .cf-row{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:center;font-size:12px;margin:6px 0}
 .cf-bar{height:10px;border-radius:5px;background:var(--green);min-width:2px}.cf-bar.out{background:var(--red);opacity:.75}
@@ -550,12 +555,24 @@ async function plCheckSetup(){
   }catch(e){}
 }
 /* ---------- weekly reports ---------- */
+// The report read aloud, for the drive in.
+let RP_SPEECH=null;
+function rpListen(){
+  const btn=document.getElementById('rp-listen');
+  if(speechSynthesis.speaking){speechSynthesis.cancel();btn.textContent='▶ Listen';return;}
+  const n=RP_SPEECH;if(!n)return;
+  const parts=[n.headline+'.','What went well.',...(n.successes||[]),'What needs attention.',...(n.challenges||[]),...(n.team&&n.team.length?['The team.',...n.team.map(t=>t.name+': '+t.note)]:[]),...(n.focus&&n.focus.length?['This week, focus on.',...n.focus]:[])];
+  const u=new SpeechSynthesisUtterance(parts.join(' ').replace(/[“”]/g,''));u.rate=1.02;
+  const v=speechSynthesis.getVoices().find(x=>/en-US/.test(x.lang)&&/Samantha|Google US|Natural/.test(x.name))||speechSynthesis.getVoices().find(x=>/en-US/.test(x.lang));if(v)u.voice=v;
+  u.onend=()=>{btn.textContent='▶ Listen';};btn.textContent='■ Stop';speechSynthesis.speak(u);
+}
 function rpRender(r,label){
+  RP_SPEECH=r.narrative;
   const n=r.narrative,c=r.facts.company;
   const ul=a=>'<ul class="vd-list-plain" style="margin:4px 0 12px 18px;font-size:14px;line-height:1.55">'+a.map(x=>'<li>'+uxEsc(x)+'</li>').join('')+'</ul>';
   document.getElementById('rp-view').innerHTML=`<div class="pl-pb">
     <div class="sm" style="margin-top:0">${uxEsc(label)}${r.writtenBy==='ai'?' · written with AI from your records':' · written from your records'}</div>
-    <div class="st" style="font-size:20px;margin:4px 0 10px">${uxEsc(n.headline)}</div>
+    <div class="pl-card-top" style="align-items:center"><div class="st" style="font-size:20px;margin:4px 0 10px">${uxEsc(n.headline)}</div>${'speechSynthesis' in window?'<button class="btn-xs p" id="rp-listen" onclick="rpListen()">▶ Listen</button>':''}</div>
     <div class="pl-strip">${[[c.newLeads,'New leads'],[c.medianResponseMinutes==null?'—':plFmtMin(c.medianResponseMinutes),'To pick up a lead'],[plMoney(c.signedValue)||'$0','Signed'],[plMoney(c.openValue)||'$0','Being sold']].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('')}</div>
     <div class="pl-h">What went well</div>${ul(n.successes||[])}
     <div class="pl-h">What needs attention</div>${ul(n.challenges||[])}
@@ -1016,6 +1033,8 @@ async function plOpenDeal(id){
       ${x.contact_phone?`<a class="btn-xs" href="tel:${uxEsc(x.contact_phone)}">📞 Call</a>`:''}${x.contact_email?`<a class="btn-xs" href="mailto:${uxEsc(x.contact_email)}">✉️ Email</a>`:''}
       ${crCanManage()?`<button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="plDeleteDeal('${x.id}')">Delete</button>`:''}</div>
     <div class="sm" id="pld-msg"></div>
+    <div class="pl-h">✨ Coach</div>
+    <div id="pld-coach"><div class="sm">Loading…</div></div>
     <div class="pl-h">Fit &amp; visit prep</div>
     <div id="pld-fit"><div class="sm">Loading…</div></div>
     <div class="pl-h">Estimates</div>
@@ -1059,6 +1078,7 @@ async function plOpenDeal(id){
     <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${new Date(a.created_at).toLocaleString()}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
   plDealEstimates(x.id);
   fitLoad(x.id);
+  ccLoad(x.id);
   lfLoad(x.id);
   puLoad(x.id);
   bdLoad(x.id);
@@ -1067,6 +1087,47 @@ async function plOpenDeal(id){
   ivLoad(x.id);
   smLoad(x.id);
 }
+/* ---------- coach: lead summary, next move, replies ---------- */
+const CC={};
+async function ccLoad(dealId){
+  const el=document.getElementById('pld-coach');if(!el)return;
+  try{
+    const c=await plApi('/api/crm/deals/'+dealId+'/coach');const nm=c.nextMove;const em=c.latestEmail;
+    CC.next=nm&&nm.draft;CC.reply=em&&em.draft;
+    el.innerHTML=`<div class="cc-box">
+      ${c.leadSummary?`<div class="lbl">The lead</div><div class="cc-lines">${uxEsc(c.leadSummary)}</div>`:''}
+      <div class="lbl">Next move</div>
+      ${nm?`<div class="cc-lines"><b>${uxEsc(nm.advice)}</b>${nm.why?`<br><span class="sm" style="margin:0">${uxEsc(nm.why)}</span>`:''}</div>`:'<div class="sm" style="margin-top:2px">Ask for advice on how to move this deal forward.</div>'}
+      <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="ccNext('${dealId}',this)">${nm?'Think again':'What should I do next?'}</button>${nm&&nm.draft?`<button class="btn-xs" onclick="ccCompose('${dealId}',CC.next)">Use the drafted message</button>`:''}</div>
+      ${em?`<div class="lbl">Their latest email${em.answered?' (answered)':''}</div><div class="cc-lines">“${uxEsc(em.subject||'(no subject)')}” · ${new Date(em.at).toLocaleDateString()}</div>
+        <div class="vd-mbtns" style="margin-top:6px">${em.draft?`<button class="btn-xs p" onclick="ccCompose('${dealId}',CC.reply)">✨ Reply is drafted: review it</button>`:''}<button class="btn-xs${em.draft?'':' p'}" onclick="ccDraft('${dealId}',this)">${em.draft?'Draft again':'✨ Draft a reply'}</button></div>`
+        :`<div class="vd-mbtns" style="margin-top:8px"><button class="btn-xs" onclick="ccDraft('${dealId}',this)">✨ Draft a reply to their last message</button></div>`}
+      <div id="cc-compose"></div>
+      ${c.ai?'':'<div class="sm">AI isn’t switched on, so these are plain suggestions.</div>'}
+    </div>`;
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function ccNext(dealId,btn){btn.disabled=true;btn.textContent='Thinking…';try{await plApi('/api/crm/deals/'+dealId+'/next-move',{body:{}});ccLoad(dealId);}catch(e){showNotif('Could not do that',e.message);btn.disabled=false;}}
+async function ccDraft(dealId,btn){btn.disabled=true;btn.textContent='Drafting…';try{const d=await plApi('/api/crm/deals/'+dealId+'/draft-reply',{body:{}});await ccLoad(dealId);ccCompose(dealId,d);}catch(e){showNotif('Could not draft a reply',e.message);btn.disabled=false;btn.textContent='✨ Draft a reply';}}
+function ccCompose(dealId,d){
+  d=d||{};const el=document.getElementById('cc-compose');if(!el)return;
+  el.innerHTML=`<div class="pl-form" style="margin-top:10px"><div class="full"><label for="cc-sub">Subject</label><input id="cc-sub" class="cred-input" value="${uxEsc(d.subject||'')}"></div>
+    <div class="full"><label for="cc-msg">Message</label><textarea id="cc-msg" class="cred-input" rows="8">${uxEsc(d.message||'')}</textarea></div></div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="ccSend('${dealId}',this)">Send email</button><button class="btn-xs" onclick="document.getElementById('cc-compose').innerHTML=''">Not now</button></div><div class="sm" id="cc-msg-out"></div>`;
+  el.scrollIntoView({block:'nearest'});
+}
+async function ccSend(dealId,btn){const v=id=>document.getElementById(id).value;btn.disabled=true;try{await plApi('/api/crm/deals/'+dealId+'/email',{body:{subject:v('cc-sub'),message:v('cc-msg')}});showNotif('Email sent','');plOpenDeal(dealId);}catch(e){document.getElementById('cc-msg-out').textContent=e.message;btn.disabled=false;}}
+async function ccNudge(nid){
+  uxOpen(uxHead('Loading…'));
+  try{const n=await plApi('/api/crm/nudges/'+nid);
+    uxOpen(uxHead(`Invoice #${n.number}: ${n.days_overdue} days overdue`,`${uxEsc(n.name)} · ${esMoney(n.amount)} · to ${uxEsc(n.email||'no email')}`)+`
+      <div class="pl-form"><div class="full"><label for="nd-sub">Subject</label><input id="nd-sub" class="cred-input" value="${uxEsc(n.subject)}"></div>
+      <div class="full"><label for="nd-msg">Message</label><textarea id="nd-msg" class="cred-input" rows="10">${uxEsc(n.message)}</textarea></div></div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="ccNudgeSend('${nid}',this)">Send reminder</button><button class="btn-xs" onclick="ccNudgeSkip('${nid}')">Skip this one</button></div><div class="sm" id="nd-out"></div>`);}
+  catch(e){uxOpen(uxHead('Could not open it',uxEsc(e.message)));}
+}
+async function ccNudgeSend(nid,btn){btn.disabled=true;try{await plApi('/api/crm/nudges/'+nid+'/send',{body:{subject:document.getElementById('nd-sub').value,message:document.getElementById('nd-msg').value}});uxClose();showNotif('Reminder sent','');plLoadNeeds();}catch(e){document.getElementById('nd-out').textContent=e.message;btn.disabled=false;}}
+async function ccNudgeSkip(nid){try{await plApi('/api/crm/nudges/'+nid+'/skip',{body:{}});uxClose();plLoadNeeds();}catch(e){showNotif('Could not do that',e.message);}}
 /* ---------- fit, questionnaire, booking ---------- */
 async function fitLoad(dealId){
   const el=document.getElementById('pld-fit');if(!el)return;
@@ -1386,7 +1447,7 @@ async function jbOpen(dealId){
     <div class="pl-h">Daily log</div>
     <textarea id="jb-log" class="cred-input" rows="3" placeholder="What happened on site today?"></textarea>
     <div class="es-grid" style="grid-template-columns:1fr auto;align-items:center"><input id="jb-crew" class="cred-input" placeholder="Who was on site (optional)"><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="jb-share"> Share with homeowner</label></div>
-    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="jbLog(this)">Save log</button></div>
+    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="jbLog(this)">Save log</button>${window.SpeechRecognition||window.webkitSpeechRecognition?'<button class="btn-xs" id="jb-mic" onclick="jbMic()">🎤 Talk</button>':''}<button class="btn-xs" onclick="jbVoiceFile(this)" title="Turns what you wrote or said into the log, moves the phases you mention, and adds follow-up tasks">✨ File it for me</button></div><div class="sm" id="jb-voice-out"></div>
     ${d.logs.length?'<ul class="pl-tl" style="margin-top:8px">'+d.logs.slice(0,15).map(l=>`<li>${uxEsc(l.body)}<div class="pl-tl-meta">${fdate(l.log_date)} · ${uxEsc(l.author||'')}${l.crew?' · crew: '+uxEsc(l.crew):''}${l.shared?' · shared':''}</div></li>`).join('')+'</ul>':''}
     <div class="pl-h">Change orders</div>
     <div class="pl-list">${d.cos.map(coRow).join('')||'<div class="sm">None yet.</div>'}</div>
@@ -1540,6 +1601,22 @@ async function jbSaveItem(id,btn){
   btn.disabled=true;try{await plApi('/api/crm/schedule/'+id,{method:'PATCH',body:b});showNotif('Saved','');jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}
 }
 async function jbDelItem(id){if(!confirm('Delete this phase?'))return;try{await plApi('/api/crm/schedule/'+id,{method:'DELETE'});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
+let JBREC=null;
+function jbMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;const btn=document.getElementById('jb-mic');
+  if(JBREC){JBREC.stop();return;}
+  const r=JBREC=new SR();r.lang='en-US';r.interimResults=true;r.continuous=true;const ta=document.getElementById('jb-log');const start=ta.value?ta.value+' ':'';let fin='';
+  r.onresult=e=>{let inter='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t+' ';else inter+=t;}ta.value=start+fin+inter;};
+  r.onend=()=>{JBREC=null;btn.textContent='🎤 Talk';btn.classList.remove('p');};r.onerror=()=>{};
+  btn.textContent='■ Stop';btn.classList.add('p');r.start();
+}
+async function jbVoiceFile(btn){
+  const t=document.getElementById('jb-log').value;if(!t.trim()){document.getElementById('jb-voice-out').textContent='Say or type what happened first.';return;}
+  btn.disabled=true;btn.textContent='Filing…';
+  try{const r=await plApi('/api/crm/deals/'+JB.dealId+'/voice-log',{body:{text:t,share:document.getElementById('jb-share').checked}});
+    showNotif('Filed',[r.phases.length?r.phases.join(', '):'',r.tasks.length?r.tasks.length+' task'+(r.tasks.length===1?'':'s')+' added':'',r.issues.length?r.issues.length+' issue'+(r.issues.length===1?'':'s')+' flagged':''].filter(Boolean).join(' · ')||'Saved to the log.');jbOpen(JB.dealId);}
+  catch(e){document.getElementById('jb-voice-out').textContent=e.message;btn.disabled=false;btn.textContent='✨ File it for me';}
+}
 async function jbLog(btn){const b=document.getElementById('jb-log').value;if(!b.trim())return;btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/logs',{body:{body:b,crew:document.getElementById('jb-crew').value,shared:document.getElementById('jb-share').checked}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
 async function jbNewCO(btn,send){
   const v=id=>document.getElementById(id).value;btn.disabled=true;
@@ -1756,7 +1833,7 @@ async function plLoadNeeds(){
     el.innerHTML=items.map(i=>`<div class="pl-item ${i.kind}"><div class="pl-item-t">${uxEsc(i.title)}</div><div class="pl-tl-meta">Flagged ${plAgo(i.created_at)} ago</div>
       ${i.deal_title?`<div class="pl-item-d">${uxEsc(i.deal_title)}${i.deal_stage?' · '+uxEsc(plStage(i.deal_stage).label):''}</div>`:''}
       ${i.detail?`<div class="pl-item-d">${uxEsc(i.detail)}</div>`:''}
-      <div class="pl-acts">${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
+      <div class="pl-acts">${i.kind==='collect'&&/^nudge:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ccNudge('${(i.dedupe_key||'').slice(6)}')">Review &amp; send</button>`:''}${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
         <button class="btn-xs" onclick="plInboxAct(${i.id},'done')">✓ Done</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',1)">Snooze 1 day</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',3)">3 days</button></div></div>`).join('');

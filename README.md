@@ -671,6 +671,30 @@ Account → Plan & billing.
   automatic emails and check-ins carry a Spanish footer and link to a Spanish
   unsubscribe page (`?lang=es`, outside the signature).
 
+**The AI helping day to day (step 25).** `lib/crmCoach.js`, `routes/crmCoach.js`,
+a ✨ Coach section on every deal.
+- *Lead summary:* leads that come in from outside get three lines (Wants /
+  Budget / Next) the moment they arrive, written once and shared by the deal
+  and the team's "New lead" email (which waits up to 12 s for it).
+- *Next move:* "What should I do next?" on any deal: the advice, why, and a
+  drafted message; deals flagged as quiet get it added to their Needs-you item
+  (a few per tick).
+- *Reply drafts:* a customer email synced from Gmail gets a reply drafted
+  (`crm_emails.draft_reply`), in the company's voice from its past emails and
+  the homeowner's language; "Draft a reply" works on demand too. Review it and
+  send from the deal (`POST /api/crm/deals/:id/email`).
+- *Collections:* invoices 7+ days overdue get a reminder drafted
+  (`crm_invoice_nudges`; up to three, a week apart, firmer each time, aware of
+  how they've paid before; an AI draft that drops the pay link is replaced by
+  the plain one) and a "Review & send" item in Needs you.
+- *Voice job log:* 🎤 Talk and "✨ File it for me" on the job screen: a clean
+  site log, phases moved, follow-up tasks, and site issues flagged.
+- *Spoken briefing:* ▶ Listen on the weekly report (the browser's own voice).
+- *Business questions:* new assistant tools: sub_prices, job_margins,
+  win_rates, lead_sources, plus next_move and draft_reply.
+- Everything has a plain version when AI is off, and nothing here sends by
+  itself.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.
