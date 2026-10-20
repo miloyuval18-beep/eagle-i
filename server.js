@@ -217,7 +217,8 @@ app.use(crmBillingRoutes);
 app.use(crmCoachRoutes);
 app.use(stripeRoutes);
 
-app.get('/healthz', (req, res) => res.json({ ok: true }));
+// Which build is live (Render sets RENDER_GIT_COMMIT), so a deploy can be checked from outside.
+app.get('/healthz', (req, res) => res.json({ ok: true, version: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null }));
 
 // Eagle I CRM: a separate product with its own app, login and signup.
 app.get(['/crm', '/crm/'], (req, res) => {
