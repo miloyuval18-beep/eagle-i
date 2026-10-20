@@ -105,7 +105,7 @@ async function load(){
   }catch(e){document.getElementById('app').innerHTML='<div class="card">'+esc(e.message)+'</div>';}
 }
 function render(){
-  const p=P,photos=p.files.filter(f=>f.kind==='photo'),docs=p.files.filter(f=>f.kind==='document');
+  const p=P,photos=p.files.filter(f=>f.kind==='photo'),docs=p.files.filter(f=>f.kind!=='photo');
   document.title=p.project.title+' · '+(p.company.name||'');
   document.getElementById('app').innerHTML=`
   <div class="card">
@@ -124,12 +124,13 @@ function render(){
     <div style="margin-top:12px"><label class="btn btn-o" style="cursor:pointer">${esc(t('addPhotos'))}<input type="file" accept="image/*" multiple style="display:none" onchange="upload(this)"></label><div class="msg" id="up-msg"></div></div></div>
   ${docs.length||p.estimates.length?`<div class="card"><h2>${esc(t('documents'))}</h2>
     ${p.estimates.map(e=>`<div class="row"><a href="${esc(e.link)}${L==='es'?'?lang=es':''}">${esc(tm('estKind',e.kindKey,e.kind))} #${esc(e.number)}: ${esc(e.title)}</a><span class="tag">${esc(tm('estStatus',e.statusKey,e.status))} · ${money(e.total)}</span></div>`).join('')}
-    ${docs.map(f=>`<div class="row"><a href="${fileUrl(f.id)}" target="_blank" rel="noopener">${esc(f.caption||f.filename)}</a><span class="tag">PDF</span></div>`).join('')}</div>`:''}
+    ${docs.map(f=>`<div class="row"><a href="${fileUrl(f.id)}" target="_blank" rel="noopener">${esc(f.caption||f.filename)}</a><span class="tag">${esc(ftag(f))}</span></div>`).join('')}</div>`:''}
   ${homeHtml(p)}
   <div class="card"><h2>${esc(t('message',{co:p.company.name||t('us')}))}</h2>
     <textarea id="m" rows="4" placeholder="${esc(t('msgPh'))}" aria-label="${esc(t('yourMsg'))}"></textarea>
     <div style="margin-top:10px"><button class="btn" id="mb" onclick="send()">${esc(t('sendMsg'))}</button></div><div class="msg" id="m-msg" role="status"></div></div>`;
 }
+function ftag(f){const t=f.type||'';return /pdf/.test(t)?'PDF':/video/.test(t)?'Video':/word|msword/.test(t)?'Word':/sheet|excel|csv/.test(t)?'Excel':/acad|dxf/.test(t)?'CAD':'File';}
 function homeHtml(p){
   const h=p.home||{items:[]};let out='';
   const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString(loc(), {month:'short',day:'numeric',year:'numeric'}):'';

@@ -81,7 +81,9 @@ router.get('/api/crm-public/bid/:token/files/:fid', wrap('Failed to load the fil
   const f = await bids.bidFile(req.params.token, req.params.fid);
   if (!f) return res.status(404).type('text/plain').send('Not found.');
   res.set({ 'Content-Type': f.content_type, 'Content-Disposition': `inline; filename="${String(f.filename).replace(/[^\w.\- ]/g, '_')}"`, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
-  res.send(Buffer.from(f.data));
+  const data = await require('../lib/crmPortal').fileData(f);
+  if (!data) return res.status(404).type('text/plain').send('Not found.');
+  res.send(data);
 }));
 router.post('/api/crm-public/bid/:token', wrap('Failed to send your price', async (req, res) => {
   if (limited(req.ip)) return res.status(429).json({ error: { message: 'Too many attempts. Please try again later.' } });

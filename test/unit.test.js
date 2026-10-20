@@ -1382,3 +1382,40 @@ describe('CRM AI: estimate checks, forecasts, matching, coaching', () => {
     assert.deepEqual(pickByPrice(p.slice(0, 2), 1000).map(x => x.price), [100, 400]);
   });
 });
+
+describe('CRM project files: types, folders, plan versions, Drive uploads', () => {
+  const pt = require('../lib/crmPortal');
+  test('more kinds of files, checked by their bytes; nothing a browser could run', () => {
+    const zip = Buffer.from('PK\u0003\u0004xxxx', 'latin1');
+    assert.equal(pt.sniffType(zip, 'Scope.docx').ext, 'docx');
+    assert.equal(pt.sniffType(zip, 'Budget.xlsx').ext, 'xlsx');
+    assert.equal(pt.sniffType(zip, 'thing.exe'), null);
+    assert.equal(pt.sniffType(Buffer.from('AC1032abc'), 'plan.dwg').ext, 'dwg');
+    assert.equal(pt.sniffType(Buffer.concat([Buffer.alloc(4), Buffer.from('ftypisom')]), 'walk.mp4').kind, 'video');
+    assert.equal(pt.sniffType(Buffer.concat([Buffer.alloc(4), Buffer.from('ftypheic')]), 'IMG.heic'), null);
+    assert.equal(pt.sniffType(Buffer.from('a,b\n1,2'), 'takeoff.csv').type, 'text/csv');
+    assert.equal(pt.sniffType(Buffer.from('<script>x</script>'), 'notes.txt'), null);
+    assert.equal(pt.sniffType(Buffer.from('<svg/>'), 'logo.svg'), null);
+  });
+  test('folders are guessed from the name and kind', () => {
+    assert.equal(pt.guessFolder({ filename: 'A2.1 Elevations.pdf', type: 'application/pdf' }), 'plans');
+    assert.equal(pt.guessFolder({ filename: 'Signed contract.pdf' }), 'contracts');
+    assert.equal(pt.guessFolder({ filename: 'IMG_0001.jpg', type: 'image/jpeg' }), 'photos');
+    assert.equal(pt.guessFolder({ filename: 'scan.jpg', type: 'image/jpeg', caption: 'Receipt' }), 'receipts');
+    assert.equal(pt.guessFolder({ filename: 'Notes.pdf' }), 'other');
+  });
+  test('the same sheet is recognised across revisions', () => {
+    const k = pt.sheetKey('A1 Floor Plan.pdf');
+    for (const n of ['A1 Floor Plan rev2.pdf', 'A1 Floor Plan Rev 3 (1).pdf', 'A1 floor plan 2026-10-01 FINAL.pdf', 'A1 Floor Plan v4.pdf', 'A1 Floor Plan (revised).pdf']) assert.equal(pt.sheetKey(n), k, n);
+    assert.notEqual(pt.sheetKey('A2 Floor Plan.pdf'), k);
+  });
+  test('a Drive upload carries the metadata and the exact bytes', () => {
+    const { multipart } = require('../lib/crmDrive');
+    const bytes = Buffer.from([0, 1, 2, 255]);
+    const { boundary, body } = multipart({ name: 'x.pdf', parents: ['p'] }, bytes, 'application/pdf');
+    const s = body.toString('latin1');
+    assert.ok(s.startsWith(`--${boundary}\r\n`) && s.endsWith(`--${boundary}--`));
+    assert.ok(s.includes('"parents":["p"]'));
+    assert.ok(body.includes(bytes));
+  });
+});

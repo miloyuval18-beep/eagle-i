@@ -43,6 +43,24 @@ router.post('/api/crm/google/sync', requireAuth, managersOnly, async (req, res) 
   try { res.json({ ok: true, ...(await google.processGoogleSync({ onlyTenantId: req.tenantId })) }); } catch (err) { fail(res, err, 'Failed to read email'); }
 });
 
+// Project files in Google Drive (lib/crmDrive.js).
+router.get('/api/crm/drive', requireAuth, async (req, res) => {
+  try { res.json(await require('../lib/crmDrive').status(req.tenantId)); } catch (err) { fail(res, err, 'Failed to load Google Drive'); }
+});
+router.post('/api/crm/drive/enable', requireAuth, managersOnly, async (req, res) => {
+  try {
+    const st = await require('../lib/crmDrive').enable(req.tenantId);
+    require('../lib/crmDrive').processDriveSync().catch(e => console.error('[crmDrive] first sync failed:', e.message));
+    res.json(st);
+  } catch (err) { fail(res, err, 'Failed to switch on Google Drive'); }
+});
+router.post('/api/crm/drive/disable', requireAuth, managersOnly, async (req, res) => {
+  try { res.json(await require('../lib/crmDrive').disable(req.tenantId)); } catch (err) { fail(res, err, 'Failed'); }
+});
+router.post('/api/crm/drive/sync', requireAuth, managersOnly, async (req, res) => {
+  try { const r = await require('../lib/crmDrive').processDriveSync(); res.json({ ok: true, ...r, status: await require('../lib/crmDrive').status(req.tenantId) }); } catch (err) { fail(res, err, 'Failed to sync'); }
+});
+
 router.delete('/api/crm/google', requireAuth, managersOnly, async (req, res) => {
   try { await google.disconnect(req.tenantId); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to disconnect'); }
 });

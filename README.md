@@ -401,6 +401,25 @@ and add a Connect webhook for `checkout.session.completed` and
 `/api/stripe/connect-webhook`; put its signing secret in
 `STRIPE_CONNECT_WEBHOOK_SECRET`.
 
+**Project files and Google Drive.** `lib/crmPortal.js` (files), `lib/crmDrive.js`.
+Every deal's files sit in folders (Plans, Permits, Contracts, Photos,
+Selections, Receipts, Warranties, Other), sorted automatically by name and kind
+and movable by hand. Photos, PDFs, video, Word/Excel/PowerPoint, CSV/text and
+CAD (DWG/DXF) are accepted, checked by their bytes; HTML/SVG never. A plan with
+the same sheet as an earlier one ("A1 Floor Plan rev3") becomes its next
+version; older versions stay one tap away, homeowners only see the current one,
+and bid requests always open the newest. Up to 8 MB per file, or 50 MB with
+Drive (big uploads go as raw bytes to `/api/crm/deals/:id/files/raw`).
+
+Google Drive uses the Workspace connection: the admin adds the Drive scope
+(`https://www.googleapis.com/auth/drive`) to Eagle I's domain-wide delegation,
+then switches Drive on in Company details. Eagle I makes a Shared Drive
+"Eagle I Projects" (or a folder, where shared drives aren't allowed), a folder
+per job with the subfolders above, and keeps both sides in step every few
+minutes (Drive's changes feed): uploads go up, files dropped or moved in Drive
+come down, deletes go to Drive's trash. Files up to 8 MB keep a copy in Eagle I;
+bigger ones live only in Drive and are fetched when opened.
+
 **Email only (step 10).** Eagle I CRM doesn't text. Everything that reaches a
 homeowner or a sub goes by email: playbook steps (old text steps saved before
 this change go out as emails with the same approved words), the assistant's

@@ -23,41 +23,72 @@ async function dealInTenant(req, res) {
   if (!r.rows.length) { res.status(404).json({ error: { message: 'Deal not found.' } }); return false; }
   return true;
 }
-function sendFile(res, f, download) {
+// Photos, PDFs and videos open in the browser; everything else downloads.
+// A Google Doc (made in Drive) opens in Drive.
+async function sendFile(res, f, download, { team = true } = {}) {
+  if (/^application\/vnd\.google-apps\./.test(f.content_type)) {
+    if (team && f.drive_link) return res.redirect(f.drive_link);
+    return res.status(404).type('text/plain').send('This file opens in Google Drive.');
+  }
+  let data;
+  try { data = await portal.fileData(f); } catch (e) { return res.status(e.status === 409 ? 409 : 502).type('text/plain').send(e.message); }
+  if (!data) return res.status(404).type('text/plain').send('Not found.');
+  const inline = !download && (/^image\/(jpeg|png|webp)$|^application\/pdf$|^video\//.test(f.content_type));
   res.set({
-    'Content-Type': f.content_type, 'Content-Length': f.size, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff',
-    'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${String(f.filename).replace(/"/g, '')}"`
+    'Content-Type': f.content_type, 'Content-Length': data.length, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox",
+    'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${String(f.filename).replace(/["\r\n]/g, '')}"`
   });
-  res.end(f.data);
+  res.end(data);
 }
 
 // ---------- the team's side ----------
 
 router.get('/api/crm/deals/:id/files', requireAuth, async (req, res) => {
-  try { if (await dealInTenant(req, res)) res.json({ files: await portal.listFiles(req.tenantId, req.params.id) }); } catch (err) { fail(res, err, 'Failed to load files'); }
+  try {
+    if (!(await dealInTenant(req, res))) return;
+    const drive = await require('../lib/crmDrive').driveOn(req.tenantId);
+    const d = drive ? (await query('SELECT drive_folder_id FROM crm_deals WHERE id = $1', [req.params.id])).rows[0] : null;
+    res.json({ files: await portal.listFiles(req.tenantId, req.params.id), folders: portal.FOLDERS, maxMb: drive ? 50 : 8,
+      drive: drive ? { on: true, folderLink: d && d.drive_folder_id ? `https://drive.google.com/drive/folders/${d.drive_folder_id}` : null } : { on: false } });
+  } catch (err) { fail(res, err, 'Failed to load files'); }
 });
 
 router.post('/api/crm/deals/:id/files', requireAuth, async (req, res) => {
   const b = req.body || {};
   try {
     if (!(await dealInTenant(req, res))) return;
-    const f = await portal.addFile({ tenantId: req.tenantId, dealId: req.params.id, filename: b.filename, dataBase64: b.dataBase64, caption: b.caption, shared: b.shared === undefined ? null : !!b.shared, userId: req.userId });
+    const f = await portal.addFile({ tenantId: req.tenantId, dealId: req.params.id, filename: b.filename, dataBase64: b.dataBase64, caption: b.caption, shared: b.shared === undefined ? null : !!b.shared, folder: b.folder || null, userId: req.userId });
     res.json({ ok: true, file: f });
   } catch (err) { fail(res, err, 'Failed to upload'); }
+});
+
+// The same, with the raw bytes as the body (big files: no base64 on the way).
+// The name, folder and sharing come in headers.
+// Only application/octet-stream is read (a cross-site form can't send that without the browser asking first).
+router.post('/api/crm/deals/:id/files/raw', requireAuth, express.raw({ type: 'application/octet-stream', limit: '52mb' }), async (req, res) => {
+  try {
+    if (!req.is('application/octet-stream')) return res.status(415).json({ error: { message: 'Send the file as application/octet-stream.' } });
+    if (!(await dealInTenant(req, res))) return;
+    const h = (k) => { const v = req.get(k); try { return v == null ? null : decodeURIComponent(v); } catch (e) { return v; } };
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: { message: 'Choose a file to upload.' } });
+    const f = await portal.addFile({ tenantId: req.tenantId, dealId: req.params.id, filename: h('X-Filename') || 'file', buffer: req.body, caption: h('X-Caption'), shared: h('X-Shared') == null ? null : h('X-Shared') === '1', folder: h('X-Folder') || null, userId: req.userId });
+    res.json({ ok: true, file: f });
+  } catch (err) { fail(res, err.type === 'entity.too.large' ? Object.assign(err, { status: 413, message: 'That file is too big. The limit is 50 MB.' }) : err, 'Failed to upload'); }
 });
 
 router.get('/api/crm/files/:fileId', requireAuth, async (req, res) => {
   try {
     const f = await portal.getFile(req.tenantId, req.params.fileId);
     if (!f) return res.status(404).json({ error: { message: 'File not found.' } });
-    sendFile(res, f, req.query.download === '1');
+    await sendFile(res, f, req.query.download === '1');
   } catch (err) { fail(res, err, 'Failed to load the file'); }
 });
 
 router.patch('/api/crm/files/:fileId', requireAuth, async (req, res) => {
   const b = req.body || {};
   try {
-    if (!(await portal.updateFile({ tenantId: req.tenantId, id: req.params.fileId, shared: b.shared, caption: b.caption }))) return res.status(404).json({ error: { message: 'File not found.' } });
+    if (!(await portal.updateFile({ tenantId: req.tenantId, id: req.params.fileId, shared: b.shared, caption: b.caption, folder: b.folder, filename: b.filename, splitVersion: !!b.splitVersion }))) return res.status(404).json({ error: { message: 'File not found.' } });
     res.json({ ok: true });
   } catch (err) { fail(res, err, 'Failed to save'); }
 });
@@ -124,7 +155,7 @@ router.get('/api/crm-public/portal/:token/files/:fileId', async (req, res) => {
   try {
     const f = await portal.portalFile(req.params.token, req.params.fileId);
     if (!f) return res.status(404).send('Not found');
-    sendFile(res, f, req.query.download === '1');
+    await sendFile(res, f, req.query.download === '1', { team: false });
   } catch (err) { res.status(500).send('Failed'); }
 });
 

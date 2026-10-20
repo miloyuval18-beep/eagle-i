@@ -88,6 +88,10 @@ select{width:auto;cursor:pointer}
 .pl-item.collect{border-left:4px solid var(--amber)}
 .pl-item.change_catch,.pl-item.cost_forecast,.pl-item.po_match,.pl-item.photo_check{border-left:4px solid var(--amber)}
 .pl-item.schedule_risk{border-left:4px solid var(--red)}
+.fl-drop{border-radius:12px;transition:background .15s}.fl-drop.fl-over{background:rgba(31,78,121,.08);outline:2px dashed var(--accent);outline-offset:4px}
+.fl-more{position:relative;display:inline-block}.fl-more>summary{list-style:none;cursor:pointer}.fl-more>summary::-webkit-details-marker{display:none}
+.fl-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;background:var(--bg2);border:1px solid var(--bdr2);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.fl-menu select{width:100%;margin-top:3px}
 .ai-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 4px}.ai-tiles.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:520px){.ai-tiles,.ai-tiles.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .cc-box{background:linear-gradient(180deg,#f2f7fb,#ffffff);border:1px solid #c9d8e6;border-radius:14px;padding:12px 14px}
@@ -850,7 +854,7 @@ async function gwLoad(){
     if(!manage){el.innerHTML='<div class="sm">Not connected. Ask your account owner or an admin to connect it.</div>';return;}
     el.innerHTML=`<div class="pl-pb">
       <div class="pl-item-t">Step 1: Allow Eagle I in your Google Admin console</div>
-      <ol style="margin:8px 0 0 18px;font-size:14px;color:var(--ink2)"><li>Open <a href="https://admin.google.com/ac/owl/domainwidedelegation" target="_blank" rel="noopener">admin.google.com → Security → API controls → Domain-wide delegation</a></li><li>Click <b>Add new</b> and paste these two values. This gives read-only access, and you can remove it there any time.</li></ol>
+      <ol style="margin:8px 0 0 18px;font-size:14px;color:var(--ink2)"><li>Open <a href="https://admin.google.com/ac/owl/domainwidedelegation" target="_blank" rel="noopener">admin.google.com → Security → API controls → Domain-wide delegation</a></li><li>Click <b>Add new</b> and paste these two values. Email access is read-only; the Drive scope lets Eagle I keep each job’s files in a company Drive. You can remove it there any time.</li></ol>
       <label for="gw-cid" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Client ID</label><div style="display:flex;gap:6px"><input id="gw-cid" class="cred-input" readonly value="${uxEsc(d.clientId||'')}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('gw-cid')">Copy</button></div>
       <label for="gw-sc" style="font-size:12px;font-weight:700;display:block;margin-top:8px">OAuth scopes</label><div style="display:flex;gap:6px"><input id="gw-sc" class="cred-input" readonly value="${uxEsc(d.scopes.join(','))}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('gw-sc')">Copy</button></div>
       <div class="pl-item-t" style="margin-top:16px">Step 2: Connect</div>
@@ -863,9 +867,11 @@ async function gwLoad(){
     <div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(c.domain)}</div><div class="pl-item-d">${c.status==='connected'?'Connected':'Problem'} · reading ${inc} of ${d.mailboxes.length} mailboxes${c.last_synced_at?' · last read '+new Date(c.last_synced_at).toLocaleString():''}</div></div><span class="pl-pill ${c.status==='connected'?'on':'need'}">${c.status==='connected'?'● On':'Needs attention'}</span></div>
     ${c.last_error?`<div class="pl-banner" style="margin-top:8px"><span>${uxEsc(c.last_error)}</span></div>`:''}
     ${manage?`<div class="vd-mbtns"><button class="btn-xs p" onclick="gwSync(this)">Read email now</button><button class="btn-xs" style="color:var(--red)" onclick="gwDisconnect()">Disconnect</button></div>`:''}
+    <div id="gw-drive"></div>
     <div class="pl-h" style="font-size:14px">Mailboxes</div>
     <div class="pl-list">${d.mailboxes.map(m=>`<div class="pl-item" style="padding:8px 10px"><label class="pl-switch" style="justify-content:space-between"><span style="min-width:0;overflow-wrap:anywhere"><b>${uxEsc(m.name||m.email)}</b><br><span class="sm" style="margin:0">${uxEsc(m.email)} · ${m.logged} customer email${m.logged===1?'':'s'} logged${m.status==='error'&&m.last_error?' · ⚠ '+uxEsc(m.last_error):''}</span></span><input type="checkbox" ${m.included?'checked':''} ${manage?'':'disabled'} onchange="gwInclude(${m.id},this.checked)" aria-label="Read ${uxEsc(m.email)}"></label></div>`).join('')}</div>
   </div>`;
+  dvLoad();
 }
 async function gwConnect(btn){
   const msg=document.getElementById('gw-msg');btn.disabled=true;msg.textContent='Checking with Google…';
@@ -1148,6 +1154,89 @@ async function wlLoad(){
       ${w.lostReasons.length?`<div class="pl-item"><div class="pl-item-t">Why deals were lost</div><div class="pl-tags">${w.lostReasons.map(r=>`<span class="pl-tag">${uxEsc(r.reason)} · ${r.n}</span>`).join('')}</div></div>`:''}</div>`;}
   catch(e){el.innerHTML='';}
 }
+const FL={dealId:null,files:[],folder:'all',folders:{},drive:{on:false},maxMb:8};
+const flIcon=f=>f.googleDoc?'🟦':f.kind==='video'?'🎬':/pdf/.test(f.content_type)?'📄':/word|msword/.test(f.content_type)?'📝':/sheet|excel|csv/.test(f.content_type)?'📊':/presentation|powerpoint/.test(f.content_type)?'📽':/acad|dxf/.test(f.content_type)?'📐':'🗂';
+const flSize=n=>!n?'':n<1048576?Math.max(1,Math.round(n/1024))+' KB':(n/1048576).toFixed(n<10485760?1:0)+' MB';
+async function flLoad(dealId){
+  const el=document.getElementById('pld-files');if(!el)return;
+  if(FL.dealId!==dealId){FL.folder='all';}
+  FL.dealId=dealId;
+  try{const r=await plApi('/api/crm/deals/'+dealId+'/files');Object.assign(FL,{files:r.files,folders:r.folders,drive:r.drive,maxMb:r.maxMb});flRender();
+    const sel=document.getElementById('pld-folder');if(sel&&sel.options.length<2)sel.innerHTML='<option value="">Sort it for me</option>'+Object.entries(FL.folders).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+    const hint=document.getElementById('pld-up-hint');if(hint)hint.textContent=`Photos, PDFs, videos, Word, Excel, CAD and more, up to ${FL.maxMb} MB each.${FL.drive.on?'':' Connect Google Drive (Company details) for files up to 50 MB.'}`;}
+  catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+function flRender(){
+  const el=document.getElementById('pld-files');if(!el)return;
+  const cur=FL.files.filter(f=>!f.superseded_at);
+  const count=k=>cur.filter(f=>f.folder===k).length;
+  const chips=`<div class="pl-stages" style="margin:0 0 8px">${[['all','All',cur.length],...Object.entries(FL.folders).map(([k,v])=>[k,v,count(k)]).filter(x=>x[2])].map(([k,v,n])=>`<button class="pl-chip${FL.folder===k?' active':''}" onclick="FL.folder='${k}';flRender()">${v}<b>${n}</b></button>`).join('')}</div>`;
+  const shown=cur.filter(f=>FL.folder==='all'||f.folder===FL.folder);
+  const photos=shown.filter(f=>f.kind==='photo'),docs=shown.filter(f=>f.kind!=='photo');
+  const older=f=>f.version_group?FL.files.filter(x=>x.version_group===f.version_group&&x.superseded_at).sort((a,b)=>b.version-a.version):[];
+  const shareBtn=f=>f.googleDoc?'':`<button class="btn-xs" onclick="flShare('${f.id}',${!f.shared})" title="${f.shared?'The homeowner can see this. Tap to hide.':'Only your team can see this. Tap to share.'}">${f.shared?'👁 Shared':'🔒 Team'}</button>`;
+  const menu=f=>`<details class="fl-more"><summary class="btn-xs" aria-label="More">⋯</summary><div class="fl-menu">
+      <label class="sm" style="margin:0">Folder<select onchange="flMove('${f.id}',this.value)">${Object.entries(FL.folders).map(([k,v])=>`<option value="${k}"${k===f.folder?' selected':''}>${v}</option>`).join('')}</select></label>
+      <button class="btn-xs" onclick="flRename('${f.id}')">Rename</button>
+      ${f.version_group?`<button class="btn-xs" onclick="flSplit('${f.id}')">Not a new version</button>`:''}
+      ${f.drive_link?`<a class="btn-xs" href="${uxEsc(f.drive_link)}" target="_blank" rel="noopener">Open in Drive</a>`:''}
+      <a class="btn-xs" href="/api/crm/files/${f.id}?download=1">Download</a>
+      <button class="btn-xs" style="color:var(--red)" onclick="flDelete('${f.id}')">Delete</button></div></details>`;
+  const grid=photos.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px">${photos.map(f=>`<div style="position:relative"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener"><img src="/api/crm/files/${f.id}" alt="${uxEsc(f.caption||f.filename)}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block"></a>
+      <button class="pl-tag" style="position:absolute;left:4px;bottom:4px;background:var(--bg2);cursor:pointer" onclick="flShare('${f.id}',${!f.shared})" title="${f.shared?'The homeowner can see this. Tap to hide.':'Only your team can see this. Tap to share.'}">${f.shared?'👁':'🔒'}</button>${f.from_homeowner?'<span class="pl-tag" style="position:absolute;right:4px;top:4px;background:var(--bg2)">From them</span>':''}
+      <span style="position:absolute;right:2px;bottom:2px">${menu(f)}</span></div>`).join('')}</div>`:'';
+  const list=docs.length?'<div class="pl-list" style="margin-top:8px">'+docs.map(f=>{const o=older(f);return `<div class="pl-item" style="padding:8px 10px">
+      <div style="display:flex;gap:8px;align-items:center"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow-wrap:anywhere;font-weight:700">${flIcon(f)} ${uxEsc(f.caption&&f.caption!=='Receipt'?f.caption:f.filename)}</a>${shareBtn(f)}${menu(f)}</div>
+      <div class="pl-tags">${f.version>1?`<span class="pl-tag gB">v${f.version}</span>`:''}${FL.folder==='all'?`<span class="pl-tag">${uxEsc(FL.folders[f.folder]||f.folder)}</span>`:''}${f.size?`<span class="pl-tag">${flSize(Number(f.size))}</span>`:''}${f.in_drive?'<span class="pl-tag auto">In Drive</span>':''}<span class="pl-tag">${new Date(f.created_at).toLocaleDateString([], {month:'short',day:'numeric'})}${f.uploaded_by_name?' · '+uxEsc(f.uploaded_by_name):''}</span></div>
+      ${o.length?`<details style="margin-top:4px"><summary class="sm" style="cursor:pointer;margin:0">${o.length} older version${o.length===1?'':'s'}</summary>${o.map(x=>`<div class="sm" style="margin:4px 0 0"><a href="/api/crm/files/${x.id}" target="_blank" rel="noopener">v${x.version} · ${uxEsc(x.filename)}</a> · replaced ${new Date(x.superseded_at).toLocaleDateString()}</div>`).join('')}</details>`:''}</div>`;}).join('')+'</div>':'';
+  const drive=FL.drive.on?`<div class="sm" style="margin:0 0 6px">☁️ Saved to your Google Drive${FL.drive.folderLink?` · <a href="${uxEsc(FL.drive.folderLink)}" target="_blank" rel="noopener">Open this job’s folder</a>`:' · the job’s folder is being made'}</div>`:'';
+  el.innerHTML=drive+(cur.length?chips:'')+grid+list+(!shown.length?`<div class="sm">${cur.length?'Nothing in this folder yet.':'No files yet. Drop them here, or tap “Add files”.'}</div>`:'');
+}
+async function flUpload(dealId,input,dropped){
+  const msg=document.getElementById('pld-up-msg');const files=dropped||[...input.files];const share=document.getElementById('pld-share').checked;
+  const sel=document.getElementById('pld-folder');const folder=sel?sel.value:'';
+  let ok=0,notes=[];
+  for(let f of files){
+    msg.textContent=`Uploading ${f.name}…`;
+    try{f=await prepFile(f);}catch(e){msg.textContent=e.message;continue;}
+    if(f.size>FL.maxMb*1024*1024){notes.push(`${f.name} is over ${FL.maxMb} MB.${FL.drive.on?'':' Connect Google Drive for bigger files.'}`);continue;}
+    try{
+      const r=await fetch('/api/crm/deals/'+dealId+'/files/raw',{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Filename':encodeURIComponent(f.name),'X-Shared':share?'1':'0',...(folder?{'X-Folder':folder}:{})},body:f});
+      let d={};try{d=await r.json();}catch(e){}
+      if(!r.ok)throw new Error((d.error&&d.error.message)||('Upload failed ('+r.status+')'));
+      ok++;if(d.file&&d.file.replaced)notes.push(`${d.file.filename} is now v${d.file.version} (replaces ${d.file.replaced}).`);
+    }catch(e){notes.push(`${f.name}: ${e.message}`);}
+  }
+  msg.textContent=(ok?`Added ${ok} file${ok>1?'s':''}. `:'')+notes.join(' ');
+  if(input)input.value='';flLoad(dealId);
+}
+function flDrop(ev,dealId){ev.preventDefault();ev.currentTarget.classList.remove('fl-over');const files=[...(ev.dataTransfer&&ev.dataTransfer.files||[])];if(files.length)flUpload(dealId,null,files);}
+async function flPatch(id,body,what){try{await plApi('/api/crm/files/'+id,{method:'PATCH',body});flLoad(FL.dealId);}catch(e){showNotif('Could not '+what,e.message);}}
+function flShare(a,b,c){if(c!==undefined)return flPatch(b,{shared:c},'change it');return flPatch(a,{shared:b},'change it');}
+function flMove(id,folder){flPatch(id,{folder},'move it');}
+function flRename(id){const f=FL.files.find(x=>x.id===id);const n=prompt('New name',f?f.filename.replace(/\.[a-z0-9]{1,5}$/i,''):'');if(n&&n.trim())flPatch(id,{filename:n.trim()},'rename it');}
+function flSplit(id){if(confirm('Keep this as its own file instead of a version of the other plan?'))flPatch(id,{splitVersion:true},'change it');}
+async function flDelete(id){const f=FL.files.find(x=>x.id===id);if(!confirm(`Delete ${f?f.filename:'this file'}?${FL.drive.on&&f&&f.in_drive?' It goes to Google Drive’s trash, where it can be restored.':''}`))return;try{await plApi('/api/crm/files/'+id,{method:'DELETE'});flLoad(FL.dealId);}catch(e){showNotif('Could not delete it',e.message);}}
+
+/* ---------- Google Drive (Company details) ---------- */
+async function dvLoad(){
+  const el=document.getElementById('gw-drive');if(!el)return;
+  let d;try{d=await plApi('/api/crm/drive');}catch(e){el.innerHTML='';return;}
+  const manage=crCanManage();
+  if(!d.on){
+    el.innerHTML=`<div class="pl-h" style="font-size:14px">Google Drive</div><div class="sm" style="margin-top:0">Keep every job’s files in your company’s Google Drive: a folder per job (Plans, Permits, Contracts, Photos, Selections, Receipts, Warranties), filled from Eagle I and kept in step both ways. Files up to 50 MB of any kind. Homeowners still see shared files in their portal without a Google account.</div>
+      <div class="sm">Before switching on, make sure your Google admin added the Drive scope to Eagle I in Domain-wide delegation: <code style="overflow-wrap:anywhere">${uxEsc(d.scope)}</code></div>
+      ${manage?`<div class="vd-mbtns"><button class="btn-xs p" onclick="dvEnable(this)">Switch on Google Drive</button></div><div class="sm" id="dv-msg"></div>`:''}`;
+    return;
+  }
+  el.innerHTML=`<div class="pl-h" style="font-size:14px">Google Drive</div>
+    <div class="pl-card-top"><div><div class="pl-item-t">${d.sharedDrive?'Shared drive':'Folder'} “Eagle I Projects”</div><div class="pl-item-d">${d.inDrive} file${d.inDrive===1?'':'s'} in Drive${d.waiting?` · ${d.waiting} still copying over`:''}${d.syncedAt?' · checked '+new Date(d.syncedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):''}</div></div><span class="pl-pill ${d.error?'need':'on'}">${d.error?'Needs a look':'● On'}</span></div>
+    ${d.error?`<div class="pl-banner" style="margin-top:8px"><span>${uxEsc(d.error)}</span></div>`:''}
+    <div class="vd-mbtns">${d.link?`<a class="btn-xs p" href="${uxEsc(d.link)}" target="_blank" rel="noopener">Open in Drive</a>`:''}${manage?`<button class="btn-xs" onclick="dvSync(this)">Sync now</button><button class="btn-xs" onclick="dvDisable()">Switch off</button>`:''}</div>`;
+}
+async function dvEnable(btn){btn.disabled=true;const m=document.getElementById('dv-msg');m.textContent='Setting up “Eagle I Projects” in your Drive…';try{await plApi('/api/crm/drive/enable',{body:{}});showNotif('Google Drive is on','Each job gets its folder over the next few minutes.');dvLoad();}catch(e){m.textContent=e.message;btn.disabled=false;}}
+async function dvSync(btn){btn.disabled=true;try{const r=await plApi('/api/crm/drive/sync',{body:{}});showNotif('Synced',`${r.pushed} sent to Drive, ${r.added} new from Drive.`);}catch(e){showNotif('Could not sync',e.message);}dvLoad();}
+async function dvDisable(){if(!confirm('Stop using Google Drive? Nothing is deleted: files stay in Drive, and copies kept in Eagle I stay here.'))return;try{await plApi('/api/crm/drive/disable',{body:{}});dvLoad();}catch(e){showNotif('Could not switch it off',e.message);}}
 </script>
 <script>
 /* ==================== PIPELINE (CRM) ==================== */
@@ -1291,9 +1380,11 @@ async function plOpenDeal(id){
       </div>
       <div class="vd-mbtns"><button class="btn btn-blue" onclick="ivCreate('${x.id}',this,true)">Create &amp; send</button><button class="btn-xs" onclick="ivCreate('${x.id}',this,false)">Save without sending</button></div><div class="sm" id="iv-msg"></div>
     </details>
-    <div class="pl-h">Photos &amp; files</div>
+    <div class="pl-h">Project files</div>
+    <div class="fl-drop" ondragover="event.preventDefault();this.classList.add('fl-over')" ondragleave="this.classList.remove('fl-over')" ondrop="flDrop(event,'${x.id}')">
     <div id="pld-files"><div class="sm">Loading…</div></div>
-    <div class="vd-mbtns" style="margin-top:6px"><label class="btn-xs p" style="cursor:pointer">📷 Add photos or PDFs<input type="file" accept="image/*,application/pdf" multiple style="display:none" onchange="flUpload('${x.id}',this)"></label><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="pld-share" checked> Share with the homeowner</label></div>
+    <div class="vd-mbtns" style="margin-top:6px"><label class="btn-xs p" style="cursor:pointer">＋ Add files<input type="file" multiple style="display:none" onchange="flUpload('${x.id}',this)"></label><label class="btn-xs" style="cursor:pointer">📷 Take a photo<input type="file" accept="image/*" capture="environment" style="display:none" onchange="flUpload('${x.id}',this)"></label><select id="pld-folder" aria-label="Folder" style="width:auto"><option value="">Sort it for me</option></select><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="pld-share"> Share with the homeowner</label></div>
+    <div class="sm" id="pld-up-hint" style="margin-top:2px"></div></div>
     <div class="vd-mbtns" style="margin-top:4px"><button class="btn-xs" onclick="vzOpen('${x.id}')">🎨 Show them the new design</button></div>
     <div class="sm" id="pld-up-msg"></div>
     <div class="pl-h">Homeowner portal</div>
@@ -1931,17 +2022,6 @@ function ivCopy(token){const u=location.origin+'/i/'+token;(navigator.clipboard?
 function ivRefresh(dealId){if(document.getElementById('pld-inv'))ivLoad(dealId);if(CR.view==='estimates')esLoad();}
 
 /* ---------- files & portal ---------- */
-async function flLoad(dealId){
-  const el=document.getElementById('pld-files');if(!el)return;
-  try{
-    const {files}=await plApi('/api/crm/deals/'+dealId+'/files');
-    const photos=files.filter(f=>f.kind==='photo'),docs=files.filter(f=>f.kind!=='photo');
-    el.innerHTML=(photos.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px">${photos.map(f=>`<div style="position:relative"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener"><img src="/api/crm/files/${f.id}" alt="${uxEsc(f.caption||f.filename)}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block"></a>
-      <button class="pl-tag" style="position:absolute;left:4px;bottom:4px;background:var(--bg2);cursor:pointer" onclick="flShare('${dealId}','${f.id}',${!f.shared})" title="${f.shared?'The homeowner can see this. Tap to hide.':'Only your team can see this. Tap to share.'}">${f.shared?'👁 Shared':'🔒 Team'}</button>${f.from_homeowner?'<span class="pl-tag" style="position:absolute;right:4px;top:4px;background:var(--bg2)">From them</span>':''}</div>`).join('')}</div>`:'')+
-      (docs.length?'<div class="pl-list" style="margin-top:8px">'+docs.map(f=>`<div class="pl-item" style="padding:8px 10px;display:flex;justify-content:space-between;gap:8px;align-items:center"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener" style="overflow-wrap:anywhere">📄 ${uxEsc(f.caption||f.filename)}</a><button class="btn-xs" onclick="flShare('${dealId}','${f.id}',${!f.shared})">${f.shared?'👁 Shared':'🔒 Team'}</button></div>`).join('')+'</div>':'')+
-      (!files.length?'<div class="sm">No photos or files yet.</div>':'');
-  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
-}
 // Photos from a phone: HEIC (iPhone) becomes JPEG, and very large photos are
 // shrunk, in the browser, before they're sent. Other files pass through.
 async function prepFile(f){
@@ -1959,20 +2039,6 @@ async function prepFile(f){
   return new File([blob],f.name.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
 }
 function flRead(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});}
-async function flUpload(dealId,input){
-  const msg=document.getElementById('pld-up-msg');const files=[...input.files];const share=document.getElementById('pld-share').checked;
-  let ok=0;
-  for(let f of files){
-    msg.textContent=`Uploading ${f.name}…`;
-    try{f=await prepFile(f);}catch(e){msg.textContent=e.message;continue;}
-    if(f.size>8*1024*1024){msg.textContent=`${f.name} is over 8 MB.`;continue;}
-    try{await plApi('/api/crm/deals/'+dealId+'/files',{body:{filename:f.name,dataBase64:await flRead(f),shared:share}});ok++;}
-    catch(e){msg.textContent=e.message;}
-  }
-  if(ok)msg.textContent=`Added ${ok} file${ok>1?'s':''}.`;
-  input.value='';flLoad(dealId);
-}
-async function flShare(dealId,id,shared){try{await plApi('/api/crm/files/'+id,{method:'PATCH',body:{shared}});flLoad(dealId);}catch(e){showNotif('Could not change it',e.message);}}
 async function ptLoad(dealId){
   const el=document.getElementById('pld-portal');if(!el)return;
   try{
