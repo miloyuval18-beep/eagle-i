@@ -52,6 +52,13 @@ input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 
 .banner{border-radius:10px;padding:12px 14px;font-size:15px;margin-bottom:14px}
 .banner.ok{background:rgba(44,110,73,.1);border:1px solid var(--ok)}
 .banner.warn{background:#fff6e0;border:1px solid #c79a2b}
+.prop{margin-top:16px}
+.prop .letter{white-space:pre-wrap;font-size:16px;line-height:1.6;padding:14px 16px;border-left:3px solid var(--accent);background:#f3f7fb;border-radius:0 10px 10px 0}
+.prop h2{margin:18px 0 6px}
+.prop .scope{margin-top:8px}.prop .scope b{display:block;font-size:15px}.prop .scope div{color:var(--ink2);font-size:15px}
+.prop .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.prop ul{margin:4px 0 0 18px;font-size:15px;color:var(--ink2)}.prop li{margin:2px 0}
+@media(max-width:560px){.prop .two{grid-template-columns:1fr}}
 .foot{font-size:12px;color:var(--ink3);text-align:center;margin:18px 0 30px}
 [hidden]{display:none!important}
 .lang{display:block;margin:0 0 6px auto;background:none;border:0;color:var(--accent);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer;padding:6px 8px}
@@ -73,11 +80,11 @@ const token=location.pathname.split('/').pop();
 let E=null,PREVIEW=false;
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const T={en:{estimate:'Estimate',design_agreement:'Design agreement',from:'{k} from {co}',accepted:'Accepted',declined:'Declined',expired:'Expired',draftPreview:'Draft preview',updating:'Being updated',preparedFor:'Prepared for {n}',validUntil:'Valid until {d}',other:'Other',subtotal:'Subtotal',tax:'Tax ({p}%)',total:'Total',dueAtSigning:'Due at signing ({p}%)',terms:'Terms',acceptedBy:'Accepted by {n} on {d}',
+const T={en:{theWork:'The work',included:'What’s included',notIncluded:'Not included',timeline:'Timeline',nextSteps:'Next steps',whyUs:'Why us',price:'Price',estimate:'Estimate',design_agreement:'Design agreement',from:'{k} from {co}',accepted:'Accepted',declined:'Declined',expired:'Expired',draftPreview:'Draft preview',updating:'Being updated',preparedFor:'Prepared for {n}',validUntil:'Valid until {d}',other:'Other',subtotal:'Subtotal',tax:'Tax ({p}%)',total:'Total',dueAtSigning:'Due at signing ({p}%)',terms:'Terms',acceptedBy:'Accepted by {n} on {d}',
   download:'⬇ Download PDF',print:'Print',previewNote:'This is how your customer sees it. Opening it yourself doesn’t count as a view.',ready:'Ready to go ahead?',typeName:'Type your full name to accept',iAccept:'I accept this {k} for {t}{terms}.',andTerms:' and its terms',acceptBtn:'Accept {k}',notGoing:'Not going ahead? Let us know',anything:'Anything we should know? (optional)',decline:'Decline',
   nextDeposit:'Next: the deposit',depositAsk:'To get started, {co} asks for {a} now.',payDeposit:'Pay the deposit',beingUpdated:'This estimate is being updated. You’ll get an email when the new version is ready.',expiredMsg:'This estimate has expired. Please contact {co}{ph} for an updated one.',at:' at {p}',
   tick:'Tick the box to confirm.',thanks:'<b>Thank you!</b> {co} has been notified and will be in touch about next steps.',thanksDecline:'Thanks for letting us know. We’ve passed it on.',loading:'Loading your estimate…',oops:'Something went wrong. Please try again.'},
-es:{estimate:'Presupuesto',design_agreement:'Acuerdo de diseño',from:'{k} de {co}',accepted:'Aceptado',declined:'Rechazado',expired:'Vencido',draftPreview:'Vista previa del borrador',updating:'En revisión',preparedFor:'Preparado para {n}',validUntil:'Válido hasta el {d}',other:'Otros',subtotal:'Subtotal',tax:'Impuesto ({p}%)',total:'Total',dueAtSigning:'A pagar al firmar ({p}%)',terms:'Términos',acceptedBy:'Aceptado por {n} el {d}',
+es:{theWork:'El trabajo',included:'Qué incluye',notIncluded:'No incluye',timeline:'Tiempo',nextSteps:'Siguientes pasos',whyUs:'Por qué nosotros',price:'Precio',estimate:'Presupuesto',design_agreement:'Acuerdo de diseño',from:'{k} de {co}',accepted:'Aceptado',declined:'Rechazado',expired:'Vencido',draftPreview:'Vista previa del borrador',updating:'En revisión',preparedFor:'Preparado para {n}',validUntil:'Válido hasta el {d}',other:'Otros',subtotal:'Subtotal',tax:'Impuesto ({p}%)',total:'Total',dueAtSigning:'A pagar al firmar ({p}%)',terms:'Términos',acceptedBy:'Aceptado por {n} el {d}',
   download:'⬇ Descargar PDF',print:'Imprimir',previewNote:'Así lo ve su cliente. Abrirlo usted mismo no cuenta como una vista.',ready:'¿Listo para seguir adelante?',typeName:'Escriba su nombre completo para aceptar',iAccept:'Acepto este {k} por {t}{terms}.',andTerms:' y sus términos',acceptBtn:'Aceptar {k}',notGoing:'¿No va a seguir adelante? Avísenos',anything:'¿Algo que debamos saber? (opcional)',decline:'Rechazar',
   nextDeposit:'Siguiente paso: el depósito',depositAsk:'Para empezar, {co} solicita {a} ahora.',payDeposit:'Pagar el depósito',beingUpdated:'Este presupuesto se está actualizando. Recibirá un correo cuando la nueva versión esté lista.',expiredMsg:'Este presupuesto venció. Por favor comuníquese con {co}{ph} para obtener uno actualizado.',at:' al {p}',
   tick:'Marque la casilla para confirmar.',thanks:'<b>¡Gracias!</b> Le avisamos a {co} y se comunicarán con usted para los siguientes pasos.',thanksDecline:'Gracias por avisarnos. Ya se lo hicimos saber al equipo.',loading:'Cargando su presupuesto…',oops:'Algo salió mal. Por favor intente de nuevo.'}};
@@ -106,6 +113,8 @@ function render(){
     <div style="margin-top:18px"><div class="kind">${esc(K)} #${esc(e.number)}</div><h1>${esc(e.title)}</h1>
     <div class="meta">${esc(t('preparedFor',{n:e.customer.name}))}${e.customer.address?' · '+esc(e.customer.address):''}${e.validUntil?'<br>'+esc(t('validUntil',{d:fmtDate(e.validUntil)})):''}</div></div>
     ${e.intro?`<div class="intro">${esc(e.intro)}</div>`:''}
+    ${propHtml(e.proposal)}
+    ${e.proposal?`<h2 style="margin-top:22px">${t('price')}</h2>`:''}
     ${e.sections.map(s=>`<div class="sec">${s.name||e.sections.length>1?`<div class="sec-h"><span>${esc(s.name||t('other'))}</span>${e.showLinePrices?'':`<span>${money(s.total)}</span>`}</div>`:''}
       ${s.lines.map(l=>`<div class="line"><div class="d">${esc(l.description)}${Number(l.quantity)!==1||l.unit!=='ea'?`<div class="q">${Number(l.quantity).toLocaleString(loc())} ${esc(l.unit)}</div>`:''}</div>${l.price!=null?`<div class="p">${money(l.price)}</div>`:''}</div>`).join('')}</div>`).join('')}
     <div class="tot">
@@ -135,6 +144,16 @@ function render(){
     act.innerHTML=(e.status==='draft'?`<p class="meta">${esc(t('beingUpdated'))}</p>`:e.expired?`<p class="meta">${esc(t('expiredMsg',{co:c.name,ph:c.phone?t('at',{p:c.phone}):''}))}</p>`:'')+'<div style="margin-top:8px">'+dl+'</div>';
   }
 }
+function propHtml(p){
+  if(!p)return '';
+  const ul=a=>a&&a.length?'<ul>'+a.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':'';
+  return `<div class="prop">${p.letter?`<div class="letter">${esc(p.letter)}</div>`:''}
+    ${p.scope&&p.scope.length?`<h2>${t('theWork')}</h2>${p.scope.map(s=>`<div class="scope"><b>${esc(s.section)}</b><div>${esc(s.text)}</div></div>`).join('')}`:''}
+    ${(p.included&&p.included.length)||(p.excluded&&p.excluded.length)?`<div class="two">${p.included&&p.included.length?`<div><h2>${t('included')}</h2>${ul(p.included)}</div>`:''}${p.excluded&&p.excluded.length?`<div><h2>${t('notIncluded')}</h2>${ul(p.excluded)}</div>`:''}</div>`:''}
+    ${p.timeline?`<h2>${t('timeline')}</h2><div class="meta">${esc(p.timeline)}</div>`:''}
+    ${p.whyUs?`<h2>${t('whyUs')}</h2><div class="meta">${esc(p.whyUs)}</div>`:''}
+    ${p.nextSteps&&p.nextSteps.length?`<h2>${t('nextSteps')}</h2><ol style="margin:4px 0 0 18px;font-size:15px;color:var(--ink2)">${p.nextSteps.map(x=>'<li>'+esc(x)+'</li>').join('')}</ol>`:''}</div>`;
+}
 function banner(html,kind){document.getElementById('msg').innerHTML=`<div class="banner ${kind}">${html}</div>`;window.scrollTo(0,0);}
 function showDecline(){document.getElementById('dec').hidden=false;}
 async function accept(){
@@ -158,6 +177,18 @@ function pdf(){
   line(`${t('preparedFor',{n:e.customer.name})}${e.customer.address?' · '+e.customer.address:''}`,{size:10});
   if(e.validUntil)line(t('validUntil',{d:fmtDate(e.validUntil)}),{size:10});
   if(e.intro){y+=6;line(e.intro);}
+  const P=e.proposal;
+  if(P){
+    const head=h=>{y+=10;line(h,{bold:true,size:12});};
+    if(P.letter){y+=8;line(P.letter,{size:10.5});}
+    if(P.scope&&P.scope.length){head(t('theWork'));for(const s of P.scope){line(s.section,{bold:true});line(s.text);y+=3;}}
+    if(P.included&&P.included.length){head(t('included'));P.included.forEach(x=>line('•  '+x));}
+    if(P.excluded&&P.excluded.length){head(t('notIncluded'));P.excluded.forEach(x=>line('•  '+x));}
+    if(P.timeline){head(t('timeline'));line(P.timeline);}
+    if(P.whyUs){head(t('whyUs'));line(P.whyUs);}
+    if(P.nextSteps&&P.nextSteps.length){head(t('nextSteps'));P.nextSteps.forEach((x,i)=>line((i+1)+'.  '+x));}
+    y+=6;head(t('price'));
+  }
   y+=8;
   for(const s of e.sections){
     if(s.name||e.sections.length>1){y+=6;if(y>730){doc.addPage();y=M;}doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(s.name||t('other'),M,y);if(!e.showLinePrices)doc.text(money(s.total),W-M,y,{align:'right'});y+=4;doc.line(M,y,W-M,y);y+=14;}

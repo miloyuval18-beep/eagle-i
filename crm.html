@@ -86,6 +86,10 @@ select{width:auto;cursor:pointer}
 .pl-item.referral{border-left:4px solid var(--green)}
 .pl-item.unhappy,.pl-item.site_issue{border-left:4px solid var(--red)}
 .pl-item.collect{border-left:4px solid var(--amber)}
+.pl-item.change_catch,.pl-item.cost_forecast,.pl-item.po_match,.pl-item.photo_check{border-left:4px solid var(--amber)}
+.pl-item.schedule_risk{border-left:4px solid var(--red)}
+.ai-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 4px}.ai-tiles.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:520px){.ai-tiles,.ai-tiles.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .cc-box{background:linear-gradient(180deg,#f2f7fb,#ffffff);border:1px solid #c9d8e6;border-radius:14px;padding:12px 14px}
 .cc-box .lbl{font-size:12px;font-weight:800;color:#2a6f97;letter-spacing:.02em;text-transform:uppercase;margin-top:10px}
 .cc-box .lbl:first-child{margin-top:0}
@@ -364,6 +368,23 @@ body{background:linear-gradient(180deg,#eaf1f7 0,#f4f6f8 360px) no-repeat,var(--
     <div class="ss" style="margin-bottom:10px">Your own items with cost and markup, ready to drop into any estimate. Homeowners only ever see prices.</div>
     <div id="cat-form"></div>
     <div class="pl-list" id="cat-list"><div class="pl-empty">Loading…</div></div>
+    <div class="pl-h">Products for selections</div>
+    <div class="ss" style="margin-bottom:10px">The tile, fixtures and finishes you like to offer, with a photo and the homeowner’s price. When you set up a selection on a job, Eagle I suggests three from here; the homeowner sees the photos in their portal.</div>
+    <details class="pl-pb" style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:800">＋ Add a product</summary>
+      <div class="pl-form" style="margin-top:8px">
+        <div><label for="pr-name">Name *</label><input id="pr-name" class="cred-input" placeholder="e.g. Zellige 4x4, white"></div>
+        <div><label for="pr-cat">Category *</label><input id="pr-cat" class="cred-input" placeholder="e.g. Backsplash tile" list="pr-cats"></div>
+        <div><label for="pr-brand">Brand</label><input id="pr-brand" class="cred-input"></div>
+        <div><label for="pr-price">Homeowner price ($) *</label><input id="pr-price" class="cred-input" inputmode="decimal"></div>
+        <div><label for="pr-unit">Per</label><select id="pr-unit"><option value="ea">each</option><option value="sf">sq ft</option><option value="lf">lin ft</option><option value="ls">job</option></select></div>
+        <div><label for="pr-photo">Photo</label><input id="pr-photo" type="file" accept="image/*"></div>
+        <div class="full"><label for="pr-style">Style, in a few words</label><input id="pr-style" class="cred-input" placeholder="e.g. handmade look, glossy, warm white"></div>
+        <div class="full"><label for="pr-link">Link (optional)</label><input id="pr-link" class="cred-input" type="url" inputmode="url"></div>
+      </div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="prAdd(this)">Add product</button></div><div class="sm" id="pr-msg"></div>
+      <datalist id="pr-cats"><option>Floor tile</option><option>Wall tile</option><option>Backsplash tile</option><option>Countertops</option><option>Cabinet hardware</option><option>Plumbing fixtures</option><option>Lighting</option><option>Flooring</option><option>Paint</option><option>Appliances</option></datalist>
+    </details>
+    <div id="pr-list"><div class="pl-empty">Loading…</div></div>
   </section>
   <section class="view" id="view-billing">
     <div class="sh"><div><div class="st">Plan &amp; billing</div><div class="ss">Every plan has every feature. They differ by how many people sign in and how much the assistant is used each month.</div></div></div>
@@ -413,6 +434,9 @@ body{background:linear-gradient(180deg,#eaf1f7 0,#f4f6f8 360px) no-repeat,var(--
     <div class="sh"><div><div class="st">Weekly reports</div><div class="ss">Every Monday morning: what went well, what needs attention, what each person worked on, and what to focus on. Written from your CRM records; every number comes from what was logged.</div></div>
       <button class="btn btn-blue" onclick="rpNow(this)">This week so far</button></div>
     <div id="rp-view"></div>
+    <div class="pl-h">Your coaching</div>
+    <div id="ch-box"><div class="sm">Loading…</div></div>
+    <div id="wl-box"></div>
     <div class="pl-h">Past weeks</div>
     <div class="pl-list" id="rp-list"><div class="pl-empty">Loading…</div></div>
   </section>
@@ -579,6 +603,7 @@ function rpRender(r,label){
   </div>`;
 }
 async function rpLoad(){
+  chLoad();
   const el=document.getElementById('rp-list');
   try{
     const {reports}=await plApi('/api/crm/reports');
@@ -611,6 +636,7 @@ async function esLoad(){
     document.getElementById('es-list').innerHTML=estimates.length?estimates.map(esRow).join(''):'<div class="pl-empty">No estimates yet. Open a deal and tap “Construction estimate” or “Design agreement”.</div>';
     esRenderCatalog(cat.categories);
     cfLoad();
+    prLoad();
     plApi('/api/crm/costing').then(({jobs})=>{
       document.getElementById('jc-all').innerHTML=jobs.length?jobs.map(j=>`<button class="pl-card" onclick="jbOpen('${j.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${j.marginPct==null?'—':j.marginPct+'%'}</div></div>
         <div class="pl-card-sub">Contract ${esMoney(j.contract)} · spent ${esMoney(j.actual)}${j.hasBudget?' of '+esMoney(j.budget)+' budget':''}</div>
@@ -706,6 +732,8 @@ function esRender(){
     <div class="es-tot" id="es-tot" style="margin-top:12px"></div>
     <div class="pl-h">Terms</div>
     <textarea id="es-terms" class="cred-input" rows="4" ${dis} oninput="ES.cur.terms=this.value">${uxEsc(e.terms||'')}</textarea>
+    <div class="pl-h">✨ Check &amp; proposal</div>
+    <div id="es-ai"><div class="sm">Loading…</div></div>
     <div class="vd-mbtns">
       ${locked?'':'<button class="btn btn-blue" onclick="esSave(this)">Save</button>'}
       ${locked?'':'<button class="btn-xs p" onclick="esSendDialog()">Send to homeowner…</button>'}
@@ -714,6 +742,7 @@ function esRender(){
       ${e.status==='draft'?'<button class="btn-xs" style="color:var(--red)" onclick="esDelete()">Delete draft</button>':''}
     </div><div class="sm" id="es-msg"></div>`);
   esRefresh();
+  if(ES.ai&&ES.ai._id===e.id)eaRender();else eaLoad(e.id);
 }
 function esRefresh(){
   const e=ES.cur,dm=Number(e.default_markup_pct)||0,t=esTotals();
@@ -883,6 +912,242 @@ async function coSave(btn){
   }catch(e){msg.textContent=e.message;}
   btn.disabled=false;
 }
+
+/* ---------- estimate: proposal and check (lib/crmEstimateAi.js) ---------- */
+async function eaLoad(id){
+  const el=document.getElementById('es-ai');if(!el)return;
+  try{const r=await plApi('/api/crm/estimates/'+id+'/ai');ES.ai={...r,_id:id};eaRender();}catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+function eaRender(){
+  const el=document.getElementById('es-ai');if(!el||!ES.ai)return;
+  const r=ES.ai,p=r.proposal,rv=r.review,locked=ES.cur.status==='accepted';
+  const lvl={warn:'⚠️',info:'💡',ai:'✨'};
+  const checks=rv?`<div class="lbl">Check before sending · ${new Date(rv.at||r.review_at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>
+    ${rv.items.length?'<div class="pl-list" style="margin-top:6px">'+rv.items.map((it,i)=>`<div class="pl-item" style="padding:8px 10px"><div style="font-size:14px">${lvl[it.level]||'•'} ${uxEsc(it.text)}</div>${it.add&&!locked?`<div class="pl-acts" style="margin-top:4px"><button class="btn-xs" onclick="eaAddLine(${i})">＋ Add “${uxEsc(it.add.description)}”${it.add.unit_cost?' at '+esMoney(it.add.unit_cost):''}</button></div>`:''}</div>`).join('')+'</div>':'<div class="cc-lines">Nothing stood out. Looks complete.</div>'}`:'';
+  const prop=p?`<div class="lbl" style="margin-top:12px">Proposal ${p.published?'<span class="pl-pill on" style="margin-left:6px">● On the estimate</span>':'<span class="pl-pill" style="margin-left:6px">Not shown yet</span>'}</div>
+    <div class="pl-form" style="margin-top:6px">
+      <div class="full"><label for="pr-letter">Letter to the homeowner</label><textarea id="pr-letter" class="cred-input" rows="5" ${locked?'disabled':''}>${uxEsc(p.letter||'')}</textarea></div>
+      ${(p.scope||[]).map((s,i)=>`<div class="full"><label for="pr-sc-${i}">Scope: ${uxEsc(s.section)}</label><textarea id="pr-sc-${i}" data-sec="${uxEsc(s.section)}" class="cred-input pr-scope" rows="3" ${locked?'disabled':''}>${uxEsc(s.text)}</textarea></div>`).join('')}
+      <div><label for="pr-inc">What’s included (one per line)</label><textarea id="pr-inc" class="cred-input" rows="4" ${locked?'disabled':''}>${uxEsc((p.included||[]).join('\n'))}</textarea></div>
+      <div><label for="pr-exc">Not included (one per line)</label><textarea id="pr-exc" class="cred-input" rows="4" ${locked?'disabled':''}>${uxEsc((p.excluded||[]).join('\n'))}</textarea></div>
+      <div class="full"><label for="pr-time">Timeline</label><input id="pr-time" class="cred-input" value="${uxEsc(p.timeline||'')}" ${locked?'disabled':''}></div>
+      <div><label for="pr-next">Next steps (one per line)</label><textarea id="pr-next" class="cred-input" rows="3" ${locked?'disabled':''}>${uxEsc((p.nextSteps||[]).join('\n'))}</textarea></div>
+      <div><label for="pr-why">Why us (optional)</label><textarea id="pr-why" class="cred-input" rows="3" ${locked?'disabled':''}>${uxEsc(p.whyUs||'')}</textarea></div>
+    </div>
+    ${locked?'':`<div class="vd-mbtns"><button class="btn-xs p" onclick="eaSaveProp(this,true)">${p.published?'Save':'Save &amp; show on the estimate'}</button>${p.published?'<button class="btn-xs" onclick="eaSaveProp(this,false)">Hide from the estimate</button>':'<button class="btn-xs" onclick="eaSaveProp(this,false)">Save without showing</button>'}<button class="btn-xs" onclick="eaWrite(this)">✨ Write it again</button></div>`}`:'';
+  el.innerHTML=`<div class="cc-box">${checks||'<div class="lbl">Check before sending</div><div class="sm" style="margin-top:2px">Looks for commonly missed items, prices below what you paid before, low margin and missing terms.</div>'}
+    ${locked?'':`<div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="eaCheck(this)">${rv?'Check again':'🔎 Check this estimate'}</button>${p?'':'<button class="btn-xs" onclick="eaWrite(this)">✨ Write a proposal</button>'}</div>`}
+    ${prop}${r.ai?'':'<div class="sm">AI isn’t switched on, so these are plain checks and a template proposal.</div>'}</div>`;
+}
+async function eaCheck(btn){btn.disabled=true;btn.textContent='Checking…';try{await esSave(null,true);const r=await plApi('/api/crm/estimates/'+ES.cur.id+'/check',{body:{}});ES.ai.review=r.review;eaRender();}catch(e){showNotif('Could not check it',e.message);btn.disabled=false;btn.textContent='🔎 Check this estimate';}}
+async function eaWrite(btn){btn.disabled=true;btn.textContent='Writing…';try{await esSave(null,true);const r=await plApi('/api/crm/estimates/'+ES.cur.id+'/proposal/write',{body:{}});ES.ai.proposal=r.proposal;eaRender();}catch(e){showNotif('Could not write it',e.message);btn.disabled=false;btn.textContent='✨ Write a proposal';}}
+async function eaSaveProp(btn,publish){
+  const g=id=>document.getElementById(id).value;const lines=id=>g(id).split('\n').map(x=>x.trim()).filter(Boolean);
+  const body={letter:g('pr-letter'),scope:[...document.querySelectorAll('.pr-scope')].map(t=>({section:t.dataset.sec,text:t.value})),included:lines('pr-inc'),excluded:lines('pr-exc'),timeline:g('pr-time'),nextSteps:lines('pr-next'),whyUs:g('pr-why'),published:!!publish};
+  btn.disabled=true;try{const r=await plApi('/api/crm/estimates/'+ES.cur.id+'/proposal',{method:'PUT',body});ES.ai.proposal=r.proposal;eaRender();showNotif(r.proposal.published?'Proposal is on the estimate':'Proposal saved','');}catch(e){showNotif('Could not save it',e.message);btn.disabled=false;}
+}
+function eaAddLine(i){
+  const it=ES.ai.review.items[i];if(!it||!it.add)return;esCapture();
+  ES.cur.lines.push({section:it.add.section||'',description:it.add.description,quantity:it.add.quantity||1,unit:ES.units.includes(it.add.unit)?it.add.unit:'ea',unit_cost:it.add.unit_cost||0,markup_pct:Number(ES.cur.default_markup_pct)||0,catalog_item_id:it.add.catalog_item_id||null,guess:!it.add.unit_cost});
+  it.add=null;esRender();showNotif('Line added','Enter your cost, then Save.');
+}
+
+/* ---------- takeoffs from plans ---------- */
+const TK={};
+async function tkOpen(dealId){
+  TK.dealId=dealId;uxOpen(uxHead('📐 Takeoff from plans','Loading…'));
+  try{
+    const r=await plApi('/api/crm/deals/'+dealId+'/takeoffs');TK.list=r.takeoffs;
+    const files=r.files.filter(f=>f.content_type==='application/pdf'||/^image\//.test(f.content_type));
+    uxOpen(uxHead('📐 Takeoff from plans','Quantities read from a plan sheet. Check every number before it goes on an estimate.')+`
+      <div class="pl-banner" style="margin-bottom:10px"><span>Eagle I reads the scale and written dimensions and says how it got each number and how sure it is. It can be wrong: only quantities you tick as checked can be added to an estimate.</span></div>
+      ${r.ai?(files.length?`<div class="pl-form"><div class="full"><label for="tk-file">Plan file</label><select id="tk-file">${files.map(f=>`<option value="${f.id}">${uxEsc(f.filename)}</option>`).join('')}</select></div>
+        <div class="full"><label for="tk-focus">What to measure (optional)</label><input id="tk-focus" class="cred-input" placeholder="e.g. flooring, drywall, paint, base trim, tile in both baths"></div></div>
+        <div class="vd-mbtns"><button class="btn btn-blue" onclick="tkRead(this)">Read the plans</button><span class="sm" style="margin:0">Takes up to a minute.</span></div>`
+        :'<div class="sm">Add the plans to this deal first (Photos &amp; files: PDF or a photo of the sheet).</div>'):'<div class="sm">Reading plans needs the AI switched on (ANTHROPIC_API_KEY on the server).</div>'}
+      <div id="tk-out">${r.takeoffs.map(tkHtml).join('')}</div>
+      <div class="vd-mbtns" style="margin-top:12px"><button class="btn-xs" onclick="plOpenDeal('${dealId}')">← Back to the deal</button></div>`);
+  }catch(e){uxOpen(uxHead('Could not open takeoffs',uxEsc(e.message)));}
+}
+function tkHtml(t){
+  const conf={high:'gA',medium:'gB',low:'warn'};
+  return `<div class="pl-pb" style="margin-top:12px" id="tk-${t.id}"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(t.filename||'Plans')}</div><div class="pl-item-d">Scale: ${uxEsc(t.scale||'not found')} · ${new Date(t.created_at).toLocaleDateString()}</div></div>${t.status==='added'?'<span class="pl-pill accepted">On an estimate</span>':''}</div>
+    ${t.notes?`<div class="sm">${uxEsc(t.notes)}</div>`:''}
+    <div class="pl-list" style="margin-top:8px">${t.items.map(x=>`<div class="pl-item" style="padding:8px 10px" data-i="${x.i}">
+      <div class="es-grid" style="grid-template-columns:auto 1fr 90px 70px;align-items:center;gap:6px"><input type="checkbox" data-f="checked" ${x.checked?'checked':''} aria-label="Checked"><input class="cred-input" data-f="name" value="${uxEsc(x.name)}" aria-label="Item"><input class="cred-input" data-f="quantity" inputmode="decimal" value="${x.quantity==null?'':x.quantity}" placeholder="?" aria-label="Quantity"><select data-f="unit" aria-label="Unit">${['sf','lf','sy','ea','cy','sq'].map(u=>`<option${u===x.unit?' selected':''}>${u}</option>`).join('')}</select></div>
+      <div class="pl-tags"><span class="pl-tag ${conf[x.confidence]||''}">${uxEsc(x.confidence)}</span>${x.trade?`<span class="pl-tag">${uxEsc(x.trade)}</span>`:''}${x.where?`<span class="pl-tag">${uxEsc(x.where)}</span>`:''}</div>
+      ${x.how?`<div class="sm" style="margin:4px 0 0">${uxEsc(x.how)}</div>`:''}</div>`).join('')}</div>
+    <div class="vd-mbtns"><button class="btn-xs" onclick="tkSave('${t.id}',this)">Save my checks</button><button class="btn-xs p" onclick="tkToEst('${t.id}',this)">Add checked to the estimate</button></div><div class="sm" id="tkm-${t.id}"></div></div>`;
+}
+function tkItems(id){return [...document.querySelectorAll('#tk-'+id+' [data-i]')].map(r=>{const g=f=>r.querySelector('[data-f="'+f+'"]');return {i:+r.dataset.i,checked:g('checked').checked,name:g('name').value,quantity:g('quantity').value,unit:g('unit').value};});}
+async function tkRead(btn){btn.disabled=true;btn.textContent='Reading the plans…';try{const r=await plApi('/api/crm/deals/'+TK.dealId+'/takeoffs',{body:{fileId:document.getElementById('tk-file').value,focus:document.getElementById('tk-focus').value}});document.getElementById('tk-out').insertAdjacentHTML('afterbegin',tkHtml(r.takeoff));btn.disabled=false;btn.textContent='Read the plans';}catch(e){showNotif('Could not read the plans',e.message);btn.disabled=false;btn.textContent='Read the plans';}}
+async function tkSave(id,btn){btn.disabled=true;try{await plApi('/api/crm/takeoffs/'+id,{method:'PUT',body:{items:tkItems(id)}});document.getElementById('tkm-'+id).textContent='Saved.';}catch(e){document.getElementById('tkm-'+id).textContent=e.message;}btn.disabled=false;}
+async function tkToEst(id,btn){
+  btn.disabled=true;const m=document.getElementById('tkm-'+id);
+  try{await plApi('/api/crm/takeoffs/'+id,{method:'PUT',body:{items:tkItems(id)}});const r=await plApi('/api/crm/takeoffs/'+id+'/to-estimate',{body:{}});
+    m.innerHTML=`Added ${r.added} line${r.added===1?'':'s'} to estimate #${r.number}${r.unpriced?` (${r.unpriced} need a cost)`:''}. <button class="btn-xs p" onclick="esOpen('${r.estimateId}')">Open the estimate</button>`;}
+  catch(e){m.textContent=e.message;btn.disabled=false;}
+}
+
+/* ---------- design visualizer ---------- */
+async function vzOpen(dealId){
+  uxOpen(uxHead('🎨 Design picture','Loading…'));
+  try{
+    const [st,{files}]=await Promise.all([plApi('/api/crm/visualizer'),plApi('/api/crm/deals/'+dealId+'/files')]);
+    const photos=files.filter(f=>f.kind==='photo');
+    uxOpen(uxHead('🎨 Design picture','Show the homeowner their own room with the new design. A picture to talk around, not a rendering to build from.')+
+      (!st.available?'<div class="pl-banner"><span>The design visualizer isn’t switched on yet: the server needs an image AI key (OPENAI_API_KEY).</span></div>':
+      !photos.length?'<div class="sm">Add a photo of the room to this deal first.</div>':
+      `<div class="sm">${st.used} of ${st.limit} pictures used this month.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;margin-top:8px">${photos.map((f,i)=>`<label style="position:relative;cursor:pointer"><input type="radio" name="vz-photo" value="${f.id}" ${i===0?'checked':''} style="position:absolute;left:6px;top:6px"><img src="/api/crm/files/${f.id}" alt="${uxEsc(f.caption||f.filename)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--bdr2)"></label>`).join('')}</div>
+      <label for="vz-design" style="display:block;font-size:12px;font-weight:700;margin-top:10px">The design</label><textarea id="vz-design" class="cred-input" rows="3" placeholder="e.g. white shaker cabinets, quartz counters with a waterfall island, brass pulls, light oak floors"></textarea>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="vzMake('${dealId}',this)">Make the picture</button><span class="sm" style="margin:0">Takes about 30 seconds. Saved to the deal for your team only.</span></div><div id="vz-out"></div>`)+
+      `<div class="vd-mbtns" style="margin-top:12px"><button class="btn-xs" onclick="plOpenDeal('${dealId}')">← Back to the deal</button></div>`);
+  }catch(e){uxOpen(uxHead('Could not open it',uxEsc(e.message)));}
+}
+async function vzMake(dealId,btn){
+  const pick=document.querySelector('input[name="vz-photo"]:checked');btn.disabled=true;btn.textContent='Making the picture…';
+  try{const r=await plApi('/api/crm/deals/'+dealId+'/visualize',{body:{fileId:pick&&pick.value,design:document.getElementById('vz-design').value}});
+    document.getElementById('vz-out').innerHTML=`<div style="margin-top:10px"><img src="/api/crm/files/${r.file.id}" alt="AI design idea" style="width:100%;border-radius:10px;border:1px solid var(--bdr2)"><div class="sm">AI design idea · saved to the deal’s files (team only; share it from there). ${r.used} of ${r.limit} used this month.</div></div>`;}
+  catch(e){showNotif('Could not make the picture',e.message);}
+  btn.disabled=false;btn.textContent='Make another';
+}
+
+/* ---------- portal questions on the deal ---------- */
+async function pqLoad(dealId){
+  const el=document.getElementById('pld-pq');if(!el)return;
+  try{const {questions}=await plApi('/api/crm/deals/'+dealId+'/portal-questions');
+    el.innerHTML=questions.length?`<details style="margin-top:8px"><summary class="sm" style="cursor:pointer;font-weight:700">💬 Questions asked in the portal (${questions.length})</summary><ul class="pl-tl" style="margin-top:6px">${questions.map(q=>`<li><b>${uxEsc(q.question)}</b><br>${uxEsc(q.answer||'')}<div class="pl-tl-meta">${new Date(q.created_at).toLocaleString()}${q.forwarded?' · sent to the team':''}</div></li>`).join('')}</ul></details>`:'';}
+  catch(e){el.innerHTML='';}
+}
+
+/* ---------- the job's outlook, change catches, punch list, photos ---------- */
+async function joLoad(dealId){
+  const el=document.getElementById('jo-box');if(!el)return;
+  try{
+    const o=await plApi('/api/crm/deals/'+dealId+'/outlook');JB.outlook=o;
+    const c=o.cost,r=o.risk,pctf=n=>n==null?'—':n.toFixed(1)+'%';
+    const costHtml=c.ready?`<div class="ai-tiles three">
+        <div class="pl-tile"><div class="pl-tile-v" style="color:${c.margin!=null&&c.plannedMargin!=null&&c.margin<c.plannedMargin-5?'var(--red)':'var(--ink)'}">${pctf(c.margin)}</div><div class="pl-tile-l">Likely margin (planned ${pctf(c.plannedMargin)})</div></div>
+        <div class="pl-tile"><div class="pl-tile-v">${esMoney(c.eac).replace(/\.\d\d$/,'')}</div><div class="pl-tile-l">Likely final cost (budget ${esMoney(c.budget).replace(/\.\d\d$/,'')})</div></div>
+        <div class="pl-tile"><div class="pl-tile-v">${c.progress==null?'—':Math.round(c.progress*100)+'%'}</div><div class="pl-tile-l">Done · ${esMoney(c.spent).replace(/\.\d\d$/,'')} spent${c.committed?', '+esMoney(c.committed).replace(/\.\d\d$/,'')+' on open POs':''}</div></div></div>
+      <div class="sm" style="margin-top:0">Forecast from ${uxEsc(c.method)}. Confidence: ${uxEsc(c.confidence)}.</div>`:`<div class="sm">${uxEsc(c.why)}</div>`;
+    const lvl={low:['accepted','Low'],medium:['sent','Medium'],high:['declined','High']};
+    const riskHtml=r.ready?`<div class="pl-card-top" style="margin-top:10px"><div class="pl-item-t">Schedule risk</div><span class="pl-pill ${lvl[r.level][0]}">${lvl[r.level][1]} · ${r.score}</span></div>
+      <div class="sm" style="margin-top:2px">${r.plannedFinish?`Planned finish ${fdate(r.plannedFinish)}`:''}${r.likelyFinish&&r.likelyFinish!==r.plannedFinish?` · likely <b>${fdate(r.likelyFinish)}</b>`:''}${r.changeOrderDays?` · change orders added ${r.changeOrderDays} day${r.changeOrderDays===1?'':'s'}`:''}</div>
+      ${r.reasons.length?'<ul style="margin:6px 0 0 18px;font-size:14px;line-height:1.5">'+r.reasons.map(x=>`<li${x.level==='bad'?' style="color:var(--red)"':''}>${uxEsc(x.text)}</li>`).join('')+'</ul>':'<div class="sm">Nothing is pushing the finish date right now.</div>'}`:`<div class="sm" style="margin-top:8px">${uxEsc(r.why)}</div>`;
+    const bills=o.bills.length?`<details style="margin-top:10px"><summary class="sm" style="cursor:pointer;font-weight:700">🧾 Bills matched to purchase orders (${o.bills.length})</summary><div class="pl-list" style="margin-top:6px">${o.bills.map(b=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-item-t">${esMoney(b.amount)} · ${uxEsc(b.vendor_name||'')}</div><div class="pl-item-d">${uxEsc(b.match_note||'')}</div></div>`).join('')}</div></details>`:'';
+    el.innerHTML=`<div class="cc-box">${costHtml}${riskHtml}${bills}</div>`;
+    const ce=document.getElementById('jc-catch');
+    if(ce)ce.innerHTML=o.catches.length?`<div class="pl-h">✨ Possible change orders</div><div class="pl-list">${o.catches.map(s=>`<div class="pl-item" style="border-left:4px solid var(--amber)"><div class="pl-item-t">${uxEsc(s.title)}${s.amount!=null?' · about '+esMoney(s.amount).replace(/\.\d\d$/,''):''}</div>
+      <div class="pl-item-d">${s.quote?'“'+uxEsc(s.quote)+'”':''} <span class="sm" style="margin:0">From ${({email:'an email',portal:'a portal message',log:'a site log'})[s.source]||'a message'}${s.priced_from?' · priced from '+uxEsc(s.priced_from):''}</span></div>
+      <div class="pl-acts"><button class="btn-xs p" onclick="joCatch('${s.id}','draft',this)">Draft the change order</button><button class="btn-xs" onclick="joCatch('${s.id}','dismiss',this)">Not a change</button></div></div>`).join('')}</div>`:'';
+    jpRender(o.punch);
+    const pe=document.getElementById('jb-photos');
+    if(pe)pe.innerHTML=o.photos.length?`<div class="pl-h">📷 Progress from photos</div><div class="sm" style="margin-top:0">What each job photo shows, with things worth a closer look. A second set of eyes, not an inspection.</div><div class="pl-list">${o.photos.map(p=>`<div class="pl-item" style="display:flex;gap:10px;align-items:flex-start"><a href="/api/crm/files/${p.fileId}" target="_blank" rel="noopener"><img src="/api/crm/files/${p.fileId}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px"></a><div style="min-width:0"><div class="pl-item-t" style="text-transform:capitalize">${uxEsc(p.phase)}</div><div class="pl-item-d">${p.count} photo${p.count===1?'':'s'} · latest ${new Date(p.latest).toLocaleDateString()}</div>${p.checks.map(x=>`<div class="sm" style="margin:3px 0 0;color:${x.severity==='check now'?'var(--red)':'var(--amber)'}">👀 ${uxEsc(x.text)}</div>`).join('')}</div></div>`).join('')}</div>`:'';
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function joCatch(id,what,btn){btn.disabled=true;try{const r=await plApi('/api/crm/change-catches/'+id+'/'+what,{body:{}});if(what==='draft')showNotif('Change order drafted','#'+r.changeOrder.number+': check it and send it for approval.');jbOpen(JB.dealId);}catch(e){showNotif('Could not do that',e.message);btn.disabled=false;}}
+function jpRender(items){
+  const el=document.getElementById('jb-punch');if(!el)return;JB.punch=items;
+  const open=items.filter(i=>i.status!=='done').length;
+  el.innerHTML=`<div class="pl-h">Punch list${items.length?` <span class="sm" style="margin:0;font-weight:400">${open} open of ${items.length}</span>`:''}</div>
+    ${items.length?'<div class="pl-list">'+items.map(i=>`<div class="pl-item" style="display:flex;gap:10px;align-items:flex-start;padding:8px 10px"><input type="checkbox" ${i.status==='done'?'checked':''} onchange="jpSet('${i.id}',{status:this.checked?'done':'open'})" aria-label="Done" style="width:20px;height:20px;margin-top:2px;flex:0 0 auto">
+      <div style="flex:1;min-width:0;${i.status==='done'?'color:var(--ink3);text-decoration:line-through':''}"><div style="font-size:14px">${i.location?'<b>'+uxEsc(i.location)+':</b> ':''}${uxEsc(i.issue)}</div><div class="pl-tags">${i.trade?`<span class="pl-tag">${uxEsc(i.trade)}</span>`:''}${i.file_id?`<a class="pl-tag" href="/api/crm/files/${i.file_id}" target="_blank" rel="noopener">📷 photo</a>`:''}<button class="pl-tag" style="cursor:pointer;background:none" onclick="jpSet('${i.id}',{shared:${!i.shared}})">${i.shared?'Homeowner sees it':'Team only'}</button><button class="pl-tag" style="cursor:pointer;background:none" onclick="jpSet('${i.id}',{delete:true})">Remove</button></div></div></div>`).join('')+'</div>':'<div class="sm" style="margin-top:0">Walk the job with your phone recording, saying what needs fixing. Eagle I writes the list.</div>'}
+    <div class="vd-mbtns" style="margin-top:6px"><label class="btn-xs p" style="cursor:pointer">🎥 Walkthrough video<input type="file" accept="video/*" capture="environment" style="display:none" onchange="jpVideo(this)"></label><label class="btn-xs" style="cursor:pointer">📷 Walkthrough photos<input type="file" accept="image/*" multiple style="display:none" onchange="jpPhotos(this)"></label></div>
+    <textarea id="jp-notes" class="cred-input" rows="2" style="margin-top:6px" placeholder="What you saw (type, or tap 🎤 on your keyboard and talk)"></textarea>
+    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs" onclick="jpSend(this)">✨ Write the punch list</button><input id="jp-one" class="cred-input" placeholder="Or add one item…" style="flex:1;min-width:150px" onkeydown="if(event.key==='Enter')jpAdd()"></div><div class="sm" id="jp-msg"></div>`;
+}
+async function jpSet(id,body){try{await plApi('/api/crm/punch/'+id,{method:'PATCH',body});const o=await plApi('/api/crm/deals/'+JB.dealId+'/outlook');jpRender(o.punch);}catch(e){showNotif('Could not save it',e.message);}}
+async function jpAdd(){const i=document.getElementById('jp-one');if(!i.value.trim())return;try{await plApi('/api/crm/deals/'+JB.dealId+'/punch',{body:{issue:i.value}});const o=await plApi('/api/crm/deals/'+JB.dealId+'/outlook');jpRender(o.punch);}catch(e){showNotif('Could not add it',e.message);}}
+// Still frames from a walkthrough video, pulled out in the browser (no upload of the video itself).
+async function jpVideo(input){
+  const f=input.files[0];if(!f)return;const m=document.getElementById('jp-msg');m.textContent='Pulling still frames out of the video…';
+  try{
+    const url=URL.createObjectURL(f);const v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';v.src=url;
+    await new Promise((res,rej)=>{v.onloadedmetadata=res;v.onerror=()=>rej(new Error('This browser can’t open that video. Try photos instead.'));});
+    const n=Math.min(12,Math.max(3,Math.round(v.duration/6)));const frames=[];
+    const c=document.createElement('canvas');const scale=Math.min(1,1280/Math.max(v.videoWidth,v.videoHeight));c.width=Math.round(v.videoWidth*scale);c.height=Math.round(v.videoHeight*scale);
+    for(let i=0;i<n;i++){
+      v.currentTime=Math.min(v.duration-0.1,(i+0.5)*v.duration/n);
+      await new Promise(res=>{const t=setTimeout(res,4000);v.onseeked=()=>{clearTimeout(t);res();};});
+      c.getContext('2d').drawImage(v,0,0,c.width,c.height);frames.push(c.toDataURL('image/jpeg',0.72));
+      m.textContent=`Pulled ${i+1} of ${n} frames…`;
+    }
+    URL.revokeObjectURL(url);JB.frames=frames;m.textContent=`${frames.length} frames ready. Add what you said, then tap “Write the punch list”.`;
+  }catch(e){m.textContent=e.message;}
+  input.value='';
+}
+async function jpPhotos(input){
+  const m=document.getElementById('jp-msg');const out=[];
+  for(let f of [...input.files].slice(0,12)){try{f=await prepFile(f);const bmp=await createImageBitmap(f);const s=Math.min(1,1280/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);out.push(c.toDataURL('image/jpeg',0.75));}catch(e){m.textContent=e.message;}}
+  JB.frames=out;m.textContent=`${out.length} photo${out.length===1?'':'s'} ready. Add what you saw, then tap “Write the punch list”.`;input.value='';
+}
+async function jpSend(btn){
+  const notes=document.getElementById('jp-notes').value;const m=document.getElementById('jp-msg');
+  if(!(JB.frames||[]).length&&notes.trim().length<5){m.textContent='Add a walkthrough video or photos, or say what you saw.';return;}
+  btn.disabled=true;btn.textContent='Writing the list…';
+  try{const r=await plApi('/api/crm/deals/'+JB.dealId+'/walkthrough',{body:{frames:JB.frames||[],notes}});JB.frames=[];const o=await plApi('/api/crm/deals/'+JB.dealId+'/outlook');jpRender(o.punch);const mm=document.getElementById('jp-msg');if(mm)mm.textContent=`Added ${r.items.length} item${r.items.length===1?'':'s'}. Check them over.`;}
+  catch(e){m.textContent=e.message;btn.disabled=false;btn.textContent='✨ Write the punch list';}
+}
+// Selections: three options from the product catalog.
+async function jbSelIdeas(btn){
+  const v=id=>document.getElementById(id).value;if(!v('sl-cat').trim()){jbErr(new Error('Say what needs choosing first.'));return;}
+  btn.disabled=true;btn.textContent='Picking…';
+  try{const r=await plApi('/api/crm/deals/'+JB.dealId+'/selection-ideas',{body:{category:v('sl-cat'),allowance:v('sl-allow')||0,style:v('sl-style')}});JB.selIdeas=r.options;
+    document.getElementById('sl-opts').value=r.options.map(o=>`${o.name}, ${o.price}`).join('\n');document.getElementById('sl-why').textContent=r.why+' Adjust, then add the selection.';}
+  catch(e){jbErr(e);}
+  btn.disabled=false;btn.textContent='✨ Suggest from my products';
+}
+
+/* ---------- product catalog (Money) ---------- */
+async function prLoad(){
+  const el=document.getElementById('pr-list');if(!el)return;
+  try{const {products}=await plApi('/api/crm/products');
+    el.innerHTML=products.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">${products.map(p=>`<div class="pl-item" style="padding:8px">${p.hasPhoto?`<img src="/api/crm/products/${p.id}/photo" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px">`:'<div style="width:100%;aspect-ratio:4/3;border-radius:6px;background:var(--bg4);display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:12px">No photo</div>'}
+      <div class="pl-item-t" style="margin-top:6px;font-size:13px">${uxEsc(p.name)}</div><div class="pl-item-d">${uxEsc(p.category)}${p.brand?' · '+uxEsc(p.brand):''}<br><b>${esMoney(p.price)}</b>/${uxEsc(p.unit)}</div>${crCanManage()?`<button class="btn-xs" style="margin-top:4px" onclick="prDel('${p.id}')">Remove</button>`:''}</div>`).join('')}</div>`:'<div class="pl-empty">No products yet. Add the tile, fixtures and finishes you like to offer; Eagle I suggests them when you set up a homeowner’s selections.</div>';}
+  catch(e){el.innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
+}
+async function prAdd(btn){
+  const v=id=>document.getElementById(id).value;const ph=document.getElementById('pr-photo').files[0];const m=document.getElementById('pr-msg');
+  btn.disabled=true;
+  try{let photoBase64=null;if(ph){const f=await prepFile(ph);if(f.size>4*1024*1024)throw new Error('That photo is over 4 MB.');photoBase64=await flRead(f);}
+    await plApi('/api/crm/products',{body:{name:v('pr-name'),category:v('pr-cat'),brand:v('pr-brand'),price:v('pr-price'),unit:v('pr-unit')||'ea',style:v('pr-style'),link:v('pr-link'),photoBase64}});
+    ['pr-name','pr-brand','pr-price','pr-style','pr-link'].forEach(id=>document.getElementById(id).value='');document.getElementById('pr-photo').value='';m.textContent='Added.';prLoad();}
+  catch(e){m.textContent=e.message;}btn.disabled=false;
+}
+async function prDel(id){if(!confirm('Remove this product from your catalog?'))return;try{await plApi('/api/crm/products/'+id,{method:'DELETE'});prLoad();}catch(e){showNotif('Could not remove it',e.message);}}
+
+/* ---------- coaching and win/loss (Reports) ---------- */
+async function chLoad(userId,refresh){
+  const el=document.getElementById('ch-box');if(!el)return;
+  try{
+    const r=await plApi('/api/crm/coaching?'+(userId?'user='+encodeURIComponent(userId)+'&':'')+(refresh?'refresh=1':''));const c=r.coaching,s=c.stats;
+    const mins=m=>m==null?'—':m<60?Math.round(m)+' min':m<2880?(m/60).toFixed(1)+' h':Math.round(m/1440)+' days';
+    const pick=r.manager&&r.people.length>1?`<select onchange="chLoad(this.value)" aria-label="Person" style="width:auto">${r.people.map(p=>`<option value="${p.id}"${p.name===c.person?' selected':''}>${uxEsc(p.name)}</option>`).join('')}</select>`:'';
+    el.innerHTML=`<div class="cc-box"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(c.person)} · last 30 days</div><div class="sm" style="margin:0">Private: only ${r.manager?'this person, owners and admins':'you, owners and admins'} can see this.</div></div>${pick}</div>
+      <div class="ai-tiles">
+        <div class="pl-tile"><div class="pl-tile-v">${mins(s.firstReplyMins)}</div><div class="pl-tile-l">Typical first reply (${s.answered} leads)</div></div>
+        <div class="pl-tile"><div class="pl-tile-v">${s.estimatesAccepted}/${s.estimatesAccepted+s.estimatesDeclined}</div><div class="pl-tile-l">Estimates accepted</div></div>
+        <div class="pl-tile"><div class="pl-tile-v">${s.tasksDone}</div><div class="pl-tile-l">Tasks done${s.tasksOverdue?` · ${s.tasksOverdue} overdue`:''}</div></div>
+        <div class="pl-tile"><div class="pl-tile-v">${s.siteLogs}</div><div class="pl-tile-l">Site logs</div></div></div>
+      ${c.advice.keep.length?'<div class="lbl">Keep doing</div><ul style="margin:4px 0 0 18px;font-size:14px;line-height:1.55">'+c.advice.keep.map(x=>'<li>'+uxEsc(x)+'</li>').join('')+'</ul>':''}
+      ${c.advice.tryThis.length?'<div class="lbl">Try this</div><ul style="margin:4px 0 0 18px;font-size:14px;line-height:1.55">'+c.advice.tryThis.map(x=>'<li>'+uxEsc(x)+'</li>').join('')+'</ul>':''}
+      ${!c.advice.keep.length&&!c.advice.tryThis.length?'<div class="sm">Not enough recorded this month to say anything fair yet.</div>':''}
+      <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs" onclick="chLoad('${r.people.find(p=>p.name===c.person)?.id||''}',true)">Refresh</button></div></div>`;
+    if(r.manager)wlLoad();
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function wlLoad(){
+  const el=document.getElementById('wl-box');if(!el)return;
+  try{const w=await plApi('/api/crm/win-loss');
+    if(!w.enough){el.innerHTML=`<div class="pl-h">What wins and loses jobs</div><div class="sm">Eagle I needs ${w.need} more closed deal${w.need===1?'':'s'} (won or lost) to say anything real. You have ${w.closed}. Mark deals Lost with a reason when they go away; it’s what this learns from.</div>`;return;}
+    el.innerHTML=`<div class="pl-h">What wins and loses jobs <span class="sm" style="margin:0;font-weight:400">${w.won} won of ${w.closed} closed (${w.overall}%), last 18 months</span></div>
+      <div class="cc-box"><div class="lbl">What it means</div><ul style="margin:4px 0 0 18px;font-size:14px;line-height:1.55">${w.summary.insights.map(x=>'<li>'+uxEsc(x)+'</li>').join('')}</ul><div class="lbl">Do this</div><div class="cc-lines"><b>${uxEsc(w.summary.action)}</b></div></div>
+      <div class="pl-list" style="margin-top:8px">${w.groups.map(g=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(g.label)}</div>${g.rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px"><span style="flex:0 0 42%;min-width:0;overflow-wrap:anywhere">${uxEsc(r.group)}</span><span style="flex:1;background:var(--bg4);border-radius:5px;height:10px;overflow:hidden"><span style="display:block;height:100%;width:${r.winRate}%;background:var(--green)"></span></span><span style="white-space:nowrap">${r.winRate}% · ${r.deals}</span></div>`).join('')}</div>`).join('')}
+      ${w.lostReasons.length?`<div class="pl-item"><div class="pl-item-t">Why deals were lost</div><div class="pl-tags">${w.lostReasons.map(r=>`<span class="pl-tag">${uxEsc(r.reason)} · ${r.n}</span>`).join('')}</div></div>`:''}</div>`;}
+  catch(e){el.innerHTML='';}
+}
 </script>
 <script>
 /* ==================== PIPELINE (CRM) ==================== */
@@ -1012,7 +1277,7 @@ async function plOpenDeal(id){
     <div id="pld-fit"><div class="sm">Loading…</div></div>
     <div class="pl-h">Estimates</div>
     <div id="pld-est"><div class="sm">Loading…</div></div>
-    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button></div>
+    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button><button class="btn-xs" onclick="tkOpen('${x.id}')">📐 Takeoff from plans</button></div>
     ${['signed','production','complete'].includes(x.stage)?`<div class="vd-mbtns" style="margin-top:14px"><button class="btn btn-blue" onclick="jbOpen('${x.id}')">🛠 Open the job: schedule, logs, change orders, selections</button></div>`:''}
     <div class="pl-h">Invoices</div>
     <div id="pld-inv"><div class="sm">Loading…</div></div>
@@ -1029,9 +1294,11 @@ async function plOpenDeal(id){
     <div class="pl-h">Photos &amp; files</div>
     <div id="pld-files"><div class="sm">Loading…</div></div>
     <div class="vd-mbtns" style="margin-top:6px"><label class="btn-xs p" style="cursor:pointer">📷 Add photos or PDFs<input type="file" accept="image/*,application/pdf" multiple style="display:none" onchange="flUpload('${x.id}',this)"></label><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="pld-share" checked> Share with the homeowner</label></div>
+    <div class="vd-mbtns" style="margin-top:4px"><button class="btn-xs" onclick="vzOpen('${x.id}')">🎨 Show them the new design</button></div>
     <div class="sm" id="pld-up-msg"></div>
     <div class="pl-h">Homeowner portal</div>
     <div id="pld-portal"><div class="sm">Loading…</div></div>
+    <div id="pld-pq"></div>
     <div id="pld-pulse"></div>
     <div id="pld-bids"></div>
     <div class="pl-h">Referrals${['signed','production','complete'].includes(x.stage)?' &amp; home file':''}</div>
@@ -1056,6 +1323,7 @@ async function plOpenDeal(id){
   flLoad(x.id);
   ptLoad(x.id);
   ivLoad(x.id);
+  pqLoad(x.id);
 }
 /* ---------- coach: lead summary, next move, replies ---------- */
 const CC={};
@@ -1410,6 +1678,8 @@ async function jbOpen(dealId){
   uxOpen(uxHead('🛠 '+uxEsc(deal.title),uxEsc(deal.contact_name)+(deal.property_address?' · '+uxEsc(deal.property_address):''))+`
     <div class="pl-h">Money on this job</div>
     <div id="jc-box"><div class="sm">Loading…</div></div>
+    <div class="pl-h">Where this job is heading</div>
+    <div id="jo-box"><div class="sm">Loading…</div></div>
     <div class="pl-h">Payment schedule</div>
     <div id="dw-box"><div class="sm">Loading…</div></div>
     <div class="pl-h">Schedule</div>
@@ -1420,6 +1690,9 @@ async function jbOpen(dealId){
     <div class="es-grid" style="grid-template-columns:1fr auto;align-items:center"><input id="jb-crew" class="cred-input" placeholder="Who was on site (optional)"><label class="pl-switch" style="font-size:13px"><input type="checkbox" id="jb-share"> Share with homeowner</label></div>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="jbLog(this)">Save log</button>${window.SpeechRecognition||window.webkitSpeechRecognition?'<button class="btn-xs" id="jb-mic" onclick="jbMic()">🎤 Talk</button>':''}<button class="btn-xs" onclick="jbVoiceFile(this)" title="Turns what you wrote or said into the log, moves the phases you mention, and adds follow-up tasks">✨ File it for me</button></div><div class="sm" id="jb-voice-out"></div>
     ${d.logs.length?'<ul class="pl-tl" style="margin-top:8px">'+d.logs.slice(0,15).map(l=>`<li>${uxEsc(l.body)}<div class="pl-tl-meta">${fdate(l.log_date)} · ${uxEsc(l.author||'')}${l.crew?' · crew: '+uxEsc(l.crew):''}${l.shared?' · shared':''}</div></li>`).join('')+'</ul>':''}
+    <div id="jb-punch"></div>
+    <div id="jb-photos"></div>
+    <div id="jc-catch"></div>
     <div class="pl-h">Change orders</div>
     <div class="pl-list">${d.cos.map(coRow).join('')||'<div class="sm">None yet.</div>'}</div>
     <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New change order</summary>
@@ -1432,8 +1705,9 @@ async function jbOpen(dealId){
     <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New selection</summary>
       <div class="pl-form" style="margin-top:8px"><div class="full"><label for="sl-cat">What to choose</label><input id="sl-cat" class="cred-input" placeholder="e.g. Kitchen backsplash tile"></div>
       <div><label for="sl-allow">Allowance ($)</label><input id="sl-allow" class="cred-input" inputmode="decimal"></div><div><label for="sl-due">Choose by</label><input id="sl-due" type="date" class="cred-input"></div>
-      <div class="full"><label>Options (name and price, one per line, like “Zellige white, 2400”)</label><textarea id="sl-opts" class="cred-input" rows="4"></textarea></div></div>
-      <div class="vd-mbtns"><button class="btn btn-blue" onclick="jbNewSel(this)">Add selection</button></div></details>
+      <div class="full"><label for="sl-style">Style they like (optional)</label><input id="sl-style" class="cred-input" placeholder="e.g. warm, natural, matte black fixtures"></div>
+      <div class="full"><label>Options (name and price, one per line, like “Zellige white, 2400”)</label><textarea id="sl-opts" class="cred-input" rows="4"></textarea><div class="sm" id="sl-why"></div></div></div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="jbNewSel(this)">Add selection</button><button class="btn-xs" onclick="jbSelIdeas(this)">✨ Suggest from my products</button></div></details>
     <div class="pl-h">Purchase orders</div>
     <div class="pl-list">${d.pos.map(poRow).join('')||'<div class="sm">None yet.</div>'}</div>
     <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New purchase order</summary>
@@ -1445,6 +1719,7 @@ async function jbOpen(dealId){
     <div class="sm" id="jb-msg"></div>`);
   jcLoad(dealId);
   dwLoad(dealId);
+  joLoad(dealId);
 }
 async function bdLoad(dealId){
   const el=document.getElementById('pld-bids');if(!el)return;
@@ -1599,7 +1874,7 @@ async function jbSendCO(id,btn){btn.disabled=true;try{const r=await plApi('/api/
 const parseLines=t=>t.split('\n').map(l=>l.trim()).filter(Boolean);
 async function jbNewSel(btn){
   const v=id=>document.getElementById(id).value;
-  const options=parseLines(v('sl-opts')).map(l=>{const m=l.match(/^(.*?)[,\t]\s*\$?([\d,.]+)\s*$/);return m?{name:m[1].trim(),price:m[2]}:{name:l,price:0};});
+  const options=parseLines(v('sl-opts')).map(l=>{const m=l.match(/^(.*?)[,\t]\s*\$?([\d,.]+)\s*$/);const o=m?{name:m[1].trim(),price:m[2]}:{name:l,price:0};const idea=(JB.selIdeas||[]).find(x=>x.name===o.name);return idea?{...o,note:idea.note,product_id:idea.product_id,photo:idea.photo}:o;});
   btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/selections',{body:{category:v('sl-cat'),allowance:v('sl-allow')||0,dueDate:v('sl-due')||null,options}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}
 }
 async function jbClearSel(id){if(!confirm('Clear the homeowner’s choice so they can choose again?'))return;try{await plApi('/api/crm/selections/'+id+'/clear',{body:{}});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
@@ -1780,7 +2055,7 @@ async function plLoadNeeds(){
     el.innerHTML=items.map(i=>`<div class="pl-item ${i.kind}"><div class="pl-item-t">${uxEsc(i.title)}</div><div class="pl-tl-meta">Flagged ${plAgo(i.created_at)} ago</div>
       ${i.deal_title?`<div class="pl-item-d">${uxEsc(i.deal_title)}${i.deal_stage?' · '+uxEsc(plStage(i.deal_stage).label):''}</div>`:''}
       ${i.detail?`<div class="pl-item-d">${uxEsc(i.detail)}</div>`:''}
-      <div class="pl-acts">${i.kind==='collect'&&/^nudge:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ccNudge('${(i.dedupe_key||'').slice(6)}')">Review &amp; send</button>`:''}${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
+      <div class="pl-acts">${i.kind==='collect'&&/^nudge:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ccNudge('${(i.dedupe_key||'').slice(6)}')">Review &amp; send</button>`:''}${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${['change_catch','cost_forecast','schedule_risk','po_match','photo_check'].includes(i.kind)&&i.deal_id?`<button class="btn-xs p" onclick="jbOpen('${i.deal_id}')">Open the job</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
         <button class="btn-xs" onclick="plInboxAct(${i.id},'done')">✓ Done</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',1)">Snooze 1 day</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',3)">3 days</button></div></div>`).join('');

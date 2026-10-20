@@ -1327,3 +1327,58 @@ describe('Old Excel (.xls) files', () => {
     assert.equal(p.rows, 3); assert.equal(p.mapping[0], 'name'); assert.equal(p.mapping[5], 'stage');
   });
 });
+
+describe('CRM AI: estimate checks, forecasts, matching, coaching', () => {
+  test('the estimate check flags the usual misses and stays quiet when covered', () => {
+    const { checkByRules } = require('../lib/crmEstimateAi');
+    const est = (lines, extra = {}) => ({ kind: 'construction', title: 'Refresh', total: 30000, subtotal: 30000, cost_total: 22000, terms: 'x', valid_until: '2026-12-01', deposit_pct: 10, lines, ...extra });
+    const k = checkByRules(est([{ description: 'Tile shower walls', quantity: 90, unit: 'sf', unit_cost: 12 }], { title: 'Bath' })).map(i => i.key);
+    for (const x of ['permit', 'dumpster', 'waterproof', 'backer', 'plumb']) assert.ok(k.includes(x), x);
+    const covered = checkByRules(est([{ description: 'Permit', quantity: 1, unit_cost: 500 }, { description: 'Dumpster', quantity: 1, unit_cost: 600 }, { description: 'Floor protection', quantity: 1, unit_cost: 200 }, { description: 'Final cleaning', quantity: 1, unit_cost: 300 }, { description: 'Project management', quantity: 1, unit_cost: 2000 }, { description: 'Contingency', quantity: 1, unit_cost: 1000 }])).map(i => i.key);
+    assert.deepEqual(covered, []);
+    assert.ok(checkByRules(est([{ description: 'Cabinets', quantity: 1, unit_cost: 100 }], { subtotal: 1000, cost_total: 950 })).some(i => i.key === 'margin'));
+    assert.ok(checkByRules(est([{ description: 'Vanity', quantity: 1, unit_cost: 300 }]), { unitCosts: { vanity: 600 } }).some(i => i.key === 'low'));
+  });
+  test('the cost forecast follows history and spending pace', () => {
+    const { forecastCost, progressOf } = require('../lib/crmForecast');
+    assert.equal(forecastCost({ contract: 100, budget: 80, spent: 0, committed: 0, progress: null }).eac, 80);
+    assert.equal(forecastCost({ contract: 100, budget: 80, spent: 0, committed: 0, progress: null, history: [1.1, 1.1, 1.1] }).eac, 88);
+    assert.equal(forecastCost({ contract: 100, budget: 80, spent: 90, committed: 5, progress: 1 }).eac, 95, 'never below what’s already spent and committed');
+    assert.equal(progressOf([{ start_date: '2026-10-19', end_date: '2026-10-19', status: 'done' }, { start_date: '2026-10-20', end_date: '2026-10-22', status: 'todo' }]), 0.25);
+  });
+  test('schedule risk names its reasons', () => {
+    const { scheduleRiskFrom } = require('../lib/crmForecast');
+    const r = scheduleRiskFrom({ today: '2026-10-20', items: [{ title: 'Framing', start_date: '2026-10-10', end_date: '2026-10-16', status: 'doing' }, { title: 'City inspection', start_date: '2026-10-22', end_date: '2026-10-22', status: 'todo' }], pos: [{ number: 3, title: 'Windows', status: 'draft', needed_by: '2026-10-23' }], selections: [], cos: [] });
+    assert.match(r.reasons.map(x => x.text).join(' '), /Framing.*4 days ago.*inspection.*PO #3/s);
+    assert.equal(r.slipDays, 4); assert.equal(r.likelyFinish, '2026-10-28');
+    assert.equal(scheduleRiskFrom({ today: '2026-10-20', items: [{ title: 'A', start_date: '2026-11-01', end_date: '2026-11-02', status: 'todo' }], pos: [], selections: [], cos: [] }).level, 'low');
+  });
+  test('bills find their purchase order', () => {
+    const { pickPO } = require('../lib/crmMatching');
+    const pos = [{ id: 1, number: 7, total: 1000, billed: 0, vendor_id: 'v', status: 'sent' }, { id: 2, number: 8, total: 300, billed: 0, vendor_id: 'v', status: 'sent' }];
+    assert.equal(pickPO({ amount: 290, vendor_id: 'v' }, pos).po.number, 8);
+    assert.match(pickPO({ amount: 1000, vendor_id: 'v' }, pos).note, /fully billed/);
+    assert.equal(pickPO({ amount: 100, vendor_id: 'v' }, [{ ...pos[0], counted: true }]).flag, 'double');
+    assert.equal(pickPO({ amount: 100, vendor_name: 'Someone else' }, pos), null);
+  });
+  test('change catches are priced from the catalog only', () => {
+    const { priceFrom, worthALook } = require('../lib/crmChangeCatcher');
+    assert.deepEqual(priceFrom([{ id: 'a', quantity: 2 }, { id: 'zz', quantity: 1 }], [{ id: 'a', name: 'Outlet', unit: 'ea', unit_cost: 100, markup_pct: 50 }]), { cost: 200, amount: 300, from: '2 ea Outlet' });
+    assert.equal(priceFrom([], []), null);
+    assert.equal(worthALook('Can we upgrade the faucet?'), true);
+  });
+  test('coaching advice is fair and needs enough to go on', () => {
+    const { adviceByRules, findings } = require('../lib/crmCoaching');
+    const base = { answered: 0, firstReplyMins: null, unanswered: 0, tasksOverdue: 0, tasksDone: 0, estimatesAccepted: 0, estimatesDeclined: 0, wonValue: 0, quietDeals: 0, siteLogs: 0, checkinsAsked: 0, checkinsAnswered: 0, notes: 0, emails: 0 };
+    assert.deepEqual(adviceByRules(base, base, {}), { keep: [], tryThis: [] }, 'nothing recorded, nothing said');
+    assert.match(adviceByRules({ ...base, answered: 5, firstReplyMins: 600 }, base, { firstReplyMins: 60 }).tryThis[0], /10\.0 h \(team: 1\.0 h\)/);
+    const f = findings([...Array(4)].map(() => ({ won: true, source: 'A', visited: true })).concat([...Array(4)].map(() => ({ won: false, source: 'B', visited: false }))));
+    assert.equal(f.overall, 50); assert.equal(f.groups[0].spread, 100);
+  });
+  test('products are offered under, near and above the allowance', () => {
+    const { pickByPrice } = require('../lib/crmProducts');
+    const p = [100, 400, 900, 1200, 2000].map(price => ({ price }));
+    assert.deepEqual(pickByPrice(p, 1000).map(x => x.price), [400, 900, 1200]);
+    assert.deepEqual(pickByPrice(p.slice(0, 2), 1000).map(x => x.price), [100, 400]);
+  });
+});

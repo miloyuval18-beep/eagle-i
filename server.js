@@ -63,6 +63,7 @@ const crmSubsRoutes = require('./routes/crmSubs');
 const crmAssistantRoutes = require('./routes/crmAssistant');
 const crmBillingRoutes = require('./routes/crmBilling');
 const crmCoachRoutes = require('./routes/crmCoach');
+const crmAiPlusRoutes = require('./routes/crmAiPlus');
 const { sendCrashAlert } = require('./lib/alerting');
 const { startWeatherSignalPoller } = require('./lib/weatherSignals');
 const { startScheduledPostsWorker } = require('./lib/scheduledPostsWorker');
@@ -213,6 +214,7 @@ app.use(crmSubsRoutes);
 app.use(crmAssistantRoutes);
 app.use(crmBillingRoutes);
 app.use(crmCoachRoutes);
+app.use(crmAiPlusRoutes);
 app.use(stripeRoutes);
 
 // Which build is live (Render sets RENDER_GIT_COMMIT), so a deploy can be checked from outside.
