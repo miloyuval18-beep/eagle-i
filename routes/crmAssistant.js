@@ -21,6 +21,11 @@ function fail(res, err, what) {
 const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } catch (err) { fail(res, err, what); } };
 const ctxOf = (req) => ({ tenantId: req.tenantId, userId: req.userId, name: (req.crmUser && (req.crmUser.name || req.crmUser.email)) || 'someone', role: (req.crmUser && req.crmUser.role) || 'member', manager: team.isManager(req.crmUser && req.crmUser.role), baseUrl: baseUrlOf(req) });
 
+// Owners and admins can check the AI key and which model answers.
+router.post('/api/crm/assistant/test', requireAuth, wrap('The AI didn’t answer', async (req, res) => {
+  if (!team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the owner or an admin can do this.' } });
+  res.json(await require('../lib/anthropic').checkConnection());
+}));
 router.get('/api/crm/assistant/home', requireAuth, wrap('Failed to load', async (req, res) => res.json(await assistant.home(ctxOf(req)))));
 router.get('/api/crm/assistant/threads', requireAuth, wrap('Failed to load', async (req, res) => res.json({ threads: await assistant.listThreads(ctxOf(req)) })));
 router.post('/api/crm/assistant/threads', requireAuth, wrap('Failed to start', async (req, res) => res.json({ thread: await assistant.createThread(ctxOf(req)) })));

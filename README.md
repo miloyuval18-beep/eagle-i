@@ -620,6 +620,21 @@ browser's.
 - Scenarios now live in `test/scenarios/` (`npm run test:scenarios`, local
   database only).
 
+**Email search, more actions, sturdier AI (step 22).**
+- Gmail sync now keeps the text of each customer email (no attachments, quoted
+  history trimmed), searchable with a full-text index; emails logged earlier
+  get their text backfilled a few at a time (`backfillBodies`, by
+  `rfc822msgid:`). The assistant's `search_emails` / `read_email` answer
+  "what did Maria say about the tile?", and get_deal lists recent emails.
+- The assistant can now update schedule phases (dates, status, sub, who),
+  add phases, log costs, add vendors, draft change orders, purchase orders and
+  invoices, and record payments; sending a change order, PO or invoice is a
+  card like the other outside sends.
+- `lib/anthropic.js` sends every call through one `post()` that tries
+  `AI_MODEL`/`CRM_AI_MODEL`, then `claude-sonnet-5-5`, `claude-opus-5-5`,
+  `claude-sonnet-5` when the API says a model doesn't exist, and remembers the
+  one that answers. Owners get "Test the AI connection" in the assistant.
+
 Code: `lib/crm.js` (records, stages, "Needs you", weekly summary),
 `lib/crmPlaybooks.js` (automatic emails), `routes/crm.js`, migration
 `1760400000000_crm_core.js`.

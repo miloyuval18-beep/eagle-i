@@ -57,7 +57,7 @@ const sent = []; const send = async (m) => { sent.push(m); return { id: 'x' }; }
     const job = await crm.createDeal({ tenantId: t, name: 'Bo Lee', email: 'bo@dw.test', title: 'Bath', stage: 'production' });
     await query(`UPDATE crm_deals SET stage_entered_at = now() - interval '10 days' WHERE id = $1`, [job.id]);
     await crm.updateDeal({ tenantId: t, dealId: job.id, patch: { language: 'es' } });
-    const wed = new Date(); while (new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short' }).format(wed) !== 'Wed') wed.setUTCDate(wed.getUTCDate() + 1);
+    const wed = new Date(); wed.setUTCHours(16, 0, 0, 0); while (new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short' }).format(wed) !== 'Wed') wed.setUTCDate(wed.getUTCDate() + 1);
     wed.setUTCHours(16, 0, 0, 0);
     sent.length = 0;
     assert.equal((await pulse.processPulses({ now: wed, send, baseUrl: 'https://x' })).sent, 0, 'off by default');

@@ -81,7 +81,7 @@ const b64 = (s) => Buffer.from(s).toString('base64');
     assert.ok(ai.some(p => /update to a homeowner/.test(p) && /Spanish/.test(p) && !/plumber late/.test(p)));
     // Friday 11am Central: a draft and a Needs-you item, once.
     await query('UPDATE crm_deals SET update_draft = NULL, update_draft_at = NULL WHERE id = $1', [deal.id]);
-    const fri = new Date(); while (new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short' }).format(fri) !== 'Fri') fri.setUTCDate(fri.getUTCDate() + 1);
+    const fri = new Date(); fri.setUTCHours(16, 0, 0, 0); while (new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short' }).format(fri) !== 'Fri') fri.setUTCDate(fri.getUTCDate() + 1);
     fri.setUTCHours(16, 0, 0, 0);
     const w1 = await a.processWeeklyUpdates({ now: fri });
     assert.ok(w1.drafted >= 1);

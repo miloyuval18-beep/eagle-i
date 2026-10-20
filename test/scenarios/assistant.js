@@ -134,6 +134,35 @@ const use = (name, input, id = 'tu_' + Math.random().toString(36).slice(2, 8)) =
     script = [use('team_activity', { person: 'alex', from: '2020-01-01', to: '2099-01-01' }), (m) => { const res = JSON.parse(lastToolResult(m).content); assert.ok(res.items.some(i => /check-in/.test(i.what))); assert.ok(res.items.some(i => /Set joists/.test(i.what))); return say('ok')(); }];
     await A.runTurn(ctx, { threadId: th.id, text: 'And Alex this week?' });
 
+    // 6b. Email search: what the homeowner actually wrote.
+    await query(`INSERT INTO crm_emails (tenant_id, message_key, mailbox_email, direction, from_email, to_emails, subject, snippet, body_text, sent_at, contact_id, deal_id)
+      VALUES ($1, '<m1@x>', 'moran@ask.test', 'in', 'bo@ask.test', '{moran@ask.test}', 'Re: deck', 'We want composite', 'We decided on composite decking in a gray tone, and please keep the old oak tree.', now(), $2, $3)`, [t, deal.contact_id, deal.id]);
+    const th6 = await A.createThread(ctx);
+    script = [use('search_emails', { query: 'oak tree' }), (m) => { const r2 = JSON.parse(lastToolResult(m).content); assert.equal(r2.matches.length, 1); assert.match(r2.matches[0].excerpt, /\*\*oak\*\* \*\*tree\*\*/); return use('read_email', { email_id: r2.matches[0].email_id })(); },
+      (m) => { const r2 = JSON.parse(lastToolResult(m).content); assert.match(r2.text, /composite decking/); return say('Bo asked to keep the old oak tree.')(); }];
+    await A.runTurn(ctx, { threadId: th6.id, text: 'What did Bo say about the tree?' });
+    // 6c. Paperwork: a vendor, a PO, a change order and an invoice drafted; sending each is a card.
+    script = [use('add_vendor', { name: 'Lumber Co', trade: 'Lumber', email: 'lumber@ask.test' }),
+      use('create_purchase_order', { deal_id: deal.id, vendor: 'Lumber', title: 'Deck lumber', lines: [{ description: '2x10 joists', quantity: 20, unit_cost: 18 }], needed_by: '2030-03-01' }),
+      (m) => { const po = JSON.parse(lastToolResult(m).content); assert.equal(po.total, 360); return use('send_purchase_order', { purchase_order_id: po.purchase_order_id })(); },
+      use('create_change_order', { deal_id: deal.id, title: 'Add deck lighting', amount: 1800, cost: 900, days_added: 1 }),
+      (m) => { const co = JSON.parse(lastToolResult(m).content); return use('send_change_order', { change_order_id: co.change_order_id })(); },
+      use('create_invoice', { deal_id: deal.id, kind: 'progress', title: 'Framing complete', amount: 20000, due_date: '2030-03-15' }),
+      (m) => { const inv = JSON.parse(lastToolResult(m).content); return use('send_invoice', { invoice_id: inv.invoice_id })(); },
+      use('update_phase', { deal_id: deal.id, phase: 'drywall', start_date: '2030-04-01' }),
+      (m) => { const up = JSON.parse(lastToolResult(m).content); assert.equal(up.start, '2030-04-01'); assert.ok(up.end >= up.start); return say('All drafted; three cards are ready to send.')(); }];
+    r = await A.runTurn(ctx, { threadId: th6.id, text: 'Order the deck lumber from Lumber Co, add a change order for lighting, invoice the framing, and push drywall to April 1' });
+    assert.equal(r.actions.length, 3); assert.ok(r.actions.every(a => a.status === 'pending'));
+    sent.length = 0;
+    for (const a of r.actions) await A.decideAction(ctx, a.id, true);
+    assert.ok(sent.some(m => m.to === 'lumber@ask.test' && /Purchase order/.test(m.subject)));
+    assert.ok(sent.some(m => m.to === 'bo@ask.test' && /Change order/.test(m.subject)));
+    assert.ok(sent.some(m => m.to === 'bo@ask.test' && /Invoice #/.test(m.subject)));
+    const invNo = (await query(`SELECT number FROM crm_invoices WHERE deal_id = $1 AND title = 'Framing complete'`, [deal.id])).rows[0].number;
+    script = [use('mark_invoice_paid', { invoice_number: invNo, via: 'check' }), say('Marked paid.')];
+    await A.runTurn(ctx, { threadId: th6.id, text: `Bo paid invoice ${invNo} by check` });
+    assert.equal((await query(`SELECT status FROM crm_invoices WHERE number = $1 AND tenant_id = $2`, [invNo, t])).rows[0].status, 'paid');
+
     // 7. Suggestions when it opens.
     const h = await A.home(ctx);
     assert.ok(h.chips.length >= 3); assert.match(h.greeting, /Moran/);

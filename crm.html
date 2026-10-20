@@ -1924,9 +1924,11 @@ async function aiHome(){
     const h=AI.home=await plApi('/api/crm/assistant/home');
     el.innerHTML=`<div class="ai-hello"><div class="g">${uxEsc(h.greeting)}</div><div class="s">Ask about any job, person or number, send plans out for bids, or just tell me what happened today. I’ll file it.</div>
       ${h.ai?'':'<div class="ai-off">The assistant needs its AI key on the server (ANTHROPIC_API_KEY) before it can answer. Everything else in Eagle I works without it.</div>'}
-      <div class="ai-chips">${h.chips.map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div></div>`;
+      <div class="ai-chips">${h.chips.map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div>
+      ${h.ai&&h.canTest?'<div style="margin-top:14px;text-align:center"><button class="btn-xs" onclick="aiTest(this)">Test the AI connection</button></div>':''}</div>`;
   }catch(e){el.innerHTML='<div class="ai-off">'+uxEsc(e.message)+'</div>';}
 }
+async function aiTest(btn){btn.disabled=true;btn.textContent='Testing…';try{const r=await plApi('/api/crm/assistant/test',{body:{}});btn.textContent='✓ Connected ('+r.model+')';}catch(e){btn.disabled=false;btn.textContent='Test the AI connection';showNotif('The AI didn’t answer',e.message);}}
 function aiChip(b){const t=b.textContent;const i=document.getElementById('ai-in');if(/…$/.test(t)){i.value=t.replace(/…$/,' ');i.focus();aiGrow(i);return;}i.value=t;aiSend();}
 function aiGrow(t){t.style.height='36px';const h=Math.min(140,Math.max(36,t.scrollHeight));t.style.height=h+'px';t.style.overflowY=t.scrollHeight>140?'auto':'hidden';}
 function aiKey(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();aiSend();}}
