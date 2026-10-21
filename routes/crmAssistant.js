@@ -39,6 +39,7 @@ router.delete('/api/crm/assistant/threads/:tid', requireAuth, wrap('Failed to de
   res.json({ ok: true, undo: r.undo });
 }));
 router.post('/api/crm/assistant/files', requireAuth, wrap('Failed to attach the file', async (req, res) => res.json({ file: await assistant.saveChatUpload(ctxOf(req), req.body || {}) })));
+router.post('/api/crm/assistant/actions/:aid/undo', requireAuth, wrap('Failed to undo', async (req, res) => res.json(await assistant.undoAction(ctxOf(req), req.params.aid))));
 router.post('/api/crm/assistant/actions/:aid', requireAuth, wrap('Failed', async (req, res) => res.json(await assistant.decideAction(ctxOf(req), req.params.aid, !!(req.body || {}).approve))));
 
 // A message: progress lines stream back as it works (newline-separated JSON).

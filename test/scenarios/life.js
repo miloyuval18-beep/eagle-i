@@ -7,7 +7,18 @@ const intake = require(R + '/lib/crmIntake'); const portal = require(R + '/lib/c
 const sent = []; const send = async (m) => { sent.push(m); return { id: 'x' + sent.length }; };
 const WED_NOON = new Date('2026-10-21T17:00:00Z');
 const dealOf = async (t, email) => (await query(`SELECT d.* FROM crm_deals d JOIN crm_contacts c ON c.id = d.contact_id WHERE c.email = $2 AND d.tenant_id = $1 ORDER BY d.created_at DESC LIMIT 1`, [t, email])).rows[0];
-const flush = async (dealId) => { await query(`UPDATE crm_playbook_sends SET due_at = $2 WHERE deal_id = $1 AND status = 'pending'`, [dealId, new Date(WED_NOON.getTime() - 60000)]); return pb.processDueSends({ now: WED_NOON, send, onlyDealId: dealId }); };
+// Everything due goes now; a routine follow-up held for "one a day" goes the next day.
+const flush = async (dealId) => {
+  await query(`UPDATE crm_playbook_sends SET due_at = $2 WHERE deal_id = $1 AND status = 'pending'`, [dealId, new Date(WED_NOON.getTime() - 60000)]);
+  const r = await pb.processDueSends({ now: WED_NOON, send, onlyDealId: dealId });
+  const next = new Date(WED_NOON.getTime() + 86400000);
+  if ((await query(`UPDATE crm_playbook_sends SET due_at = $2, sent_at = NULL WHERE deal_id = $1 AND status = 'pending' AND cancel_reason = 'one_a_day' RETURNING id`, [dealId, new Date(next.getTime() - 60000)])).rowCount) {
+    await query(`UPDATE crm_playbook_sends SET sent_at = sent_at - interval '2 days' WHERE deal_id = $1 AND status = 'sent'`, [dealId]);
+    const r2 = await pb.processDueSends({ now: next, send, onlyDealId: dealId });
+    r.sent += r2.sent;
+  }
+  return r;
+};
 (async () => {
   const t = (await query(`INSERT INTO tenants (company_name, industry, products) VALUES ('Life Co', 'home_services', '{crm}') RETURNING id`)).rows[0].id;
   try {

@@ -19,6 +19,14 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+// What device a sign-in is on, for "Devices signed in" (Account menu).
+function deviceOf(req) {
+  const ua = String(req.get('user-agent') || '');
+  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android phone' : /Macintosh|Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows computer' : /CrOS/.test(ua) ? 'Chromebook' : /Linux/.test(ua) ? 'Linux computer' : 'Device';
+  const br = /Edg\//.test(ua) ? 'Edge' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : '';
+  return { name: br ? `${os}, ${br}` : os, at: new Date().toISOString() };
+}
+
 function sessionMiddleware() {
   const secret = process.env.SESSION_SECRET;
   if (!secret) {
@@ -113,6 +121,7 @@ function registerAuthRoutes(app) {
 
       req.session.userId = userResult.rows[0].id;
       req.session.tenantId = tenantId;
+      req.session.device = deviceOf(req);
       res.json({ ok: true, tenantId, products });
 
       // Best-effort — signup already succeeded and the user is logged in
@@ -149,6 +158,7 @@ function registerAuthRoutes(app) {
       }
       req.session.userId = user.id;
       req.session.tenantId = user.tenant_id;
+      req.session.device = deviceOf(req);
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: { message: 'Login failed: ' + err.message } });
@@ -364,4 +374,5 @@ function registerAuthRoutes(app) {
   });
 }
 
-module.exports = { sessionMiddleware, requireAuth, requireAdmin, registerAuthRoutes };
+module.exports = {
+  deviceOf, sessionMiddleware, requireAuth, requireAdmin, registerAuthRoutes };

@@ -36,7 +36,11 @@ router.get('/api/crm/payments', requireAuth, async (req, res) => {
 });
 
 router.post('/api/crm/payments/connect', requireAuth, managersOnly, async (req, res) => {
-  try { res.json(await pay.connectLink({ tenantId: req.tenantId, email: req.crmUser.email, baseUrl: baseUrlOf(req) })); } catch (err) { fail(res, err, 'Failed to connect Stripe'); }
+  try {
+    const link = await pay.connectLink({ tenantId: req.tenantId, email: req.crmUser.email, baseUrl: baseUrlOf(req) });
+    await require('../lib/crmAlerts').ownerAlert({ tenantId: req.tenantId, actorId: req.userId, title: 'Online payments are being set up', detail: 'Someone started connecting a bank account for card and bank payments on invoices.', key: `payments:${Math.floor(Date.now() / 86400000)}` }).catch(() => {});
+    res.json(link);
+  } catch (err) { fail(res, err, 'Failed to connect Stripe'); }
 });
 
 // ---------- invoices ----------

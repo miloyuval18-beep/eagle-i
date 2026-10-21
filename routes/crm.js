@@ -62,6 +62,7 @@ router.post('/api/crm/join', async (req, res) => {
     const user = await team.acceptInvite({ token: String(token || ''), name, password });
     req.session.userId = user.id;
     req.session.tenantId = user.tenant_id;
+    req.session.device = require('../auth').deviceOf(req);
     res.json({ ok: true });
   } catch (err) { fail(res, err, 'Failed to join'); }
 });
@@ -108,6 +109,7 @@ router.patch('/api/crm/company', managersOnly, async (req, res) => {
   if (b.email && !EMAIL_RE.test(clean(b.email, 200))) return res.status(400).json({ error: { message: 'That email address does not look right.' } });
   if (b.address !== undefined && clean(b.address, 200) && clean(b.address, 200).length < 8) return res.status(400).json({ error: { message: 'Add your full business address; it goes at the bottom of every email.' } });
   try {
+    const before = (await query('SELECT email, address FROM business_profile WHERE tenant_id = $1', [req.tenantId])).rows[0] || {};
     if (b.companyName !== undefined) await query('UPDATE tenants SET company_name = $1 WHERE id = $2', [clean(b.companyName, 120), req.tenantId]);
     const sets = []; const vals = [];
     for (const [k, col, max] of [['phone', 'phone', 40], ['email', 'email', 200], ['address', 'address', 200], ['founderName', 'founder_name', 120]]) {
@@ -116,6 +118,12 @@ router.patch('/api/crm/company', managersOnly, async (req, res) => {
     if (sets.length) {
       vals.push(req.tenantId);
       await query(`UPDATE business_profile SET ${sets.join(', ')} WHERE tenant_id = $${vals.length}`, vals);
+    }
+    // The address customers reply to, or the one on every email, changed: the owner should know.
+    for (const [k, label] of [['email', 'The company email (where customer replies go)'], ['address', 'The business address on every email']]) {
+      if (b[k] !== undefined && (clean(b[k], 200) || null) !== (before[k] || null) && before[k]) {
+        await require('../lib/crmAlerts').ownerAlert({ tenantId: req.tenantId, actorId: req.userId, title: `${label} was changed`, detail: `From “${before[k]}” to “${clean(b[k], 200) || '(empty)'}”.`, key: `company-${k}:${Date.now()}` }).catch(() => {});
+      }
     }
     res.json({ ok: true });
   } catch (err) { fail(res, err, 'Failed to save company details'); }
@@ -135,6 +143,42 @@ router.get('/api/crm/pipeline', requireAuth, async (req, res) => {
     const [pipeline, inbox, settings] = await Promise.all([crm.listPipeline(req.tenantId), crm.listInbox(req.tenantId), crm.getSettings(req.tenantId)]);
     res.json({ ...pipeline, needsYou: inbox.length, settings: { paused: settings.paused } });
   } catch (err) { fail(res, err, 'Failed to load the pipeline'); }
+});
+
+// Download all my data (owners and admins): every record as spreadsheets in one .zip.
+router.get('/api/crm/export/all', requireAuth, managersOnly, async (req, res) => {
+  try {
+    const buf = await require('../lib/crmExport').exportAll(req.tenantId);
+    res.set({ 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="eagle-i-data-${new Date().toISOString().slice(0, 10)}.zip"`, 'Cache-Control': 'no-store' });
+    res.send(buf);
+  } catch (err) { fail(res, err, 'Failed to build the download'); }
+});
+// "Report a problem": what happened, in their words, plus where they were.
+router.post('/api/crm/report-problem', requireAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const what = String(b.what || '').trim().slice(0, 4000);
+    if (what.length < 3) return res.status(400).json({ error: { message: 'Say what happened (a sentence is enough).' } });
+    const co = (await query('SELECT company_name FROM tenants WHERE id = $1', [req.tenantId])).rows[0] || {};
+    const who = req.crmUser || {};
+    const ctx = [`Company: ${co.company_name || req.tenantId}`, `Person: ${who.name || ''} <${who.email || ''}> (${who.role || ''})`, `Screen: ${String(b.screen || '').slice(0, 200)}`, `Device: ${String(req.get('user-agent') || '').slice(0, 300)}`, `Recent errors: ${String(b.errors || 'none').slice(0, 3000)}`].join('\n');
+    await require('../lib/alerting').sendProblemReport({ from: `${who.name || who.email || 'someone'} at ${co.company_name || 'a company'}`, what, context: ctx });
+    res.json({ ok: true });
+  } catch (err) { fail(res, err, 'Failed to send the report'); }
+});
+
+// Devices signed in to this account, and signing out everywhere else.
+router.get('/api/crm/me/devices', requireAuth, async (req, res) => {
+  try {
+    const rows = (await query(`SELECT sid, sess->'device' AS device, expire FROM session WHERE sess->>'userId' = $1 ORDER BY expire DESC LIMIT 50`, [String(req.userId)])).rows;
+    res.json({ devices: rows.map(r => ({ id: r.sid === req.sessionID ? 'this' : require('crypto').createHash('sha256').update(r.sid).digest('hex').slice(0, 16), name: (r.device && r.device.name) || 'A device (signed in before this list was added)', since: r.device && r.device.at, current: r.sid === req.sessionID })) });
+  } catch (err) { fail(res, err, 'Failed to load'); }
+});
+router.post('/api/crm/me/devices/sign-out-others', requireAuth, async (req, res) => {
+  try {
+    const r = await query(`DELETE FROM session WHERE sess->>'userId' = $1 AND sid <> $2`, [String(req.userId), req.sessionID]);
+    res.json({ ok: true, signedOut: r.rowCount });
+  } catch (err) { fail(res, err, 'Failed to sign out'); }
 });
 
 // The getting-started checklist: each step ticks itself off when it's done.
@@ -269,6 +313,13 @@ router.post('/api/crm/playbooks/:id/reset', requireAuth, managersOnly, async (re
   try { res.json({ ok: true, ...(await playbooks.resetPlaybook({ tenantId: req.tenantId, id: req.params.id })) }); } catch (err) { fail(res, err, 'Failed to reset the playbook'); }
 });
 
+router.get('/api/crm/automations/upcoming', requireAuth, async (req, res) => {
+  try { res.json({ sends: await playbooks.upcomingSends(req.tenantId) }); } catch (err) { fail(res, err, 'Failed to load'); }
+});
+router.post('/api/crm/automations/sends/:id/skip', requireAuth, managersOnly, async (req, res) => {
+  try { if (!(await playbooks.skipSend({ tenantId: req.tenantId, id: req.params.id }))) return res.status(404).json({ error: { message: 'That email already went out or was cancelled.' } }); res.json({ ok: true }); }
+  catch (err) { fail(res, err, 'Failed to skip it'); }
+});
 router.post('/api/crm/playbooks/:id/preview', requireAuth, async (req, res) => {
   try {
     const r = await playbooks.sendPreview({ tenantId: req.tenantId, id: req.params.id, step: parseInt((req.body || {}).step, 10) || 1, lang: (req.body || {}).lang === 'es' ? 'es' : 'en', baseUrl: baseUrlOf(req) });

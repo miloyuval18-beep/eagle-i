@@ -600,7 +600,10 @@ label[for=cv-e-t]::after,label[for=cv-e-d]::after,label[for=iv-amt]::after,label
 .nx-muted{border-color:var(--bdr);background:var(--bg4)}
 .nx-l{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3)}
 .nx-t{font-size:18px;font-weight:600;color:var(--ink);margin-top:2px}
+#net-banner{position:sticky;top:0;z-index:1300;background:#7a2e0e;color:#fff;font-size:17px;padding:10px 16px;text-align:center}
 .cr-find{margin-right:8px}
+.cr-menu-btn.alert{position:relative}
+.cr-menu-btn.alert::after{content:'';position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:var(--red);border:2px solid #fff}
 .cr-menu-btn{white-space:nowrap}
 @media (max-width:420px){.cr-brand span{display:none}.cr-menu-btn{padding:7px 10px;font-size:16px}.cr-find{margin-right:6px}}
 @media (max-width:640px){.cr-find span{display:none}}
@@ -666,7 +669,11 @@ select{max-width:100%;text-overflow:ellipsis}
       <button onclick="crMenu(false);dyOpen()">My calendar &amp; morning email</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);binOpen()">🗑 Recycle bin</button>
+      <button onclick="crMenu(false);crPauseAll()" id="cr-pause-btn" hidden>⏸ Pause all automatic emails</button>
       <button onclick="crMenu(false);crSimple()" id="cr-simple-btn">Simple view: fewer tabs</button>
+      <button onclick="crMenu(false);dvOpen()">📱 Devices signed in</button>
+      <a href="/api/crm/export/all" id="cr-export" hidden onclick="crMenu(false);showNotif('Preparing your download','Your browser saves a .zip of spreadsheets in a moment.')">⬇ Download all my data</a>
+      <button onclick="crMenu(false);rpOpenProblem()">🆘 Report a problem</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
       <a href="/forgot-password.html">Change password</a>
@@ -717,6 +724,8 @@ select{max-width:100%;text-overflow:ellipsis}
   <section class="view" id="view-auto">
     <div class="sh"><div><div class="st">Automations</div><div class="ss">Each playbook sends emails when a deal reaches its stage. Nothing sends until you approve the exact wording. After that it runs on its own for every deal that enters the stage. If you change the wording, it switches off until you approve the new version.</div></div></div>
     <div class="section" id="pl-auto-settings"></div>
+    <div class="pl-h">Going out in the next 7 days</div>
+    <div id="pl-upcoming"><div class="sm">Loading…</div></div>
     <div id="pl-stagenames"></div>
     <div class="pl-h">Get leads in automatically</div>
     <div id="pl-intake"><div class="sm">Loading…</div></div>
@@ -1033,6 +1042,7 @@ async function crInit(){
   document.getElementById('cr-who').textContent=me.email||'';
   document.getElementById('cr-mkt').hidden=!me.hasMarketing;
   document.getElementById('cr-reports-link').hidden=!me.canManage;
+  document.getElementById('cr-export').hidden=!me.canManage;
   if(!me.hasCrm){
     document.getElementById('cr-nav').style.display='none';
     document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
@@ -1052,6 +1062,15 @@ async function crInit(){
   if(AI.loading)aiLoad(AI.loading);
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
+  crHealth();
+}
+// A red dot on Account when something needs fixing (Google access lost).
+async function crHealth(){
+  try{const g=await plApi('/api/crm/google');
+    const bad=(g.connection&&g.connection.status==='error')||(g.mailboxes||[]).some(m=>m.status==='error'&&(m.mine||crCanManage()));
+    const b=document.getElementById('cr-menu-btn');b.classList.toggle('alert',!!bad);b.title=bad?'Google needs attention: see Company details':'';
+    const c=[...document.querySelectorAll('#cr-menu button')].find(x=>/Company details/.test(x.textContent));if(c)c.textContent=bad?'⚠ Company details: Google needs attention':'Company details';
+  }catch(e){}
 }
 async function crActivate(btn){
   btn.disabled=true;
@@ -1067,6 +1086,9 @@ async function plCheckSetup(){
       if(b.locked)html='<div class="pl-banner" style="border-color:var(--red)"><span><b>Read-only.</b> '+uxEsc(b.reason)+'</span><button class="btn-xs p" onclick="crView(\'billing\')">Choose a plan</button></div>'+html;
       else if(b.status==='trialing'&&b.trialDaysLeft!=null&&b.trialDaysLeft<=5&&b.billingReady)html='<div class="pl-banner"><span>'+(b.trialDaysLeft>0?b.trialDaysLeft+' day'+(b.trialDaysLeft===1?'':'s')+' left in your free trial.':'Your free trial ends today.')+' Pick a plan to keep everything running.</span><button class="btn-xs p" onclick="crView(\'billing\')">See plans</button></div>'+html;
     }catch(e){}
+    // Only one person can manage the account: if they leave or lose access, the company is locked out.
+    if(crCanManage()&&CR.team.length>1&&CR.team.filter(m=>['owner','admin'].includes(m.role)).length===1){let hide=false;try{hide=!!localStorage.getItem('admin2-hide');}catch(e){}
+      if(!hide)html+='<div class="pl-banner"><span>You’re the only one who can manage this account. Make a second person an admin, so the company is never locked out if you’re away or lose your phone.</span><button class="btn-xs p" onclick="crView(\'team\')">Choose someone</button><button class="btn-xs" onclick="try{localStorage.setItem(\'admin2-hide\',\'1\')}catch(e){};this.parentElement.remove()">Not now</button></div>';}
     if(crCanManage()){try{const su=await plApi('/api/crm/setup');if(!su.done)html+='<div class="pl-banner"><span>New here? Answer a few quick questions and Eagle I sets itself up for how you work, and brings in your old contacts.</span><button class="btn-xs p" onclick="crView(\'setup\')">Set up</button></div>';}catch(e){}}
     el.innerHTML=html;
   }catch(e){}
@@ -1347,6 +1369,34 @@ function srGo(i){const x=SR.list[i];if(!x)return;CR.dirty=false;uxClose();
   else if(x.dealId)plOpenDeal(x.dealId);
   else crView('needs');
 }
+/* ---------- report a problem ---------- */
+// The last few things that went wrong on screen, sent along with a report.
+const CR_ERRS=[];
+function crNoteErr(m){CR_ERRS.push(new Date().toLocaleTimeString()+' '+String(m).slice(0,300));if(CR_ERRS.length>8)CR_ERRS.shift();}
+let crErrToastAt=0;
+window.addEventListener('error',e=>{crNoteErr((e.message||'error')+(e.filename?' @'+e.filename.split('/').pop()+':'+e.lineno:''));if(Date.now()-crErrToastAt>60000){crErrToastAt=Date.now();showNotif('Something didn’t work on this screen','Try again. If it keeps happening: Account → Report a problem.');}});
+window.addEventListener('unhandledrejection',e=>crNoteErr('unhandled: '+((e.reason&&e.reason.message)||e.reason)));
+function rpOpenProblem(){
+  uxOpen(uxHead('Report a problem','Tell us what happened, in your own words. We’ll look into it.')+`<div class="pl-form"><div class="full"><label for="rp-what">What happened? What did you expect?</label><textarea id="rp-what" class="cred-input" rows="5" placeholder="e.g. I tapped Send on the invoice for the Ruiz job and nothing happened."></textarea></div></div>
+    <div class="sm">We include which screen you were on and any error that showed up, so you don’t have to.</div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="rpSendProblem(this)">Send</button><button class="btn-xs" onclick="uxClose()">Cancel</button></div>`);
+  setTimeout(()=>{const t=document.getElementById('rp-what');if(t)t.focus();},60);
+}
+async function rpSendProblem(btn){
+  if(!crRequire(['rp-what']))return;btn.disabled=true;
+  try{await plApi('/api/crm/report-problem',{body:{what:document.getElementById('rp-what').value,screen:(CR.view||'')+(location.hash?' '+location.hash:''),errors:CR_ERRS.join('\n')||'none'}});uxClose();showNotif('Thank you','Your report was sent.');}
+  catch(e){btn.disabled=false;showNotif('Could not send it',e.message);}
+}
+/* ---------- devices signed in ---------- */
+async function dvOpen(){
+  uxOpen(uxHead('Devices signed in','Loading…'));
+  try{const {devices}=await plApi('/api/crm/me/devices');
+    uxOpen(uxHead('Devices signed in','Every phone and computer signed in to your account. If you lost a phone or used someone else’s computer, sign out everywhere else.')+
+      devices.map(d=>`<div class="bin-row"><div class="w"><div style="font-weight:600">${d.current?'📍 ':''}${uxEsc(d.name)}${d.current?' <span class="sm">(this one)</span>':''}</div><div class="k">${d.since?'Signed in '+crWhen(d.since):''}</div></div></div>`).join('')+
+      (devices.length>1?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="dvOut(this)">Sign out everywhere else</button></div>`:'<div class="sm">Only this device is signed in.</div>'));}
+  catch(e){uxOpen(uxHead('Could not load your devices',uxEsc(e.message)));}
+}
+async function dvOut(btn){if(!confirm('Sign out every other phone and computer? You stay signed in here.'))return;btn.disabled=true;try{const r=await plApi('/api/crm/me/devices/sign-out-others',{body:{}});showNotif('Signed out',`${r.signedOut} other device${r.signedOut===1?'':'s'} signed out.`);dvOpen();}catch(e){btn.disabled=false;showNotif('Could not do that',e.message);}}
 /* ---------- recycle bin (lib/crmTrash.js) ---------- */
 async function binOpen(){
   uxOpen(uxHead('Recycle bin','Loading…'));
@@ -2072,9 +2122,13 @@ async function flUpload(dealId,input,dropped){
   const msg=document.getElementById('pld-up-msg');const files=dropped||[...input.files];const share=document.getElementById('pld-share').checked;
   const sel=document.getElementById('pld-folder');const folder=sel?sel.value:'';
   let ok=0,notes=[];
+  let n=0;
   for(let f of files){
-    msg.textContent=`Uploading ${f.name}…`;
+    n++;msg.textContent=`Uploading ${f.name}${files.length>1?` (${n} of ${files.length})`:''}…`;
     try{f=await prepFile(f);}catch(e){msg.textContent=e.message;continue;}
+    // Too big? Say so now, not after a long upload fails.
+    const max=(FL.maxMb||8)*1024*1024;
+    if(f.size>max){notes.push(`${f.name} is ${Math.round(f.size/1048576)} MB, over the ${FL.maxMb||8} MB limit${FL.drive&&FL.drive.on?'':'. Connecting Google Drive raises the limit to 50 MB'}.`);continue;}
     if(f.size>FL.maxMb*1024*1024){notes.push(`${f.name} is over ${FL.maxMb} MB.${FL.drive.on?'':' Connect Google Drive for bigger files.'}`);continue;}
     try{
       const r=await fetch('/api/crm/deals/'+dealId+'/files/raw',{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Filename':encodeURIComponent(f.name),'X-Shared':share?'1':'0',...(folder?{'X-Folder':folder}:{})},body:f});
@@ -2131,8 +2185,35 @@ function plAgo(ts){
   if(m<48*60)return Math.round(m/60)+' h';
   return Math.round(m/1440)+' days';
 }
+// No signal: notes, site logs, tasks, punch items and calendar entries wait on the
+// phone and are saved when the connection is back. Anything else says so plainly.
+const CR_OUTBOX_RE=/^\/api\/crm\/(deals\/[0-9a-f-]{36}\/(notes|logs|voice-log|punch)|tasks|calendar\/events)$/;
+function crOutbox(){try{return JSON.parse(localStorage.getItem('outbox')||'[]');}catch(e){return [];}}
+function crOutboxSave(q){try{localStorage.setItem('outbox',JSON.stringify(q));}catch(e){}crNetBanner();}
+async function crOutboxFlush(){
+  const q=crOutbox();if(!q.length||!navigator.onLine)return;
+  const left=[];let sent=0;
+  for(const x of q){try{const r=await fetch(x.url,{method:x.method,headers:{'Content-Type':'application/json'},body:JSON.stringify(x.body)});if(r.ok||r.status<500&&r.status!==401)sent++;else left.push(x);}catch(e){left.push(x);}}
+  crOutboxSave(left);
+  if(sent){showNotif('Saved',`${sent} thing${sent===1?'':'s'} you did while offline ${sent===1?'is':'are'} saved now.`);if(CR.view)crView(CR.view);}
+}
+function crNetBanner(){
+  let b=document.getElementById('net-banner');const n=crOutbox().length;
+  if(navigator.onLine&&!n){if(b)b.remove();return;}
+  if(!b){b=document.createElement('div');b.id='net-banner';b.setAttribute('role','status');document.body.prepend(b);}
+  b.textContent=navigator.onLine?`Saving ${n} thing${n===1?'':'s'} you did while offline…`:`📵 You’re offline. Notes, logs and tasks you add are kept on this phone and saved when you’re back online.${n?` (${n} waiting)`:''}`;
+}
+window.addEventListener('offline',crNetBanner);
+window.addEventListener('online',()=>{crNetBanner();crOutboxFlush();});
+setTimeout(()=>{crNetBanner();crOutboxFlush();},1500);
 async function plApi(url,opts){
-  const r=await fetch(url,opts&&opts.body!==undefined?{method:opts.method||'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(opts.body)}:(opts||{}));
+  let r;
+  try{r=await fetch(url,opts&&opts.body!==undefined?{method:opts.method||'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(opts.body)}:(opts||{}));}
+  catch(netErr){
+    const method=(opts&&(opts.method||(opts.body!==undefined?'POST':'GET')))||'GET';
+    if(method==='POST'&&CR_OUTBOX_RE.test(url.split('?')[0])){const q=crOutbox();q.push({url,method,body:opts.body,at:Date.now()});crOutboxSave(q);showNotif('Saved on this phone','No signal right now. It’s saved when you’re back online.');return {queued:true};}
+    throw new Error(navigator.onLine?'Eagle I didn’t answer. Check your connection and try again.':'You’re offline. Try again when you have signal.');
+  }
   let d={};try{d=await r.json();}catch(e){}
   if(!r.ok)throw new Error((d.error&&d.error.message)||('Request failed ('+r.status+')'));
   if(opts&&(opts.body!==undefined||opts.method&&opts.method!=='GET')){CR.dirty=false;crDraftsClear();}
@@ -2144,7 +2225,7 @@ const plStage=k=>(PL.data&&PL.data.stages.find(s=>s.key===k))||{key:k,label:k,op
 
 async function plLoad(){
   try{
-    PL.data=await plApi('/api/crm/pipeline');
+    PL.data=await plApi('/api/crm/pipeline');setTimeout(crPauseLabel,0);
     plRender();plBadge(PL.data.needsYou);
   }catch(e){const el=document.getElementById('pl-list');if(el)el.innerHTML='<div class="pl-empty">Could not load your pipeline: '+uxEsc(e.message)+'</div>';}
 }
@@ -2301,7 +2382,10 @@ async function plOpenDeal(id){
     <label class="pl-switch" style="margin-top:6px;font-size:16px"><input type="checkbox" id="pld-pick" checked><span>Let Eagle I pick out the job value, next step and visit time</span></label>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="plAddNote('${x.id}',this)">Save note</button>${window.SpeechRecognition||window.webkitSpeechRecognition?`<button class="btn-xs" id="pld-mic" onclick="vnToggle()">🎤 Talk</button>`:''}</div>
     <div class="pl-h">Coming up automatically</div>
-    ${upcoming.length?'<ul class="pl-tl">'+upcoming.map(a=>`<li class="eagle_i">✉️ ${uxEsc(a.playbook_name)}, email ${a.step}<div class="pl-tl-meta">${new Date(a.due_at)>new Date()?'Due '+new Date(a.due_at).toLocaleString():'Going out at the next chance (weekdays 9 to 5 Central)'}</div></li>`).join('')+'</ul>':`<div class="sm">Nothing scheduled.${x.contact_email?'':' This contact has no email address, so no automatic emails can go out.'}</div>`}
+    ${upcoming.length?'<ul class="pl-tl">'+upcoming.map(a=>`<li class="eagle_i">✉️ ${uxEsc(a.playbook_name)}, email ${a.step}<div class="pl-tl-meta">${new Date(a.due_at)>new Date()?'Going out '+crWhen(a.due_at):'Going out at the next chance (weekdays 9 to 5 Central)'}${a.cancel_reason==='one_a_day'?' · held a day so they don’t get two at once':''}</div></li>`).join('')+'</ul>':`<div class="sm">Nothing scheduled.${x.contact_email?'':' This contact has no email address, so no automatic emails can go out.'}</div>`}
+    ${(()=>{const why={replied:'they replied',stage_changed:'the deal moved to another stage',opted_out:'they asked not to get emails',no_email:'there’s no email address for them',switched_off:'that automatic email was switched off',not_approved:'its wording wasn’t approved yet',no_address:'your business address is missing (Account → Company details)',rescheduled:'the visit was rescheduled',too_late:'it was too late to send',skipped:'someone chose to skip it',invoice_changed:'the invoice changed or was paid',estimate_changed:'the estimate changed or was signed',no_review_link:'no review link is set up yet',deal_closed:'the deal was closed',item_removed:'the item was removed',warranty_changed:'the warranty date changed',deal_deleted:'the deal was deleted'};
+      const not=d.automations.filter(a=>a.status==='cancelled'&&a.cancel_reason&&a.cancel_reason!=='rescheduled_auto'&&Date.now()-new Date(a.due_at)<30*86400000).slice(-6);
+      return not.length?'<div class="pl-h">Not sent</div><ul class="pl-tl">'+not.map(a=>`<li class="eagle_i">🚫 ${uxEsc(a.playbook_name)}, email ${a.step}<div class="pl-tl-meta">Not sent because ${uxEsc(why[a.cancel_reason]||a.cancel_reason.replace(/_/g,' '))}</div></li>`).join('')+'</ul>':'';})()}
     <div class="pl-h">History</div>
     <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${crWhen(a.created_at)}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
   plDealEstimates(x.id);
@@ -3204,7 +3288,16 @@ async function plLoadIntake(){
 }
 function plCopy(id){const i=document.getElementById(id);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(()=>showNotif('Copied','')).catch(()=>{try{document.execCommand('copy');showNotif('Copied','');}catch(e){}});}
 async function plRotate(){if(!confirm('Make a new link? The old form link and forwarding address will stop working, so you’ll need to update your website.'))return;try{await plApi('/api/crm/intake/rotate',{body:{}});plLoadIntake();}catch(e){showNotif('Could not change it',e.message);}}
+async function plUpcoming(){
+  const el=document.getElementById('pl-upcoming');if(!el)return;
+  try{const {sends}=await plApi('/api/crm/automations/upcoming');
+    el.innerHTML=sends.length?`<div class="sm" style="margin:0 0 8px">Every automatic email that will go out this week. Skip any you don’t want sent.</div>`+sends.map(x=>`<div class="bin-row"><div class="w"><div style="font-weight:600">${uxEsc(x.subject||x.playbook)}</div><div class="k">To ${uxEsc(x.to)}${x.email?' &lt;'+uxEsc(x.email)+'&gt;':''} · ${uxEsc(x.deal)} · ${crWhen(x.dueAt)}${x.held?' · held a day so they don’t get two at once':''}</div></div>${crCanManage()?`<button class="btn-xs" onclick="plSkipSend('${x.id}',this)">Skip this one</button>`:''}</div>`).join('')
+      :'<div class="pl-empty">Nothing is scheduled to go out in the next 7 days.</div>';}
+  catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function plSkipSend(id,btn){if(!confirm('Skip this email? It won’t be sent.'))return;btn.disabled=true;try{await plApi('/api/crm/automations/sends/'+id+'/skip',{body:{}});plUpcoming();showNotif('Skipped','That email won’t go out.');}catch(e){btn.disabled=false;showNotif('Could not skip it',e.message);}}
 async function plLoadAuto(){
+  plUpcoming();
   plLoadIntake();
   bkLoad();
   puSettings();
@@ -3295,8 +3388,14 @@ async function plPbApprove(id,btn){
     await plLoadAuto();showNotif('Playbook switched on','It will run for every deal that enters this stage from now on.');
   }catch(e){msg.textContent=e.message;btn.disabled=false;}
 }
-async function plPbEnabled(id,on){try{await plApi('/api/crm/playbooks/'+id+'/enabled',{body:{enabled:on}});plLoadAuto();}catch(e){showNotif('Could not switch it',e.message);}}
-async function plPbPreview(id,btn,lang){
+async function plPbEnabled(id,on){
+  let tested=false;try{tested=!!localStorage.getItem('pb-tested:'+id);}catch(e){}
+  if(on&&!tested&&confirm('Send yourself a test of this email first, to see exactly what customers will get? (Recommended)\n\nOK = send me a test now. Cancel = switch it on without a test.')){
+    try{const r=await plApi('/api/crm/playbooks/'+id+'/preview',{body:{step:1,lang:'en'}});try{localStorage.setItem('pb-tested:'+id,'1');}catch(e){}showNotif('Test sent to '+r.to,'Check your inbox, then switch it on.');}catch(e){showNotif('Could not send the test',e.message);}
+    plLoadAuto();return;
+  }
+  try{await plApi('/api/crm/playbooks/'+id+'/enabled',{body:{enabled:on}});plLoadAuto();}catch(e){showNotif('Could not switch it',e.message);}}
+async function plPbPreview(id,btn,lang){try{localStorage.setItem('pb-tested:'+id,'1');}catch(e){}
   const msg=document.getElementById('pbmsg-'+id);btn.disabled=true;
   try{const r=await plApi('/api/crm/playbooks/'+id+'/preview',{body:{step:1,lang:lang||'en'}});msg.textContent=(lang==='es'?'Spanish preview':'Preview')+' of message 1 sent to '+r.to+'.';}catch(e){msg.textContent=e.message;}
   btn.disabled=false;
@@ -3305,6 +3404,12 @@ async function plPbReset(id){
   if(!confirm('Go back to the original wording? This switches the playbook off until you approve it again.'))return;
   try{await plApi('/api/crm/playbooks/'+id+'/reset',{body:{}});plLoadAuto();}catch(e){showNotif('Could not reset',e.message);}
 }
+async function crPauseAll(){
+  const paused=!!(PL.data&&PL.data.settings&&PL.data.settings.paused);
+  if(!confirm(paused?'Turn automatic emails back on? Anything that was waiting goes out at the next chance.':'Pause ALL automatic emails? Nothing is sent until you turn them back on. Nothing is lost; emails wait.'))return;
+  await plSetting({paused:!paused});showNotif(paused?'Automatic emails are on':'Automatic emails are paused',paused?'':'Turn them back on from Account at any time.');
+}
+function crPauseLabel(){const b=document.getElementById('cr-pause-btn');if(!b)return;b.hidden=!crCanManage();const p=!!(PL.data&&PL.data.settings&&PL.data.settings.paused);b.textContent=p?'▶ Turn automatic emails back on':'⏸ Pause all automatic emails';}
 async function plSetting(patch){
   try{await plApi('/api/crm/settings',{method:'PATCH',body:patch});if(CR.view==='auto')plLoadAuto();plLoad();}
   catch(e){showNotif('Could not save',e.message);}
@@ -3418,6 +3523,7 @@ async function aiAttach(input){
   input.value='';
 }
 function aiBubble(role,html,extra=''){const d=document.createElement('div');d.className='ai-msg '+(role==='user'?'me':'bot');d.innerHTML=`<div style="max-width:100%;display:flex;flex-direction:column;align-items:${role==='user'?'flex-end':'flex-start'}"><div class="ai-b">${html}</div>${extra}</div>`;document.getElementById('ai-body').appendChild(d);aiScroll();return d;}
+async function aiUndo(id,btn){btn.disabled=true;try{const r=await plApi('/api/crm/assistant/actions/'+id+'/undo',{body:{}});const el=document.getElementById('aic-'+id);if(el)el.outerHTML=aiCard({id,status:'done',summary:{title:el.querySelector('.ct').textContent},result:r.result});showNotif('Undone',r.result.text);if(CR.view==='pipeline')plLoad();}catch(e){btn.disabled=false;showNotif('Could not undo',e.message);}}
 function aiCard(a){
   const s=a.summary||{};const st=a.status;
   return `<div class="ai-card ${st}" id="aic-${a.id}"><div class="ct">${uxEsc(s.title||'Ready to send')}</div>
@@ -3426,7 +3532,7 @@ function aiCard(a){
     ${(s.lines||[]).map(l=>`<div class="cl">${uxEsc(l)}</div>`).join('')}
     ${s.preview?`<div class="pv">${uxEsc(s.preview)}</div>`:''}
     ${st==='pending'?`<div class="cb"><button class="btn btn-blue" onclick="aiDecide('${a.id}',true,this)">${uxEsc(s.button||'Send')}</button><button class="btn-xs" onclick="aiDecide('${a.id}',false,this)">Cancel</button></div>`
-      :`<div class="st" style="color:${st==='done'?'var(--green)':'var(--ink3)'}">${st==='done'?'✓ '+uxEsc((a.result&&a.result.text)||'Done'):st==='failed'?'Didn’t go: '+uxEsc((a.result&&a.result.text)||''):'Cancelled'}</div>`}</div>`;
+      :`<div class="st" style="color:${st==='done'?'var(--green)':'var(--ink3)'}">${st==='done'?'✓ '+uxEsc((a.result&&a.result.text)||'Done'):st==='failed'?'Didn’t go: '+uxEsc((a.result&&a.result.text)||''):'Cancelled'}${st==='done'&&a.result&&a.result.undo&&!a.result.undone?` <button class="btn-xs" onclick="aiUndo('${a.id}',this)">Undo</button>`:''}</div>`}</div>`;
 }
 async function aiDecide(id,approve,btn){
   btn.disabled=true;btn.textContent=approve?'Sending…':'…';

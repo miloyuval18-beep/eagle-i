@@ -160,7 +160,11 @@ const use = (name, input, id = 'tu_' + Math.random().toString(36).slice(2, 8)) =
     assert.ok(sent.some(m => m.to === 'bo@ask.test' && /Invoice #/.test(m.subject)));
     const invNo = (await query(`SELECT number FROM crm_invoices WHERE deal_id = $1 AND title = 'Framing complete'`, [deal.id])).rows[0].number;
     script = [use('mark_invoice_paid', { invoice_number: invNo, via: 'check' }), say('Marked paid.')];
-    await A.runTurn(ctx, { threadId: th6.id, text: `Bo paid invoice ${invNo} by check` });
+    const paidTurn = await A.runTurn(ctx, { threadId: th6.id, text: `Bo paid invoice ${invNo} by check` });
+    // Marking paid is hard to take back, so it's a card first.
+    assert.equal((await query(`SELECT status FROM crm_invoices WHERE number = $1 AND tenant_id = $2`, [invNo, t])).rows[0].status, 'sent');
+    assert.equal(paidTurn.actions[0].kind, 'mark_invoice_paid');
+    await A.decideAction(ctx, paidTurn.actions[0].id, true);
     assert.equal((await query(`SELECT status FROM crm_invoices WHERE number = $1 AND tenant_id = $2`, [invNo, t])).rows[0].status, 'paid');
 
     // 7. Suggestions when it opens.

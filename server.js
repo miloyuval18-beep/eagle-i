@@ -299,6 +299,7 @@ app.listen(PORT, () => {
   startTdiAgenciesWorker();
   startComptrollerTradesWorker();
   startFollowUpWorker();
+  require('./lib/crmHealth').startHealthWatch();
   startFdicBanksWorker();
   startCslbRosterWorker();
   startDreRosterWorker();
