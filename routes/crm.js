@@ -137,6 +137,12 @@ router.get('/api/crm/pipeline', requireAuth, async (req, res) => {
   } catch (err) { fail(res, err, 'Failed to load the pipeline'); }
 });
 
+router.post('/api/crm/deals/duplicates', requireAuth, async (req, res) => {
+  try { res.json({ matches: await crm.findDuplicates({ tenantId: req.tenantId, ...(req.body || {}) }) }); } catch (err) { fail(res, err, 'Failed to check'); }
+});
+router.get('/api/crm/deals/:id/stage-check', requireAuth, async (req, res) => {
+  try { res.json({ warnings: await crm.stageWarnings({ tenantId: req.tenantId, dealId: req.params.id, stage: String(req.query.stage || '') }) }); } catch (err) { fail(res, err, 'Failed to check'); }
+});
 router.post('/api/crm/deals', requireAuth, async (req, res) => {
   const b = req.body || {};
   if (!String(b.name || '').trim()) return res.status(400).json({ error: { message: 'Add the person’s name.' } });

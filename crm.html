@@ -593,6 +593,12 @@ body.on-ask .sh{display:none}
 .bin-row{display:flex;gap:12px;align-items:center;border:1px solid var(--bdr);background:#fff;border-radius:var(--r2);padding:12px 14px;margin-bottom:8px;flex-wrap:wrap}
 .bin-row .w{flex:1;min-width:180px}
 .bin-row .k{font-size:15px;color:var(--ink3)}
+label[for=cv-e-t]::after,label[for=cv-e-d]::after,label[for=iv-amt]::after,label[for=iv-title]::after,label[for=co-title]::after,label[for=co-amt]::after,label[for=po-title]::after,label[for=vd-name]::after{content:' *';color:var(--red);font-weight:700}
+.cr-hint{font-size:15.5px;margin-top:5px;color:var(--amber);line-height:1.4}
+.cr-hint.bad{color:var(--red)}
+.cr-hint button{border:1px solid currentColor;background:#fff;color:inherit;border-radius:8px;font:inherit;font-weight:600;padding:4px 10px;margin-left:6px;cursor:pointer;min-height:36px}
+input.cr-warn{border-color:var(--amber)!important}
+input.cr-bad{border-color:var(--red)!important}
 /* Easier to read: built for an older audience. Darker secondary text, more
    line spacing, bigger buttons and fields, and nothing smaller than 13px. */
 :root{--ink2:#283445;--ink3:#3f4a5c}
@@ -894,6 +900,12 @@ function crUndoHide(){document.getElementById('undo').classList.remove('on');}
 // Something came back or changed under the screen: show it again.
 function crRefresh(){if(typeof uxClose==='function')uxClose();if(CR.view)crView(CR.view);}
 async function crRestore(binId){await plApi('/api/crm/trash/'+binId+'/restore',{body:{}});crRefresh();}
+// Before anything goes to someone outside the company: who, and what.
+function crAskSend(what,name,email,extra){
+  if(!email){alert(`There’s no email address for ${name||'them'}. Add one first.`);return false;}
+  return confirm(`Send ${what} to ${name?name+' ':''}<${email}>?${extra?'\n\n'+extra:''}`);
+}
+const crDeal=(id)=>(PL.data&&PL.data.deals.find(x=>x.id===id))||(JB.deal&&JB.deal.id===id?JB.deal:null)||{};
 function showNotif(t,b){const el=document.getElementById('toast');el.innerHTML='<b>'+uxEsc(t)+'</b>'+uxEsc(b||'');el.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.display='none',4500);}
 
 /* ---------- app shell ---------- */
@@ -1212,6 +1224,7 @@ async function cvEdit(key,day){
   setTimeout(()=>{const t=document.getElementById('cv-e-t');if(t&&!i)t.focus();},50);
 }
 async function cvSave(btn,id){
+  if(!crRequire(['cv-e-t','cv-e-d']))return;
   const v=x=>document.getElementById(x)?document.getElementById(x).value:undefined;
   const ad=document.getElementById('cv-e-ad').checked;
   const dealId=v('cv-e-deal')||null;
@@ -1241,6 +1254,73 @@ async function binOpen(){
 }
 async function binRestore(id,btn){btn.disabled=true;try{const r=await plApi('/api/crm/trash/'+id+'/restore',{body:{}});showNotif('Put back',r.restored.label||'');binOpen();if(CR.view)crView(CR.view);}catch(e){btn.disabled=false;showNotif('Could not put it back',e.message);}}
 async function binPurge(id,btn){if(!confirm('Delete this for good? It can’t be brought back after this.'))return;btn.disabled=true;try{await plApi('/api/crm/trash/'+id,{method:'DELETE'});binOpen();}catch(e){btn.disabled=false;showNotif('Could not delete it',e.message);}}
+// Required fields: an empty one turns red, says so, and gets the cursor. Returns false if any are empty.
+function crRequire(ids){
+  let first=null;
+  for(const id of ids){const el=document.getElementById(id);if(!el)continue;
+    if(!String(el.value||'').trim()){crHint(el,{bad:true,text:'Fill this in.'});if(!first)first=el;}else if(el.classList.contains('cr-bad'))crHint(el,null);}
+  if(first){first.focus();first.scrollIntoView({block:'center',behavior:'smooth'});return false;}
+  return true;
+}
+/* ---------- checking what's typed (gentle: a note under the field, never blocking) ---------- */
+const CR_DOMAINS=['gmail.com','yahoo.com','hotmail.com','outlook.com','icloud.com','aol.com','comcast.net','att.net','live.com','msn.com','me.com','sbcglobal.net'];
+const CR_TYPOS={'gmial.com':'gmail.com','gmal.com':'gmail.com','gmai.com':'gmail.com','gamil.com':'gmail.com','gnail.com':'gmail.com','gmail.co':'gmail.com','gmail.con':'gmail.com','gmail.cm':'gmail.com','gmailcom':'gmail.com','yaho.com':'yahoo.com','yahooo.com':'yahoo.com','yahoo.co':'yahoo.com','yahoo.con':'yahoo.com','hotmial.com':'hotmail.com','hotmai.com':'hotmail.com','hotmail.co':'hotmail.com','hotmail.con':'hotmail.com','outlok.com':'outlook.com','outloo.com':'outlook.com','outlook.co':'outlook.com','iclod.com':'icloud.com','icloud.co':'icloud.com','aol.co':'aol.com','comcast.com':'comcast.net','att.com':'att.net'};
+function crEditDist(a,b){const m=a.length,n=b.length;if(Math.abs(m-n)>2)return 9;const d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);for(let j=1;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n];}
+function crEmailCheck(v){
+  v=String(v||'').trim();if(!v)return null;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v))return {bad:true,text:'That doesn’t look like a complete email address (like name@gmail.com).'};
+  const [user,dom]=v.toLowerCase().split('@');
+  let fix=CR_TYPOS[dom];
+  if(!fix&&!CR_DOMAINS.includes(dom)){const near=CR_DOMAINS.find(d=>crEditDist(dom,d)===1);if(near)fix=near;}
+  if(!fix&&/\.(con|cmo|ocm|cpm|vom)$/.test(dom))fix=dom.replace(/\.(con|cmo|ocm|cpm|vom)$/,'.com');
+  return fix?{text:`Did you mean ${user}@${fix}?`,fix:`${v.split('@')[0]}@${fix}`}:null;
+}
+function crPhoneFormat(v){const d=String(v||'').replace(/\D/g,'');const t=d.length===11&&d[0]==='1'?d.slice(1):d;return t.length===10?`(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}`:null;}
+function crHint(el,h){
+  let n=el.nextElementSibling&&el.nextElementSibling.classList&&el.nextElementSibling.classList.contains('cr-hint')?el.nextElementSibling:null;
+  el.classList.remove('cr-warn','cr-bad');
+  if(!h){if(n)n.remove();return;}
+  if(!n){n=document.createElement('div');n.className='cr-hint';el.insertAdjacentElement('afterend',n);}
+  n.classList.toggle('bad',!!h.bad);el.classList.add(h.bad?'cr-bad':'cr-warn');
+  n.textContent='⚠ '+h.text;
+  if(h.fix){const b=document.createElement('button');b.type='button';b.textContent='Use it';b.onclick=()=>{el.value=h.fix;el.dispatchEvent(new Event('input',{bubbles:true}));crHint(el,null);};n.appendChild(b);}
+}
+const crToday=()=>new Date().toLocaleDateString('en-CA');
+function crCheckField(el){
+  if(!el||!el.matches||el.readOnly||el.disabled)return;
+  const v=(el.value||'').trim();
+  if(el.matches('input[type=email],input[id$="-email"]')){crHint(el,crEmailCheck(v));return;}
+  if(el.matches('input[type=tel],input[id$="-phone"]')){
+    if(!v){crHint(el,null);return;}
+    const f=crPhoneFormat(v);if(f){if(f!==v)el.value=f;crHint(el,null);}
+    else crHint(el,{text:'A phone number has 10 digits, like (713) 555-0142.'});return;
+  }
+  if(el.matches('input[type=date]')&&v){
+    const today=crToday(),y=+v.slice(0,4),now=new Date().getFullYear();
+    if(y<now-1||y>now+3)crHint(el,{text:`Is ${y} the right year?`});
+    else if(v<today&&/due|start|need|visit|ins|cv-e-d|cv-mv-d|valid|war/.test(el.id))crHint(el,{text:'That date has already passed.'});
+    else crHint(el,null);return;
+  }
+  if(el.matches('input[type=datetime-local]')&&v){
+    const d=new Date(v),h=d.getHours();
+    if(d<new Date())crHint(el,{text:'That time has already passed.'});
+    else if(h<6||h>=21)crHint(el,{text:`That’s ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}. Is that the right time of day?`});
+    else if(d.getDay()===0)crHint(el,{text:'That’s a Sunday. Is that right?'});
+    else crHint(el,null);return;
+  }
+  if(el.matches('input[type=time]')&&v){const h=+v.slice(0,2);crHint(el,h<6||h>=21?{text:'Is that the right time of day? (It’s '+(h<12?'early morning':'late at night')+'.)'}:null);return;}
+  if(el.matches('input[inputmode=decimal]')&&v){
+    const n=Number(v.replace(/[$,\s]/g,''));
+    if(!isFinite(n))crHint(el,{bad:true,text:'Type a number, like 1500 or 1,500.00.'});
+    else if(n<0&&!/co-amt|amount/.test(el.id))crHint(el,{text:'That’s a negative amount. Is that right?'});
+    else if(n>=1000000)crHint(el,{text:`That’s $${n.toLocaleString('en-US')}. Is that right?`});
+    else crHint(el,null);
+  }
+}
+document.addEventListener('focusout',e=>crCheckField(e.target));
+// Typing into a field that said "Fill this in" clears it.
+document.addEventListener('input',e=>{const el=e.target,n=el&&el.nextElementSibling;if(n&&n.classList&&n.classList.contains('cr-hint')&&/Fill this in/.test(n.textContent)&&String(el.value||'').trim())crHint(el,null);});
+document.addEventListener('change',e=>{if(e.target&&e.target.matches&&e.target.matches('input[type=date],input[type=datetime-local],input[type=time]'))crCheckField(e.target);});
 /* ---------- weekly reports ---------- */
 // The report read aloud, for the drive in.
 let RP_SPEECH=null;
@@ -1458,6 +1538,9 @@ async function esSend(btn){
   // A line with no cost goes to the homeowner at $0. Say so before it does.
   esCapture();const zero=ES.cur.lines.filter(l=>l.description&&!(Number(l.unit_cost)>0)&&!/allowance|credit|by owner|included|no charge/i.test(l.description));
   if(zero.length&&!confirm(`${zero.length===1?'“'+zero[0].description+'” has':zero.length+' lines have'} no cost entered, so the homeowner will see ${zero.length===1?'it':'them'} at $0.00. Send anyway?`))return;
+  const mk=Number(ES.cur.default_markup_pct);const odd=ES.cur.lines.filter(l=>l.description&&l.markup_pct!==''&&l.markup_pct!=null&&(Number(l.markup_pct)<0||Number(l.markup_pct)>100));
+  if((mk<0||mk>100||odd.length)&&!confirm(`${odd.length?odd.length+' line'+(odd.length===1?' has':'s have')+' a markup':'The markup is'} ${mk<0||odd.some(l=>Number(l.markup_pct)<0)?'below 0%':'over 100%'}. Is that right?`))return;
+  if(!ES.cur.lines.some(l=>l.description&&Number(l.quantity)*Number(l.unit_cost)>0)&&!confirm('This estimate adds up to $0. Send it anyway?'))return;
   btn.disabled=true;
   try{await esSave(null,true);const r=await plApi('/api/crm/estimates/'+ES.cur.id+'/send',{body:{message:note}});showNotif('Sent to '+r.to,'The deal moved forward and its follow-ups have started.');await esOpen(ES.cur.id);plLoad();}
   catch(x){const m=document.getElementById('es-send-msg');if(m)m.textContent=x.message;btn.disabled=false;}
@@ -2018,9 +2101,13 @@ function plNewDeal(){
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="plSaveNew(this)">Add deal</button><button class="btn-xs" onclick="uxClose()">Cancel</button></div><div class="sm" id="pln-err"></div>`);
   setTimeout(()=>{const n=document.getElementById('pln-name');if(n)n.focus();},50);
 }
-async function plSaveNew(btn){
+async function plSaveNew(btn,anyway){
   const v=id=>document.getElementById(id).value;
+  if(!crRequire(['pln-name']))return;
   btn.disabled=true;
+  // Already in the pipeline? Say so before making a second one.
+  if(!anyway){try{const {matches}=await plApi('/api/crm/deals/duplicates',{body:{name:v('pln-name'),email:v('pln-email'),phone:v('pln-phone'),address:v('pln-address')}});
+    if(matches.length){btn.disabled=false;document.getElementById('pln-err').innerHTML=`<div class="pl-banner" style="display:block"><b>This may already be in your pipeline:</b>${matches.map(m=>`<div style="margin-top:8px">“${uxEsc(m.title)}” · ${uxEsc(m.name)} · ${uxEsc(m.stage)} <span class="sm">(${uxEsc(m.why)})</span> <button class="btn-xs p" onclick="CR.dirty=false;uxClose();plOpenDeal('${m.id}')">Open that deal</button></div>`).join('')}<div class="vd-mbtns"><button class="btn-xs" onclick="plSaveNew(this,true)">It’s different: add a new one anyway</button></div></div>`;return;}}catch(e){}}
   try{
     const r=await plApi('/api/crm/deals',{body:{name:v('pln-name'),phone:v('pln-phone'),email:v('pln-email'),address:v('pln-address'),title:v('pln-title'),value:v('pln-value'),stage:v('pln-stage'),source:v('pln-source'),note:v('pln-note'),ownerUserId:document.getElementById('pln-owner')?v('pln-owner'):undefined}});
     uxClose();showNotif('Deal added',r.deal.title);await plLoad();
@@ -2139,7 +2226,9 @@ function ccCompose(dealId,d){
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="ccSend('${dealId}',this)">Send email</button><button class="btn-xs" onclick="document.getElementById('cc-compose').innerHTML=''">Not now</button></div><div class="sm" id="cc-msg-out"></div>`;
   el.scrollIntoView({block:'nearest'});
 }
-async function ccSend(dealId,btn){const v=id=>document.getElementById(id).value;btn.disabled=true;try{await plApi('/api/crm/deals/'+dealId+'/email',{body:{subject:v('cc-sub'),message:v('cc-msg')}});showNotif('Email sent','');plOpenDeal(dealId);}catch(e){document.getElementById('cc-msg-out').textContent=e.message;btn.disabled=false;}}
+async function ccSend(dealId,btn){const v=id=>document.getElementById(id).value;const d=crDeal(dealId);
+  if(!crAskSend(`this email (“${v('cc-sub')}”)`,d.contact_name,d.contact_email))return;
+  btn.disabled=true;try{await plApi('/api/crm/deals/'+dealId+'/email',{body:{subject:v('cc-sub'),message:v('cc-msg')}});showNotif('Email sent','');plOpenDeal(dealId);}catch(e){document.getElementById('cc-msg-out').textContent=e.message;btn.disabled=false;}}
 async function ccNudge(nid){
   uxOpen(uxHead('Loading…'));
   try{const n=await plApi('/api/crm/nudges/'+nid);
@@ -2149,7 +2238,7 @@ async function ccNudge(nid){
       <div class="vd-mbtns"><button class="btn btn-blue" onclick="ccNudgeSend('${nid}',this)">Send reminder</button><button class="btn-xs" onclick="ccNudgeSkip('${nid}')">Skip this one</button></div><div class="sm" id="nd-out"></div>`);}
   catch(e){uxOpen(uxHead('Could not open it',uxEsc(e.message)));}
 }
-async function ccNudgeSend(nid,btn){btn.disabled=true;try{await plApi('/api/crm/nudges/'+nid+'/send',{body:{subject:document.getElementById('nd-sub').value,message:document.getElementById('nd-msg').value}});uxClose();showNotif('Reminder sent','');plLoadNeeds();}catch(e){document.getElementById('nd-out').textContent=e.message;btn.disabled=false;}}
+async function ccNudgeSend(nid,btn){if(!confirm('Send this payment reminder now?'))return;btn.disabled=true;try{await plApi('/api/crm/nudges/'+nid+'/send',{body:{subject:document.getElementById('nd-sub').value,message:document.getElementById('nd-msg').value}});uxClose();showNotif('Reminder sent','');plLoadNeeds();}catch(e){document.getElementById('nd-out').textContent=e.message;btn.disabled=false;}}
 async function ccNudgeSkip(nid){try{await plApi('/api/crm/nudges/'+nid+'/skip',{body:{}});uxClose();plLoadNeeds();}catch(e){showNotif('Could not do that',e.message);}}
 /* ---------- fit, questionnaire, booking ---------- */
 async function fitLoad(dealId){
@@ -2437,7 +2526,8 @@ function vdRender(){
     <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><button class="btn-xs p" onclick="vdPage('${v.id}')">🔗 Their page</button>${crCanManage()?`<button class="btn-xs" onclick="vdRemove('${v.id}')" aria-label="Remove ${uxEsc(v.name)}">Remove</button>`:''}</div></div></div>`).join(''):'<div class="pl-empty">No subs or vendors yet.</div>';
 }
 async function vdAdd(btn){
-  const v=id=>document.getElementById(id).value;btn.disabled=true;const m=document.getElementById('vd-msg');m.textContent='';
+  const v=id=>document.getElementById(id).value;
+  if(!crRequire(['vd-name']))return;btn.disabled=true;const m=document.getElementById('vd-msg');m.textContent='';
   try{await plApi('/api/crm/vendors',{body:{name:v('vd-name'),trade:v('vd-trade'),contactName:v('vd-contact'),phone:v('vd-phone'),email:v('vd-email'),licenseNo:v('vd-lic'),insuranceExpires:v('vd-ins')||null}});['vd-name','vd-trade','vd-contact','vd-phone','vd-email','vd-lic','vd-ins'].forEach(id=>document.getElementById(id).value='');jbList();}
   catch(e){m.textContent=e.message;}btn.disabled=false;
 }
@@ -2455,14 +2545,17 @@ async function vdPage(id){
       ${r.questions.length?`<div class="pl-h">What they’ve asked</div><ul class="pl-tl">${r.questions.map(q=>`<li><b>${uxEsc(q.question)}</b><br>${uxEsc(q.answer||'')}<div class="pl-tl-meta">${new Date(q.created_at).toLocaleString()}${q.job?' · '+uxEsc(q.job):''}${q.forwarded?' · sent to you':''}</div></li>`).join('')}</ul>`:''}`);}
   catch(e){uxOpen(uxHead('Could not open it',uxEsc(e.message)));}
 }
-async function vdPageEmail(id,btn){btn.disabled=true;try{const r=await plApi('/api/crm/vendors/'+id+'/portal/email',{body:{}});showNotif('Link sent','To '+r.to);}catch(e){showNotif('Could not send it',e.message);btn.disabled=false;}}
+async function vdPageEmail(id,btn){
+  const v=(JB.vendors||[]).find(x=>x.id===id)||{};
+  if(!confirm(`Email ${v.name||'this sub'} the link to their page?\n\nThey see their jobs, dates, addresses and plans for your company.`))return;
+  btn.disabled=true;try{const r=await plApi('/api/crm/vendors/'+id+'/portal/email',{body:{}});showNotif('Link sent','To '+r.to);}catch(e){showNotif('Could not send it',e.message);btn.disabled=false;}}
 async function vdPageReset(id){if(!confirm('Make a new link? The old one stops working right away.'))return;try{await plApi('/api/crm/vendors/'+id+'/portal/reset',{body:{}});vdPage(id);}catch(e){showNotif('Could not do that',e.message);}}
 async function vdRemove(id){if(!confirm('Remove this vendor?'))return;try{await plApi('/api/crm/vendors/'+id,{method:'DELETE'});jbList();}catch(e){showNotif('Could not remove',e.message);}}
 
 async function jbOpen(dealId){
   JB.dealId=dealId;uxOpen(uxHead('Loading the job…'));
   let d,deal;
-  try{[d,{deal}]=await Promise.all([plApi('/api/crm/deals/'+dealId+'/job'),plApi('/api/crm/deals/'+dealId)]);JB.vendors=d.vendors;}catch(e){uxOpen(uxHead('Could not open the job',uxEsc(e.message)));return;}
+  try{[d,{deal}]=await Promise.all([plApi('/api/crm/deals/'+dealId+'/job'),plApi('/api/crm/deals/'+dealId)]);JB.vendors=d.vendors;JB.deal=deal;JB.cos=d.cos||[];JB.pos=d.pos||[];}catch(e){uxOpen(uxHead('Could not open the job',uxEsc(e.message)));return;}
   const vopts=sel=>'<option value="">No vendor</option>'+d.vendors.map(v=>`<option value="${v.id}"${v.id===sel?' selected':''}>${uxEsc(v.name)}${v.trade?' ('+uxEsc(v.trade)+')':''}</option>`).join('');
   const stOpts=s=>[['todo','To do'],['doing','In progress'],['done','Done']].map(([k,l])=>`<option value="${k}"${k===s?' selected':''}>${l}</option>`).join('');
   const dot={todo:'○',doing:'◐',done:'●'};
@@ -2665,12 +2758,20 @@ async function jbVoiceFile(btn){
 }
 async function jbLog(btn){const b=document.getElementById('jb-log').value;if(!b.trim())return;btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/logs',{body:{body:b,crew:document.getElementById('jb-crew').value,shared:document.getElementById('jb-share').checked}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
 async function jbNewCO(btn,send){
-  const v=id=>document.getElementById(id).value;btn.disabled=true;
+  const v=id=>document.getElementById(id).value;
+  if(!crRequire(['co-title','co-amt']))return;
+  const amt=Number(String(v('co-amt')).replace(/[$,\s]/g,''));
+  if(amt<0&&!confirm(`This change order lowers the price by ${esMoney(-amt)} (a credit to the homeowner). Is that right?`))return;
+  if(amt===0&&!confirm('This change order doesn’t change the price ($0). Is that right?'))return;
+  btn.disabled=true;
   try{const {co}=await plApi('/api/crm/deals/'+JB.dealId+'/change-orders',{body:{title:v('co-title'),amount:v('co-amt'),cost:v('co-cost')||0,daysAdded:v('co-days'),description:v('co-desc')}});
     if(send){const r=await plApi('/api/crm/change-orders/'+co.id+'/send',{body:{}});showNotif('Sent for approval',r.emailed?'The homeowner got an email with the link.':'It’s waiting in their portal.');}
     jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}
 }
-async function jbSendCO(id,btn){btn.disabled=true;try{const r=await plApi('/api/crm/change-orders/'+id+'/send',{body:{}});showNotif('Sent for approval',r.emailed?'Emailed with the portal link.':'Waiting in their portal.');jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
+async function jbSendCO(id,btn){
+  const d=JB.deal||{},c=(JB.cos||[]).find(x=>x.id===id)||{};
+  if(!crAskSend(`change order${c.number?' #'+c.number:''}${c.title?' “'+c.title+'”':''}${c.amount!=null?' ('+esMoney(c.amount)+')':''}`,d.contact_name,d.contact_email,'They get an email with a link to approve or decline it.'))return;
+  btn.disabled=true;try{const r=await plApi('/api/crm/change-orders/'+id+'/send',{body:{}});showNotif('Sent for approval',r.emailed?'Emailed with the portal link.':'Waiting in their portal.');jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
 const parseLines=t=>t.split('\n').map(l=>l.trim()).filter(Boolean);
 async function jbNewSel(btn){
   const v=id=>document.getElementById(id).value;
@@ -2680,10 +2781,14 @@ async function jbNewSel(btn){
 async function jbClearSel(id){if(!confirm('Clear the homeowner’s choice so they can choose again?'))return;try{await plApi('/api/crm/selections/'+id+'/clear',{body:{}});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
 async function jbNewPO(btn){
   const v=id=>document.getElementById(id).value;
+  if(!crRequire(['po-title']))return;
   const lines=parseLines(v('po-lines')).map(l=>{const p=l.split(',').map(x=>x.trim());return p.length>=3?{description:p.slice(0,p.length-2).join(', '),quantity:p[p.length-2],unit_cost:p[p.length-1]}:{description:l,quantity:1,unit_cost:0};});
   btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/pos',{body:{vendorId:v('po-v')||null,category:v('po-cat'),title:v('po-title'),lines,neededBy:v('po-need')||null}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}
 }
-async function jbSendPO(id,btn){btn.disabled=true;try{const r=await plApi('/api/crm/pos/'+id+'/send',{body:{}});showNotif('Sent','To '+r.to);jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
+async function jbSendPO(id,btn){
+  const p=(JB.pos||[]).find(x=>x.id===id)||{};
+  if(!crAskSend(`purchase order${p.number?' #'+p.number:''}${p.title?' “'+p.title+'”':''}`,p.vendor_name||p.vendor,p.vendor_email,'They get it by email with the job address.'))return;
+  btn.disabled=true;try{const r=await plApi('/api/crm/pos/'+id+'/send',{body:{}});showNotif('Sent','To '+r.to);jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
 async function jbPOStatus(id,status){try{await plApi('/api/crm/pos/'+id,{method:'PATCH',body:{status}});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
 
 async function cfLoad(){
@@ -2717,7 +2822,13 @@ async function ivLoad(dealId){
   catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
 async function ivCreate(dealId,btn,send){
-  const v=id=>document.getElementById(id).value;const msg=document.getElementById('iv-msg');btn.disabled=true;msg.textContent='';
+  const v=id=>document.getElementById(id).value;const msg=document.getElementById('iv-msg');
+  if(!crRequire(['iv-title','iv-amt']))return;
+  // More than the contract? Check before billing it.
+  try{const amt=Number(String(v('iv-amt')).replace(/[$,\s]/g,''));const d=crDeal(dealId);const value=Number(d.value)||0;
+    if(amt>0&&value>0){const {invoices}=await plApi('/api/crm/invoices?dealId='+dealId);const billed=invoices.filter(i=>i.status!=='void').reduce((n,i)=>n+Number(i.amount),0);
+      if(billed+amt>value*1.001&&!confirm(`This brings what you’ve billed to ${esMoney(billed+amt)}, more than the ${esMoney(value)} job value (${esMoney(Math.max(0,value-billed))} left to bill).\n\nCreate it anyway?`))return;}}catch(e){}
+  btn.disabled=true;msg.textContent='';
   try{
     const {invoice}=await plApi('/api/crm/deals/'+dealId+'/invoices',{body:{kind:v('iv-kind'),amount:v('iv-amt'),title:v('iv-title'),dueDate:v('iv-due')||null,note:v('iv-note')}});
     if(send){const r=await plApi('/api/crm/invoices/'+invoice.id+'/send',{body:{}});showNotif('Invoice sent','To '+r.to);}
@@ -2769,11 +2880,16 @@ async function ptPost(dealId,btn){
   catch(e){document.getElementById('pt-msg').textContent=e.message;btn.disabled=false;ptLoad(dealId);}
 }
 async function ptDraft(dealId,btn){btn.disabled=true;btn.textContent='Drafting…';try{const r=await plApi('/api/crm/deals/'+dealId+'/update-draft',{body:{}});if(!r.draft){showNotif('Nothing new to share yet','No shared logs, finished phases or photos in the last week.');btn.disabled=false;btn.textContent='✨ Draft this week’s update';return;}ptLoad(dealId);}catch(e){showNotif('Could not draft it',e.message);btn.disabled=false;btn.textContent='✨ Draft this week’s update';}}
-async function ptEmail(dealId,btn){btn.disabled=true;try{const r=await plApi('/api/crm/deals/'+dealId+'/portal/email',{body:{}});showNotif('Link sent','To '+r.to);}catch(e){showNotif('Could not send it',e.message);}btn.disabled=false;}
+async function ptEmail(dealId,btn){
+  const d=crDeal(dealId);
+  if(!crAskSend('the link to their project page',d.contact_name,d.contact_email,'From it they can see the schedule, photos and documents, and ask questions.'))return;
+  btn.disabled=true;try{const r=await plApi('/api/crm/deals/'+dealId+'/portal/email',{body:{}});showNotif('Link sent','To '+r.to);}catch(e){showNotif('Could not send it',e.message);}btn.disabled=false;}
 async function ptReset(dealId){if(!confirm('Make a new portal link? The old one stops working.'))return;try{await plApi('/api/crm/deals/'+dealId+'/portal/reset',{body:{}});ptLoad(dealId);}catch(e){showNotif('Could not change it',e.message);}}
 
 async function plStageChanged(id,sel){
   const stage=sel.value;let lostReason=null;
+  try{const {warnings}=await plApi('/api/crm/deals/'+id+'/stage-check?stage='+encodeURIComponent(stage));
+    if(warnings.length&&!confirm(`Move this deal to “${plStage(stage).label}”?\n\n• ${warnings.join('\n• ')}\n\nMove it anyway?`)){plOpenDeal(id);return;}}catch(e){}
   if(stage==='lost'){
     lostReason=prompt('Why was it lost? (optional, e.g. "went with another builder", "budget", "timing")','');
     if(lostReason===null){plOpenDeal(id);return;}
