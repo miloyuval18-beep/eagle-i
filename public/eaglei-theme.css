@@ -39,3 +39,6 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 .visit{background:#eef4fb;border:1px solid #d3e2f3}
 .lang{font-weight:600}
 .foot{color:var(--ink3)}
+.days{scrollbar-width:none}.days::-webkit-scrollbar{display:none}
+.times button,.time{white-space:nowrap;font-variant-numeric:tabular-nums}
+@media(max-width:360px){.times{grid-template-columns:repeat(2,1fr)!important}}

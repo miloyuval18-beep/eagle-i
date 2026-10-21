@@ -300,6 +300,8 @@ textarea.cred-input,textarea{line-height:1.5}
 select{appearance:none;-webkit-appearance:none;padding-right:34px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235b6577' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center}
 .pl-form label,.es-grid label,.es-line label{font-size:12.5px;font-weight:500;color:var(--ink2)}
 input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
+.es-grid>*,.pl-form>*{min-width:0}
+input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-width:100%}
 .pl-switch{font-size:14px}
 
 /* surfaces */
@@ -951,7 +953,11 @@ function esSendDialog(){
   box.scrollIntoView({block:'nearest'});
 }
 async function esSend(btn){
-  const note=document.getElementById('es-note').value;btn.disabled=true;
+  const note=document.getElementById('es-note').value;
+  // A line with no cost goes to the homeowner at $0. Say so before it does.
+  esCapture();const zero=ES.cur.lines.filter(l=>l.description&&!(Number(l.unit_cost)>0)&&!/allowance|credit|by owner|included|no charge/i.test(l.description));
+  if(zero.length&&!confirm(`${zero.length===1?'“'+zero[0].description+'” has':zero.length+' lines have'} no cost entered, so the homeowner will see ${zero.length===1?'it':'them'} at $0.00. Send anyway?`))return;
+  btn.disabled=true;
   try{await esSave(null,true);const r=await plApi('/api/crm/estimates/'+ES.cur.id+'/send',{body:{message:note}});showNotif('Sent to '+r.to,'The deal moved forward and its follow-ups have started.');await esOpen(ES.cur.id);plLoad();}
   catch(x){const m=document.getElementById('es-send-msg');if(m)m.textContent=x.message;btn.disabled=false;}
 }
@@ -2457,7 +2463,8 @@ function plPbDirty(id){
 }
 async function plPbSave(id,btn){
   const msg=document.getElementById('pbmsg-'+id);btn.disabled=true;
-  try{const r=await plApi('/api/crm/playbooks/'+id,{method:'PUT',body:{steps:plPbSteps(id),stepsEs:plPbEs(id)}});await plLoadAuto();const m=document.getElementById('pbmsg-'+id);if(m)m.textContent=(r.changed?'Saved. Approve the new wording to switch it back on.':'No changes to save.')+(r.spanishRemoved?' The Spanish version was removed because the number of messages changed; add it again below.':'');}
+  const wasOn=(PL.playbooks.find(x=>x.id===id)||{}).approved;
+  try{const r=await plApi('/api/crm/playbooks/'+id,{method:'PUT',body:{steps:plPbSteps(id),stepsEs:plPbEs(id)}});await plLoadAuto();const m=document.getElementById('pbmsg-'+id);if(m)m.textContent=(r.changed?(wasOn?'Saved. Approve the new wording to switch it back on.':'Saved. Approve it when you’re happy with the wording, and it starts sending.'):'No changes to save.')+(r.spanishRemoved?' The Spanish version was removed because the number of messages changed; add it again below.':'');}
   catch(e){msg.textContent=e.message;btn.disabled=false;}
 }
 async function plPbApprove(id,btn){

@@ -19,7 +19,7 @@ const products = require(R + '/lib/crmProducts'); const portalAi = require(R + '
 const photoAi = require(R + '/lib/crmPhotoAi'); const coaching = require(R + '/lib/crmCoaching'); const vis = require(R + '/lib/crmVisualizer'); const A = require(R + '/lib/crmAssistant');
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]).toString('base64');
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF').toString('base64');
-const ymd = (d) => d.toISOString().slice(0, 10);
+const ymd = (d) => d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); // Houston calendar days, like the app
 const days = (n) => new Date(Date.now() + n * 86400000);
 (async () => {
   const t = (await query(`INSERT INTO tenants (company_name, industry, products) VALUES ('Plus Co', 'home_services', '{crm}') RETURNING id`)).rows[0].id;

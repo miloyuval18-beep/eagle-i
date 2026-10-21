@@ -69,7 +69,9 @@ const dealOf = async (t, email) => (await query(`SELECT d.* FROM crm_deals d JOI
     assert.ok(rp.writeByRules(facts).successes.some(x => /booked about/.test(x)));
     // The 2nd of next month: a reminder to enter this month's spend. Once.
     const [yy, mm] = thisMonth.split('-').map(Number);
-    assert.equal((await mk.scanSpendReminder({ now: new Date(Date.UTC(yy, mm, 2, 17)) })).reminded, 0, "already entered");
+    // (Checked on this company's own Needs-you list: other companies in the database may be reminded.)
+    await mk.scanSpendReminder({ now: new Date(Date.UTC(yy, mm, 2, 17)) });
+    assert.equal((await crm.listInbox(t)).filter(i => i.kind === 'spend_reminder').length, 0, 'already entered');
     const nextSecond = new Date(Date.UTC(yy, mm + 1, 2, 17));
     assert.equal((await mk.scanSpendReminder({ now: nextSecond })).reminded >= 1, true);
     assert.equal((await mk.scanSpendReminder({ now: nextSecond })).reminded, 0);
