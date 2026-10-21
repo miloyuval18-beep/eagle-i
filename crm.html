@@ -98,6 +98,11 @@ select{width:auto;cursor:pointer}
 .pl-item.collect{border-left:4px solid var(--amber)}
 .pl-item.change_catch,.pl-item.cost_forecast,.pl-item.po_match,.pl-item.photo_check{border-left:4px solid var(--amber)}
 .pl-item.schedule_risk{border-left:4px solid var(--red)}
+.pl-item.email_reply,.pl-item.email_followup{box-shadow:inset 3px 0 0 #b54708,var(--sh2)}
+.ew-row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.ew-who{font-weight:600;overflow-wrap:anywhere}
+.ew-tag{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;margin-left:4px;background:#eef4fb;color:var(--accent);border:1px solid #b9cfea;vertical-align:1px}
+.ew-tag.urgent{background:#fef3f2;color:#b42318;border-color:#fecdca}
 .pl-item.sub_question{box-shadow:inset 3px 0 0 var(--accent),var(--sh2)}
 .fl-drop{border-radius:12px;transition:background .15s}.fl-drop.fl-over{background:rgba(31,78,121,.08);outline:2px dashed var(--accent);outline-offset:4px}
 .fl-more{position:relative;display:inline-block}.fl-more>summary{list-style:none;cursor:pointer}.fl-more>summary::-webkit-details-marker{display:none}
@@ -504,6 +509,8 @@ body.on-ask .sh{display:none}
     <div class="sh"><div><div class="st">Today</div><div class="ss">Only what needs a person: things Eagle I flagged, your tasks, and this week's site visits. Everything else is handled on its own.</div></div></div>
     <div class="pl-h" style="margin-top:0">Needs you</div>
     <div class="pl-list" id="pl-needs"><div class="pl-empty">Loading…</div></div>
+    <div class="pl-h" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>📬 Email</span><span id="ew-allwrap"></span></div>
+    <div id="ew-box"></div>
     <div class="pl-h" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>Your tasks</span><span id="td-allwrap"></span></div>
     <div class="pl-pb" style="padding:10px">
       <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="td-new" class="cred-input" placeholder="Add a task…" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')tdAdd()"><input id="td-due" type="date" class="cred-input" style="width:auto" aria-label="Due date"><button class="btn-xs p" onclick="tdAdd()">Add</button></div>
@@ -520,6 +527,8 @@ body.on-ask .sh{display:none}
     <div id="pl-intake"><div class="sm">Loading…</div></div>
     <div class="pl-h">Homeowner check-ins during construction</div>
     <div id="pl-pulse"></div>
+    <div class="pl-h">Email watch</div>
+    <div id="pl-ew"></div>
     <div class="pl-h">Subs confirm their dates</div>
     <div id="pl-subs"></div>
     <div class="pl-h">Qualifying &amp; site-visit booking</div>
@@ -2360,17 +2369,75 @@ async function plLoadNeeds(){
   try{
     if(!PL.data)await plLoad(); // stage names come from the pipeline
     const today=await plApi('/api/crm/today'+(TD.all?'?all=1':''));
-    const items=today.inbox;tdRender(today);plBadge(items.length+tdOverdue(today.tasks));
+    const items=today.inbox;tdRender(today);plBadge(items.length+tdOverdue(today.tasks));ewLoad();
     if(!items.length){el.innerHTML='<div class="pl-empty">Nothing needs you right now. 🎉</div>';return;}
     el.innerHTML=items.map(i=>`<div class="pl-item ${i.kind}"><div class="pl-item-t">${uxEsc(i.title)}</div><div class="pl-tl-meta">Flagged ${plAgo(i.created_at)} ago</div>
       ${i.deal_title?`<div class="pl-item-d">${uxEsc(i.deal_title)}${i.deal_stage?' · '+uxEsc(plStage(i.deal_stage).label):''}</div>`:''}
       ${i.detail?`<div class="pl-item-d">${uxEsc(i.detail)}</div>`:''}
-      <div class="pl-acts">${i.kind==='collect'&&/^nudge:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ccNudge('${(i.dedupe_key||'').slice(6)}')">Review &amp; send</button>`:''}${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${i.kind==='sub_question'&&!i.deal_id?`<button class="btn-xs p" onclick="crView('jobs')">Subs</button>`:''}${['change_catch','cost_forecast','schedule_risk','po_match','photo_check'].includes(i.kind)&&i.deal_id?`<button class="btn-xs p" onclick="jbOpen('${i.deal_id}')">Open the job</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
+      <div class="pl-acts">${i.kind==='collect'&&/^nudge:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ccNudge('${(i.dedupe_key||'').slice(6)}')">Review &amp; send</button>`:''}${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${i.kind==='email_followup'&&/^mw:fu:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ewFollow('${(i.dedupe_key||'').split(':')[2]}')">Review the follow-up</button>`:''}${i.kind==='email_reply'&&/^mw:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ewGmail('${(i.dedupe_key||'').split(':')[2]}')">Open in Gmail</button>`:''}${i.kind==='sub_question'&&!i.deal_id?`<button class="btn-xs p" onclick="crView('jobs')">Subs</button>`:''}${['change_catch','cost_forecast','schedule_risk','po_match','photo_check'].includes(i.kind)&&i.deal_id?`<button class="btn-xs p" onclick="jbOpen('${i.deal_id}')">Open the job</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
         <button class="btn-xs" onclick="plInboxAct(${i.id},'done')">✓ Done</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',1)">Snooze 1 day</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',3)">3 days</button></div></div>`).join('');
   }catch(e){el.innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
 }
+/* ---------- email watch (lib/crmEmailWatch.js) ---------- */
+const EW={all:false,data:null};
+const ewFind=id=>EW.data?[...EW.data.toReply,...EW.data.waiting].find(x=>x.id===String(id)):null;
+function ewAgo(x){return x.days?`${x.days} business day${x.days===1?'':'s'}`:'today';}
+function ewCard(x,kind){
+  const tags=`${x.importance==='urgent'&&kind==='reply'?'<span class="ew-tag urgent">Urgent</span>':''}${x.customer?'<span class="ew-tag">Customer</span>':x.sub?'<span class="ew-tag">Sub</span>':''}`;
+  return `<div class="pl-item"><div class="ew-row"><div style="min-width:0"><div class="ew-who">${uxEsc(x.who)}${tags}</div><div class="pl-item-d" style="margin-top:2px">${uxEsc(x.subject||'(no subject)')}</div>${x.reason?`<div class="sm" style="margin-top:2px">${uxEsc(x.reason)}${x.deadline?' · by '+uxEsc(new Date(x.deadline+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})):''}</div>`:''}</div><div class="pl-tl-meta" style="white-space:nowrap">${uxEsc(ewAgo(x))}</div></div>
+    <div class="pl-tl-meta">${kind==='reply'?'To':'From'} ${uxEsc(x.person||x.mailbox)}${x.deal?' · '+uxEsc(x.deal):''}${x.followupsSent?` · followed up ${x.followupsSent}×`:''}</div>
+    <div class="pl-acts">${kind==='wait'?`<button class="btn-xs p" onclick="ewFollow('${x.id}')">${x.draft?'Review the follow-up':'Write a follow-up'}</button>`:''}<a class="btn-xs${kind==='reply'?' p':''}" href="${uxEsc(x.gmail)}" target="_blank" rel="noopener">Open in Gmail</a>${x.dealId?`<button class="btn-xs" onclick="plOpenDeal('${x.dealId}')">Open deal</button>`:''}<button class="btn-xs" onclick="ewAct('${x.id}','done')">${kind==='reply'?'✓ Handled':'✓ Got it'}</button><button class="btn-xs" onclick="ewAct('${x.id}','snooze',3)">Snooze 3 days</button><button class="btn-xs" onclick="ewAct('${x.id}','dismiss')">Not needed</button></div></div>`;
+}
+async function ewLoad(){
+  const el=document.getElementById('ew-box');if(!el)return;
+  try{
+    const d=EW.data=await plApi('/api/crm/email-watch'+(EW.all?'?all=1':''));
+    const w=document.getElementById('ew-allwrap');if(w)w.innerHTML=crCanManage()?`<label class="pl-switch" style="font-size:13px"><input type="checkbox" ${EW.all?'checked':''} onchange="EW.all=this.checked;ewLoad()"> Everyone’s</label>`:'';
+    if(!d.mailboxes){el.innerHTML=`<div class="pl-pb"><div class="sm" style="margin-top:0">Connect Gmail and Eagle I keeps track of who owes whom an answer: a follow-up written for you when someone hasn’t replied in ${d.settings.followUpDays} business days, and a reminder when an important email is waiting on you.</div><div class="vd-mbtns"><button class="btn-xs p" onclick="crView('company')">Connect Gmail</button></div></div>`;return;}
+    if(!d.settings.on){el.innerHTML=`<div class="pl-empty">Email watch is off (Automations → Email watch).</div>`;return;}
+    const fu=d.waiting.filter(x=>x.days>=d.settings.followUpDays),rest=d.waiting.length-fu.length;
+    el.innerHTML=(d.toReply.length?`<div class="sm" style="margin:2px 2px 6px;font-weight:600">Waiting for ${EW.all?'a':'your'} reply (${d.toReply.length})</div><div class="pl-list">${d.toReply.map(x=>ewCard(x,'reply')).join('')}</div>`:'')
+      +(fu.length?`<div class="sm" style="margin:10px 2px 6px;font-weight:600">No reply after ${d.settings.followUpDays}+ business days (${fu.length})</div><div class="pl-list">${fu.map(x=>ewCard(x,'wait')).join('')}</div>`:'')
+      +(rest?`<details style="margin-top:8px"><summary class="sm" style="cursor:pointer;font-weight:600">Waiting on others, not late yet (${rest})</summary><div class="pl-list" style="margin-top:6px">${d.waiting.filter(x=>x.days<d.settings.followUpDays).map(x=>ewCard(x,'wait')).join('')}</div></details>`:'')
+      ||'<div class="pl-empty">No email waiting on anyone. ✓</div>';
+  }catch(e){el.innerHTML='<div class="pl-empty">Could not load email: '+uxEsc(e.message)+'</div>';}
+}
+async function ewGmail(id){if(!ewFind(id))await ewLoad();const x=ewFind(id);if(x)window.open(x.gmail,'_blank','noopener');else showNotif('Already settled','That email has been answered or closed.');}
+async function ewFollow(id){
+  if(!ewFind(id))await ewLoad();
+  const x=ewFind(id);if(!x){showNotif('Already settled','They replied, or it was closed.');return;}
+  let d=x.draft;
+  const box=uxOpen(`<div class="vd-mh"><b>Follow up with ${uxEsc(x.who)}</b><button class="btn-xs" onclick="uxClose()">Close</button></div>
+    <div class="sm" style="margin-top:0">No reply to “${uxEsc(x.subject||'')}” in ${uxEsc(ewAgo(x))}.${x.reason?' '+uxEsc(x.reason)+'.':''} It goes to ${uxEsc(x.email)} in the same conversation, with replies coming to ${uxEsc(x.mailbox)} (you’re copied).</div>
+    <label for="ew-s" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Subject</label><input id="ew-s" class="cred-input" value="${uxEsc(d?d.subject:'Re: '+(x.subject||''))}">
+    <label for="ew-b" style="font-size:12px;font-weight:700;display:block;margin-top:8px">Message</label><textarea id="ew-b" class="cred-input" rows="7">${uxEsc(d?d.body:'Writing it…')}</textarea>
+    <div class="vd-mbtns"><button class="btn btn-blue" id="ew-send" onclick="ewSend('${x.id}',this)" ${d?'':'disabled'}>Send follow-up</button><button class="btn-xs" onclick="ewRedraft('${x.id}')">✨ Write it again</button><a class="btn-xs" href="${uxEsc(x.gmail)}" target="_blank" rel="noopener">Answer in Gmail instead</a></div><div class="sm" id="ew-msg"></div>`);
+  if(!d)ewRedraft(id);
+}
+async function ewRedraft(id){const b=document.getElementById('ew-b'),s=document.getElementById('ew-send');if(!b)return;b.value='Writing it…';if(s)s.disabled=true;
+  try{const r=await plApi('/api/crm/email-watch/'+id+'/draft',{body:{}});b.value=r.draft.body;document.getElementById('ew-s').value=r.draft.subject;}catch(e){b.value='';document.getElementById('ew-msg').textContent=e.message;}if(s)s.disabled=false;}
+async function ewSend(id,btn){btn.disabled=true;
+  try{const r=await plApi('/api/crm/email-watch/'+id+'/follow-up',{body:{subject:document.getElementById('ew-s').value,body:document.getElementById('ew-b').value}});uxClose();showNotif('Follow-up sent','To '+r.to);plLoadNeeds();}
+  catch(e){document.getElementById('ew-msg').textContent=e.message;btn.disabled=false;}}
+async function ewAct(id,action,days){try{await plApi('/api/crm/email-watch/'+id+'/act',{body:{action,days}});plLoadNeeds();}catch(e){showNotif('Could not do that',e.message);}}
+async function ewSettings(){
+  const el=document.getElementById('pl-ew');if(!el)return;
+  try{const d=await plApi('/api/crm/email-watch');const s=d.settings,m=crCanManage(),dis=m?'':'disabled';
+    el.innerHTML=`<div class="pl-pb"><div class="pl-card-top"><div class="pl-item-t">Who owes whom an answer</div><span class="pl-pill ${s.on?'on':''}">${s.on?'● On':'Off'}</span></div>
+      <div class="sm">Eagle I reads your team’s Gmail${d.mailboxes?` (${d.mailboxes} mailbox${d.mailboxes===1?'':'es'})`:' once it’s connected (Company → Google)'} and skips newsletters, notifications and no-reply senders.</div>
+      <ul class="sm" style="margin:6px 0 0;padding-left:18px"><li>You emailed someone and asked for something; no reply after the days below: a follow-up is written for you, and you get an email. One tap sends it in the same conversation.</li><li>An important email is waiting on you: a reminder after 2 hours if urgent, the next business day for customers, subs and anything important, 2 business days otherwise.</li><li>A promise in your email (“I’ll send it Friday”) or a deadline someone gives you becomes a task on that day.</li><li>Each person’s 7am email lists what they owe and what’s overdue.</li></ul>
+      <label class="pl-switch" style="margin-top:8px"><input type="checkbox" ${s.on?'checked':''} ${dis} onchange="ewSave({on:this.checked})"><span>Watch the team’s email</span></label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><label for="ew-days" class="sm" style="margin:0">Follow up after</label><select id="ew-days" class="cred-input" style="width:auto" ${dis} onchange="ewSave({followUpDays:+this.value})">${[1,2,3,4,5,7,10].map(n=>`<option value="${n}" ${n===s.followUpDays?'selected':''}>${n} business day${n===1?'':'s'}</option>`).join('')}</select></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><label for="ew-auto" class="sm" style="margin:0">Send follow-ups on their own</label><select id="ew-auto" class="cred-input" style="width:auto" ${dis} onchange="ewSave({autoFollowUp:this.value})"><option value="off" ${s.autoFollowUp==='off'?'selected':''}>No, I’ll review each one</option><option value="known" ${s.autoFollowUp==='known'?'selected':''}>To customers and subs in the CRM</option><option value="all" ${s.autoFollowUp==='all'?'selected':''}>To everyone</option></select></div>
+      <div class="sm" style="margin-top:4px">Sent on their own: weekdays during working hours, at most twice per email, from your company’s address with replies going to the person who sent the first email.</div>
+      <label class="pl-switch" style="margin-top:8px"><input type="checkbox" ${s.escalate?'checked':''} ${dis} onchange="ewSave({escalate:this.checked})"><span>Tell the owner and admins when a customer, a sub or an important email still has no reply 2 business days after the reminder</span></label>
+      ${m?'':'<div class="sm">Only the owner or an admin can change these.</div>'}</div>`;}
+  catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function ewSave(patch){try{await plApi('/api/crm/email-watch/settings',{method:'PATCH',body:patch});showNotif('Saved','');}catch(e){showNotif('Could not save',e.message);}ewSettings();}
+
 /* ---------- tasks ---------- */
 const TD={all:false};
 const tdOverdue=list=>list.filter(t=>t.due_at&&new Date(t.due_at)<new Date()).length;
@@ -2446,6 +2513,7 @@ async function plLoadAuto(){
   bkLoad();
   puSettings();
   scSettings();
+  ewSettings();
   if(!PL.data)plLoad().then(plRenderStageNames);else plRenderStageNames();
   try{
     const [pb,sum]=await Promise.all([plApi('/api/crm/playbooks'),plApi('/api/crm/summary')]);

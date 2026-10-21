@@ -96,6 +96,34 @@ router.post('/api/crm/drive/sync', requireAuth, managersOnly, async (req, res) =
   try { const r = await require('../lib/crmDrive').processDriveSync(); res.json({ ok: true, ...r, status: await require('../lib/crmDrive').status(req.tenantId) }); } catch (err) { fail(res, err, 'Failed to sync'); }
 });
 
+// ---------- email watch (lib/crmEmailWatch.js) ----------
+// Everyone sees their own; the owner/admins can see everyone's (?all=1).
+const watch = require('../lib/crmEmailWatch');
+async function ownThread(req, res) {
+  const t = await watch.getThread(req.tenantId, req.params.id);
+  if (!t || !(team.isManager(req.crmUser && req.crmUser.role) || t.user_id === req.userId)) { res.status(404).json({ error: { message: 'Not found.' } }); return null; }
+  return t;
+}
+router.get('/api/crm/email-watch', requireAuth, async (req, res) => {
+  try {
+    const all = req.query.all === '1' && team.isManager(req.crmUser && req.crmUser.role);
+    const conn = (await query(`SELECT COUNT(*)::int AS n FROM crm_mailboxes m JOIN crm_google_connections c ON c.tenant_id = m.tenant_id WHERE m.tenant_id = $1 AND m.included = true AND c.status = 'connected'`, [req.tenantId])).rows[0].n;
+    res.json({ settings: await watch.settings(req.tenantId), mailboxes: conn, all, ...(await watch.list(req.tenantId, { userId: req.userId, all })) });
+  } catch (err) { fail(res, err, 'Failed to load'); }
+});
+router.patch('/api/crm/email-watch/settings', requireAuth, managersOnly, async (req, res) => {
+  try { res.json({ settings: await watch.saveSettings(req.tenantId, req.body || {}) }); } catch (err) { fail(res, err, 'Failed to save'); }
+});
+router.post('/api/crm/email-watch/:id/draft', requireAuth, async (req, res) => {
+  try { const t = await ownThread(req, res); if (!t) return; res.json({ draft: await watch.draftFollowUp(t) }); } catch (err) { fail(res, err, 'Failed to write it'); }
+});
+router.post('/api/crm/email-watch/:id/follow-up', requireAuth, async (req, res) => {
+  try { const t = await ownThread(req, res); if (!t) return; const b = req.body || {}; res.json(await watch.sendFollowUp({ tenantId: req.tenantId, id: t.id, subject: b.subject, body: b.body, userId: req.userId })); } catch (err) { fail(res, err, 'Failed to send'); }
+});
+router.post('/api/crm/email-watch/:id/act', requireAuth, async (req, res) => {
+  try { const t = await ownThread(req, res); if (!t) return; const b = req.body || {}; res.json(await watch.act({ tenantId: req.tenantId, id: t.id, action: b.action, days: b.days })); } catch (err) { fail(res, err, 'Failed'); }
+});
+
 router.delete('/api/crm/google', requireAuth, managersOnly, async (req, res) => {
   try { await google.disconnect(req.tenantId); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to disconnect'); }
 });
