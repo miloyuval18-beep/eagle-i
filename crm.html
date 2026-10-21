@@ -375,6 +375,31 @@ input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-wid
 .ai-chip:hover{border-color:var(--accent-line);box-shadow:var(--sh2)}
 .ai-card{border:1px solid var(--accent-line);box-shadow:var(--sh3)}
 .ai-panel{background:#f7f9fc}
+/* the Ask tab: the assistant as the home screen */
+.ask-host{max-width:900px;margin:0 auto}
+.ai-panel.inline{position:relative;top:auto;right:auto;bottom:auto;transform:none;transition:none;width:100%;height:calc(100vh - 150px);height:calc(100dvh - 150px);min-height:480px;z-index:1;border:1px solid var(--bdr);border-radius:var(--r3);box-shadow:var(--sh3);overflow:hidden}
+.ai-panel.inline .ai-close{display:none}
+.ai-panel.inline .ai-hist{inset:60px 0 0 0}
+.ai-panel.inline .ai-hello{padding:34px 10px 8px;text-align:center}
+.ai-panel.inline .ai-hello .g{font-size:32px}
+.ai-panel.inline .ai-hello .s{max-width:560px;margin:8px auto 0}
+.ai-panel.inline .ai-chips{grid-template-columns:repeat(2,minmax(0,1fr));max-width:680px;margin:18px auto 0;text-align:left}
+.ai-panel.inline .ai-body{padding:16px 22px 8px}
+.ai-panel.inline .ai-b{font-size:15.5px}
+.ai-glance{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:20px auto 0;max-width:720px}
+.ai-glance-t{display:flex;align-items:baseline;gap:6px;border:1px solid var(--bdr);background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;color:var(--ink3);cursor:pointer;box-shadow:var(--sh1)}
+.ai-glance-t b{font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+.ai-glance-t:hover{border-color:var(--accent-line)}
+body.on-ask .wrap{padding-bottom:16px}
+.ai-comp textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-comp textarea,.ai-comp textarea:hover,.ai-comp textarea:focus{border:0!important;box-shadow:none!important;min-height:36px;background:transparent;padding:6px}
+.ai-panel.inline .ai-head{background:#fff;color:var(--ink);border-bottom:1px solid var(--bdr);padding:10px 14px}
+.ai-panel.inline .ai-head .t{font-size:15px;font-weight:600}
+.ai-panel.inline .ai-head .t span{background:var(--ai);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ai-panel.inline .ai-head .t small{color:var(--ink3);opacity:1;font-weight:500}
+.ai-panel.inline .ai-hb{background:var(--bg4);color:var(--ink2);width:34px;height:34px}
+.ai-panel.inline .ai-hb:hover{background:var(--bdr)}
+body.on-ask .sh{display:none}
 
 /* billing */
 .bl-toggle{display:inline-flex;background:var(--bg4);border:1px solid var(--bdr);border-radius:999px;padding:4px;gap:4px;margin:6px 0 14px}
@@ -415,6 +440,14 @@ input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-wid
   .ai-fab{bottom:calc(78px + env(safe-area-inset-bottom));right:14px;padding:12px 16px 12px 14px}
   .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
   .vd-modal-box{border-radius:0;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
+  body.on-ask .wrap{padding:0 0 calc(64px + env(safe-area-inset-bottom))}
+  .ai-panel.inline{height:calc(100vh - 57px - 66px);height:calc(100dvh - 57px - 66px - env(safe-area-inset-bottom));border:0;border-radius:0;box-shadow:none;min-height:0}
+  .ai-panel.inline .ai-hello{padding:20px 4px 4px}
+  .ai-panel.inline .ai-hello .g{font-size:26px}
+  .ai-panel.inline .ai-chips{grid-template-columns:1fr}
+  .ai-glance{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;margin:16px -14px 0;padding:0 14px}.ai-glance::-webkit-scrollbar{display:none}
+  .ai-glance-t{flex:0 0 auto}
+  .ai-panel.inline .ai-body{padding:12px 14px 8px}
   .vd-mh{margin:0 -16px 12px;padding:14px 16px 10px;padding-top:calc(14px + env(safe-area-inset-top))}
 }
 </style>
@@ -442,7 +475,8 @@ input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-wid
     </div>
   </div>
   <nav class="cr-nav" id="cr-nav" aria-label="CRM sections">
-    <button class="cr-tab active" data-view="pipeline" onclick="crView('pipeline')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Pipeline</button>
+    <button class="cr-tab" data-view="ask" onclick="crView('ask')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.9 5 5.1 1.9-5.1 1.9L12 17.4l-1.9-5.1L5 10.4l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Ask</button>
+    <button class="cr-tab" data-view="pipeline" onclick="crView('pipeline')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Pipeline</button>
     <button class="cr-tab" data-view="needs" onclick="crView('needs')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.4 2.4 4.8-5"/></svg>Today<span class="tbadge" id="pl-needs-badge">0</span></button>
     <button class="cr-tab" data-view="jobs" onclick="crView('jobs')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Jobs</button>
     <button class="cr-tab" data-view="estimates" onclick="crView('estimates')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v.01M17.5 14.5v.01"/></svg>Money</button>
@@ -454,7 +488,8 @@ input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-wid
     <p class="ss" style="margin:8px auto 16px">Your company uses Eagle I marketing. The CRM is a separate app for running your sales pipeline: every lead in one place, follow-up emails that send themselves, and a short list of what needs you. Switch it on to start; your marketing account stays exactly as it is.</p>
     <button class="btn btn-blue" onclick="crActivate(this)">Switch on Eagle I CRM</button>
   </div>
-  <section class="view active" id="view-pipeline">
+  <section class="view" id="view-ask"><div id="ask-host" class="ask-host"></div></section>
+  <section class="view" id="view-pipeline">
     <div class="sh"><div><div class="st">Pipeline</div><div class="ss">Every job you're selling, from first contact to finished project. Move a deal to a new stage and Eagle I sends that stage's emails for you, once you've approved them in Automations.</div></div>
       <button class="btn btn-blue" onclick="plNewDeal()">＋ Add a deal</button></div>
     <div id="pl-setup-banner"></div>
@@ -653,6 +688,8 @@ function crView(v){
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
   document.querySelectorAll('.cr-tab').forEach(t=>{t.classList.toggle('active',t.dataset.view===v);t.setAttribute('aria-current',t.dataset.view===v?'page':'false');});
   if(VN){try{VN.stop();}catch(e){}}
+  if(typeof aiMount==='function')aiMount(v==='ask');
+  document.body.classList.toggle('on-ask',v==='ask');
   if(v==='pipeline')plLoad();
   if(v==='needs')plLoadNeeds();
   if(v==='auto')plLoadAuto();
@@ -718,7 +755,7 @@ async function crInit(){
     try{history.replaceState(null,'','/crm#company');}catch(e){}}}
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
-  crView(['pipeline','needs','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing'].includes(start)?start:'pipeline');
+  crView(['ask','pipeline','needs','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing'].includes(start)?start:'ask');
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
 }
@@ -2495,21 +2532,21 @@ crInit();
 <button class="ai-fab" id="ai-fab" onclick="aiOpen()" aria-label="Ask Eagle I"><span class="spark">✦</span> Ask Eagle I</button>
 <div class="ai-shade" id="ai-shade" onclick="aiClose()"></div>
 <aside class="ai-panel" id="ai-panel" role="dialog" aria-label="Ask Eagle I" aria-modal="true">
-  <div class="ai-head"><div class="t"><span>✦</span> Eagle I <small>your CRM assistant</small></div>
+  <div class="ai-head"><div class="t"><span>✦</span> Eagle I <small>your assistant</small></div>
     <button class="ai-hb" onclick="aiHistory()" title="Past conversations" aria-label="Past conversations">☰</button>
     <button class="ai-hb" onclick="aiNew()" title="New conversation" aria-label="New conversation">＋</button>
-    <button class="ai-hb" onclick="aiClose()" title="Close" aria-label="Close">✕</button></div>
+    <button class="ai-hb ai-close" onclick="aiClose()" title="Close" aria-label="Close">✕</button></div>
   <div class="ai-hist" id="ai-hist"></div>
   <div class="ai-body" id="ai-body"></div>
   <div class="ai-foot">
     <div class="ai-att" id="ai-att"></div>
     <div class="ai-comp">
       <label class="ai-ib" title="Attach plans or photos" aria-label="Attach plans or photos">📎<input type="file" accept="application/pdf,image/*,.csv,.txt" multiple hidden onchange="aiAttach(this)"></label>
-      <textarea id="ai-in" rows="1" placeholder="Ask or tell Eagle I…" aria-label="Message Eagle I" oninput="aiGrow(this)" onkeydown="aiKey(event)"></textarea>
+      <textarea id="ai-in" rows="1" placeholder="Ask Eagle I anything…" aria-label="Message Eagle I" oninput="aiGrow(this)" onkeydown="aiKey(event)"></textarea>
       <button class="ai-ib" id="ai-mic" onclick="aiMic()" title="Talk" aria-label="Talk" hidden>🎤</button>
       <button class="ai-send" id="ai-go" onclick="aiSend()" aria-label="Send">↑</button>
     </div>
-    <div class="ai-hint">Eagle I asks before anything goes to a homeowner or a sub.</div>
+    <div class="ai-hint">Eagle I asks you before anything is sent.</div>
   </div>
 </aside>
 
@@ -2531,20 +2568,37 @@ function aiMd(t){
   if(list)out+='</ul>';
   return out;
 }
+// On the Ask tab the assistant is the page itself; elsewhere it slides in from the side.
+function aiMount(inline){
+  const p=document.getElementById('ai-panel'),host=document.getElementById('ask-host');if(!p||!host)return;
+  if(inline){
+    if(p.parentElement!==host)host.appendChild(p);
+    p.classList.add('inline','open');p.setAttribute('aria-modal','false');p.setAttribute('role','region');document.getElementById('ai-shade').classList.remove('open');document.getElementById('ai-fab').classList.add('hide');
+    document.getElementById('ai-mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
+    if(!AI.thread)aiHome();
+    if(matchMedia('(pointer:fine)').matches)setTimeout(()=>document.getElementById('ai-in').focus(),100);
+  }else if(p.classList.contains('inline')){
+    document.body.appendChild(p);p.classList.remove('inline','open');p.setAttribute('aria-modal','true');p.setAttribute('role','dialog');document.getElementById('ai-fab').classList.remove('hide');
+  }
+}
 function aiOpen(){
+  if(document.getElementById('ai-panel').classList.contains('inline')){document.getElementById('ai-in').focus();return;}
   document.getElementById('ai-panel').classList.add('open');document.getElementById('ai-shade').classList.add('open');document.getElementById('ai-fab').classList.add('hide');
   document.getElementById('ai-mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
   if(!AI.thread&&!document.getElementById('ai-body').children.length)aiHome();
   setTimeout(()=>document.getElementById('ai-in').focus(),250);
   try{history.replaceState(null,'','#ask');}catch(e){}
 }
-function aiClose(){document.getElementById('ai-panel').classList.remove('open');document.getElementById('ai-shade').classList.remove('open');document.getElementById('ai-fab').classList.remove('hide');document.getElementById('ai-hist').classList.remove('open');try{history.replaceState(null,'','#'+(CR.view||'pipeline'));}catch(e){}}
+function aiClose(){if(document.getElementById('ai-panel').classList.contains('inline'))return;document.getElementById('ai-panel').classList.remove('open');document.getElementById('ai-shade').classList.remove('open');document.getElementById('ai-fab').classList.remove('hide');document.getElementById('ai-hist').classList.remove('open');try{history.replaceState(null,'','#'+(CR.view||'pipeline'));}catch(e){}}
 async function aiHome(){
   const el=document.getElementById('ai-body');
   el.innerHTML='<div class="ai-think"><span class="ai-dots"><i></i><i></i><i></i></span></div>';
   try{
     const h=AI.home=await plApi('/api/crm/assistant/home');
-    el.innerHTML=`<div class="ai-hello"><div class="g">${uxEsc(h.greeting)}</div><div class="s">Ask about any job, person or number, send plans out for bids, or just tell me what happened today. I’ll file it.</div>
+    const g=h.glance||{},inl=document.getElementById('ai-panel').classList.contains('inline');
+    const tile=(n,l,v)=>`<button class="ai-glance-t" onclick="crView('${v}')"><b>${n}</b><span>${l}</span></button>`;
+    el.innerHTML=`<div class="ai-hello"><div class="g">${uxEsc(h.greeting)}</div><div class="s">Ask me anything about your jobs and numbers. I can read plans, draft estimates, email anyone, book visits${h.drive?', find files in your Google Drive':''}, and file what happened today.</div>
+      ${inl&&g.openDeals!=null?`<div class="ai-glance">${tile(g.needsYou,'need you','needs')}${tile(g.visitsToday,'visits today','needs')}${tile(g.openDeals,'deals in the pipeline','pipeline')}${tile('$'+Math.round((g.openValue||0)/1000)+'k','being sold','pipeline')}${tile(g.jobs,'jobs underway','jobs')}${g.overdueInvoices?tile(g.overdueInvoices,'invoices overdue','estimates'):''}</div>`:''}
       ${h.ai?'':'<div class="ai-off">The assistant needs its AI key on the server (ANTHROPIC_API_KEY) before it can answer. Everything else in Eagle I works without it.</div>'}
       <div class="ai-chips">${h.chips.map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div>
       ${h.ai&&h.canTest?'<div style="margin-top:14px;text-align:center"><button class="btn-xs" onclick="aiTest(this)">Test the AI connection</button></div>':''}</div>`;
@@ -2641,8 +2695,7 @@ function aiMic(){
   r.onerror=()=>{};
   btn.classList.add('rec');btn.textContent='■';r.start();
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ai-panel').classList.contains('open'))aiClose();if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();aiOpen();}});
-window.addEventListener('load',()=>{if(location.hash==='#ask')setTimeout(aiOpen,400);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ai-panel').classList.contains('open'))aiClose();if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(CR.view==='ask')aiOpen();else crView('ask');}});
 </script>
 </body>
 </html>
