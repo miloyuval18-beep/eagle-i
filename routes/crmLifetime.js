@@ -42,8 +42,9 @@ router.post('/api/crm/partners', requireAuth, wrap('Failed to save the partner',
 router.patch('/api/crm/partners/:pid', requireAuth, wrap('Failed to save the partner', async (req, res) => res.json({ ok: true, partner: await life.savePartner({ tenantId: req.tenantId, id: req.params.pid, body: req.body }) })));
 router.delete('/api/crm/partners/:pid', requireAuth, wrap('Failed to remove the partner', async (req, res) => {
   if (!manager(req)) return managersOnly(res);
-  if (!(await life.archivePartner({ tenantId: req.tenantId, id: req.params.pid }))) return res.status(404).json({ error: { message: 'Partner not found.' } });
-  res.json({ ok: true });
+  const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'partner', id: req.params.pid, userId: req.userId }, async () => !!(await life.archivePartner({ tenantId: req.tenantId, id: req.params.pid })));
+  if (!r.ok) return res.status(404).json({ error: { message: 'Partner not found.' } });
+  res.json({ ok: true, undo: r.undo });
 }));
 router.post('/api/crm/rewards/:rid', requireAuth, wrap('Failed to save', async (req, res) => {
   if (!manager(req)) return managersOnly(res);
@@ -74,8 +75,9 @@ router.patch('/api/crm/deals/:id/referrer', requireAuth, wrap('Failed to save', 
 router.post('/api/crm/deals/:id/home', requireAuth, wrap('Failed to save the item', async (req, res) => res.json({ ok: true, item: await life.saveHomeItem({ tenantId: req.tenantId, dealId: req.params.id, body: req.body }) })));
 router.patch('/api/crm/home/:itemId', requireAuth, wrap('Failed to save the item', async (req, res) => res.json({ ok: true, item: await life.saveHomeItem({ tenantId: req.tenantId, id: req.params.itemId, body: req.body }) })));
 router.delete('/api/crm/home/:itemId', requireAuth, wrap('Failed to delete the item', async (req, res) => {
-  if (!(await life.deleteHomeItem({ tenantId: req.tenantId, id: req.params.itemId }))) return res.status(404).json({ error: { message: 'Item not found.' } });
-  res.json({ ok: true });
+  const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'home', id: req.params.itemId, userId: req.userId }, async () => !!(await life.deleteHomeItem({ tenantId: req.tenantId, id: req.params.itemId })));
+  if (!r.ok) return res.status(404).json({ error: { message: 'Item not found.' } });
+  res.json({ ok: true, undo: r.undo });
 }));
 
 // Anyone's referral link: on to the company's inquiry form.

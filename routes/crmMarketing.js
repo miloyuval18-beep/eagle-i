@@ -34,8 +34,9 @@ router.post('/api/crm/marketing/spend', requireAuth, wrap('Failed to save', asyn
 }));
 router.delete('/api/crm/marketing/spend/:sid', requireAuth, wrap('Failed to delete', async (req, res) => {
   if (managersOnly(req, res)) return;
-  if (!(await mk.deleteSpend({ tenantId: req.tenantId, id: req.params.sid }))) return res.status(404).json({ error: { message: 'Not found.' } });
-  res.json({ ok: true });
+  const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'spend', id: req.params.sid, userId: req.userId }, async () => !!(await mk.deleteSpend({ tenantId: req.tenantId, id: req.params.sid })));
+  if (!r.ok) return res.status(404).json({ error: { message: 'Not found.' } });
+  res.json({ ok: true, undo: r.undo });
 }));
 router.patch('/api/crm/marketing/settings', requireAuth, wrap('Failed to save', async (req, res) => {
   if (managersOnly(req, res)) return;

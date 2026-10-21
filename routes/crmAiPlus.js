@@ -103,8 +103,9 @@ router.get('/api/crm/products', requireAuth, wrap('Failed to load', async (req, 
 router.post('/api/crm/products', requireAuth, wrap('Failed to save the product', async (req, res) => res.json({ product: await products.saveProduct({ tenantId: req.tenantId, body: req.body }) })));
 router.put('/api/crm/products/:pid', requireAuth, wrap('Failed to save the product', async (req, res) => res.json({ product: await products.saveProduct({ tenantId: req.tenantId, id: req.params.pid, body: req.body }) })));
 router.delete('/api/crm/products/:pid', requireAuth, wrap('Failed', async (req, res) => {
-  if (!(await products.archiveProduct({ tenantId: req.tenantId, id: req.params.pid }))) return res.status(404).json({ error: { message: 'Product not found.' } });
-  res.json({ ok: true });
+  const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'product', id: req.params.pid, userId: req.userId }, () => products.archiveProduct({ tenantId: req.tenantId, id: req.params.pid }));
+  if (!r.ok) return res.status(404).json({ error: { message: 'Product not found.' } });
+  res.json({ ok: true, undo: r.undo });
 }));
 const photoOut = (res, p) => { res.set({ 'Content-Type': p.photo_type, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' }); res.send(Buffer.from(p.photo)); };
 router.get('/api/crm/products/:pid/photo', requireAuth, wrap('Failed', async (req, res) => {

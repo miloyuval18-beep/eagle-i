@@ -99,8 +99,10 @@ router.patch('/api/crm/files/:fileId', requireAuth, async (req, res) => {
 
 router.delete('/api/crm/files/:fileId', requireAuth, async (req, res) => {
   try {
-    if (!(await portal.deleteFile({ tenantId: req.tenantId, id: req.params.fileId }))) return res.status(404).json({ error: { message: 'File not found.' } });
-    res.json({ ok: true });
+    // Kept in the recycle bin, so the Drive copy stays until it's emptied.
+    const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'file', id: req.params.fileId, userId: req.userId }, () => portal.deleteFile({ tenantId: req.tenantId, id: req.params.fileId, drive: false }));
+    if (!r.ok) return res.status(404).json({ error: { message: 'File not found.' } });
+    res.json({ ok: true, undo: r.undo });
   } catch (err) { fail(res, err, 'Failed to delete'); }
 });
 

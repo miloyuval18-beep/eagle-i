@@ -31,7 +31,13 @@ router.get('/api/crm/assistant/threads', requireAuth, wrap('Failed to load', asy
 router.patch('/api/crm/assistant/threads/:tid', requireAuth, wrap('Failed to rename', async (req, res) => res.json(await assistant.renameThread(ctxOf(req), req.params.tid, (req.body || {}).title))));
 router.post('/api/crm/assistant/threads', requireAuth, wrap('Failed to start', async (req, res) => res.json({ thread: await assistant.createThread(ctxOf(req)) })));
 router.get('/api/crm/assistant/threads/:tid', requireAuth, wrap('Failed to load', async (req, res) => res.json(await assistant.threadView(ctxOf(req), req.params.tid))));
-router.delete('/api/crm/assistant/threads/:tid', requireAuth, wrap('Failed to delete', async (req, res) => res.json(await assistant.deleteThread(ctxOf(req), req.params.tid))));
+router.delete('/api/crm/assistant/threads/:tid', requireAuth, wrap('Failed to delete', async (req, res) => {
+  // Only your own chat goes in the bin (deleteThread checks it's yours first).
+  const own = (await query('SELECT 1 FROM crm_ai_threads WHERE id::text = $1 AND tenant_id = $2 AND user_id = $3', [req.params.tid, req.tenantId, req.userId])).rows.length;
+  if (!own) return res.status(404).json({ error: { message: 'Conversation not found.' } });
+  const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'chat', id: req.params.tid, userId: req.userId }, () => assistant.deleteThread(ctxOf(req), req.params.tid));
+  res.json({ ok: true, undo: r.undo });
+}));
 router.post('/api/crm/assistant/files', requireAuth, wrap('Failed to attach the file', async (req, res) => res.json({ file: await assistant.saveChatUpload(ctxOf(req), req.body || {}) })));
 router.post('/api/crm/assistant/actions/:aid', requireAuth, wrap('Failed', async (req, res) => res.json(await assistant.decideAction(ctxOf(req), req.params.aid, !!(req.body || {}).approve))));
 

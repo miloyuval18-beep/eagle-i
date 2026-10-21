@@ -27,7 +27,8 @@ router.patch('/api/crm/calendar/events/:id', requireAuth, wrap('Failed to save',
   res.json({ event: await cal.updateEvent({ tenantId: req.tenantId, actor: req.crmUser, id: req.params.id, body: req.body || {} }) });
 }));
 router.delete('/api/crm/calendar/events/:id', requireAuth, wrap('Failed to remove it', async (req, res) => {
-  res.json({ ok: await cal.deleteEvent({ tenantId: req.tenantId, actor: req.crmUser, id: req.params.id }) });
+  const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'event', id: req.params.id, userId: req.userId }, () => cal.deleteEvent({ tenantId: req.tenantId, actor: req.crmUser, id: req.params.id }));
+  res.json({ ok: true, undo: r.undo });
 }));
 router.post('/api/crm/calendar/move', requireAuth, wrap('Failed to move it', async (req, res) => {
   const b = req.body || {};

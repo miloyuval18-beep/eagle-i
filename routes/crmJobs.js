@@ -54,8 +54,9 @@ router.patch('/api/crm/schedule/:itemId', requireAuth, wrap('Failed to save the 
   res.json({ ok: true, item: await jobs.saveItem({ tenantId: req.tenantId, id: req.params.itemId, body: req.body, userId: req.userId }) });
 }));
 router.delete('/api/crm/schedule/:itemId', requireAuth, wrap('Failed to delete the phase', async (req, res) => {
-  if (!(await jobs.deleteItem({ tenantId: req.tenantId, id: req.params.itemId }))) return res.status(404).json({ error: { message: 'Phase not found.' } });
-  res.json({ ok: true });
+  const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'phase', id: req.params.itemId, userId: req.userId }, () => jobs.deleteItem({ tenantId: req.tenantId, id: req.params.itemId }));
+  if (!r.ok) return res.status(404).json({ error: { message: 'Phase not found.' } });
+  res.json({ ok: true, undo: r.undo });
 }));
 
 // daily logs
@@ -70,8 +71,9 @@ router.post('/api/crm/vendors', requireAuth, wrap('Failed to save the vendor', a
 router.patch('/api/crm/vendors/:vendorId', requireAuth, wrap('Failed to save the vendor', async (req, res) => res.json({ ok: true, vendor: await jobs.saveVendor({ tenantId: req.tenantId, id: req.params.vendorId, body: req.body }) })));
 router.delete('/api/crm/vendors/:vendorId', requireAuth, wrap('Failed to remove the vendor', async (req, res) => {
   if (!manager(req)) return res.status(403).json({ error: { message: 'Only the owner or an admin can remove vendors.' } });
-  if (!(await jobs.archiveVendor({ tenantId: req.tenantId, id: req.params.vendorId }))) return res.status(404).json({ error: { message: 'Vendor not found.' } });
-  res.json({ ok: true });
+  const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'vendor', id: req.params.vendorId, userId: req.userId }, () => jobs.archiveVendor({ tenantId: req.tenantId, id: req.params.vendorId }));
+  if (!r.ok) return res.status(404).json({ error: { message: 'Vendor not found.' } });
+  res.json({ ok: true, undo: r.undo });
 }));
 
 // purchase orders

@@ -37,8 +37,9 @@ router.patch('/api/crm/catalog/:id', requireAuth, managersOnly, async (req, res)
 });
 router.delete('/api/crm/catalog/:id', requireAuth, managersOnly, async (req, res) => {
   try {
-    if (!(await est.archiveCatalogItem({ tenantId: req.tenantId, id: req.params.id }))) return res.status(404).json({ error: { message: 'Item not found.' } });
-    res.json({ ok: true });
+    const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'catalog', id: req.params.id, userId: req.userId }, async () => !!(await est.archiveCatalogItem({ tenantId: req.tenantId, id: req.params.id })));
+    if (!r.ok) return res.status(404).json({ error: { message: 'Item not found.' } });
+    res.json({ ok: true, undo: r.undo });
   } catch (err) { fail(res, err, 'Failed to remove the item'); }
 });
 
@@ -72,7 +73,7 @@ router.post('/api/crm/estimates/:id/send', requireAuth, async (req, res) => {
   }
 });
 router.delete('/api/crm/estimates/:id', requireAuth, async (req, res) => {
-  try { await est.deleteEstimate({ tenantId: req.tenantId, id: req.params.id }); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to delete the estimate'); }
+  try { const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'estimate', id: req.params.id, userId: req.userId }, () => est.deleteEstimate({ tenantId: req.tenantId, id: req.params.id })); res.json({ ok: true, undo: r.undo }); } catch (err) { fail(res, err, 'Failed to delete the estimate'); }
 });
 
 // ---------- the homeowner's page (no login) ----------

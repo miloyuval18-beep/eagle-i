@@ -583,6 +583,16 @@ body.on-ask .sh{display:none}
   .cv-r .tm{flex-basis:54px}
 }
 @media (min-width:641px){.cv-dots{display:none}}
+/* "Undo" after anything that changes or removes something */
+.undo{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1200;display:none;align-items:center;gap:14px;background:#101828;color:#fff;border-radius:12px;padding:12px 12px 12px 18px;font-size:17px;box-shadow:var(--sh4);max-width:calc(100% - 24px)}
+.undo.on{display:flex}
+.undo span{flex:1;min-width:0}
+.undo button{border:0;border-radius:9px;background:#fff;color:#101828;font:inherit;font-weight:700;padding:10px 16px;cursor:pointer;min-height:44px;white-space:nowrap}
+.undo .x{background:transparent;color:#cbd2dc;padding:10px 8px;font-weight:600}
+@media (max-width:640px){.undo{bottom:calc(84px + env(safe-area-inset-bottom));width:calc(100% - 24px)}}
+.bin-row{display:flex;gap:12px;align-items:center;border:1px solid var(--bdr);background:#fff;border-radius:var(--r2);padding:12px 14px;margin-bottom:8px;flex-wrap:wrap}
+.bin-row .w{flex:1;min-width:180px}
+.bin-row .k{font-size:15px;color:var(--ink3)}
 /* Easier to read: built for an older audience. Darker secondary text, more
    line spacing, bigger buttons and fields, and nothing smaller than 13px. */
 :root{--ink2:#283445;--ink3:#3f4a5c}
@@ -618,6 +628,7 @@ select{max-width:100%;text-overflow:ellipsis}
       <button onclick="crMenu(false);crView('billing')">Plan &amp; billing</button>
       <button onclick="crMenu(false);dyOpen()">My calendar &amp; morning email</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
+      <button onclick="crMenu(false);binOpen()">🗑 Recycle bin</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
       <a href="/forgot-password.html">Change password</a>
@@ -824,6 +835,7 @@ select{max-width:100%;text-overflow:ellipsis}
   </section>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="undo" id="undo" role="status" aria-live="polite"><span id="undo-t"></span><button id="undo-b">Undo</button><button class="x" onclick="crUndoHide()" aria-label="Dismiss">✕</button></div>
 <script>
 /* ---------- small helpers (this app does not load the marketing dashboard's code) ---------- */
 const uxEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -838,10 +850,50 @@ function uxModalEl(){
   }
   return m;
 }
-function uxOpen(html){const m=uxModalEl();const box=m.querySelector('.vd-modal-box');box.innerHTML=html;m.style.display='flex';box.scrollTop=0;return box;}
-function uxClose(){const m=document.getElementById('ux-modal');if(m)m.style.display='none';}
+function uxOpen(html){const m=uxModalEl();const box=m.querySelector('.vd-modal-box');box.innerHTML=html;m.style.display='flex';box.scrollTop=0;CR.dirty=false;crDraftRestore(box);return box;}
+function uxClose(){
+  const m=document.getElementById('ux-modal');if(!m||m.style.display==='none')return;
+  if(CR.dirty&&!confirm('You have changes that aren’t saved. Close anyway?'))return;
+  CR.dirty=false;m.style.display='none';
+}
+/* Unsaved work: typing in a window marks it changed (a save clears it), and
+   longer text is kept as a draft in this browser for a week, so a reload or
+   an accidental close doesn't lose it. */
+const DRAFT_MS=7*86400000;
+const crModalTitle=()=>((document.querySelector('#ux-modal .vd-mt')||{}).textContent||'').slice(0,80);
+const crDraftKey=(el)=>el.id==='ai-in'?'draft:ai:'+((typeof AI!=='undefined'&&AI.thread)||'new'):'draft:'+el.id+':'+crModalTitle();
+function crDraftSave(el){try{const v=el.value||'';if(v.trim().length>=15)localStorage.setItem(crDraftKey(el),JSON.stringify({v,at:Date.now()}));else localStorage.removeItem(crDraftKey(el));}catch(e){}}
+function crDraftGet(el){try{const d=JSON.parse(localStorage.getItem(crDraftKey(el))||'null');if(d&&Date.now()-d.at<DRAFT_MS)return d.v;}catch(e){}return null;}
+function crDraftRestore(root){
+  (root||document).querySelectorAll('textarea[id]').forEach(el=>{
+    if(el.value.trim())return;const v=crDraftGet(el);if(!v)return;
+    el.value=v;el.dispatchEvent(new Event('input'));
+    const n=document.createElement('div');n.className='sm';n.style.color='var(--accent)';n.textContent='↺ Your unsaved text was brought back.';el.insertAdjacentElement('afterend',n);
+  });
+}
+// After something is saved, this window's drafts are done with.
+function crDraftsClear(){try{const t=crModalTitle();for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&k.startsWith('draft:')&&!k.startsWith('draft:ai:')&&k.endsWith(':'+t))localStorage.removeItem(k);}}catch(e){}}
+document.addEventListener('input',e=>{
+  const el=e.target;if(!el||!el.matches)return;
+  if(el.matches('#ux-modal input:not([type=search]):not([type=checkbox]),#ux-modal textarea,#ux-modal select'))CR.dirty=true;
+  if(el.matches('#ux-modal textarea[id],#ai-in'))crDraftSave(el);
+});
+document.addEventListener('change',e=>{if(e.target&&e.target.matches&&e.target.matches('#ux-modal input,#ux-modal select'))CR.dirty=true;});
+window.addEventListener('beforeunload',e=>{const a=document.getElementById('ai-in');if(CR.dirty||(a&&a.value.trim().length>=15)){e.preventDefault();e.returnValue='';}});
 const uxHead=(title,sub)=>`<div class="vd-mh"><div><div class="vd-mt">${title}</div>${sub?`<div class="sm">${sub}</div>`:''}</div><button class="btn-xs" onclick="uxClose()" aria-label="Close">✕</button></div>`;
 let toastTimer=null;
+// "Undo" for 10 seconds after a change; fn puts it back.
+let undoTimer=null;
+function crUndo(text,fn){
+  const el=document.getElementById('undo');document.getElementById('undo-t').textContent=text;
+  const b=document.getElementById('undo-b');b.disabled=false;
+  b.onclick=async()=>{b.disabled=true;crUndoHide();try{await fn();showNotif('Undone','');}catch(e){showNotif('Could not undo',e.message);}};
+  el.classList.add('on');clearTimeout(undoTimer);undoTimer=setTimeout(crUndoHide,10000);
+}
+function crUndoHide(){document.getElementById('undo').classList.remove('on');}
+// Something came back or changed under the screen: show it again.
+function crRefresh(){if(typeof uxClose==='function')uxClose();if(CR.view)crView(CR.view);}
+async function crRestore(binId){await plApi('/api/crm/trash/'+binId+'/restore',{body:{}});crRefresh();}
 function showNotif(t,b){const el=document.getElementById('toast');el.innerHTML='<b>'+uxEsc(t)+'</b>'+uxEsc(b||'');el.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.display='none',4500);}
 
 /* ---------- app shell ---------- */
@@ -1120,8 +1172,10 @@ async function cvMoveFrom(key){
   if(!d)return;
   await cvMove(i,d,t?t.value:null);
 }
-async function cvMove(i,date,time){
-  try{await plApi('/api/crm/calendar/move',{body:{type:i.type,id:i.id,date,time:time||null}});uxClose();showNotif('Moved',`${i.title} → ${cvNice(date)}${time?' '+cvTime(new Date(date+'T'+time+':00')):''}`);cvLoad();}
+async function cvMove(i,date,time,quiet){
+  const was={date:i.allDay?i.start:cvDayOf(i.start),time:i.allDay?null:cvHM(i.start)};
+  try{await plApi('/api/crm/calendar/move',{body:{type:i.type,id:i.id,date,time:time||null}});uxClose();cvLoad();
+    if(!quiet)crUndo(`Moved “${i.title}” to ${cvNice(date)}${time?' at '+cvTime(new Date(date+'T'+time+':00')):''}.`,()=>cvMove(i,was.date,was.time,true));}
   catch(e){showNotif('Could not move it',e.message);}
 }
 function cvDrag(e,key){e.dataTransfer.setData('text/plain',key);e.dataTransfer.effectAllowed='move';}
@@ -1133,7 +1187,7 @@ function cvDrop(e,day){
   cvMove(i,day,null);
 }
 async function cvTaskDone(id,done){try{await plApi('/api/crm/tasks/'+id,{method:'PATCH',body:{done}});uxClose();cvLoad();}catch(e){showNotif('Could not save',e.message);}}
-async function cvDelete(id){if(!confirm('Take this off the calendar?'))return;try{await plApi('/api/crm/calendar/events/'+id,{method:'DELETE'});uxClose();cvLoad();}catch(e){showNotif('Could not remove it',e.message);}}
+async function cvDelete(id){if(!confirm('Take this off the calendar? (It stays in the recycle bin for 30 days.)'))return;try{await plApi('/api/crm/calendar/events/'+id,{method:'DELETE'});uxClose();cvLoad();}catch(e){showNotif('Could not remove it',e.message);}}
 async function cvEdit(key,day){
   const i=key?cvFind(key):null;
   if(!CV.deals){try{const p=await plApi('/api/crm/pipeline');CV.deals=(p.deals||[]).filter(x=>x.stage!=='lost');}catch(e){CV.deals=[];}}
@@ -1172,6 +1226,21 @@ async function cvSave(btn,id){
     cvLoad();
   }catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
 }
+/* ---------- recycle bin (lib/crmTrash.js) ---------- */
+async function binOpen(){
+  uxOpen(uxHead('Recycle bin','Loading…'));
+  try{
+    const d=await plApi('/api/crm/trash');
+    const when=t=>new Date(t).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    const left=t=>Math.max(0,Math.ceil((new Date(t)-Date.now())/86400000));
+    uxOpen(uxHead('Recycle bin',`Anything deleted stays here for ${d.days} days, so you can put it back exactly as it was.${d.everyone?'':' You see what you deleted.'}`)+
+      (d.items.length?d.items.map(i=>`<div class="bin-row"><div class="w"><div style="font-weight:600">${uxEsc(i.label)}</div><div class="k">${uxEsc(i.name)} · ${i.mode==='archived'?'removed':'deleted'} ${uxEsc(when(i.deleted_at))}${i.who?' by '+uxEsc(i.who):''}${i.n>1?` · with ${i.n-1} linked item${i.n===2?'':'s'}`:''} · ${left(i.purgeOn)} days left</div></div>
+        <button class="btn-xs p" onclick="binRestore('${i.id}',this)">Put it back</button>${d.everyone?`<button class="btn-xs" style="color:var(--red)" onclick="binPurge('${i.id}',this)">Delete forever</button>`:''}</div>`).join('')
+      :'<div class="pl-empty">The recycle bin is empty.</div>'));
+  }catch(e){uxOpen(uxHead('Could not open the recycle bin',uxEsc(e.message)));}
+}
+async function binRestore(id,btn){btn.disabled=true;try{const r=await plApi('/api/crm/trash/'+id+'/restore',{body:{}});showNotif('Put back',r.restored.label||'');binOpen();if(CR.view)crView(CR.view);}catch(e){btn.disabled=false;showNotif('Could not put it back',e.message);}}
+async function binPurge(id,btn){if(!confirm('Delete this for good? It can’t be brought back after this.'))return;btn.disabled=true;try{await plApi('/api/crm/trash/'+id,{method:'DELETE'});binOpen();}catch(e){btn.disabled=false;showNotif('Could not delete it',e.message);}}
 /* ---------- weekly reports ---------- */
 // The report read aloud, for the drive in.
 let RP_SPEECH=null;
@@ -1305,7 +1374,7 @@ function esRender(){
   const t=esTotals();
   const status=e.status==='sent'?`Sent to ${uxEsc(e.sent_to)} on ${new Date(e.sent_at).toLocaleDateString()}${e.first_viewed_at?`, opened ${e.view_count}×`:', not opened yet'}`:e.status==='accepted'?`Accepted by ${uxEsc(e.accepted_name)} on ${new Date(e.accepted_at).toLocaleString()}`:e.status==='declined'?`Declined${e.decline_reason?': '+uxEsc(e.decline_reason):''}`:'Draft: not sent yet';
   uxOpen(uxHead(`#${e.number} ${uxEsc(e.title)}`,uxEsc(e.deal_title)+' · '+status)+`
-    ${locked?'<div class="pl-banner"><span>Accepted estimates can’t be changed. Make a copy to revise it.</span></div>':''}
+    ${locked?'<div class="pl-banner"><span>🔒 <b>Signed by the homeowner</b>, so it can’t be changed. To change anything, make a revision: a new copy you can edit and send.</span><button class="btn-xs p" onclick="esCopy()">Make a revision</button></div>':e.status==='sent'?'<div class="pl-banner"><span>This was already sent. Changes you save here show up on the homeowner’s link right away.</span></div>':''}
     <div class="pl-form">
       <div><label for="es-kind">Type</label><select id="es-kind" ${dis} onchange="ES.cur.kind=this.value">${Object.entries(ES.kinds).map(([k,v])=>`<option value="${k}"${k===e.kind?' selected':''}>${v}</option>`).join('')}</select></div>
       <div><label for="es-valid">Valid until</label><input id="es-valid" type="date" class="cred-input" ${dis} value="${e.valid_until?String(e.valid_until).slice(0,10):''}" onchange="ES.cur.valid_until=this.value"></div>
@@ -1394,7 +1463,7 @@ async function esSend(btn){
   catch(x){const m=document.getElementById('es-send-msg');if(m)m.textContent=x.message;btn.disabled=false;}
 }
 async function esCopy(){try{const {estimate}=await plApi('/api/crm/deals/'+ES.cur.deal_id+'/estimates',{body:{copyFromId:ES.cur.id}});esOpen(estimate.id);}catch(e){showNotif('Could not copy',e.message);}}
-async function esDelete(){if(!confirm('Delete this draft?'))return;try{await plApi('/api/crm/estimates/'+ES.cur.id,{method:'DELETE'});uxClose();if(CR.view==='estimates')esLoad();}catch(e){showNotif('Could not delete',e.message);}}
+async function esDelete(){if(!confirm('Delete this draft? (It stays in the recycle bin for 30 days.)'))return;try{await plApi('/api/crm/estimates/'+ES.cur.id,{method:'DELETE'});uxClose();if(CR.view==='estimates')esLoad();}catch(e){showNotif('Could not delete',e.message);}}
 
 /* ---------- team ---------- */
 const TM_ROLE={owner:'Owner',admin:'Admin',member:'Member'};
@@ -1875,6 +1944,9 @@ async function plApi(url,opts){
   const r=await fetch(url,opts&&opts.body!==undefined?{method:opts.method||'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(opts.body)}:(opts||{}));
   let d={};try{d=await r.json();}catch(e){}
   if(!r.ok)throw new Error((d.error&&d.error.message)||('Request failed ('+r.status+')'));
+  if(opts&&(opts.body!==undefined||opts.method&&opts.method!=='GET')){CR.dirty=false;crDraftsClear();}
+  // Deleted things go to the recycle bin: offer to put them back.
+  if(d&&d.undo&&opts&&opts.method==='DELETE'){const id=d.undo;setTimeout(()=>crUndo('Moved to the recycle bin.',()=>crRestore(id)),0);}
   return d;
 }
 const plStage=k=>(PL.data&&PL.data.stages.find(s=>s.key===k))||{key:k,label:k,open:true};
@@ -2565,7 +2637,7 @@ async function jcAdd(dealId,btn){
   try{await plApi('/api/crm/deals/'+dealId+'/costs',{body:{category:v('jc-cat'),amount:v('jc-amt'),hours:v('jc-hrs'),rate:v('jc-rate'),vendorName:v('jc-vendor'),costDate:v('jc-date')||null,description:v('jc-desc')}});jcLoad(dealId);}
   catch(e){document.getElementById('jc-msg').textContent=e.message;btn.disabled=false;}
 }
-async function jcDel(id,dealId){if(!confirm('Delete this cost?'))return;try{await plApi('/api/crm/costs/'+id,{method:'DELETE'});jcLoad(dealId);}catch(e){showNotif('Could not delete',e.message);}}
+async function jcDel(id,dealId){if(!confirm('Delete this cost? (It stays in the recycle bin for 30 days.)'))return;try{await plApi('/api/crm/costs/'+id,{method:'DELETE'});jcLoad(dealId);}catch(e){showNotif('Could not delete',e.message);}}
 const jbErr=e=>{const m=document.getElementById('jb-msg');if(m){m.textContent=e.message;m.scrollIntoView({block:'nearest'});}else showNotif('Problem',e.message);};
 async function jbTemplate(btn){btn.disabled=true;try{await plApi('/api/crm/deals/'+JB.dealId+'/schedule/from-template',{body:{startDate:document.getElementById('jb-start').value||null}});jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}}
 async function jbSaveTpl(){try{const r=await plApi('/api/crm/deals/'+JB.dealId+'/schedule/save-template',{body:{}});showNotif('Template saved',r.phases+' phases. New jobs will use it.');}catch(e){jbErr(e);}}
@@ -2574,7 +2646,7 @@ async function jbSaveItem(id,btn){
   const row=document.querySelector(`[data-item="${id}"]`);const b={};row.querySelectorAll('[data-f]').forEach(f=>b[f.dataset.f]=f.type==='checkbox'?f.checked:f.value||null);
   btn.disabled=true;try{await plApi('/api/crm/schedule/'+id,{method:'PATCH',body:b});showNotif('Saved','');jbOpen(JB.dealId);}catch(e){jbErr(e);btn.disabled=false;}
 }
-async function jbDelItem(id){if(!confirm('Delete this phase?'))return;try{await plApi('/api/crm/schedule/'+id,{method:'DELETE'});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
+async function jbDelItem(id){if(!confirm('Delete this phase? (It stays in the recycle bin for 30 days.)'))return;try{await plApi('/api/crm/schedule/'+id,{method:'DELETE'});jbOpen(JB.dealId);}catch(e){jbErr(e);}}
 let JBREC=null;
 function jbMic(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;const btn=document.getElementById('jb-mic');
@@ -2707,9 +2779,11 @@ async function plStageChanged(id,sel){
     if(lostReason===null){plOpenDeal(id);return;}
   }
   try{
+    const before=((PL.data&&PL.data.deals.find(x=>x.id===id))||{}).stage;
     await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{stage,lostReason}});
-    showNotif('Moved to '+plStage(stage).label,'Any approved emails for this stage are on their way.');
     await plLoad();plOpenDeal(id);
+    if(before&&before!==stage)crUndo('Moved to '+plStage(stage).label+'.',async()=>{await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{stage:before}});await plLoad();plOpenDeal(id);});
+    else showNotif('Moved to '+plStage(stage).label,'');
   }catch(e){showNotif('Could not move the deal',e.message);plOpenDeal(id);}
 }
 async function plSaveDeal(id,btn){
@@ -2745,7 +2819,7 @@ function vnToggle(){
   VN.start();btn.textContent='⏹ Stop';
 }
 async function plDeleteDeal(id){
-  if(!confirm('Delete this deal and its history? Its contact stays. This cannot be undone.'))return;
+  if(!confirm('Delete this deal and everything on it? You can put it back from the recycle bin for 30 days.'))return;
   try{await plApi('/api/crm/deals/'+id,{method:'DELETE'});uxClose();plLoad();}catch(e){showNotif('Could not delete',e.message);}
 }
 
@@ -2853,10 +2927,12 @@ async function tdAdd(dealId){
     if(dealId)plOpenDeal(dealId);else plLoadNeeds();
   }catch(e){showNotif('Could not add the task',e.message);}
 }
-async function tdDone(id,done){try{await plApi('/api/crm/tasks/'+id,{method:'PATCH',body:{done}});if(CR.view==='needs')plLoadNeeds();}catch(e){showNotif('Could not save',e.message);}}
+async function tdDone(id,done,quiet){try{await plApi('/api/crm/tasks/'+id,{method:'PATCH',body:{done}});if(CR.view==='needs')plLoadNeeds();if(done&&!quiet)crUndo('Marked done.',()=>tdDone(id,false,true));}catch(e){showNotif('Could not save',e.message);}}
 
 async function plInboxAct(id,action,days){
-  try{await plApi('/api/crm/inbox/'+id,{body:{action,days}});plLoadNeeds();}catch(e){showNotif('Could not update',e.message);}
+  try{await plApi('/api/crm/inbox/'+id,{body:{action,days}});plLoadNeeds();
+    if(action!=='reopen')crUndo(action==='done'?'Marked done.':'Snoozed.',async()=>{await plApi('/api/crm/inbox/'+id,{body:{action:'reopen'}});plLoadNeeds();});}
+  catch(e){showNotif('Could not update',e.message);}
 }
 
 function plRenderStageNames(){
@@ -3133,7 +3209,7 @@ async function aiSend(){
   if(!AI.thread){body.innerHTML='';try{AI.thread=(await plApi('/api/crm/assistant/threads',{body:{}})).thread.id;AI.title=text.slice(0,70)||null;aiHead();aiHash();}catch(e){showNotif('Could not start',e.message);AI.busy=false;document.getElementById('ai-go').disabled=false;return;}}
   const files=AI.files.splice(0);aiAttRender();
   aiBubble('user',uxEsc(text||'').replace(/\n/g,'<br>')+(files.length?`<div class="ai-files">${files.map(f=>`<span class="ai-file">📄 ${uxEsc(f.filename)}</span>`).join('')}</div>`:''));
-  inp.value='';aiGrow(inp);
+  inp.value='';aiGrow(inp);try{localStorage.removeItem('draft:ai:new');localStorage.removeItem('draft:ai:'+AI.thread);}catch(e){}
   const think=document.createElement('div');think.className='ai-think';think.innerHTML='<span class="ai-dots"><i></i><i></i><i></i></span><span id="ai-step">Thinking…</span>';body.appendChild(think);aiScroll();
   try{
     const res=await fetch('/api/crm/assistant/threads/'+AI.thread+'/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,fileIds:files.map(f=>f.id)})});
@@ -3164,8 +3240,9 @@ function aiSide(open){
   p.classList.toggle('side-open',on);
   if(on){aiList();}
 }
+function aiDraftBack(){const i=document.getElementById('ai-in');if(!i)return;i.value=crDraftGet(i)||'';aiGrow(i);}
 function aiNew(){
-  AI.thread=null;AI.title=null;AI.files=[];aiAttRender();aiHead();aiHash();
+  AI.thread=null;AI.title=null;AI.files=[];aiAttRender();aiHead();aiHash();aiDraftBack();
   if(!aiWide())aiSide(false);
   aiHome();aiMark();
   const i=document.getElementById('ai-in');if(i&&matchMedia('(pointer:fine)').matches)setTimeout(()=>i.focus(),50);
@@ -3225,12 +3302,12 @@ async function aiLoad(id){
     body.innerHTML='';
     for(const m of v.messages){if(m.role==='user')aiBubble('user',uxEsc(m.text||'').replace(/\n/g,'<br>')+((m.files||[]).length?`<div class="ai-files">${m.files.map(f=>`<span class="ai-file">📄 ${uxEsc(f.filename)}</span>`).join('')}</div>`:''));else aiShowReply(m);}
     if(!v.messages.length)aiHome();
-    aiHead();aiHash();aiMark();}
+    aiHead();aiHash();aiMark();aiDraftBack();}
   catch(e){AI.loading=null;showNotif('Could not open it',e.message);AI.thread=null;AI.title=null;aiHead();aiHome();}
 }
 async function aiDel(id){
   const t=(AI.threads||[]).find(x=>x.id===id)||{};
-  if(!confirm(`Delete “${t.title||'this chat'}”? This can’t be undone.`))return;
+  if(!confirm(`Delete “${t.title||'this chat'}”? It stays in the recycle bin for 30 days.`))return;
   try{await plApi('/api/crm/assistant/threads/'+id,{method:'DELETE'});AI.threads=(AI.threads||[]).filter(x=>x.id!==id);aiRenderList();if(AI.thread===id)aiNew();}
   catch(e){showNotif('Could not delete',e.message);}
 }

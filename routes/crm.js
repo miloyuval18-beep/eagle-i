@@ -184,8 +184,9 @@ router.post('/api/crm/deals/:id/notes', requireAuth, async (req, res) => {
 
 router.delete('/api/crm/deals/:id', requireAuth, managersOnly, async (req, res) => {
   try {
-    if (!(await crm.deleteDeal(req.tenantId, req.params.id))) return res.status(404).json({ error: { message: 'Deal not found.' } });
-    res.json({ ok: true });
+    const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'deal', id: req.params.id, userId: req.userId }, () => crm.deleteDeal(req.tenantId, req.params.id));
+    if (!r.ok) return res.status(404).json({ error: { message: 'Deal not found.' } });
+    res.json({ ok: true, undo: r.undo });
   } catch (err) { fail(res, err, 'Failed to delete the deal'); }
 });
 
@@ -304,8 +305,9 @@ router.patch('/api/crm/tasks/:id', requireAuth, async (req, res) => {
 
 router.delete('/api/crm/tasks/:id', requireAuth, async (req, res) => {
   try {
-    if (!(await tasks.deleteTask({ tenantId: req.tenantId, id: req.params.id }))) return res.status(404).json({ error: { message: 'Task not found.' } });
-    res.json({ ok: true });
+    const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'task', id: req.params.id, userId: req.userId }, () => tasks.deleteTask({ tenantId: req.tenantId, id: req.params.id }));
+    if (!r.ok) return res.status(404).json({ error: { message: 'Task not found.' } });
+    res.json({ ok: true, undo: r.undo });
   } catch (err) { fail(res, err, 'Failed to delete the task'); }
 });
 

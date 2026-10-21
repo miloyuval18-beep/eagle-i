@@ -42,8 +42,9 @@ router.post('/api/crm/deals/:id/receipts', requireAuth, wrap('Failed to add the 
 
 router.delete('/api/crm/costs/:costId', requireAuth, wrap('Failed to delete the cost', async (req, res) => {
   if (!manager(req)) return res.status(403).json({ error: { message: 'Only the owner or an admin can delete costs.' } });
-  if (!(await costs.deleteCost({ tenantId: req.tenantId, id: req.params.costId }))) return res.status(404).json({ error: { message: 'Cost not found.' } });
-  res.json({ ok: true });
+  const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'cost', id: req.params.costId, userId: req.userId }, async () => !!(await costs.deleteCost({ tenantId: req.tenantId, id: req.params.costId })));
+  if (!r.ok) return res.status(404).json({ error: { message: 'Cost not found.' } });
+  res.json({ ok: true, undo: r.undo });
 }));
 
 router.get('/api/crm/export', requireAuth, wrap('Failed to export', async (req, res) => {

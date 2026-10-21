@@ -49,7 +49,7 @@ router.patch('/api/crm/draws/settings', requireAuth, wrap('Failed to save', asyn
   res.json(await draws.setAutoSend(req.tenantId, !!(req.body || {}).autoSend));
 }));
 router.patch('/api/crm/draws/:did', requireAuth, wrap('Failed to save the payment', async (req, res) => res.json({ ok: true, draw: await draws.saveDraw({ tenantId: req.tenantId, id: req.params.did, body: req.body }) })));
-router.delete('/api/crm/draws/:did', requireAuth, wrap('Failed to remove the payment', async (req, res) => { await draws.deleteDraw({ tenantId: req.tenantId, id: req.params.did }); res.json({ ok: true }); }));
+router.delete('/api/crm/draws/:did', requireAuth, wrap('Failed to remove the payment', async (req, res) => { const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'draw', id: req.params.did, userId: req.userId }, () => draws.deleteDraw({ tenantId: req.tenantId, id: req.params.did })); res.json({ ok: true, undo: r.undo }); }));
 router.post('/api/crm/draws/:did/invoice', requireAuth, wrap('Failed to make the invoice', async (req, res) => {
   const d = (await query('SELECT * FROM crm_draws WHERE id = $1 AND tenant_id = $2', [req.params.did, req.tenantId])).rows[0];
   if (!d) return res.status(404).json({ error: { message: 'Payment not found.' } });
