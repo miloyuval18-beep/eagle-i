@@ -4,7 +4,7 @@
    finish as the CRM, so everything from Eagle I looks like one product. */
 :root{
   --bg:#f5f7fa;--card:#ffffff;--soft:#f2f4f7;
-  --ink:#101828;--ink2:#344054;--ink3:#5b6577;
+  --ink:#101828;--ink2:#283445;--ink3:#3f4a5c;
   --bdr:#e4e7ec;--bdr2:#a3acba;
   --accent:#1d4f91;--accent2:#163d70;
   --ok:#067647;--err:#b42318;
@@ -23,7 +23,7 @@ h2{font-weight:600;letter-spacing:-.015em}
 .btn:not(.btn-o):not(.btn-l){box-shadow:var(--sh2),inset 0 1px 0 rgba(255,255,255,.12)}
 .btn-o{border:1px solid var(--bdr2)!important;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .btn-o:hover{background:var(--soft)}
-input[type=text],input[type=email],input[type=tel],input[type=password],input[type=number],input[type=date],input[type=time],input:not([type]),textarea,select{border:1px solid var(--bdr2);border-radius:10px;box-shadow:0 1px 2px rgba(16,24,40,.05);font-family:var(--f);font-size:16px}
+input[type=text],input[type=email],input[type=tel],input[type=password],input[type=number],input[type=date],input[type=time],input:not([type]),textarea,select{border:1px solid var(--bdr2);border-radius:10px;box-shadow:0 1px 2px rgba(16,24,40,.05);font-family:var(--f);font-size:18.5px}
 input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(29,79,145,.16)}
 input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 .pill{font-weight:600;border-radius:999px}
@@ -42,3 +42,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 .days{scrollbar-width:none}.days::-webkit-scrollbar{display:none}
 .times button,.time{white-space:nowrap;font-variant-numeric:tabular-nums}
 @media(max-width:360px){.times{grid-template-columns:repeat(2,1fr)!important}}
+/* Easier to read: built for an older audience. */
+body{line-height:1.6}
+.btn{min-height:52px;font-size:18px}
+input[type=text],input[type=email],input[type=tel],input[type=password],input[type=number],input[type=date],input[type=time],input:not([type]),textarea,select{font-size:18px;min-height:48px}
