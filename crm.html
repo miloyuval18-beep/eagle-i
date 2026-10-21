@@ -98,6 +98,7 @@ select{width:auto;cursor:pointer}
 .pl-item.collect{border-left:4px solid var(--amber)}
 .pl-item.change_catch,.pl-item.cost_forecast,.pl-item.po_match,.pl-item.photo_check{border-left:4px solid var(--amber)}
 .pl-item.schedule_risk{border-left:4px solid var(--red)}
+.pl-item.sub_question{box-shadow:inset 3px 0 0 var(--accent),var(--sh2)}
 .fl-drop{border-radius:12px;transition:background .15s}.fl-drop.fl-over{background:rgba(31,78,121,.08);outline:2px dashed var(--accent);outline-offset:4px}
 .fl-more{position:relative;display:inline-block}.fl-more>summary{list-style:none;cursor:pointer}.fl-more>summary::-webkit-details-marker{display:none}
 .fl-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;background:var(--bg2);border:1px solid var(--bdr2);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.15)}
@@ -1397,6 +1398,7 @@ function flRender(){
   const shareBtn=f=>f.googleDoc?'':`<button class="btn-xs" onclick="flShare('${f.id}',${!f.shared})" title="${f.shared?'The homeowner can see this. Tap to hide.':'Only your team can see this. Tap to share.'}">${f.shared?'👁 Shared':'🔒 Team'}</button>`;
   const menu=f=>`<details class="fl-more"><summary class="btn-xs" aria-label="More">⋯</summary><div class="fl-menu">
       <label class="sm" style="margin:0">Folder<select onchange="flMove('${f.id}',this.value)">${Object.entries(FL.folders).map(([k,v])=>`<option value="${k}"${k===f.folder?' selected':''}>${v}</option>`).join('')}</select></label>
+      <button class="btn-xs" onclick="flPatch('${f.id}',{subShared:${!f.sub_shared}},'change it')">${f.sub_shared?'✓ Subs see it':'Let subs see it'}</button>
       <button class="btn-xs" onclick="flRename('${f.id}')">Rename</button>
       ${f.version_group?`<button class="btn-xs" onclick="flSplit('${f.id}')">Not a new version</button>`:''}
       ${f.drive_link?`<a class="btn-xs" href="${uxEsc(f.drive_link)}" target="_blank" rel="noopener">Open in Drive</a>`:''}
@@ -1407,7 +1409,7 @@ function flRender(){
       <span style="position:absolute;right:2px;bottom:2px">${menu(f)}</span></div>`).join('')}</div>`:'';
   const list=docs.length?'<div class="pl-list" style="margin-top:8px">'+docs.map(f=>{const o=older(f);return `<div class="pl-item" style="padding:8px 10px">
       <div style="display:flex;gap:8px;align-items:center"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow-wrap:anywhere;font-weight:700">${flIcon(f)} ${uxEsc(f.caption&&f.caption!=='Receipt'?f.caption:f.filename)}</a>${shareBtn(f)}${menu(f)}</div>
-      <div class="pl-tags">${f.version>1?`<span class="pl-tag gB">v${f.version}</span>`:''}${FL.folder==='all'?`<span class="pl-tag">${uxEsc(FL.folders[f.folder]||f.folder)}</span>`:''}${f.size?`<span class="pl-tag">${flSize(Number(f.size))}</span>`:''}${f.in_drive?'<span class="pl-tag auto">In Drive</span>':''}<span class="pl-tag">${new Date(f.created_at).toLocaleDateString([], {month:'short',day:'numeric'})}${f.uploaded_by_name?' · '+uxEsc(f.uploaded_by_name):''}</span></div>
+      <div class="pl-tags">${f.version>1?`<span class="pl-tag gB">v${f.version}</span>`:''}${FL.folder==='all'?`<span class="pl-tag">${uxEsc(FL.folders[f.folder]||f.folder)}</span>`:''}${f.size?`<span class="pl-tag">${flSize(Number(f.size))}</span>`:''}${f.in_drive?'<span class="pl-tag auto">In Drive</span>':''}${f.sub_shared?'<span class="pl-tag gB">Subs</span>':''}<span class="pl-tag">${new Date(f.created_at).toLocaleDateString([], {month:'short',day:'numeric'})}${f.uploaded_by_name?' · '+uxEsc(f.uploaded_by_name):''}</span></div>
       ${o.length?`<details style="margin-top:4px"><summary class="sm" style="cursor:pointer;margin:0">${o.length} older version${o.length===1?'':'s'}</summary>${o.map(x=>`<div class="sm" style="margin:4px 0 0"><a href="/api/crm/files/${x.id}" target="_blank" rel="noopener">v${x.version} · ${uxEsc(x.filename)}</a> · replaced ${new Date(x.superseded_at).toLocaleDateString()}</div>`).join('')}</details>`:''}</div>`;}).join('')+'</div>':'';
   const drive=FL.drive.on?`<div class="sm" style="margin:0 0 6px">☁️ Saved to your Google Drive${FL.drive.folderLink?` · <a href="${uxEsc(FL.drive.folderLink)}" target="_blank" rel="noopener">Open this job’s folder</a>`:' · the job’s folder is being made'}</div>`:'';
   el.innerHTML=drive+(cur.length?chips:'')+grid+list+(!shown.length?`<div class="sm">${cur.length?'Nothing in this folder yet.':'No files yet. Drop them here, or tap “Add files”.'}</div>`:'');
@@ -1966,13 +1968,29 @@ function vdRender(){
   const soon=d=>d&&new Date(ymdOf(d)+'T12:00:00Z')<new Date(Date.now()+30*86400000);
   el.innerHTML=JB.vendors.length?JB.vendors.map(v=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(v.name)}</div><div class="pl-item-d">${uxEsc([v.trade,v.contact_name,v.phone,v.email].filter(Boolean).join(' · '))}</div>
     <div class="pl-tags">${v.license_no?`<span class="pl-tag">Lic. ${uxEsc(v.license_no)}</span>`:''}${v.insurance_expires?`<span class="pl-tag${soon(v.insurance_expires)?' warn':''}">Insurance to ${fdate(v.insurance_expires)}</span>`:'<span class="pl-tag warn">No insurance on file</span>'}</div></div>
-    ${crCanManage()?`<button class="btn-xs" onclick="vdRemove('${v.id}')" aria-label="Remove ${uxEsc(v.name)}">Remove</button>`:''}</div></div>`).join(''):'<div class="pl-empty">No subs or vendors yet.</div>';
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><button class="btn-xs p" onclick="vdPage('${v.id}')">🔗 Their page</button>${crCanManage()?`<button class="btn-xs" onclick="vdRemove('${v.id}')" aria-label="Remove ${uxEsc(v.name)}">Remove</button>`:''}</div></div></div>`).join(''):'<div class="pl-empty">No subs or vendors yet.</div>';
 }
 async function vdAdd(btn){
   const v=id=>document.getElementById(id).value;btn.disabled=true;const m=document.getElementById('vd-msg');m.textContent='';
   try{await plApi('/api/crm/vendors',{body:{name:v('vd-name'),trade:v('vd-trade'),contactName:v('vd-contact'),phone:v('vd-phone'),email:v('vd-email'),licenseNo:v('vd-lic'),insuranceExpires:v('vd-ins')||null}});['vd-name','vd-trade','vd-contact','vd-phone','vd-email','vd-lic','vd-ins'].forEach(id=>document.getElementById(id).value='');jbList();}
   catch(e){m.textContent=e.message;}btn.disabled=false;
 }
+// A sub's own page: every job they're on, with an assistant for questions about the job.
+async function vdPage(id){
+  const v=JB.vendors.find(x=>x.id===id)||{};uxOpen(uxHead('🔗 '+uxEsc(v.name||'Sub'),'Loading…'));
+  try{const r=await plApi('/api/crm/vendors/'+id+'/portal');
+    uxOpen(uxHead('🔗 '+uxEsc(v.name||'Sub')+'’s page','Their private page for every job they’re on with you. It opens on an assistant for questions about the job: dates, the address, the plans, what the homeowner picked. Anything it can’t answer comes to you in Today.')+`
+      <label for="vp-url" style="font-size:12px;font-weight:700;display:block">Their link (keep it between you and them)</label>
+      <div style="display:flex;gap:6px;margin-top:4px"><input id="vp-url" class="cred-input" readonly value="${uxEsc(r.url)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('vp-url')">Copy</button><a class="btn-xs" href="${uxEsc(r.url)}" target="_blank" rel="noopener">Open</a></div>
+      <div class="vd-mbtns">${r.email?`<button class="btn btn-blue" onclick="vdPageEmail('${id}',this)">Email it to ${uxEsc(r.email)}</button>`:'<span class="sm" style="margin:0">Add their email to send it to them.</span>'}${crCanManage()?`<button class="btn-xs" onclick="vdPageReset('${id}')">Make a new link</button>`:''}</div>
+      <div class="pl-h">What they can see</div>
+      ${r.jobs.length?'<div class="pl-list">'+r.jobs.map(j=>`<div class="pl-item" style="padding:9px 12px"><div class="pl-card-top"><span class="pl-item-t">${uxEsc(j.title)}</span><span class="pl-pill ${j.status==='on'?'on':''}">${j.status==='on'?'On the job':'Bidding'}</span></div><div class="pl-item-d">${j.files} file${j.files===1?'':'s'} shared with subs</div></div>`).join('')+'</div>':'<div class="sm">No jobs yet. Put them on a schedule phase, a purchase order or a bid request and the job shows up on their page.</div>'}
+      <div class="sm">On each job: the address, the schedule, their own phases and purchase orders, plans and selection sheets (switch any file on or off with “Subs see it” in its ⋯ menu), what the homeowner picked, and approved changes without prices. Never the homeowner’s phone or email, or anyone else’s prices.</div>
+      ${r.questions.length?`<div class="pl-h">What they’ve asked</div><ul class="pl-tl">${r.questions.map(q=>`<li><b>${uxEsc(q.question)}</b><br>${uxEsc(q.answer||'')}<div class="pl-tl-meta">${new Date(q.created_at).toLocaleString()}${q.job?' · '+uxEsc(q.job):''}${q.forwarded?' · sent to you':''}</div></li>`).join('')}</ul>`:''}`);}
+  catch(e){uxOpen(uxHead('Could not open it',uxEsc(e.message)));}
+}
+async function vdPageEmail(id,btn){btn.disabled=true;try{const r=await plApi('/api/crm/vendors/'+id+'/portal/email',{body:{}});showNotif('Link sent','To '+r.to);}catch(e){showNotif('Could not send it',e.message);btn.disabled=false;}}
+async function vdPageReset(id){if(!confirm('Make a new link? The old one stops working right away.'))return;try{await plApi('/api/crm/vendors/'+id+'/portal/reset',{body:{}});vdPage(id);}catch(e){showNotif('Could not do that',e.message);}}
 async function vdRemove(id){if(!confirm('Remove this vendor?'))return;try{await plApi('/api/crm/vendors/'+id,{method:'DELETE'});jbList();}catch(e){showNotif('Could not remove',e.message);}}
 
 async function jbOpen(dealId){
@@ -2346,7 +2364,7 @@ async function plLoadNeeds(){
     el.innerHTML=items.map(i=>`<div class="pl-item ${i.kind}"><div class="pl-item-t">${uxEsc(i.title)}</div><div class="pl-tl-meta">Flagged ${plAgo(i.created_at)} ago</div>
       ${i.deal_title?`<div class="pl-item-d">${uxEsc(i.deal_title)}${i.deal_stage?' · '+uxEsc(plStage(i.deal_stage).label):''}</div>`:''}
       ${i.detail?`<div class="pl-item-d">${uxEsc(i.detail)}</div>`:''}
-      <div class="pl-acts">${i.kind==='collect'&&/^nudge:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ccNudge('${(i.dedupe_key||'').slice(6)}')">Review &amp; send</button>`:''}${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${['change_catch','cost_forecast','schedule_risk','po_match','photo_check'].includes(i.kind)&&i.deal_id?`<button class="btn-xs p" onclick="jbOpen('${i.deal_id}')">Open the job</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
+      <div class="pl-acts">${i.kind==='collect'&&/^nudge:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ccNudge('${(i.dedupe_key||'').slice(6)}')">Review &amp; send</button>`:''}${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${i.kind==='sub_question'&&!i.deal_id?`<button class="btn-xs p" onclick="crView('jobs')">Subs</button>`:''}${['change_catch','cost_forecast','schedule_risk','po_match','photo_check'].includes(i.kind)&&i.deal_id?`<button class="btn-xs p" onclick="jbOpen('${i.deal_id}')">Open the job</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
         <button class="btn-xs" onclick="plInboxAct(${i.id},'done')">✓ Done</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',1)">Snooze 1 day</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',3)">3 days</button></div></div>`).join('');

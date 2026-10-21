@@ -92,7 +92,7 @@ router.get('/api/crm/files/:fileId', requireAuth, async (req, res) => {
 router.patch('/api/crm/files/:fileId', requireAuth, async (req, res) => {
   const b = req.body || {};
   try {
-    if (!(await portal.updateFile({ tenantId: req.tenantId, id: req.params.fileId, shared: b.shared, caption: b.caption, folder: b.folder, filename: b.filename, splitVersion: !!b.splitVersion }))) return res.status(404).json({ error: { message: 'File not found.' } });
+    if (!(await portal.updateFile({ tenantId: req.tenantId, id: req.params.fileId, shared: b.shared, subShared: b.subShared, caption: b.caption, folder: b.folder, filename: b.filename, splitVersion: !!b.splitVersion }))) return res.status(404).json({ error: { message: 'File not found.' } });
     res.json({ ok: true });
   } catch (err) { fail(res, err, 'Failed to save'); }
 });

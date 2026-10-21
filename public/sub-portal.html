@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#ffffff">
+<title>Your Jobs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- A sub's page for the jobs they do with a company in Eagle I CRM (routes/crmSubPortal.js).
+     It opens on an assistant for questions about their jobs; the job details are one tap away. -->
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--soft:#f2f4f7;--ink:#101828;--ink2:#344054;--ink3:#5b6577;--bdr:#e4e7ec;--bdr2:#a3acba;--accent:#1d4f91;--accent2:#163d70;--ok:#067647;--err:#b42318;
+  --ai:linear-gradient(135deg,#163d70 0%,#1d4f91 45%,#0f8b8d 100%);--f:'Inter',system-ui,-apple-system,sans-serif;--sh2:0 1px 3px rgba(16,24,40,.07),0 1px 2px rgba(16,24,40,.04)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--bdr)}
+.bar{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:10px 16px}
+.co{font-weight:700;font-size:16px;letter-spacing:-.01em;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.co small{display:block;font-weight:500;font-size:12px;color:var(--ink3)}
+.lang{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;font-size:14px;cursor:pointer;padding:6px}
+.tabs{max-width:760px;margin:0 auto;display:flex;gap:4px;padding:0 12px}
+.tab{flex:1;border:0;background:none;font:inherit;font-weight:600;font-size:14.5px;color:var(--ink3);padding:10px 8px;border-bottom:2px solid transparent;cursor:pointer}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px}
+/* the assistant */
+.chat{display:flex;flex-direction:column;height:calc(100vh - 106px);height:calc(100dvh - 106px)}
+.msgs{flex:1;overflow-y:auto;padding:18px 0 10px}
+.hello{text-align:center;padding:18px 4px 6px}
+.hello .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#fff;background:var(--ai);border-radius:999px;padding:4px 12px;letter-spacing:.02em}
+.hello h1{font-size:26px;font-weight:700;letter-spacing:-.025em;margin-top:12px}
+.hello p{color:var(--ink3);margin:8px auto 0;max-width:460px;font-size:15px}
+.jobpick{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:16px -16px 0;padding:0 16px}
+.jobpick::-webkit-scrollbar{display:none}
+.jp{flex:0 0 auto;border:1px solid var(--bdr2);background:#fff;border-radius:999px;padding:7px 13px;font:inherit;font-size:13px;font-weight:500;color:var(--ink2);cursor:pointer}
+.jp.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.chip{text-align:left;border:1px solid var(--bdr);background:#fff;border-radius:12px;padding:11px 13px;font:inherit;font-size:14px;color:var(--ink);cursor:pointer;box-shadow:var(--sh2)}
+.chip:hover{border-color:#b9cfea}
+.m{display:flex;margin:10px 0}.m.me{justify-content:flex-end}
+.b{max-width:86%;padding:10px 13px;border-radius:16px;font-size:15px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
+.me .b{background:var(--ai);color:#fff;border-bottom-right-radius:5px}
+.bot .b{background:#fff;border:1px solid var(--bdr);border-bottom-left-radius:5px;box-shadow:var(--sh2)}
+.fwd{font-size:12px;color:var(--ink3);margin-top:4px}
+.think{color:var(--ink3);font-size:13px;padding:6px 2px}
+.foot{padding:8px 0 calc(10px + env(safe-area-inset-bottom));background:var(--bg)}
+.comp{display:flex;gap:6px;align-items:flex-end;background:#fff;border:1px solid var(--bdr2);border-radius:16px;padding:6px;box-shadow:var(--sh2)}
+.comp:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px rgba(29,79,145,.14)}
+.comp textarea{flex:1;min-width:0;border:0;outline:none;resize:none;font:inherit;font-size:16px;line-height:1.45;height:38px;max-height:130px;padding:7px 6px;background:transparent}
+.send{border:0;width:40px;height:40px;border-radius:12px;color:#fff;background:var(--ai);font-size:18px;cursor:pointer;flex:0 0 auto}
+.send:disabled{opacity:.4}
+.mic{border:0;background:none;width:40px;height:40px;border-radius:10px;font-size:18px;cursor:pointer;flex:0 0 auto}
+.mic.rec{background:var(--err);color:#fff}
+.hint{font-size:12px;color:var(--ink3);text-align:center;margin-top:6px}
+/* jobs */
+.jobs{padding:16px 0 40px}
+.card{background:#fff;border:1px solid var(--bdr);border-radius:16px;box-shadow:var(--sh2);padding:16px;margin-bottom:12px}
+.card h2{font-size:18px;font-weight:700;letter-spacing:-.015em}
+.meta{color:var(--ink3);font-size:14px}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 10px;border:1px solid #b9cfea;background:#eef4fb;color:var(--accent)}
+.pill.ok{border-color:#abefc6;background:#ecfdf3;color:var(--ok)}
+.sec{margin-top:14px}
+.sec h3{font-size:12px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #eef0f3;font-size:14.5px}
+.row:first-of-type{border-top:0}
+.row .r{color:var(--ink3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.row.mine{font-weight:600}
+.row a{color:var(--accent);font-weight:600;overflow-wrap:anywhere}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;text-decoration:none;min-height:44px}
+.btn.o{background:#fff;color:var(--ink);border:1px solid var(--bdr2)}
+textarea.box{width:100%;border:1px solid var(--bdr2);border-radius:10px;padding:10px 12px;font:inherit;font-size:16px;margin-top:8px}
+.msg{font-size:14px;margin-top:8px;min-height:18px}
+.empty{color:var(--ink3);font-size:14px}
+@media(max-width:420px){.chips{grid-template-columns:1fr}.hello h1{font-size:23px}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar"><div class="co" id="co">…<small id="who"></small></div><button class="lang" id="lang-btn" onclick="toggleLang()">Español</button></div>
+  <nav class="tabs"><button class="tab on" id="t-ask" onclick="show('ask')">✦ <span data-t="askTab">Ask about the job</span></button><button class="tab" id="t-jobs" onclick="show('jobs')"><span data-t="jobsTab">My jobs</span> <span id="njobs"></span></button></nav>
+</header>
+<main class="wrap">
+  <section id="v-ask" class="chat">
+    <div class="msgs" id="msgs"></div>
+    <div class="foot">
+      <div class="comp"><textarea id="q" rows="1" aria-label="Your question" oninput="grow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askIt();}"></textarea><button class="mic" id="mic" onclick="mic()" aria-label="Talk" hidden>🎤</button><button class="send" id="go" onclick="askIt()" aria-label="Send">↑</button></div>
+      <div class="hint" id="hint"></div>
+    </div>
+  </section>
+  <section id="v-jobs" class="jobs" hidden></section>
+</main>
+<script>
+(()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
+const token=location.pathname.split('/').pop();
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+const T={en:{askTab:'Ask about the job',jobsTab:'My jobs',badge:'✦ Job assistant',hi:'Hi {n}',intro:'Ask anything about your jobs with {co}: dates, the address, the plans, what the homeowner picked, what’s changed. I answer from the job records; anything else goes straight to the office.',all:'All my jobs',ph:'Ask about your job…',hint:'Answers come from the job records. Questions I can’t answer go to the office.',
+  q1:'When do I start?',q2:'What’s the address?',q3:'Send me the plans',q4:'What did the homeowner pick?',q5:'What changed since I bid?',q6:'Who do I call on site?',looking:'Looking…',fwd:'The office has your question too.',oops:'Something went wrong. Please try again.',
+  none:'No jobs here yet. When {co} puts you on a job, it shows up here.',bidding:'Bidding',onjob:'On the job',addr:'Address',area:'Area',yourPhases:'Your work',schedule:'Whole schedule',files:'Plans & files',selections:'What the homeowner picked',notyet:'not chosen yet',changes:'Approved changes',pos:'Your purchase orders',bid:'Your bid',punch:'Punch list for your trade',call:'Who to call',confirm:'Confirm these dates',bidLink:'Send or change your price',due:'due {d}',needed:'needed {d}',map:'Open in Maps',msgTeam:'Message the office',send:'Send',sent:'Sent. The office will get back to you.',confirmed:'✓ confirmed'},
+es:{askTab:'Preguntas del trabajo',jobsTab:'Mis trabajos',badge:'✦ Asistente del trabajo',hi:'Hola {n}',intro:'Pregunte lo que necesite de sus trabajos con {co}: fechas, la dirección, los planos, lo que escogió el cliente, lo que cambió. Respondo con los registros del trabajo; lo demás va directo a la oficina.',all:'Todos mis trabajos',ph:'Pregunte sobre su trabajo…',hint:'Las respuestas vienen de los registros del trabajo. Lo que no pueda contestar va a la oficina.',
+  q1:'¿Cuándo empiezo?',q2:'¿Cuál es la dirección?',q3:'Mándeme los planos',q4:'¿Qué escogió el cliente?',q5:'¿Qué cambió desde mi cotización?',q6:'¿A quién llamo en la obra?',looking:'Buscando…',fwd:'La oficina también recibió su pregunta.',oops:'Algo salió mal. Intente de nuevo.',
+  none:'Todavía no hay trabajos aquí. Cuando {co} lo asigne a un trabajo, aparecerá aquí.',bidding:'Cotizando',onjob:'En el trabajo',addr:'Dirección',area:'Zona',yourPhases:'Su trabajo',schedule:'Calendario completo',files:'Planos y archivos',selections:'Lo que escogió el cliente',notyet:'sin escoger',changes:'Cambios aprobados',pos:'Sus órdenes de compra',bid:'Su cotización',punch:'Pendientes de su oficio',call:'A quién llamar',confirm:'Confirmar estas fechas',bidLink:'Enviar o cambiar su precio',due:'para el {d}',needed:'para el {d}',map:'Abrir en Mapas',msgTeam:'Mensaje a la oficina',send:'Enviar',sent:'Enviado. La oficina le responderá.',confirmed:'✓ confirmado'}};
+let L=(()=>{const q=new URLSearchParams(location.search).get('lang');if(q)return q==='es'?'es':'en';try{const s=localStorage.getItem('eaglei_lang');if(s)return s;}catch(e){}return /^es/i.test(navigator.language||'')?'es':'en';})();
+const t=(k,v)=>String((T[L]||T.en)[k]??T.en[k]??k).replace(/\{(\w+)\}/g,(m,x)=>(v||{})[x]??'');
+let V=null,JOB=null,BUSY=false,STARTED=false;
+const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString(L==='es'?'es-US':'en-US',{weekday:'short',month:'short',day:'numeric'}):'';
+const range=(a,b)=>a?(fd(a)+(b&&b!==a?' – '+fd(b):'')):'';
+function toggleLang(){L=L==='es'?'en':'es';try{localStorage.setItem('eaglei_lang',L);}catch(e){}paint();}
+function show(v){document.getElementById('v-ask').hidden=v!=='ask';document.getElementById('v-jobs').hidden=v!=='jobs';document.getElementById('t-ask').classList.toggle('on',v==='ask');document.getElementById('t-jobs').classList.toggle('on',v==='jobs');}
+function grow(e){e.style.height='38px';e.style.height=Math.min(130,e.scrollHeight)+'px';}
+function paint(){
+  document.documentElement.lang=L;document.getElementById('lang-btn').textContent=L==='es'?'English':'Español';
+  document.querySelectorAll('[data-t]').forEach(e=>e.textContent=t(e.dataset.t));
+  document.getElementById('q').placeholder=t('ph');document.getElementById('hint').textContent=t('hint');
+  if(!V)return;
+  document.getElementById('co').innerHTML=esc(V.company.name)+`<small>${esc(V.sub.name)}${V.sub.trade?' · '+esc(V.sub.trade):''}</small>`;
+  document.getElementById('njobs').textContent=V.jobs.length?'('+V.jobs.length+')':'';
+  document.title=t('jobsTab')+' · '+V.company.name;
+  if(!STARTED)hello();
+  jobs();
+}
+function hello(){
+  const m=document.getElementById('msgs');
+  const picks=V.jobs.length>1?`<div class="jobpick"><button class="jp${JOB?'':' on'}" onclick="pick(null)">${esc(t('all'))}</button>${V.jobs.map(j=>`<button class="jp${JOB===j.id?' on':''}" onclick="pick('${j.id}')">${esc(j.title)}</button>`).join('')}</div>`:'';
+  m.innerHTML=`<div class="hello"><span class="badge">${esc(t('badge'))}</span><h1>${esc(t('hi',{n:V.sub.name}))}</h1><p>${esc(t('intro',{co:V.company.name}))}</p>${picks}
+    <div class="chips">${['q1','q2','q3','q4','q5','q6'].map(k=>`<button class="chip" onclick="chip(this)">${esc(t(k))}</button>`).join('')}</div></div>`;
+}
+function pick(id){JOB=id;if(!STARTED)hello();else document.querySelectorAll('.jp').forEach(b=>b.classList.toggle('on',b.getAttribute('onclick')===`pick(${id?`'${id}'`:'null'})`));}
+function chip(b){document.getElementById('q').value=b.textContent;askIt();}
+function bubble(who,html,extra=''){const d=document.createElement('div');d.className='m '+(who==='me'?'me':'bot');d.innerHTML=`<div style="max-width:100%;display:flex;flex-direction:column;align-items:${who==='me'?'flex-end':'flex-start'}"><div class="b">${html}</div>${extra}</div>`;const m=document.getElementById('msgs');m.appendChild(d);m.scrollTop=m.scrollHeight;return d;}
+async function askIt(){
+  const q=document.getElementById('q');const text=q.value.trim();if(!text||BUSY)return;
+  if(!STARTED){STARTED=true;document.getElementById('msgs').innerHTML='';if(V.jobs.length>1){const p=document.createElement('div');p.className='jobpick';p.style.margin='0 -16px 6px';p.innerHTML=`<button class="jp${JOB?'':' on'}" onclick="pick(null)">${esc(t('all'))}</button>${V.jobs.map(j=>`<button class="jp${JOB===j.id?' on':''}" onclick="pick('${j.id}')">${esc(j.title)}</button>`).join('')}`;document.getElementById('msgs').appendChild(p);}}
+  BUSY=true;document.getElementById('go').disabled=true;bubble('me',esc(text));q.value='';grow(q);
+  const th=bubble('bot',esc(t('looking')));
+  try{const r=await fetch(`/api/crm-public/sub-portal/${token}/ask`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,jobId:JOB})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);
+    th.remove();bubble('bot',esc(d.answer),d.forwarded?`<div class="fwd">${esc(t('fwd'))}</div>`:'');}
+  catch(e){th.remove();bubble('bot',`<span style="color:var(--err)">${esc(e.message||t('oops'))}</span>`);}
+  BUSY=false;document.getElementById('go').disabled=false;q.focus();
+}
+function jobs(){
+  const el=document.getElementById('v-jobs');
+  if(!V.jobs.length){el.innerHTML=`<div class="card"><div class="empty">${esc(t('none',{co:V.company.name}))}</div></div>`;return;}
+  const fileUrl=id=>`/api/crm-public/sub-portal/${token}/files/${id}`;
+  el.innerHTML=V.jobs.map(j=>{
+    if(j.status==='bidding')return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h2>${esc(j.title)}</h2><span class="pill">${esc(t('bidding'))}</span></div>
+      <div class="meta">${esc(t('area'))}: ${esc(j.area||'—')}${j.bid&&j.bid.due?' · '+esc(t('due',{d:fd(j.bid.due)})):''}</div>
+      ${j.bid&&j.bid.scope?`<div class="sec"><div style="white-space:pre-wrap">${esc(j.bid.scope)}</div></div>`:''}
+      ${j.files.length?`<div class="sec"><h3>${esc(t('files'))}</h3>${j.files.map(f=>`<div class="row"><a href="${fileUrl(f.id)}" target="_blank" rel="noopener">📄 ${esc(f.name)}</a><span class="r">${f.version?'v'+f.version:''}</span></div>`).join('')}</div>`:''}
+      <div class="sec"><a class="btn" href="${esc(j.bid.link)}">${esc(t('bidLink'))}</a></div></div>`;
+    const mine=j.myPhases.filter(p=>p.confirmLink);
+    return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h2>${esc(j.title)}</h2><span class="pill ok">${esc(t('onjob'))}</span></div>
+      ${j.address?`<div class="meta">${esc(j.address)} · <a href="https://maps.google.com/?q=${encodeURIComponent(j.address)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(t('map'))}</a></div>`:''}
+      ${j.myPhases.length?`<div class="sec"><h3>${esc(t('yourPhases'))}</h3>${j.myPhases.map(p=>`<div class="row mine"><span>${esc(p.title)}${p.confirmed?` <span class="pill ok">${esc(t('confirmed'))}</span>`:''}</span><span class="r">${esc(range(p.start,p.end))}</span></div>`).join('')}${mine.map(p=>`<div style="margin-top:8px"><a class="btn" href="${esc(p.confirmLink)}">${esc(t('confirm'))}: ${esc(p.title)}</a></div>`).join('')}</div>`:''}
+      ${j.files.length?`<div class="sec"><h3>${esc(t('files'))}</h3>${j.files.map(f=>`<div class="row"><a href="${fileUrl(f.id)}" target="_blank" rel="noopener">📄 ${esc(f.name)}</a><span class="r">${f.version?'v'+f.version:''}</span></div>`).join('')}</div>`:''}
+      ${j.selections.length?`<div class="sec"><h3>${esc(t('selections'))}</h3>${j.selections.map(s=>`<div class="row"><span>${esc(s.what)}</span><span class="r">${s.chosen?esc(s.chosen):esc(t('notyet'))}</span></div>`).join('')}</div>`:''}
+      ${j.changes.length?`<div class="sec"><h3>${esc(t('changes'))}</h3>${j.changes.map(c=>`<div class="row"><span>#${c.number} ${esc(c.title)}${c.details?`<br><span class="meta">${esc(c.details)}</span>`:''}</span><span class="r">${esc(fd(c.approved))}</span></div>`).join('')}</div>`:''}
+      ${j.myPurchaseOrders.length?`<div class="sec"><h3>${esc(t('pos'))}</h3>${j.myPurchaseOrders.map(p=>`<div class="row"><span>PO #${p.number} ${esc(p.for)}${p.neededBy?` · ${esc(t('needed',{d:fd(p.neededBy)}))}`:''}</span><span class="r">${money(p.total)}</span></div>`).join('')}</div>`:''}
+      ${j.myBid?`<div class="sec"><h3>${esc(t('bid'))}</h3><div class="row"><span>${esc(j.myBid.scope||'')}</span><span class="r">${money(j.myBid.price)}</span></div></div>`:''}
+      ${j.punchForMyTrade.length?`<div class="sec"><h3>${esc(t('punch'))}</h3>${j.punchForMyTrade.map(p=>`<div class="row"><span>${p.where?'<b>'+esc(p.where)+':</b> ':''}${esc(p.item)}</span></div>`).join('')}</div>`:''}
+      ${j.schedule.length?`<details class="sec"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em">${esc(t('schedule'))}</summary>${j.schedule.map(i=>`<div class="row${i.mine?' mine':''}"><span>${esc(i.title)}</span><span class="r">${esc(range(i.start,i.end))}</span></div>`).join('')}</details>`:''}
+      <div class="sec"><h3>${esc(t('call'))}</h3><div class="meta">${esc([j.contact.name||j.contact.company,j.contact.phone,j.contact.email].filter((x,i,a)=>x&&a.indexOf(x)===i).join(' · '))}${j.contact.phone?` · <a href="tel:${esc(String(j.contact.phone).replace(/[^\d+]/g,''))}" style="color:var(--accent);font-weight:600">Call</a>`:''}</div></div>
+      <div class="sec"><h3>${esc(t('msgTeam'))}</h3><textarea class="box" id="mt-${j.id}" rows="2"></textarea><div style="margin-top:8px"><button class="btn o" onclick="msgTeam('${j.id}',this)">${esc(t('send'))}</button></div><div class="msg" id="mm-${j.id}"></div></div></div>`;
+  }).join('');
+}
+async function msgTeam(id,btn){
+  const ta=document.getElementById('mt-'+id);if(!ta.value.trim())return;btn.disabled=true;const out=document.getElementById('mm-'+id);
+  try{const r=await fetch(`/api/crm-public/sub-portal/${token}/message`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:ta.value,jobId:id})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);ta.value='';out.textContent=t('sent');out.style.color='var(--ok)';}
+  catch(e){out.textContent=e.message||t('oops');out.style.color='var(--err)';}
+  btn.disabled=false;
+}
+let REC=null;
+function mic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;const b=document.getElementById('mic');if(REC){REC.stop();return;}
+  const r=REC=new SR();r.lang=L==='es'?'es-US':'en-US';r.interimResults=true;const q=document.getElementById('q');const start=q.value?q.value+' ':'';
+  r.onresult=e=>{let s='';for(const x of e.results)s+=x[0].transcript;q.value=start+s;grow(q);};r.onend=()=>{REC=null;b.classList.remove('rec');};b.classList.add('rec');r.start();}
+(async()=>{
+  document.getElementById('mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  paint();
+  try{const r=await fetch('/api/crm-public/sub-portal/'+token);const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);V=d;if(V.jobs.length===1)JOB=V.jobs[0].id;paint();}
+  catch(e){document.getElementById('msgs').innerHTML=`<div class="hello"><p>${esc(e.message||t('oops'))}</p></div>`;}
+})();
+</script>
+</body>
+</html>

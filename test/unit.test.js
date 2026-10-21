@@ -1284,7 +1284,7 @@ describe('CRM assistant pieces', () => {
       assert.ok(A.LABELS[name], `label for ${name}`);
     }
     const outside = Object.entries(A.TOOLS).filter(([, t]) => t.confirm).map(([n]) => n).sort();
-    assert.deepEqual(outside, ['email_homeowner', 'post_portal_update', 'send_bid_request', 'send_change_order', 'send_email', 'send_estimate', 'send_invoice', 'send_purchase_order']);
+    assert.deepEqual(outside, ['email_homeowner', 'post_portal_update', 'send_bid_request', 'send_change_order', 'send_email', 'send_estimate', 'send_invoice', 'send_purchase_order', 'send_sub_page']);
   });
   test('files shown to the model are not kept in the history', () => {
     const kept = A.stripMedia([{ type: 'tool_result', tool_use_id: 'x', content: [{ type: 'text', text: 'File: a.pdf' }, { type: 'document', source: { type: 'base64', data: 'AAAA' } }] }]);
