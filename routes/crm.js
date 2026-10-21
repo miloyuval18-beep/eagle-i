@@ -137,6 +137,39 @@ router.get('/api/crm/pipeline', requireAuth, async (req, res) => {
   } catch (err) { fail(res, err, 'Failed to load the pipeline'); }
 });
 
+// The getting-started checklist: each step ticks itself off when it's done.
+router.get('/api/crm/checklist', requireAuth, async (req, res) => {
+  try {
+    const t = req.tenantId, u = req.userId, mgr = team.isManager(req.crmUser && req.crmUser.role);
+    const one = async (sql, p) => (await query(sql, p)).rows[0] || {};
+    const [bp, mail, people, pb, deals, subs, cal] = await Promise.all([
+      one('SELECT address, phone, email FROM business_profile WHERE tenant_id = $1', [t]),
+      one(`SELECT (EXISTS (SELECT 1 FROM crm_mailboxes WHERE tenant_id = $1 AND connected_by = $2) OR EXISTS (SELECT 1 FROM crm_google_connections WHERE tenant_id = $1 AND kind = 'workspace' AND status = 'connected')) AS y`, [t, u]),
+      one(`SELECT (SELECT COUNT(*) FROM users WHERE tenant_id = $1)::int + (SELECT COUNT(*) FROM crm_invites WHERE tenant_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL)::int AS n`, [t]).catch(() => ({ n: 1 })),
+      one('SELECT EXISTS (SELECT 1 FROM crm_playbooks WHERE tenant_id = $1 AND enabled) AS y', [t]),
+      one(`SELECT COUNT(*)::int AS n FROM crm_deals d LEFT JOIN crm_imports i ON i.id = d.import_id WHERE d.tenant_id = $1 AND COALESCE(i.filename, '') <> '__practice__'`, [t]),
+      one('SELECT COUNT(*)::int AS n FROM crm_vendors WHERE tenant_id = $1 AND NOT archived', [t]),
+      one('SELECT crm_calendar_token IS NOT NULL AS y FROM users WHERE id = $1', [u])
+    ]);
+    const steps = [
+      mgr && { key: 'company', text: 'Add your company details (address, phone, email)', done: !!(bp.address && bp.address.trim().length >= 8 && bp.phone && bp.email), go: 'company' },
+      { key: 'gmail', text: 'Connect your Gmail so customer emails land on their deals', done: !!mail.y, go: 'company' },
+      mgr && { key: 'team', text: 'Invite your team', done: (people.n || 1) > 1, go: 'team' },
+      mgr && { key: 'emails', text: 'Read and turn on the automatic emails', done: !!pb.y, go: 'auto' },
+      { key: 'deal', text: 'Add your first customer', done: (deals.n || 0) > 0, go: 'newdeal' },
+      { key: 'subs', text: 'Add your subs and suppliers', done: (subs.n || 0) > 0, go: 'jobs' },
+      { key: 'calendar', text: 'Put the Eagle I calendar on your phone', done: !!cal.y, go: 'phone' }
+    ].filter(Boolean);
+    res.json({ steps, done: steps.filter(x => x.done).length, total: steps.length, practice: await require('../lib/crmAssist').practiceInfo(t) });
+  } catch (err) { fail(res, err, 'Failed to load'); }
+});
+// Practice customers (lib/crmAssist.js): try things out, then remove them all.
+router.get('/api/crm/practice', requireAuth, async (req, res) => { try { res.json(await require('../lib/crmAssist').practiceInfo(req.tenantId)); } catch (err) { fail(res, err, 'Failed to load'); } });
+router.post('/api/crm/practice', requireAuth, managersOnly, async (req, res) => { try { res.json(await require('../lib/crmAssist').practiceStart({ tenantId: req.tenantId, userId: req.userId })); } catch (err) { fail(res, err, 'Failed to add them'); } });
+router.delete('/api/crm/practice', requireAuth, managersOnly, async (req, res) => { try { res.json(await require('../lib/crmAssist').practiceRemove(req.tenantId)); } catch (err) { fail(res, err, 'Failed to remove them'); } });
+router.get('/api/crm/search', requireAuth, async (req, res) => {
+  try { res.json(await require('../lib/crmSearch').search({ tenantId: req.tenantId, userId: req.userId, manager: team.isManager(req.crmUser && req.crmUser.role), q: req.query.q })); } catch (err) { fail(res, err, 'Search failed'); }
+});
 router.post('/api/crm/deals/duplicates', requireAuth, async (req, res) => {
   try { res.json({ matches: await crm.findDuplicates({ tenantId: req.tenantId, ...(req.body || {}) }) }); } catch (err) { fail(res, err, 'Failed to check'); }
 });
@@ -164,7 +197,7 @@ router.get('/api/crm/deals/:id', requireAuth, async (req, res) => {
   try {
     const deal = await crm.getDeal(req.tenantId, req.params.id);
     if (!deal) return res.status(404).json({ error: { message: 'Deal not found.' } });
-    res.json({ deal, ...(await crm.dealTimeline(req.tenantId, req.params.id)), tasks: await tasks.listForDeal(req.tenantId, req.params.id) });
+    res.json({ deal, ...(await crm.dealTimeline(req.tenantId, req.params.id)), tasks: await tasks.listForDeal(req.tenantId, req.params.id), nextStep: await crm.nextStep(req.tenantId, req.params.id).catch(() => null) });
   } catch (err) {
     if (/invalid input syntax for type uuid/.test(err.message)) return res.status(404).json({ error: { message: 'Deal not found.' } });
     fail(res, err, 'Failed to load the deal');

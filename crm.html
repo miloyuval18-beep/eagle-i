@@ -594,6 +594,36 @@ body.on-ask .sh{display:none}
 .bin-row .w{flex:1;min-width:180px}
 .bin-row .k{font-size:15px;color:var(--ink3)}
 label[for=cv-e-t]::after,label[for=cv-e-d]::after,label[for=iv-amt]::after,label[for=iv-title]::after,label[for=co-title]::after,label[for=co-amt]::after,label[for=po-title]::after,label[for=vd-name]::after{content:' *';color:var(--red);font-weight:700}
+.nx{border-radius:var(--r2);padding:12px 14px;margin:0 0 14px;border:1px solid var(--accent-line);background:var(--accent-soft)}
+.nx-warn{border-color:var(--amber-line);background:var(--amber-soft)}
+.nx-ok{border-color:var(--green-line);background:var(--green-soft)}
+.nx-muted{border-color:var(--bdr);background:var(--bg4)}
+.nx-l{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3)}
+.nx-t{font-size:18px;font-weight:600;color:var(--ink);margin-top:2px}
+.cr-find{margin-right:8px}
+.cr-menu-btn{white-space:nowrap}
+@media (max-width:420px){.cr-brand span{display:none}.cr-menu-btn{padding:7px 10px;font-size:16px}.cr-find{margin-right:6px}}
+@media (max-width:640px){.cr-find span{display:none}}
+.sr-in{width:100%;font-size:20px!important;padding:12px 14px;min-height:54px}
+.sr-r{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;border:1px solid var(--bdr);background:#fff;border-radius:var(--r2);padding:11px 13px;margin-bottom:7px;font:inherit;cursor:pointer;color:var(--ink)}
+.sr-r:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+.sr-r .i{font-size:22px;line-height:1.2}
+.sr-r .t{font-weight:600;font-size:17.5px;overflow-wrap:anywhere}
+.sr-r .s{font-size:15.5px;color:var(--ink3);overflow-wrap:anywhere}
+.cl{border:1px solid var(--accent-line);background:#fff;border-radius:var(--r3);padding:16px 16px 10px;margin-bottom:18px;box-shadow:var(--sh2)}
+.cl-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.cl-h{font-size:20px;font-weight:700}
+.cl-bar{height:8px;border-radius:99px;background:var(--bg4);margin:10px 0 6px;overflow:hidden}.cl-bar i{display:block;height:100%;background:var(--green);border-radius:99px}
+.cl-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--bdr)}
+.cl-row:first-of-type{border-top:0}
+.cl-row .m{font-size:22px;width:28px;text-align:center;flex:0 0 auto}
+.cl-row .x{flex:1;font-size:17px}
+.cl-row.done .x{color:var(--ink3);text-decoration:line-through}
+.tip{display:flex;gap:12px;align-items:flex-start;background:#fffdf3;border:1px solid var(--amber-line);border-radius:var(--r2);padding:13px 14px;margin:0 0 16px;font-size:17px;line-height:1.5}
+.tip .i{font-size:24px;line-height:1}
+.tip .b{flex:1}
+.tip button{flex:0 0 auto}
+body.simple .cr-tab[data-view=pipeline],body.simple .cr-tab[data-view=estimates]{display:none}
 .cr-hint{font-size:15.5px;margin-top:5px;color:var(--amber);line-height:1.4}
 .cr-hint.bad{color:var(--red)}
 .cr-hint button{border:1px solid currentColor;background:#fff;color:inherit;border-radius:8px;font:inherit;font-weight:600;padding:4px 10px;margin-left:6px;cursor:pointer;min-height:36px}
@@ -623,6 +653,7 @@ select{max-width:100%;text-overflow:ellipsis}
   <div class="cr-bar">
     <div class="cr-brand">Eagle I <span>CRM</span></div>
     <div class="cr-company" id="cr-company"></div>
+    <button class="cr-menu-btn cr-find" onclick="srOpen()" aria-label="Search everything">🔍<span> Search</span></button>
     <button class="cr-menu-btn" id="cr-menu-btn" aria-haspopup="true" aria-expanded="false" onclick="crMenu()">Account ▾</button>
     <div class="cr-menu" id="cr-menu" role="menu">
       <div class="who" id="cr-who"></div>
@@ -635,6 +666,7 @@ select{max-width:100%;text-overflow:ellipsis}
       <button onclick="crMenu(false);dyOpen()">My calendar &amp; morning email</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);binOpen()">🗑 Recycle bin</button>
+      <button onclick="crMenu(false);crSimple()" id="cr-simple-btn">Simple view: fewer tabs</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <a href="/" id="cr-mkt" hidden>Open Eagle I marketing</a>
       <a href="/forgot-password.html">Change password</a>
@@ -669,6 +701,7 @@ select{max-width:100%;text-overflow:ellipsis}
   </section>
   <section class="view" id="view-needs">
     <div class="sh"><div><div class="st">Today</div><div class="ss">Only what needs a person: things Eagle I flagged, your tasks, and this week's site visits. Everything else is handled on its own.</div></div></div>
+    <div id="cl-box"></div>
     <div class="pl-h" style="margin-top:0">Needs you</div>
     <div class="pl-list" id="pl-needs"><div class="pl-empty">Loading…</div></div>
     <div class="pl-h" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>📬 Email</span><span id="ew-allwrap"></span></div>
@@ -916,15 +949,37 @@ function crOwnerOptions(sel){return '<option value="">Unassigned</option>'+CR.te
 function crMenu(force){const m=document.getElementById('cr-menu');const open=force===undefined?!m.classList.contains('open'):force;m.classList.toggle('open',open);document.getElementById('cr-menu-btn').setAttribute('aria-expanded',open);}
 document.addEventListener('click',e=>{if(!e.target.closest('#cr-menu')&&!e.target.closest('#cr-menu-btn'))crMenu(false);});
 async function crSignOut(){try{await fetch('/api/auth/logout',{method:'POST'});}catch(e){}location.href='/crm/login';}
+// A short tip the first time someone opens each screen; "Got it" hides it for good.
+const CR_TIPS={
+  ask:['✦','Ask Eagle I anything about your jobs, customers and money, in plain words, by typing or tapping 🎤. It can also do things for you, and always asks before sending anything to anyone.'],
+  pipeline:['🏠','Every customer you’re selling to. Tap one to see everything about it. To move it along, change its stage; Eagle I sends that stage’s emails for you once you’ve approved them.'],
+  needs:['✅','Start your day here: only what needs a person. Tap ✓ Done when something is handled, or Snooze it for later. You can always Undo.'],
+  calendar:['📅','This calendar fills itself: visits, job schedules, deliveries, payments due and more. Tap anything to see it or move it. ＋ Add is for anything else, like an inspection.'],
+  jobs:['🛠','Your jobs underway, and your subs and suppliers. Open a job for its schedule, daily logs, change orders and selections.'],
+  estimates:['💵','Estimates, invoices and money coming in and going out. A signed estimate is locked; make a revision to change it.']
+};
+function crTip(v){
+  const sec=document.getElementById('view-'+v);if(!sec||!CR_TIPS[v])return;
+  let seen=false;try{seen=!!localStorage.getItem('tip:'+v);}catch(e){}
+  const old=sec.querySelector(':scope > .tip');if(seen){if(old)old.remove();return;}
+  if(old)return;
+  const t=document.createElement('div');t.className='tip';t.setAttribute('role','note');
+  t.innerHTML=`<span class="i" aria-hidden="true">${CR_TIPS[v][0]}</span><span class="b">${uxEsc(CR_TIPS[v][1])}</span><button class="btn-xs" onclick="try{localStorage.setItem('tip:${v}','1')}catch(e){};this.parentElement.remove()">Got it</button>`;
+  if(v==='ask'){const h=document.getElementById('ask-host');sec.insertBefore(t,h);return;}
+  const sh=sec.querySelector(':scope > .sh');if(sh)sh.insertAdjacentElement('afterend',t);else sec.prepend(t);
+}
+// Simple view: only Ask, Today, Calendar and Jobs in the menu bar.
+function crSimpleApply(){let on=false;try{on=localStorage.getItem('simple')==='1';}catch(e){}document.body.classList.toggle('simple',on);const b=document.getElementById('cr-simple-btn');if(b)b.textContent=on?'Full view: all tabs':'Simple view: fewer tabs';return on;}
+function crSimple(){let on=false;try{on=localStorage.getItem('simple')==='1';localStorage.setItem('simple',on?'':'1');}catch(e){}const now=crSimpleApply();showNotif(now?'Simple view':'Full view',now?'Pipeline and Money are hidden from the menu bar. Switch back any time from Account.':'All tabs are back.');if(now&&['pipeline','estimates'].includes(CR.view))crView('needs');}
 function crView(v){
-  CR.view=v;
+  CR.view=v;setTimeout(()=>crTip(v),0);
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
   document.querySelectorAll('.cr-tab').forEach(t=>{t.classList.toggle('active',t.dataset.view===v);t.setAttribute('aria-current',t.dataset.view===v?'page':'false');});
   if(VN){try{VN.stop();}catch(e){}}
   if(typeof aiMount==='function')aiMount(v==='ask');
   document.body.classList.toggle('on-ask',v==='ask');
   if(v==='pipeline')plLoad();
-  if(v==='needs')plLoadNeeds();
+  if(v==='needs'){plLoadNeeds();clLoad('cl-box');}
   if(v==='calendar')cvLoad();
   if(v==='auto')plLoadAuto();
   if(v==='company')coLoad();
@@ -989,7 +1044,7 @@ async function crInit(){
     const toCal=q.get('gcal')||location.hash==='#calendar';
     setTimeout(()=>{if(q.get('google_error'))showNotif('Google',q.get('google_error'));else if(q.get('gcal'))showNotif('Google Calendar on','Your meetings show on the calendar now.');else showNotif('Google connected',q.get('google')+(q.get('drive')==='on'?' · project files now go to Google Drive':' · reading recent customer email now'));},300);
     try{history.replaceState(null,'',toCal?'/crm#calendar':'/crm#company');}catch(e){}}}
-  const hashParts=(location.hash||'').slice(1).split('/');const start=hashParts[0];
+  const hashParts=(location.hash||'').slice(1).split('/');const start=hashParts[0];crSimpleApply();
   await crLoadTeam();
   // A link to one chat (#ask/<id>) opens that chat.
   if(start==='ask'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||''))AI.loading=hashParts[1];
@@ -1239,6 +1294,59 @@ async function cvSave(btn,id){
     cvLoad();
   }catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
 }
+/* ---------- getting started ---------- */
+function clGo(k){
+  if(k==='newdeal'){crView('pipeline');plNewDeal();}
+  else if(k==='phone')dyOpen();
+  else crView(k);
+}
+async function clLoad(elId){
+  const el=document.getElementById(elId);if(!el)return;
+  let hidden=false;try{hidden=!!localStorage.getItem('cl-hide');}catch(e){}
+  try{
+    const c=await plApi('/api/crm/checklist');
+    const practice=crCanManage()?(c.practice.on?`<div class="sm" style="margin-top:8px">Practice customers are in your pipeline (marked “practice”). <button class="btn-xs" onclick="clPractice(false)">Remove the practice customers</button></div>`
+      :c.done<c.total?`<div class="sm" style="margin-top:8px">Want to try things first? <button class="btn-xs" onclick="clPractice(true)">Add 4 practice customers</button> You can remove them with one tap.</div>`:''):'';
+    if(c.done>=c.total){el.innerHTML=practice?`<div class="cl">${practice}</div>`:'';return;}
+    if(hidden){el.innerHTML=`<div class="sm" style="margin:0 0 12px"><button class="btn-xs" onclick="try{localStorage.removeItem('cl-hide')}catch(e){};clLoad('${elId}')">Show the getting-started list (${c.done} of ${c.total} done)</button></div>`;return;}
+    el.innerHTML=`<div class="cl"><div class="cl-top"><div class="cl-h">Getting started</div><div class="sm" style="margin:0">${c.done} of ${c.total} done</div></div>
+      <div class="cl-bar"><i style="width:${Math.round(c.done/c.total*100)}%"></i></div>
+      ${c.steps.map(x=>`<div class="cl-row${x.done?' done':''}"><span class="m">${x.done?'✅':'⬜'}</span><span class="x">${uxEsc(x.text)}</span>${x.done?'':`<button class="btn-xs p" onclick="clGo('${x.go}')">Do it</button>`}</div>`).join('')}
+      ${practice}<div style="text-align:right"><button class="btn-xs" style="border:0;box-shadow:none;color:var(--ink3)" onclick="try{localStorage.setItem('cl-hide','1')}catch(e){};clLoad('${elId}')">Hide this list</button></div></div>`;
+  }catch(e){el.innerHTML='';}
+}
+async function clPractice(on){
+  if(!on&&!confirm('Remove all the practice customers and everything on them?'))return;
+  try{const r=await plApi('/api/crm/practice',on?{body:{}}:{method:'DELETE'});showNotif(on?'Practice customers added':'Practice customers removed',on?'Find them in the Pipeline, marked “practice”. Nothing is ever emailed to them.':'');crView(CR.view);}
+  catch(e){showNotif('Could not do that',e.message);}
+}
+/* ---------- search everything (lib/crmSearch.js) ---------- */
+const SR_ICON={deal:'🏠',vendor:'🛠',invoice:'💵',estimate:'📄',file:'📎',task:'☑️',event:'📅',chat:'✦'};
+const SR_KIND={deal:'Deal',vendor:'Sub / vendor',invoice:'Invoice',estimate:'Estimate',file:'File',task:'Task',event:'Calendar',chat:'Chat'};
+function srOpen(){
+  uxOpen(uxHead('Search everything','Customers, addresses, phone numbers, jobs, subs, invoice or estimate numbers, files, tasks…')+`<input id="sr-q" class="cred-input sr-in" type="search" placeholder="Type a name, address, phone or number" oninput="srRun()" autocomplete="off" aria-label="Search everything"><div id="sr-out" style="margin-top:12px"></div>`);
+  setTimeout(()=>{const i=document.getElementById('sr-q');if(i)i.focus();},60);
+}
+let srTimer=null,srSeq=0;
+function srRun(){clearTimeout(srTimer);srTimer=setTimeout(async()=>{
+  const q=(document.getElementById('sr-q')||{}).value||'';const out=document.getElementById('sr-out');if(!out)return;
+  if(q.trim().length<2){out.innerHTML='';return;}
+  const n=++srSeq;out.innerHTML='<div class="sm">Searching…</div>';
+  try{const r=await plApi('/api/crm/search?q='+encodeURIComponent(q));if(n!==srSeq)return;SR.list=r.results;
+    out.innerHTML=r.results.length?r.results.map((x,i)=>`<button class="sr-r" onclick="srGo(${i})"><span class="i" aria-hidden="true">${SR_ICON[x.type]||'•'}</span><span style="min-width:0"><div class="t">${uxEsc(x.title)}</div><div class="s">${uxEsc(SR_KIND[x.type]||x.type)}${x.sub?' · '+uxEsc(x.sub):''}</div></span></button>`).join('')
+      :`<div class="pl-empty">Nothing matches “${uxEsc(q)}”. Try part of a name, a street, or the last 4 digits of a phone number.</div>`;}
+  catch(e){out.innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
+},250);}
+const SR={list:[]};
+function srGo(i){const x=SR.list[i];if(!x)return;CR.dirty=false;uxClose();
+  if(x.type==='deal')plOpenDeal(x.id);
+  else if(x.type==='vendor')vdPage(x.id);
+  else if(x.type==='estimate')esOpen(x.id);
+  else if(x.type==='event'){crView('calendar');}
+  else if(x.type==='chat'){crView('ask');aiLoad(x.id);}
+  else if(x.dealId)plOpenDeal(x.dealId);
+  else crView('needs');
+}
 /* ---------- recycle bin (lib/crmTrash.js) ---------- */
 async function binOpen(){
   uxOpen(uxHead('Recycle bin','Loading…'));
@@ -1367,7 +1475,7 @@ async function rpNow(btn){
 /* ---------- estimates ---------- */
 const ES={catalog:[],units:['ea','sf','lf','sy','cy','hr','day','ls','allow'],kinds:{design_agreement:'Design agreement',construction:'Construction estimate'},cur:null};
 const esMoney=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const ES_STATUS={draft:'Draft',sent:'Sent',accepted:'Accepted',declined:'Declined'};
+const ES_STATUS={draft:'Draft (not sent yet)',sent:'Sent, waiting for signature',accepted:'Signed',declined:'Declined'};
 function esRow(e){
   const st=e.expired?'<span class="pl-pill declined">Expired</span>':`<span class="pl-pill ${e.status}">${ES_STATUS[e.status]||e.status}</span>`;
   const seen=e.status==='sent'?(e.first_viewed_at?` · opened ${e.view_count}×`:' · not opened yet'):'';
@@ -1385,7 +1493,7 @@ async function esLoad(){
     plApi('/api/crm/costing').then(({jobs})=>{
       document.getElementById('jc-all').innerHTML=jobs.length?jobs.map(j=>`<button class="pl-card" onclick="jbOpen('${j.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${j.marginPct==null?'—':j.marginPct+'%'}</div></div>
         <div class="pl-card-sub">Contract ${esMoney(j.contract)} · spent ${esMoney(j.actual)}${j.hasBudget?' of '+esMoney(j.budget)+' budget':''}</div>
-        <div class="pl-tags">${j.progressPct!=null?`<span class="pl-tag">${j.progressPct}% done</span>`:''}${j.spentPct!=null?`<span class="pl-tag${j.overPace?' warn':''}">${j.spentPct}% of budget spent</span>`:''}<span class="pl-tag">Collected ${esMoney(j.collected)}</span></div></button>`).join(''):'<div class="pl-empty">No signed jobs yet.</div>';
+        <div class="pl-tags">${j.progressPct!=null?`<span class="pl-tag">${j.progressPct}% done</span>`:''}${j.spentPct!=null?`<span class="pl-tag${j.overPace?' warn':''}">${j.spentPct}% of budget spent</span>`:''}<span class="pl-tag">Collected ${esMoney(j.collected)}</span></div></button>`).join(''):'<div class="pl-empty">No signed jobs yet. A deal shows up here once its contract is signed.</div>';
     }).catch(()=>{});
     const y=new Date().getFullYear();
     document.getElementById('ex-box').innerHTML=crCanManage()?`<details class="pl-pb" style="margin-top:10px"><summary style="cursor:pointer;font-weight:800">Export for your accountant</summary>
@@ -1395,7 +1503,7 @@ async function esLoad(){
     const {invoices}=await plApi('/api/crm/invoices');
     const open=invoices.filter(i=>i.status==='sent'),month=new Date();month.setDate(1);month.setHours(0,0,0,0);
     document.getElementById('iv-strip').innerHTML=[[esMoney(open.reduce((n,i)=>n+Number(i.amount),0)),`Waiting for payment (${open.length})`],[esMoney(invoices.filter(i=>i.status==='paid'&&new Date(i.paid_at)>=month).reduce((n,i)=>n+Number(i.paid_amount||i.amount),0)),'Collected this month']].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
-    document.getElementById('iv-list').innerHTML=invoices.filter(i=>i.status!=='void').slice(0,40).map(i=>ivRow(i,true)).join('')||'<div class="pl-empty">No invoices yet.</div>';
+    document.getElementById('iv-list').innerHTML=invoices.filter(i=>i.status!=='void').slice(0,40).map(i=>ivRow(i,true)).join('')||'<div class="pl-empty">No invoices yet. Open a deal and tap “＋ New invoice”, or let the payment schedule make them as phases finish.</div>';
   }catch(e){document.getElementById('es-list').innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
 }
 function esRenderCatalog(categories){
@@ -1407,7 +1515,7 @@ function esRenderCatalog(categories){
     <div><label for="cat-cost">Your cost</label><input id="cat-cost" class="cred-input" inputmode="decimal" placeholder="0.00"></div>
     <div><label for="cat-mk">Markup %</label><input id="cat-mk" class="cred-input" inputmode="decimal" placeholder="default"></div></div>
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="catAdd(this)">Add to catalog</button><span class="sm" id="cat-msg" style="margin:0"></span></div></div>`:'';
-  document.getElementById('cat-list').innerHTML=ES.catalog.length?ES.catalog.map(i=>`<div class="pl-item"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(i.name)}</div><div class="pl-item-d">${uxEsc(i.category)} · ${esMoney(i.unit_cost)} per ${uxEsc(i.unit)}${i.markup_pct!=null?' · '+Number(i.markup_pct)+'% markup':''}</div></div>${manage?`<button class="btn-xs" onclick="catRemove('${i.id}')" aria-label="Remove ${uxEsc(i.name)}">Remove</button>`:''}</div></div>`).join(''):'<div class="pl-empty">Your catalog is empty.</div>';
+  document.getElementById('cat-list').innerHTML=ES.catalog.length?ES.catalog.map(i=>`<div class="pl-item"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(i.name)}</div><div class="pl-item-d">${uxEsc(i.category)} · ${esMoney(i.unit_cost)} per ${uxEsc(i.unit)}${i.markup_pct!=null?' · '+Number(i.markup_pct)+'% markup':''}</div></div>${manage?`<button class="btn-xs" onclick="catRemove('${i.id}')" aria-label="Remove ${uxEsc(i.name)}">Remove</button>`:''}</div></div>`).join(''):'<div class="pl-empty">Your catalog is empty. Add the items and prices you use often, and they’re one tap away in every estimate.</div>';
 }
 async function catAdd(btn){
   const v=id=>document.getElementById(id).value;const msg=document.getElementById('cat-msg');btn.disabled=true;msg.textContent='';
@@ -1636,7 +1744,7 @@ async function gwLoad(){
     ${c.kind==='signin'?'<div class="sm">Everyone on your team can connect their own Gmail here (or from their own settings) so their customer emails land on deals too.</div>':''}
     <div id="gw-drive"></div>
     <div class="pl-h" style="font-size:17px">Mailboxes</div>
-    <div class="pl-list">${d.mailboxes.map(mbox).join('')||'<div class="sm">None yet.</div>'}</div>
+    <div class="pl-list">${d.mailboxes.map(mbox).join('')||'<div class="sm">No mailboxes yet.</div>'}</div>
   </div>`;
   dvLoad();
 }
@@ -1941,7 +2049,7 @@ function flRender(){
   const shown=cur.filter(f=>FL.folder==='all'||f.folder===FL.folder);
   const photos=shown.filter(f=>f.kind==='photo'),docs=shown.filter(f=>f.kind!=='photo');
   const older=f=>f.version_group?FL.files.filter(x=>x.version_group===f.version_group&&x.superseded_at).sort((a,b)=>b.version-a.version):[];
-  const shareBtn=f=>f.googleDoc?'':`<button class="btn-xs" onclick="flShare('${f.id}',${!f.shared})" title="${f.shared?'The homeowner can see this. Tap to hide.':'Only your team can see this. Tap to share.'}">${f.shared?'👁 Shared':'🔒 Team'}</button>`;
+  const shareBtn=f=>f.googleDoc?'':`<button class="btn-xs" onclick="flShare('${f.id}',${!f.shared})" title="${f.shared?'The homeowner can see this. Tap to hide.':'Only your team can see this. Tap to share.'}">${f.shared?'👁 Homeowner can see':'🔒 Only your team'}</button>`;
   const menu=f=>`<details class="fl-more"><summary class="btn-xs" aria-label="More">⋯</summary><div class="fl-menu">
       <label class="sm" style="margin:0">Folder<select onchange="flMove('${f.id}',this.value)">${Object.entries(FL.folders).map(([k,v])=>`<option value="${k}"${k===f.folder?' selected':''}>${v}</option>`).join('')}</select></label>
       <button class="btn-xs" onclick="flPatch('${f.id}',{subShared:${!f.sub_shared}},'change it')">${f.sub_shared?'✓ Subs see it':'Let subs see it'}</button>
@@ -1951,7 +2059,7 @@ function flRender(){
       <a class="btn-xs" href="/api/crm/files/${f.id}?download=1">Download</a>
       <button class="btn-xs" style="color:var(--red)" onclick="flDelete('${f.id}')">Delete</button></div></details>`;
   const grid=photos.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px">${photos.map(f=>`<div style="position:relative"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener"><img src="/api/crm/files/${f.id}" alt="${uxEsc(f.caption||f.filename)}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block"></a>
-      <button class="pl-tag" style="position:absolute;left:4px;bottom:4px;background:var(--bg2);cursor:pointer" onclick="flShare('${f.id}',${!f.shared})" title="${f.shared?'The homeowner can see this. Tap to hide.':'Only your team can see this. Tap to share.'}">${f.shared?'👁':'🔒'}</button>${f.from_homeowner?'<span class="pl-tag" style="position:absolute;right:4px;top:4px;background:var(--bg2)">From them</span>':''}
+      <button class="pl-tag" style="position:absolute;left:4px;bottom:4px;background:var(--bg2);cursor:pointer" onclick="flShare('${f.id}',${!f.shared})" title="${f.shared?'The homeowner can see this. Tap to hide.':'Only your team can see this. Tap to share.'}">${f.shared?'👁 Homeowner':'🔒 Team'}</button>${f.from_homeowner?'<span class="pl-tag" style="position:absolute;right:4px;top:4px;background:var(--bg2)">From them</span>':''}
       <span style="position:absolute;right:2px;bottom:2px">${menu(f)}</span></div>`).join('')}</div>`:'';
   const list=docs.length?'<div class="pl-list" style="margin-top:8px">'+docs.map(f=>{const o=older(f);return `<div class="pl-item" style="padding:8px 10px">
       <div style="display:flex;gap:8px;align-items:center"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow-wrap:anywhere;font-weight:700">${flIcon(f)} ${uxEsc(f.caption&&f.caption!=='Receipt'?f.caption:f.filename)}</a>${shareBtn(f)}${menu(f)}</div>
@@ -2114,6 +2222,17 @@ async function plSaveNew(btn,anyway){
   }catch(e){document.getElementById('pln-err').textContent=e.message;btn.disabled=false;}
 }
 
+// "Tue, Oct 21, 3:14 PM" (and "Today, 3:14 PM" / "Yesterday, …").
+function crWhen(t){const d=new Date(t),now=new Date();const day=x=>x.toLocaleDateString('en-CA');const tm=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  if(day(d)===day(now))return 'Today, '+tm;const y=new Date(now.getTime()-86400000);if(day(d)===day(y))return 'Yesterday, '+tm;
+  return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',...(d.getFullYear()!==now.getFullYear()?{year:'numeric'}:{})})+', '+tm;}
+// The one thing to do next on a deal, with a button that goes there.
+function plNextStep(x,n){
+  if(!n)return '';
+  const go={tasks:['See tasks',"document.getElementById('pld-task').scrollIntoView({block:'center'})"],invoices:['See invoices',"document.getElementById('pld-inv').scrollIntoView({block:'center'})"],estimates:['See estimates',"document.getElementById('pld-est').scrollIntoView({block:'center'})"],job:['Open the job',`jbOpen('${x.id}')`],stage:['Change the stage',"document.getElementById('pld-stage').focus()"]}[n.action];
+  const contact=n.action==='contact'?(x.contact_phone?`<a class="btn-xs p" href="tel:${uxEsc(x.contact_phone)}">📞 Call</a>`:'')+(x.contact_email?`<a class="btn-xs" href="mailto:${uxEsc(x.contact_email)}">✉️ Email</a>`:''):'';
+  return `<div class="nx nx-${n.tone}"><div class="nx-l">Next step</div><div class="nx-t">${uxEsc(n.text)}</div>${go||contact?`<div class="vd-mbtns" style="margin-top:8px">${go?`<button class="btn-xs p" onclick="${go[1]}">${go[0]}</button>`:''}${contact}</div>`:''}</div>`;
+}
 async function plOpenDeal(id){
   uxOpen(uxHead('Loading…'));
   let d;
@@ -2123,8 +2242,8 @@ async function plOpenDeal(id){
   const actorLbl={owner:'Your team',eagle_i:'Eagle I',contact:x.contact_name};
   const kindIcon={lead_in:'📥',note:'📝',stage:'➡️',email:'✉️',reply:'💬',system:'✏️',text:'📱',call:'📞'};
   const zipInfo=x.zip_median_value?` · county median home value in ${uxEsc(x.property_zip)}: ${plMoney(x.zip_median_value)}`:'';
-  uxOpen(uxHead(uxEsc(x.title),uxEsc(plSourceLabel(x.source))+' · added '+new Date(x.created_at).toLocaleDateString()+zipInfo)+
-    `<div class="pl-form">
+  uxOpen(uxHead(uxEsc(x.title),uxEsc(plSourceLabel(x.source))+' · added '+new Date(x.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+zipInfo)+
+    plNextStep(x,d.nextStep)+`<div class="pl-form">
       <div class="full"><label for="pld-stage">Stage</label><select id="pld-stage" onchange="plStageChanged('${x.id}',this)">${plStageOptions(x.stage)}</select></div>
       ${plField('pld-title','Project',x.title)}${plField('pld-value','Estimated value',x.value==null?'':Math.round(x.value),{mode:'decimal',ph:'e.g. 85k'})}
       ${plField('pld-name','Name',x.contact_name)}${plField('pld-phone','Phone',x.contact_phone,{type:'tel',mode:'tel'})}
@@ -2184,7 +2303,7 @@ async function plOpenDeal(id){
     <div class="pl-h">Coming up automatically</div>
     ${upcoming.length?'<ul class="pl-tl">'+upcoming.map(a=>`<li class="eagle_i">✉️ ${uxEsc(a.playbook_name)}, email ${a.step}<div class="pl-tl-meta">${new Date(a.due_at)>new Date()?'Due '+new Date(a.due_at).toLocaleString():'Going out at the next chance (weekdays 9 to 5 Central)'}</div></li>`).join('')+'</ul>':`<div class="sm">Nothing scheduled.${x.contact_email?'':' This contact has no email address, so no automatic emails can go out.'}</div>`}
     <div class="pl-h">History</div>
-    <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${new Date(a.created_at).toLocaleString()}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
+    <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${crWhen(a.created_at)}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
   plDealEstimates(x.id);
   fitLoad(x.id);
   ccLoad(x.id);
@@ -2500,7 +2619,7 @@ async function bkSave(btn){
 }
 async function plDealEstimates(dealId){
   const el=document.getElementById('pld-est');if(!el)return;
-  try{const {estimates}=await plApi('/api/crm/estimates?dealId='+dealId);el.innerHTML=estimates.length?'<div class="pl-list">'+estimates.map(esRow).join('')+'</div>':'<div class="sm">None yet.</div>';}
+  try{const {estimates}=await plApi('/api/crm/estimates?dealId='+dealId);el.innerHTML=estimates.length?'<div class="pl-list">'+estimates.map(esRow).join('')+'</div>':'<div class="sm">No estimates yet. Tap “＋ Construction estimate” below to write one.</div>';}
   catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
 /* ---------- jobs ---------- */
@@ -2523,7 +2642,7 @@ function vdRender(){
   const soon=d=>d&&new Date(ymdOf(d)+'T12:00:00Z')<new Date(Date.now()+30*86400000);
   el.innerHTML=JB.vendors.length?JB.vendors.map(v=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(v.name)}</div><div class="pl-item-d">${uxEsc([v.trade,v.contact_name,v.phone,v.email].filter(Boolean).join(' · '))}</div>
     <div class="pl-tags">${v.license_no?`<span class="pl-tag">Lic. ${uxEsc(v.license_no)}</span>`:''}${v.insurance_expires?`<span class="pl-tag${soon(v.insurance_expires)?' warn':''}">Insurance to ${fdate(v.insurance_expires)}</span>`:'<span class="pl-tag warn">No insurance on file</span>'}</div></div>
-    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><button class="btn-xs p" onclick="vdPage('${v.id}')">🔗 Their page</button>${crCanManage()?`<button class="btn-xs" onclick="vdRemove('${v.id}')" aria-label="Remove ${uxEsc(v.name)}">Remove</button>`:''}</div></div></div>`).join(''):'<div class="pl-empty">No subs or vendors yet.</div>';
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><button class="btn-xs p" onclick="vdPage('${v.id}')">🔗 Their page</button>${crCanManage()?`<button class="btn-xs" onclick="vdRemove('${v.id}')" aria-label="Remove ${uxEsc(v.name)}">Remove</button>`:''}</div></div></div>`).join(''):'<div class="pl-empty">No subs or suppliers yet. Add the trades you work with so you can put them on job schedules, send them bid requests and purchase orders, and give them their own page.</div>';
 }
 async function vdAdd(btn){
   const v=id=>document.getElementById(id).value;
@@ -2582,12 +2701,12 @@ async function jbOpen(dealId){
     <textarea id="jb-log" class="cred-input" rows="3" placeholder="What happened on site today?"></textarea>
     <div class="es-grid" style="grid-template-columns:1fr auto;align-items:center"><input id="jb-crew" class="cred-input" placeholder="Who was on site (optional)"><label class="pl-switch" style="font-size:16px"><input type="checkbox" id="jb-share"> Share with homeowner</label></div>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="jbLog(this)">Save log</button>${window.SpeechRecognition||window.webkitSpeechRecognition?'<button class="btn-xs" id="jb-mic" onclick="jbMic()">🎤 Talk</button>':''}<button class="btn-xs" onclick="jbVoiceFile(this)" title="Turns what you wrote or said into the log, moves the phases you mention, and adds follow-up tasks">✨ File it for me</button></div><div class="sm" id="jb-voice-out"></div>
-    ${d.logs.length?'<ul class="pl-tl" style="margin-top:8px">'+d.logs.slice(0,15).map(l=>`<li>${uxEsc(l.body)}<div class="pl-tl-meta">${fdate(l.log_date)} · ${uxEsc(l.author||'')}${l.crew?' · crew: '+uxEsc(l.crew):''}${l.shared?' · shared':''}</div></li>`).join('')+'</ul>':''}
+    ${d.logs.length?'<ul class="pl-tl" style="margin-top:8px">'+d.logs.slice(0,15).map(l=>`<li>${uxEsc(l.body)}<div class="pl-tl-meta">${fdate(l.log_date)} · ${uxEsc(l.author||'')}${l.crew?' · crew: '+uxEsc(l.crew):''} · ${l.shared?'<b>👁 homeowner can see</b>':'🔒 only your team'}</div></li>`).join('')+'</ul>':''}
     <div id="jb-punch"></div>
     <div id="jb-photos"></div>
     <div id="jc-catch"></div>
     <div class="pl-h">Change orders</div>
-    <div class="pl-list">${d.cos.map(coRow).join('')||'<div class="sm">None yet.</div>'}</div>
+    <div class="pl-list">${d.cos.map(coRow).join('')||'<div class="sm">No change orders yet. When the homeowner asks for something extra, add it below and send it for their approval.</div>'}</div>
     <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New change order</summary>
       <div class="pl-form" style="margin-top:8px"><div class="full"><label for="co-title">What's changing</label><input id="co-title" class="cred-input"></div>
       <div><label for="co-amt">Price change ($, minus for a credit)</label><input id="co-amt" class="cred-input" inputmode="decimal"></div><div><label for="co-cost">Your cost ($)</label><input id="co-cost" class="cred-input" inputmode="decimal"></div>
@@ -2602,7 +2721,7 @@ async function jbOpen(dealId){
       <div class="full"><label>Options (name and price, one per line, like “Zellige white, 2400”)</label><textarea id="sl-opts" class="cred-input" rows="4"></textarea><div class="sm" id="sl-why"></div></div></div>
       <div class="vd-mbtns"><button class="btn btn-blue" onclick="jbNewSel(this)">Add selection</button><button class="btn-xs" onclick="jbSelIdeas(this)">✨ Suggest from my products</button></div></details>
     <div class="pl-h">Purchase orders</div>
-    <div class="pl-list">${d.pos.map(poRow).join('')||'<div class="sm">None yet.</div>'}</div>
+    <div class="pl-list">${d.pos.map(poRow).join('')||'<div class="sm">No purchase orders yet. Add one below to order materials from a supplier.</div>'}</div>
     <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New purchase order</summary>
       <div class="pl-form" style="margin-top:8px"><div><label for="po-v">Vendor</label><select id="po-v">${vopts(null)}</select></div><div><label for="po-cat">Cost type</label><select id="po-cat"><option>materials</option><option>subcontract</option><option>labor</option><option>equipment</option><option>other</option></select></div>
       <div class="full"><label for="po-title">For</label><input id="po-title" class="cred-input" placeholder="e.g. Framing lumber"></div>
@@ -3227,7 +3346,9 @@ const AI={thread:null,title:null,threads:null,more:false,q:'',busy:false,files:[
 function aiMd(t){
   const e=uxEsc(String(t||''));
   const lines=e.split('\n');let out='',list=null;
-  const inl=x=>x.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>');
+  const inl=x=>x.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>')
+    // Links to the CRM's own screens become buttons: [Open the Calendar](#calendar)
+    .replace(/\[([^\]]{1,48})\]\(#(ask|pipeline|needs|calendar|jobs|estimates|auto|team|company|reports|refs|growth|setup|billing|bin|search|newdeal|phone)\)/g,'<button class="btn-xs p" style="margin:4px 4px 0 0" onclick="aiGoScreen(\'$2\')">$1</button>');
   for(const l of lines){
     const b=/^\s*(?:[-•*]|\d+\.)\s+(.*)$/.exec(l);
     if(b){if(!list){out+='<ul>';list=1;}out+='<li>'+inl(b[1])+'</li>';continue;}
@@ -3273,8 +3394,10 @@ async function aiHome(){
     el.innerHTML=`<div class="ai-hello"><div class="g">${uxEsc(h.greeting)}</div><div class="s">Ask me anything about your jobs and numbers. I can read plans, draft estimates, email anyone, book visits${h.drive?', find files in your Google Drive':''}, and file what happened today.</div>
       ${inl&&g.openDeals!=null?`<div class="ai-glance">${tile(g.needsYou,'need you','needs')}${tile(g.visitsToday,'visits today','needs')}${tile(g.openDeals,'deals in the pipeline','pipeline')}${tile('$'+Math.round((g.openValue||0)/1000)+'k','being sold','pipeline')}${tile(g.jobs,'jobs underway','jobs')}${g.overdueInvoices?tile(g.overdueInvoices,'invoices overdue','estimates'):''}</div>`:''}
       ${h.ai?'':'<div class="ai-off">The assistant needs its AI key on the server (ANTHROPIC_API_KEY) before it can answer. Everything else in Eagle I works without it.</div>'}
+      <div id="cl-box-ai" style="max-width:680px;margin:18px auto 0;text-align:left"></div>
       <div class="ai-chips">${h.chips.map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div>
       ${h.ai&&h.canTest?'<div style="margin-top:14px;text-align:center"><button class="btn-xs" onclick="aiTest(this)">Test the AI connection</button></div>':''}</div>`;
+    clLoad('cl-box-ai');
   }catch(e){el.innerHTML='<div class="ai-off">'+uxEsc(e.message)+'</div>';}
 }
 async function aiTest(btn){btn.disabled=true;btn.textContent='Testing…';try{const r=await plApi('/api/crm/assistant/test',{body:{}});btn.textContent='✓ Connected ('+r.model+')';}catch(e){btn.disabled=false;btn.textContent='Test the AI connection';showNotif('The AI didn’t answer',e.message);}}
@@ -3339,6 +3462,10 @@ async function aiSend(){
     if(done){aiShowReply(done);if(done.title){AI.title=done.title;aiHead();}aiList();}
   }catch(e){think.remove();aiBubble('assistant','<span style="color:var(--red)">'+uxEsc(e.message)+'</span>');}
   AI.busy=false;document.getElementById('ai-go').disabled=false;inp.focus();
+}
+function aiGoScreen(k){
+  if(!document.getElementById('ai-panel').classList.contains('inline'))aiClose();
+  if(k==='bin')binOpen();else if(k==='search')srOpen();else if(k==='newdeal'||k==='phone')clGo(k);else crView(k);
 }
 /* chats: several kept per person, like Claude or Gemini */
 const aiWide=()=>document.getElementById('ai-panel').classList.contains('inline')&&matchMedia('(min-width:900px)').matches;
