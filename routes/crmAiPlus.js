@@ -150,7 +150,7 @@ const hits = new Map();
 function limited(key, max) { const now = Date.now(); const l = (hits.get(key) || []).filter(t => now - t < 3600000); l.push(now); hits.set(key, l); return l.length > max; }
 router.post('/api/crm-public/portal/:token/ask', wrap('Failed to answer', async (req, res) => {
   if (limited('ask:' + req.ip, 30)) return res.status(429).json({ error: { message: 'Too many questions. Please try again later.' } });
-  res.json(await portalAi.ask({ token: req.params.token, question: (req.body || {}).question, lang: req.get('X-Lang') === 'es' ? 'es' : null }));
+  res.json(await portalAi.ask({ token: req.params.token, question: (req.body || {}).question, history: (req.body || {}).history, lang: req.get('X-Lang') === 'es' ? 'es' : null }));
 }));
 router.get('/api/crm/deals/:id/portal-questions', requireAuth, wrap('Failed to load', async (req, res) => {
   const d = await ownDeal(req, res); if (!d) return;

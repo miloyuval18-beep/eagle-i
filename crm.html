@@ -2286,8 +2286,8 @@ async function ptLoad(dealId){
   const el=document.getElementById('pld-portal');if(!el)return;
   try{
     const d=await plApi('/api/crm/deals/'+dealId+'/portal');
-    el.innerHTML=`<div class="sm" style="margin-top:0">A private page for the homeowner: status, visits, estimates, shared photos and your updates. They can message you and add photos there.</div>
-      <div style="display:flex;gap:6px;margin-top:6px"><input id="pt-url" class="cred-input" readonly value="${uxEsc(d.url)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('pt-url')">Copy</button><a class="btn-xs" href="${uxEsc(d.url)}" target="_blank" rel="noopener">Open</a></div>
+    el.innerHTML=`<div class="sm" style="margin-top:0">A private page for the homeowner. It opens on ✦ an assistant for questions about their project (answers come from what you’ve shared; anything else lands in Today and your inbox). “My project” has the status, visits, estimates, shared photos and your updates.</div>
+      <div style="display:flex;gap:6px;margin-top:6px"><input id="pt-url" class="cred-input" readonly value="${uxEsc(d.url)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('pt-url')">Copy</button><a class="btn-xs" href="${uxEsc(d.url)}" target="_blank" rel="noopener">Open</a><button class="btn-xs" onclick="ptEmail('${dealId}',this)">Email it to them</button></div>
       <label for="pt-body" style="font-size:12px;font-weight:700;display:block;margin-top:10px">Post an update</label>
       ${d.draft?'<div class="sm" style="margin-top:2px">✨ Eagle I drafted this week’s update from the shared logs, the schedule and the photos. Read it over, then post.</div>':''}
       <textarea id="pt-body" class="cred-input" rows="${d.draft?6:3}" placeholder="e.g. Cabinets arrive Thursday; tile goes in next week.">${uxEsc(d.draft||'')}</textarea>
@@ -2303,6 +2303,7 @@ async function ptPost(dealId,btn){
   catch(e){document.getElementById('pt-msg').textContent=e.message;btn.disabled=false;ptLoad(dealId);}
 }
 async function ptDraft(dealId,btn){btn.disabled=true;btn.textContent='Drafting…';try{const r=await plApi('/api/crm/deals/'+dealId+'/update-draft',{body:{}});if(!r.draft){showNotif('Nothing new to share yet','No shared logs, finished phases or photos in the last week.');btn.disabled=false;btn.textContent='✨ Draft this week’s update';return;}ptLoad(dealId);}catch(e){showNotif('Could not draft it',e.message);btn.disabled=false;btn.textContent='✨ Draft this week’s update';}}
+async function ptEmail(dealId,btn){btn.disabled=true;try{const r=await plApi('/api/crm/deals/'+dealId+'/portal/email',{body:{}});showNotif('Link sent','To '+r.to);}catch(e){showNotif('Could not send it',e.message);}btn.disabled=false;}
 async function ptReset(dealId){if(!confirm('Make a new portal link? The old one stops working.'))return;try{await plApi('/api/crm/deals/'+dealId+'/portal/reset',{body:{}});ptLoad(dealId);}catch(e){showNotif('Could not change it',e.message);}}
 
 async function plStageChanged(id,sel){

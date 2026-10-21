@@ -116,6 +116,13 @@ router.get('/api/crm/deals/:id/portal', requireAuth, async (req, res) => {
   } catch (err) { fail(res, err, 'Failed to load the portal'); }
 });
 
+router.post('/api/crm/deals/:id/portal/email', requireAuth, async (req, res) => {
+  try {
+    if (!(await dealInTenant(req, res))) return;
+    res.json(await portal.emailPortalLink({ tenantId: req.tenantId, dealId: req.params.id, baseUrl: baseUrlOf(req) }));
+  } catch (err) { fail(res, err, 'Failed to send the link'); }
+});
+
 router.post('/api/crm/deals/:id/portal/reset', requireAuth, async (req, res) => {
   if (!team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
   try { res.json({ ok: true, url: `${baseUrlOf(req)}/p/${await portal.resetPortalToken(req.tenantId, req.params.id)}` }); } catch (err) { fail(res, err, 'Failed to make a new link'); }
