@@ -456,6 +456,90 @@ body.on-ask .sh{display:none}
   .ai-panel.inline .ai-body{padding:12px 14px 8px}
   .vd-mh{margin:0 -16px 12px;padding:14px 16px 10px;padding-top:calc(14px + env(safe-area-inset-top))}
 }
+/* ---------- calendar ---------- */
+.cv-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.cv-nav{display:flex;gap:4px;align-items:center}
+.cv-label{font-weight:700;font-size:17px;color:var(--ink);margin:0 6px;white-space:nowrap}
+.cv-seg{display:inline-flex;border:1px solid var(--bdr2);border-radius:var(--r);overflow:hidden;background:#fff;box-shadow:var(--sh1)}
+.cv-seg button{border:0;background:none;font:inherit;font-size:13px;font-weight:600;padding:7px 12px;color:var(--ink2);cursor:pointer;min-height:34px}
+.cv-seg button+button{border-left:1px solid var(--bdr2)}
+.cv-seg button.on{background:var(--accent-soft);color:var(--accent)}
+.cv-sp{flex:1}
+.cv-who{width:auto;min-width:140px;padding:6px 10px;min-height:34px}
+.cv-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px;padding-bottom:2px}
+.cv-chips::-webkit-scrollbar{display:none}
+.cv-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bdr2);background:#fff;border-radius:999px;padding:5px 11px;font:inherit;font-size:12.5px;font-weight:500;color:var(--ink2);cursor:pointer;white-space:nowrap;min-height:30px}
+.cv-chip i{width:9px;height:9px;border-radius:50%;background:var(--c);flex:0 0 auto}
+.cv-chip.off{opacity:.45;text-decoration:line-through}
+.cv-chip.warn{border-color:var(--amber-line);background:var(--amber-soft);color:var(--amber)}
+.cv-chip.warn.on{background:var(--amber);color:#fff;border-color:var(--amber)}
+.cv-g{margin:-2px 0 12px;font-size:13px;color:var(--ink3);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cv-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--bdr);border-radius:var(--r2);overflow:hidden;background:var(--bdr);gap:1px}
+.cv-dow{background:var(--bg4);font-size:11.5px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;padding:6px 8px}
+.cv-day{background:#fff;min-height:112px;padding:5px 5px 6px;display:flex;flex-direction:column;gap:3px;min-width:0;cursor:pointer}
+.cv-day.out{background:#fafbfc}
+.cv-day.out .cv-dn{color:var(--bdr3)}
+.cv-day.drop{background:var(--accent-soft);outline:2px dashed var(--accent);outline-offset:-3px}
+.cv-dn{font-size:12.5px;font-weight:600;color:var(--ink2);padding:1px 3px;align-self:flex-start;border-radius:999px;min-width:22px;text-align:center}
+.cv-day.today .cv-dn,.cv-dh.today .n{background:var(--accent);color:#fff}
+.cv-i{--c:var(--ink3);display:flex;align-items:center;gap:4px;width:100%;text-align:left;border:0;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 9%,#fff);color:var(--ink);border-radius:4px;padding:2px 5px;font:inherit;font-size:12px;line-height:1.35;cursor:pointer;min-width:0}
+.cv-i span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cv-i b{font-weight:600;color:var(--c);flex:0 0 auto;font-variant-numeric:tabular-nums}
+.cv-i.done{opacity:.55}.cv-i.done span.t{text-decoration:line-through}
+.cv-i.alert{box-shadow:inset 0 0 0 1px var(--amber-line)}
+.cv-i.alert::after{content:'!';flex:0 0 auto;margin-left:auto;background:var(--amber);color:#fff;border-radius:50%;width:14px;height:14px;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.cv-i.g{background:#fff;border:1px dashed color-mix(in srgb,var(--c) 45%,#fff);border-left:3px solid var(--c)}
+.cv-more{font-size:11.5px;color:var(--ink3);padding:0 4px;font-weight:600;border:0;background:none;text-align:left;cursor:pointer}
+.cv-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.cv-wd{background:#fff;border:1px solid var(--bdr);border-radius:var(--r2);padding:8px 6px;min-height:240px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.cv-wd.drop{background:var(--accent-soft);outline:2px dashed var(--accent)}
+.cv-dh{display:flex;align-items:baseline;gap:6px;padding:0 3px 4px;font-size:12px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.cv-dh .n{font-size:15px;color:var(--ink);letter-spacing:0;border-radius:999px;padding:0 6px}
+.cv-wd .cv-i{white-space:normal;align-items:flex-start;padding:4px 6px}
+.cv-wd .cv-i span.t{white-space:normal}
+.cv-list{display:flex;flex-direction:column;gap:14px}
+.cv-ld{display:flex;gap:12px}
+.cv-ldh{flex:0 0 56px;text-align:center;padding-top:2px}
+.cv-ldh .w{font-size:11.5px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em}
+.cv-ldh .n{font-size:22px;font-weight:700;color:var(--ink);line-height:1.15}
+.cv-ld.today .cv-ldh .n{color:var(--accent)}
+.cv-ldi{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.cv-r{--c:var(--ink3);display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:1px solid var(--bdr);border-left:4px solid var(--c);background:#fff;border-radius:var(--r);padding:9px 11px;font:inherit;cursor:pointer;box-shadow:var(--sh1);color:var(--ink)}
+.cv-r .tm{flex:0 0 62px;font-size:12.5px;font-weight:600;color:var(--c);font-variant-numeric:tabular-nums;padding-top:1px}
+.cv-r .bd{flex:1;min-width:0}
+.cv-r .ti{font-weight:600;font-size:14.5px;line-height:1.35;overflow-wrap:anywhere}
+.cv-r .sb{font-size:12.5px;color:var(--ink3);margin-top:2px;overflow-wrap:anywhere}
+.cv-r .wn{font-size:12.5px;color:var(--amber);margin-top:3px;font-weight:500}
+.cv-r.done{opacity:.6}.cv-r.done .ti{text-decoration:line-through}
+.cv-r.g{border-style:dashed;border-left-style:solid}
+.cv-none{font-size:13px;color:var(--ink3);padding:8px 2px}
+.cv-k{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--c);text-transform:uppercase;letter-spacing:.05em}
+.cv-k i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.cv-dl{display:grid;grid-template-columns:20px 1fr;gap:8px 8px;font-size:14px;margin:12px 0;color:var(--ink2)}
+.cv-dl>span:nth-child(odd){color:var(--ink3);text-align:center}
+.cv-note{border-radius:var(--r);padding:8px 10px;font-size:13.5px;margin:8px 0}
+.cv-note.w{background:var(--amber-soft);border:1px solid var(--amber-line);color:var(--amber)}
+.cv-note.ok{background:var(--green-soft);border:1px solid var(--green-line);color:var(--green)}
+.cv-mv{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cv-mv input{width:auto}
+.cv-t-visit{--c:#1d4f91}.cv-t-event{--c:#6941c6}.cv-t-inspection{--c:#c4320a}.cv-t-delivery{--c:#b54708}.cv-t-phase{--c:#0f766e}.cv-t-task{--c:#475467}
+.cv-t-money{--c:#067647}.cv-t-selection{--c:#c11574}.cv-t-bid{--c:#3538cd}.cv-t-estimate{--c:#a15c07}.cv-t-email{--c:#5b6577}.cv-t-followup{--c:#155eef}.cv-t-compliance{--c:#b42318}.cv-t-google{--c:#1a73e8}
+@media (max-width:640px){
+  .cv-label{font-size:16px;margin:0 2px;flex:1}
+  .cv-sp{display:none}
+  .cv-who{flex:1}
+  .cv-day{min-height:52px;padding:4px 2px;align-items:center;gap:2px}
+  .cv-day .cv-i,.cv-day .cv-more{display:none}
+  .cv-dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:100%}
+  .cv-dots i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+  .cv-day.sel{background:var(--accent-soft)}
+  .cv-dow{padding:5px 0;text-align:center;font-size:10.5px}
+  .cv-week{grid-template-columns:1fr}
+  .cv-wd{min-height:0}
+  .cv-ldh{flex-basis:44px}
+  .cv-r .tm{flex-basis:54px}
+}
+@media (min-width:641px){.cv-dots{display:none}}
 </style>
 </head>
 <body>
@@ -484,6 +568,7 @@ body.on-ask .sh{display:none}
     <button class="cr-tab" data-view="ask" onclick="crView('ask')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.9 5 5.1 1.9-5.1 1.9L12 17.4l-1.9-5.1L5 10.4l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Ask</button>
     <button class="cr-tab" data-view="pipeline" onclick="crView('pipeline')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Pipeline</button>
     <button class="cr-tab" data-view="needs" onclick="crView('needs')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.4 2.4 4.8-5"/></svg>Today<span class="tbadge" id="pl-needs-badge">0</span></button>
+    <button class="cr-tab" data-view="calendar" onclick="crView('calendar')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M7.5 14h2M11 14h2M14.5 14h2M7.5 17h2M11 17h2"/></svg>Calendar</button>
     <button class="cr-tab" data-view="jobs" onclick="crView('jobs')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Jobs</button>
     <button class="cr-tab" data-view="estimates" onclick="crView('estimates')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v.01M17.5 14.5v.01"/></svg>Money</button>
   </nav>
@@ -537,6 +622,20 @@ body.on-ask .sh{display:none}
     <div class="pl-strip" id="pl-week"></div>
     <div class="pl-h">Playbooks</div>
     <div id="pl-playbooks"><div class="pl-empty">Loading…</div></div>
+  </section>
+  <section class="view" id="view-calendar">
+    <div class="sh"><div><div class="st">Calendar</div><div class="ss">Fills itself from everything in Eagle I: site visits, the job schedule and subs, tasks, deliveries, payments, selections and bids due, follow-ups, and meetings and inspections Eagle I finds in your email.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-xs" onclick="dyOpen()">Add to my phone</button><button class="btn btn-blue" onclick="cvEdit()">＋ Add</button></div></div>
+    <div class="cv-bar">
+      <div class="cv-nav"><button class="btn-xs" onclick="cvStep(-1)" aria-label="Earlier">‹</button><button class="btn-xs" onclick="cvStep(0)">Today</button><button class="btn-xs" onclick="cvStep(1)" aria-label="Later">›</button></div>
+      <div class="cv-label" id="cv-label"></div>
+      <div class="cv-sp"></div>
+      <span id="cv-whowrap" style="display:contents"></span>
+      <div class="cv-seg" id="cv-seg" role="group" aria-label="View"><button data-v="month" onclick="cvSetView('month')">Month</button><button data-v="week" onclick="cvSetView('week')">Week</button><button data-v="list" onclick="cvSetView('list')">List</button></div>
+    </div>
+    <div class="cv-chips" id="cv-chips"></div>
+    <div class="cv-g" id="cv-google"></div>
+    <div id="cv-body"></div>
   </section>
   <section class="view" id="view-jobs">
     <div class="sh"><div><div class="st">Jobs</div><div class="ss">Every signed job: where it stands, what's next, and what's waiting on the homeowner. A signed contract gets its schedule laid out on its own.</div></div></div>
@@ -702,6 +801,7 @@ function crView(v){
   document.body.classList.toggle('on-ask',v==='ask');
   if(v==='pipeline')plLoad();
   if(v==='needs')plLoadNeeds();
+  if(v==='calendar')cvLoad();
   if(v==='auto')plLoadAuto();
   if(v==='company')coLoad();
   if(v==='team')tmLoad();
@@ -760,12 +860,13 @@ async function crInit(){
     return;
   }
   // Back from signing in with Google.
-  {const q=new URLSearchParams(location.search);if(q.get('google')||q.get('google_error')){
-    setTimeout(()=>{if(q.get('google_error'))showNotif('Google',q.get('google_error'));else showNotif('Google connected',q.get('google')+(q.get('drive')==='on'?' · project files now go to Google Drive':' · reading recent customer email now'));},300);
-    try{history.replaceState(null,'','/crm#company');}catch(e){}}}
+  {const q=new URLSearchParams(location.search);if(q.get('google')||q.get('google_error')||q.get('gcal')){
+    const toCal=q.get('gcal')||location.hash==='#calendar';
+    setTimeout(()=>{if(q.get('google_error'))showNotif('Google',q.get('google_error'));else if(q.get('gcal'))showNotif('Google Calendar on','Your meetings show on the calendar now.');else showNotif('Google connected',q.get('google')+(q.get('drive')==='on'?' · project files now go to Google Drive':' · reading recent customer email now'));},300);
+    try{history.replaceState(null,'',toCal?'/crm#calendar':'/crm#company');}catch(e){}}}
   const start=(location.hash||'').slice(1);
   await crLoadTeam();
-  crView(['ask','pipeline','needs','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing'].includes(start)?start:'ask');
+  crView(['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing'].includes(start)?start:'ask');
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
 }
@@ -786,6 +887,226 @@ async function plCheckSetup(){
     if(crCanManage()){try{const su=await plApi('/api/crm/setup');if(!su.done)html+='<div class="pl-banner"><span>New here? Answer a few quick questions and Eagle I sets itself up for how you work, and brings in your old contacts.</span><button class="btn-xs p" onclick="crView(\'setup\')">Set up</button></div>';}catch(e){}}
     el.innerHTML=html;
   }catch(e){}
+}
+/* ---------- calendar (fills itself from everything with a date; lib/crmCalendar.js) ---------- */
+const CV={view:null,anchor:null,who:'me',data:null,off:new Set(),onlyWarn:false,sel:null,deals:null};
+try{CV.off=new Set(JSON.parse(localStorage.getItem('cv-off')||'[]'));}catch(e){}
+const CV_TZ='America/Chicago';
+const cvPhone=()=>window.matchMedia('(max-width:640px)').matches;
+const cvToday=()=>new Date().toLocaleDateString('en-CA',{timeZone:CV_TZ});
+const cvAdd=(day,n)=>{const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+const cvDow=day=>new Date(day+'T12:00:00Z').getUTCDay();
+const cvDayOf=t=>new Date(t).toLocaleDateString('en-CA',{timeZone:CV_TZ});
+const cvTime=t=>new Date(t).toLocaleTimeString('en-US',{timeZone:CV_TZ,hour:'numeric',minute:'2-digit'}).replace(':00','').replace(' AM','a').replace(' PM','p');
+const cvHM=t=>new Date(t).toLocaleTimeString('en-GB',{timeZone:CV_TZ,hour:'2-digit',minute:'2-digit'});
+const cvNice=(day,o)=>new Date(day+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',...(o||{weekday:'short',month:'short',day:'numeric'})});
+const cvKind=i=>i.type==='event'&&i.kind==='inspection'?'inspection':i.type==='event'&&i.kind==='delivery'?'delivery':i.type;
+const cvAlert=i=>!i.done&&!!(i.warn||i.clash||(i.rain&&i.rain.length));
+function cvSpan(){
+  const a=CV.anchor;
+  if(CV.view==='month'){const first=a.slice(0,8)+'01';const from=cvAdd(first,-cvDow(first));const nm=cvAdd(first,32).slice(0,8)+'01';const last=cvAdd(nm,-1);return{from,to:cvAdd(last,6-cvDow(last)),first,last};}
+  if(CV.view==='week'){const from=cvAdd(a,-cvDow(a));return{from,to:cvAdd(from,6)};}
+  return{from:a,to:cvAdd(a,13)};
+}
+async function cvLoad(){
+  if(!CV.view)CV.view=cvPhone()?'list':'month';
+  if(!CV.anchor)CV.anchor=cvToday();
+  const host=document.getElementById('cv-body');
+  const s=cvSpan();
+  if(!CV.data)host.innerHTML='<div class="pl-empty">Filling in your calendar…</div>';
+  try{
+    CV.data=await plApi(`/api/crm/calendar?from=${s.from}&to=${s.to}&who=${encodeURIComponent(CV.who)}`);
+    cvRender();
+  }catch(e){host.innerHTML='<div class="pl-empty">Could not load the calendar: '+uxEsc(e.message)+'</div>';}
+}
+function cvShown(){
+  const d=CV.data;if(!d)return[];
+  return d.items.filter(i=>!CV.off.has(i.type)&&(!CV.onlyWarn||cvAlert(i)));
+}
+function cvByDay(items,from,to){
+  const m={};
+  for(const i of items){
+    if(i.allDay){let d=i.start<from?from:i.start;const e=(i.end||i.start)>to?to:(i.end||i.start);for(let n=0;d<=e&&n<62;n++,d=cvAdd(d,1))(m[d]=m[d]||[]).push(i);}
+    else{const d=cvDayOf(i.start);if(d>=from&&d<=to)(m[d]=m[d]||[]).push(i);}
+  }
+  return m;
+}
+function cvLabel(){
+  const s=cvSpan(),a=CV.anchor;
+  if(CV.view==='month')return cvNice(a.slice(0,8)+'15',{month:'long',year:'numeric'});
+  const same=s.from.slice(0,7)===s.to.slice(0,7);
+  return cvNice(s.from,{month:'short',day:'numeric'})+' – '+cvNice(s.to,same?{day:'numeric'}:{month:'short',day:'numeric'});
+}
+function cvChip(i,day){
+  const k=cvKind(i);
+  const cont=i.allDay&&i.start<day;
+  const tm=!i.allDay?`<b>${cvTime(i.start)}</b>`:'';
+  const drag=i.edit&&!cvPhone()?` draggable="true" ondragstart="cvDrag(event,'${i.key}')"`:'';
+  return `<button class="cv-i cv-t-${k}${i.done?' done':''}${cvAlert(i)?' alert':''}${i.type==='google'?' g':''}" onclick="event.stopPropagation();cvOpen('${i.key}')"${drag} title="${uxEsc(i.title+(i.sub?' · '+i.sub:''))}">${tm}<span class="t">${cont?'↳ ':''}${uxEsc(i.title)}</span></button>`;
+}
+function cvRender(){
+  const d=CV.data;if(!d)return;
+  const s=cvSpan();
+  document.getElementById('cv-label').textContent=cvLabel();
+  document.querySelectorAll('#cv-seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===CV.view));
+  // who
+  const w=document.getElementById('cv-whowrap');
+  if(crCanManage()){
+    w.innerHTML=`<select class="cred-input cv-who" aria-label="Whose calendar" onchange="CV.who=this.value;CV.data=null;cvLoad()"><option value="me"${CV.who==='me'?' selected':''}>My calendar</option><option value="all"${CV.who==='all'?' selected':''}>Everyone</option>${CR.team.filter(m=>!CR.me||m.id!==CR.me.userId).map(m=>`<option value="${m.id}"${CV.who===m.id?' selected':''}>${uxEsc(m.name||m.email)}</option>`).join('')}</select>`;
+  }else w.innerHTML='';
+  // filters, with counts for what's in view
+  const cnt={};for(const i of d.items)cnt[i.type]=(cnt[i.type]||0)+1;
+  const alerts=d.items.filter(cvAlert).length;
+  const chips=Object.entries(d.types).filter(([t])=>cnt[t]||CV.off.has(t)).map(([t,l])=>`<button class="cv-chip${CV.off.has(t)?' off':''}" onclick="cvToggle('${t}')" aria-pressed="${!CV.off.has(t)}"><i class="cv-t-${t}"></i>${uxEsc(l)} <b style="font-weight:600;color:var(--ink3)">${cnt[t]||0}</b></button>`).join('');
+  document.getElementById('cv-chips').innerHTML=(alerts?`<button class="cv-chip warn${CV.onlyWarn?' on':''}" onclick="CV.onlyWarn=!CV.onlyWarn;cvRender()">⚠ ${alerts} need${alerts===1?'s':''} a look</button>`:'')+chips;
+  // Google
+  const g=d.google||{},ge=document.getElementById('cv-google');
+  ge.innerHTML=d.googleError?`<span style="color:var(--amber)">Google Calendar: ${uxEsc(d.googleError)}</span>${g.canSignIn?' <button class="btn-xs" onclick="cvGoogle()">Switch it on again</button>':''}`
+    :g.on?(CV.who==='me'?`<span><i class="cv-t-google" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c)"></i> Showing your Google Calendar (${uxEsc(g.email)})</span>`:'')
+    :g.canSignIn&&CV.who==='me'?`<span>See your Google Calendar meetings here too.</span><button class="btn-xs p" onclick="cvGoogle()">Show my Google Calendar</button>`:'';
+  const items=cvShown();
+  const host=document.getElementById('cv-body');
+  const today=d.today||cvToday();
+  if(CV.view==='month'){
+    const by=cvByDay(items,s.from,s.to);
+    let h=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>`<div class="cv-dow">${cvPhone()?x[0]:x}</div>`).join('');
+    for(let day=s.from;day<=s.to;day=cvAdd(day,1)){
+      const list=by[day]||[],max=3;
+      h+=`<div class="cv-day${day<s.first||day>s.last?' out':''}${day===today?' today':''}${CV.sel===day?' sel':''}" data-day="${day}" onclick="cvPick('${day}')" ondragover="cvOver(event)" ondragleave="this.classList.remove('drop')" ondrop="cvDrop(event,'${day}')"><span class="cv-dn">${Number(day.slice(8))}</span>`
+        +list.slice(0,max).map(i=>cvChip(i,day)).join('')+(list.length>max?`<button class="cv-more" onclick="event.stopPropagation();cvPick('${day}',true)">+${list.length-max} more</button>`:'')
+        +(list.length?`<span class="cv-dots">${list.slice(0,4).map(i=>`<i class="cv-t-${cvKind(i)}"></i>`).join('')}</span>`:'')+'</div>';
+    }
+    let below='';
+    if(cvPhone()){const day=CV.sel&&CV.sel>=s.from&&CV.sel<=s.to?CV.sel:(today>=s.first&&today<=s.last?today:s.first);below=`<div style="margin-top:14px">${cvDayList(day,by[day]||[],today)}</div>`;}
+    host.innerHTML=`<div class="cv-month">${h}</div>${below}`;
+  }else if(CV.view==='week'){
+    const by=cvByDay(items,s.from,s.to);
+    let h='';
+    for(let day=s.from;day<=s.to;day=cvAdd(day,1)){
+      const list=by[day]||[];
+      if(cvPhone()){h+=cvDayList(day,list,today,true);continue;}
+      h+=`<div class="cv-wd" ondragover="cvOver(event)" ondragleave="this.classList.remove('drop')" ondrop="cvDrop(event,'${day}')"><div class="cv-dh${day===today?' today':''}">${cvNice(day,{weekday:'short'})}<span class="n">${Number(day.slice(8))}</span></div>${list.map(i=>cvChip(i,day)).join('')||'<div class="cv-none" style="padding:2px 4px">—</div>'}</div>`;
+    }
+    host.innerHTML=cvPhone()?`<div class="cv-list">${h}</div>`:`<div class="cv-week">${h}</div>`;
+  }else{
+    const by=cvByDay(items,s.from,s.to);
+    let h='';
+    for(let day=s.from;day<=s.to;day=cvAdd(day,1)){const list=by[day]||[];if(list.length||day===today)h+=cvDayList(day,list,today,true);}
+    host.innerHTML=`<div class="cv-list">${h||'<div class="pl-empty">Nothing on the calendar for these two weeks.</div>'}</div><div class="vd-mbtns" style="justify-content:center"><button class="btn-xs" onclick="cvStep(1)">Show the next two weeks</button></div>`;
+  }
+}
+function cvDayList(day,list,today,head){
+  const rows=list.map(i=>{const k=cvKind(i);return `<button class="cv-r cv-t-${k}${i.done?' done':''}${i.type==='google'?' g':''}" onclick="cvOpen('${i.key}')"><span class="tm">${i.allDay?(i.end&&i.end!==i.start?(i.start<day?'cont.':'starts'):'all day'):cvTime(i.start)}</span><span class="bd"><div class="ti">${uxEsc(i.title)}</div>${i.sub||(CV.who!=='me'&&i.who)?`<div class="sb">${uxEsc([i.sub,CV.who!=='me'?i.who:null].filter(Boolean).join(' · '))}</div>`:''}${cvAlert(i)?`<div class="wn">⚠ ${uxEsc(i.warn||i.clash||cvRainText(i))}</div>`:''}</span></button>`;}).join('');
+  return `<div class="cv-ld${day===today?' today':''}">${head?`<div class="cv-ldh"><div class="w">${day===today?'Today':cvNice(day,{weekday:'short'})}</div><div class="n">${Number(day.slice(8))}</div></div>`:''}<div class="cv-ldi">${!head?`<div class="pl-h" style="margin:0 0 2px">${cvNice(day,{weekday:'long',month:'long',day:'numeric'})}</div>`:''}${rows||'<div class="cv-none">Nothing on.</div>'}</div></div>`;
+}
+const cvRainText=i=>i.rain&&i.rain.length?'☔ '+i.rain.map(r=>`${r.chance!=null?r.chance+'% ':''}rain ${cvNice(r.day,{weekday:'short'})}`).join(', '):'';
+function cvPick(day,open){
+  if(cvPhone()&&CV.view==='month'&&!open){CV.sel=day;cvRender();return;}
+  const s=cvSpan();const list=cvByDay(cvShown(),s.from,s.to)[day]||[];
+  uxOpen(uxHead(cvNice(day,{weekday:'long',month:'long',day:'numeric'}),list.length?list.length+' on the calendar':'Nothing on yet')+`<div class="cv-ldi">${list.map(i=>`<button class="cv-r cv-t-${cvKind(i)}${i.done?' done':''}" onclick="cvOpen('${i.key}')"><span class="tm">${i.allDay?'all day':cvTime(i.start)}</span><span class="bd"><div class="ti">${uxEsc(i.title)}</div>${i.sub?`<div class="sb">${uxEsc(i.sub)}</div>`:''}</span></button>`).join('')}</div><div class="vd-mbtns"><button class="btn btn-blue" onclick="cvEdit(null,'${day}')">＋ Add on this day</button></div>`);
+}
+function cvToggle(t){CV.off.has(t)?CV.off.delete(t):CV.off.add(t);try{localStorage.setItem('cv-off',JSON.stringify([...CV.off]));}catch(e){}cvRender();}
+function cvSetView(v){CV.view=v;CV.data=null;cvLoad();}
+function cvStep(n){
+  if(n===0)CV.anchor=cvToday();
+  else if(CV.view==='month'){const a=CV.anchor.slice(0,8)+'15';CV.anchor=cvAdd(a,n*30).slice(0,8)+'01';}
+  else CV.anchor=cvAdd(CV.anchor,n*(CV.view==='week'?7:14));
+  CV.sel=null;cvLoad();
+}
+function cvGoogle(){location.href='/api/crm/google/oauth/start?calendar=1';}
+const cvFind=k=>CV.data&&CV.data.items.find(i=>i.key===k);
+function cvOpen(key){
+  const i=cvFind(key);if(!i)return;
+  const k=cvKind(i),T=(CV.data.types||{});
+  const when=i.allDay?(i.end&&i.end!==i.start?`${cvNice(i.start)} – ${cvNice(i.end)}`:cvNice(i.start,{weekday:'long',month:'long',day:'numeric'})):`${cvNice(cvDayOf(i.start),{weekday:'long',month:'long',day:'numeric'})}, ${cvTime(i.start)}${i.end&&i.end!==i.start?' – '+cvTime(i.end):''}`;
+  const label=i.type==='event'?({meeting:'Meeting',inspection:'Inspection',delivery:'Delivery',walkthrough:'Walkthrough',other:'Appointment'}[i.kind]||'Meeting'):(T[i.type]||i.type);
+  const rows=[['🕑',uxEsc(when)]];
+  if(i.who&&i.type!=='google')rows.push(['👤',uxEsc(i.who)]);
+  if(i.type==='phase'?i.deal:i.sub)rows.push(['📁',uxEsc(i.type==='phase'?i.deal:i.sub)]);
+  if(i.location)rows.push(['📍',`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.location)}" target="_blank" rel="noopener">${uxEsc(i.location)}</a>`]);
+  if(i.phone)rows.push(['📞',`<a href="tel:${uxEsc(i.phone)}">${uxEsc(i.phone)}</a>`]);
+  if(i.vendor)rows.push(['🛠',uxEsc(i.vendor)+(i.vendorPhone?` · <a href="tel:${uxEsc(i.vendorPhone)}">${uxEsc(i.vendorPhone)}</a>`:'')]);
+  if(i.notes)rows.push(['📝',`<span style="white-space:pre-wrap">${uxEsc(i.notes)}</span>`]);
+  let notes='';
+  if(i.warn&&!i.done)notes+=`<div class="cv-note w">⚠ ${uxEsc(i.warn)}</div>`;
+  if(i.clash&&!i.done)notes+=`<div class="cv-note w">⚠ ${uxEsc(i.clash)}</div>`;
+  if(i.rain&&i.rain.length&&!i.done)notes+=`<div class="cv-note w">${uxEsc(cvRainText(i))} in the forecast for outdoor work.</div>`;
+  if(i.type==='phase'&&i.vendor&&!i.done)notes+=i.confirm==='confirmed'?`<div class="cv-note ok">✓ ${uxEsc(i.vendor)} confirmed these dates</div>`:i.confirm==='sent'?`<div class="sm">Waiting for ${uxEsc(i.vendor)} to confirm these dates.</div>`:'';
+  if(i.source==='email')notes+=`<div class="sm">✦ Eagle I found this in an email and put it on the calendar.</div>`;
+  if(i.auto&&i.type==='task')notes+=`<div class="sm">✦ Eagle I added this task.</div>`;
+  const btn=[];
+  if(i.dealId&&i.type!=='followup')btn.push(i.type==='phase'?`<button class="btn-xs p" onclick="uxClose();jbOpen('${i.dealId}')">Open the job</button>`:`<button class="btn-xs p" onclick="uxClose();plOpenDeal('${i.dealId}')">Open the deal</button>`);
+  if(i.type==='task')btn.push(`<button class="btn-xs" onclick="cvTaskDone('${i.id}',${!i.done})">${i.done?'Not done yet':'✓ Mark done'}</button>`);
+  if(i.type==='event')btn.push(`<button class="btn-xs" onclick="cvEdit('${i.key}')">Edit</button><button class="btn-xs" style="color:var(--red)" onclick="cvDelete('${i.id}')">Remove</button>`);
+  if(i.type==='followup')btn.push(`<button class="btn-xs p" onclick="uxClose();ewFollow('${i.id}')">Review the follow-up</button>`);
+  if(i.type==='google'&&i.link)btn.push(`<a class="btn-xs" href="${uxEsc(i.link)}" target="_blank" rel="noopener">Open in Google Calendar</a>`);
+  if(i.type==='email')btn.push(`<button class="btn-xs" onclick="uxClose();crView('auto')">See automatic emails</button>`);
+  if(i.type==='compliance'&&i.vendorId)btn.push(`<button class="btn-xs" onclick="uxClose();crView('jobs')">See subs</button>`);
+  let mv='';
+  if(i.edit&&!i.done){
+    const day=i.allDay?i.start:cvDayOf(i.start);
+    const timed=!i.allDay&&i.type!=='phase';
+    mv=`<div class="pl-h" style="margin-top:16px">${i.type==='phase'?'Move the phase':'Move it'}</div><div class="cv-mv"><input type="date" id="cv-mv-d" class="cred-input" value="${day}" aria-label="New day">${timed?`<input type="time" id="cv-mv-t" class="cred-input" value="${cvHM(i.start)}" aria-label="New time">`:''}<button class="btn-xs p" onclick="cvMoveFrom('${i.key}')">Move</button></div>${i.type==='phase'?`<div class="sm">Keeps its length.${i.vendor?' '+uxEsc(i.vendor)+' is asked to confirm the new dates.':''}</div>`:i.type==='visit'?'<div class="sm">The homeowner’s reminders follow the new time.</div>':''}`;
+  }
+  uxOpen(uxHead(uxEsc(i.title),`<span class="cv-k cv-t-${k}"><i></i>${uxEsc(label)}</span>`)+`<div class="cv-dl">${rows.map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('')}</div>${notes}${btn.length?`<div class="vd-mbtns">${btn.join('')}</div>`:''}${mv}`);
+}
+async function cvMoveFrom(key){
+  const i=cvFind(key);if(!i)return;
+  const d=document.getElementById('cv-mv-d').value,t=document.getElementById('cv-mv-t');
+  if(!d)return;
+  await cvMove(i,d,t?t.value:null);
+}
+async function cvMove(i,date,time){
+  try{await plApi('/api/crm/calendar/move',{body:{type:i.type,id:i.id,date,time:time||null}});uxClose();showNotif('Moved',`${i.title} → ${cvNice(date)}${time?' '+cvTime(new Date(date+'T'+time+':00')):''}`);cvLoad();}
+  catch(e){showNotif('Could not move it',e.message);}
+}
+function cvDrag(e,key){e.dataTransfer.setData('text/plain',key);e.dataTransfer.effectAllowed='move';}
+function cvOver(e){e.preventDefault();e.currentTarget.classList.add('drop');}
+function cvDrop(e,day){
+  e.preventDefault();e.currentTarget.classList.remove('drop');
+  const i=cvFind(e.dataTransfer.getData('text/plain'));if(!i||!i.edit)return;
+  const from=i.allDay?i.start:cvDayOf(i.start);if(from===day)return;
+  cvMove(i,day,null);
+}
+async function cvTaskDone(id,done){try{await plApi('/api/crm/tasks/'+id,{method:'PATCH',body:{done}});uxClose();cvLoad();}catch(e){showNotif('Could not save',e.message);}}
+async function cvDelete(id){if(!confirm('Take this off the calendar?'))return;try{await plApi('/api/crm/calendar/events/'+id,{method:'DELETE'});uxClose();cvLoad();}catch(e){showNotif('Could not remove it',e.message);}}
+async function cvEdit(key,day){
+  const i=key?cvFind(key):null;
+  if(!CV.deals){try{const p=await plApi('/api/crm/pipeline');CV.deals=(p.deals||[]).filter(x=>x.stage!=='lost');}catch(e){CV.deals=[];}}
+  const d0=i?(i.allDay?i.start:cvDayOf(i.start)):(day||CV.sel||cvToday());
+  const allDay=i?i.allDay:false;
+  const st=i&&!i.allDay?cvHM(i.start):'09:00',en=i&&!i.allDay?cvHM(i.end):'10:00';
+  const who=i?(i.whoId||''):(CV.who!=='me'&&CV.who!=='all'?CV.who:(CR.me&&CR.me.userId));
+  const kinds=[['meeting','Meeting'],['inspection','Inspection'],['walkthrough','Walkthrough'],['delivery','Delivery'],['other','Other']];
+  uxOpen(uxHead(i?'Edit':'Add to the calendar','Visits, phases, tasks and deadlines are already on it by themselves; this is for anything else.')+`
+    <div class="pl-form">
+      <div class="full"><label for="cv-e-t">What</label><input id="cv-e-t" class="cred-input" maxlength="160" placeholder="e.g. Framing inspection" value="${uxEsc(i?i.title:'')}"></div>
+      <div><label for="cv-e-k">Kind</label><select id="cv-e-k" class="cred-input">${kinds.map(([v,l])=>`<option value="${v}"${(i?i.kind:'meeting')===v?' selected':''}>${l}</option>`).join('')}</select></div>
+      <div><label for="cv-e-d">Day</label><input id="cv-e-d" type="date" class="cred-input" value="${d0}"></div>
+      <div class="full"><label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="cv-e-ad"${allDay?' checked':''} onchange="document.getElementById('cv-e-times').style.display=this.checked?'none':''"> All day</label></div>
+      <div class="full" id="cv-e-times" style="display:${allDay?'none':'grid'};grid-template-columns:1fr 1fr;gap:8px 10px"><div><label for="cv-e-s">Starts</label><input id="cv-e-s" type="time" class="cred-input" value="${st}"></div><div><label for="cv-e-e">Ends</label><input id="cv-e-e" type="time" class="cred-input" value="${en}"></div></div>
+      <div class="full"><label for="cv-e-deal">Job or deal (optional)</label><select id="cv-e-deal" class="cred-input"><option value="">None</option>${CV.deals.map(x=>`<option value="${x.id}"${i&&i.dealId===x.id?' selected':''}>${uxEsc(x.title)}${x.contact_name?' · '+uxEsc(x.contact_name):''}</option>`).join('')}</select></div>
+      ${crCanManage()?`<div class="full"><label for="cv-e-who">Whose calendar</label><select id="cv-e-who" class="cred-input"><option value="">Everyone’s</option>${CR.team.map(m=>`<option value="${m.id}"${who===m.id?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`).join('')}</select></div>`:''}
+      <div class="full"><label for="cv-e-l">Where (optional)</label><input id="cv-e-l" class="cred-input" maxlength="300" value="${uxEsc(i&&i.location||'')}" placeholder="Address, or leave empty for the job’s"></div>
+      <div class="full"><label for="cv-e-n">Notes (optional)</label><textarea id="cv-e-n" class="cred-input" rows="2" maxlength="2000">${uxEsc(i&&i.notes||'')}</textarea></div>
+    </div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="cvSave(this,${i?`'${i.id}'`:'null'})">${i?'Save':'Add it'}</button><span class="sm" style="margin:0">Only your team sees this. No invitation goes out.</span></div>`);
+  setTimeout(()=>{const t=document.getElementById('cv-e-t');if(t&&!i)t.focus();},50);
+}
+async function cvSave(btn,id){
+  const v=x=>document.getElementById(x)?document.getElementById(x).value:undefined;
+  const ad=document.getElementById('cv-e-ad').checked;
+  const dealId=v('cv-e-deal')||null;
+  const loc=(v('cv-e-l')||'').trim();
+  const body={title:v('cv-e-t'),kind:v('cv-e-k'),date:v('cv-e-d'),allDay:ad,time:ad?null:v('cv-e-s'),endTime:ad?null:v('cv-e-e'),dealId,location:loc,notes:v('cv-e-n')};
+  if(crCanManage())body.userId=v('cv-e-who')||null;
+  btn.disabled=true;
+  try{
+    if(id)await plApi('/api/crm/calendar/events/'+id,{method:'PATCH',body});else await plApi('/api/crm/calendar/events',{body});
+    uxClose();showNotif(id?'Saved':'On the calendar',body.title||'');
+    if(body.date){const s=cvSpan();if(body.date<s.from||body.date>s.to)CV.anchor=CV.view==='month'?body.date.slice(0,8)+'01':body.date;}
+    cvLoad();
+  }catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
 }
 /* ---------- weekly reports ---------- */
 // The report read aloud, for the drive in.

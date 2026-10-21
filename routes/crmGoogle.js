@@ -52,8 +52,9 @@ router.get('/api/crm/google/oauth/start', requireAuth, async (req, res) => {
   try {
     const wantDrive = req.query.drive === '1';
     if (wantDrive && !team.isManager(req.crmUser && req.crmUser.role)) return res.redirect('/crm?google_error=' + encodeURIComponent('Only the owner or an admin can connect Google Drive.') + '#company');
-    res.redirect(await google.signInUrl({ tenantId: req.tenantId, userId: req.userId, wantDrive, redirectUri: redirectUri(req) }));
-  } catch (err) { res.redirect('/crm?google_error=' + encodeURIComponent(err.message) + '#company'); }
+    const wantCalendar = req.query.calendar === '1';
+    res.redirect(await google.signInUrl({ tenantId: req.tenantId, userId: req.userId, wantDrive, wantCalendar, redirectUri: redirectUri(req) }));
+  } catch (err) { res.redirect('/crm?google_error=' + encodeURIComponent(err.message) + (req.query.calendar === '1' ? '#calendar' : '#company')); }
 });
 router.get('/api/crm/google/oauth/callback', requireAuth, async (req, res) => {
   if (req.query.error) return res.redirect('/crm?google_error=' + encodeURIComponent(req.query.error === 'access_denied' ? 'Google sign-in was cancelled.' : String(req.query.error)) + '#company');
@@ -65,6 +66,7 @@ router.get('/api/crm/google/oauth/callback', requireAuth, async (req, res) => {
     if (r.drive && r.wantedDrive) {
       try { await require('../lib/crmDrive').enable(req.tenantId); drive = '&drive=on'; } catch (e) { drive = '&google_error=' + encodeURIComponent(e.message); }
     } else if (r.wantedDrive && !r.drive) drive = '&google_error=' + encodeURIComponent('Google Drive wasn’t allowed, so files stay in Eagle I. Sign in again and tick the Drive box to keep them in Drive.');
+    if (r.wantedCalendar) return res.redirect(r.calendar ? '/crm?gcal=on#calendar' : '/crm?google_error=' + encodeURIComponent('Google Calendar wasn’t allowed. Try again and tick the calendar box.') + '#calendar');
     res.redirect(`/crm?google=${encodeURIComponent(r.email)}${drive}#company`);
   } catch (err) { res.redirect('/crm?google_error=' + encodeURIComponent(err.message) + '#company'); }
 });
