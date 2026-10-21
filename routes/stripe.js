@@ -27,7 +27,7 @@ function getStripe() {
 
 router.post('/api/stripe/create-checkout-session', requireAuth, async (req, res) => {
   const stripe = getStripe();
-  if (!stripe) return res.status(500).json({ error: { message: 'Billing is not configured yet.' } });
+  if (!stripe) return res.status(503).json({ error: { message: 'Billing is not configured yet.' } });
 
   const { priceId } = req.body || {};
   loadPlanMap();

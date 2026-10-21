@@ -35,7 +35,7 @@ router.post('/api/crm/reports/now', requireAuth, managersOnly, async (req, res) 
 });
 
 router.get('/api/crm/reports/:week', requireAuth, managersOnly, async (req, res) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(req.params.week)) return res.status(404).json({ error: { message: 'Report not found.' } });
+  if (!require('../lib/day').test(req.params.week)) return res.status(404).json({ error: { message: 'Report not found.' } });
   try {
     const r = await reports.getReport(req.tenantId, req.params.week);
     if (!r) return res.status(404).json({ error: { message: 'Report not found.' } });

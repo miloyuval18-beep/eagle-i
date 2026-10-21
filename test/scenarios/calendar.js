@@ -121,8 +121,16 @@ async function fakeGoogle(url, opts = {}) {
     assert.equal(mtg.location, '12 Oak Ln, Houston TX 77024', 'no place given: the job’s address');
     assert.equal((new Date(mtg.ends_at) - new Date(mtg.starts_at)) / 60000, 45);
     await assert.rejects(cal.createEvent({ tenantId: t, actor: alex, body: { title: 'x', date: D1, userId: ownerId } }), /your own calendar/);
-    await assert.rejects(cal.createEvent({ tenantId: t, actor: alex, body: { title: 'x', date: D1, dealId: job.id.replace(/.$/, '0') } }), /isn’t at this company/);
+    await assert.rejects(cal.createEvent({ tenantId: t, actor: alex, body: { title: 'x', date: D1, dealId: crypto.randomUUID() } }), /isn’t at this company/);
     await assert.rejects(cal.createEvent({ tenantId: t, actor: alex, body: { title: '', date: D1 } }), /Say what it is/);
+    // Impossible days are turned away, not passed to the database (JavaScript would make 02-30 into March 2).
+    for (const bad of ['2026-02-30', '2026-13-01', '2025-02-29']) {
+      await assert.rejects(cal.createEvent({ tenantId: t, actor: alex, body: { title: 'x', date: bad } }), /Pick a day/);
+      await assert.rejects(cal.move({ tenantId: t, actor: alex, type: 'event', id: mtg.id, date: bad }), /Pick a day/);
+      assert.equal((await cal.range({ tenantId: t, viewer: alex, from: bad, to: bad })).from, today, 'an impossible range falls back to today');
+      assert.equal((await jobs.saveItem({ tenantId: t, dealId: job.id, body: { title: 'Odd', startDate: bad } })).start_date, null);
+      assert.equal((await tasks.updateTask({ tenantId: t, id: late.id, patch: { title: 'Call the city' } })).title, 'Call the city');
+    }
     await assert.rejects(cal.createEvent({ tenantId: t, actor: alex, body: { title: 'x', date: D1, time: '10:00', endTime: '09:00' } }), /ends before/);
     const allHands = await cal.createEvent({ tenantId: t, actor: owner, body: { title: 'Team safety meeting', date: D2, time: '07:00', userId: null } });
     const ra2 = await cal.range({ tenantId: t, viewer: alex, ...span });

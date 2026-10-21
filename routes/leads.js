@@ -11,6 +11,8 @@ const leadSequence = require('../lib/leadSequence');
 const crm = require('../lib/crm');
 
 const router = express.Router();
+// Every :id here is a uuid; anything else is simply not found (not a database error).
+router.param('id', (req, res, next, id) => (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? next() : res.status(404).json({ error: { message: 'Not found.' } })));
 
 const VALID_LEAD_STATUSES = new Set(['new', 'contacted', 'won', 'lost']);
 
@@ -221,7 +223,7 @@ Return ONLY valid JSON: {"headline":"H1 headline","subheadline":"Supporting line
     );
     res.json({ ok: true, page: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: { message: 'Failed to generate landing page: ' + err.message } });
+    res.status(err.status || 500).json({ error: { message: 'Failed to generate landing page: ' + err.message } });
   }
 });
 

@@ -173,9 +173,13 @@ async function saveConnection(tenantId, siteUrl, refreshToken) {
 router.get('/api/search-console/pending-sites', async (req, res) => {
   const state = req.query.state;
   if (!state) return res.json({ options: [] });
-  const r = await query(
-    `SELECT pending_sites FROM oauth_states_sc WHERE state = $1 AND created_at > now() - interval '1 hour'`, [state]);
-  res.json({ options: (r.rows[0] && r.rows[0].pending_sites) || [] });
+  try {
+    const r = await query(
+      `SELECT pending_sites FROM oauth_states_sc WHERE state = $1 AND created_at > now() - interval '1 hour'`, [state]);
+    res.json({ options: (r.rows[0] && r.rows[0].pending_sites) || [] });
+  } catch (err) {
+    res.status(500).json({ error: { message: 'Could not load your sites: ' + err.message } });
+  }
 });
 
 router.post('/api/search-console/select-site', async (req, res) => {

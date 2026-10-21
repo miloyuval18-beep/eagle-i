@@ -6,6 +6,8 @@ const { query } = require('../db');
 const { requireAuth } = require('../auth');
 
 const router = express.Router();
+// Every :id here is a uuid; anything else is simply not found (not a database error).
+router.param('id', (req, res, next, id) => (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? next() : res.status(404).json({ error: { message: 'Not found.' } })));
 
 const VALID_TARGETS = new Set(['facebook', 'instagram', 'google']);
 const VALID_STATUSES = new Set(['pending', 'sending', 'sent', 'failed', 'canceled']);

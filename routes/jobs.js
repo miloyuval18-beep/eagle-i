@@ -9,6 +9,8 @@ const { geocodeAddress } = require('../lib/googlePlaces');
 const { qualifiesForPermits } = require('../lib/realEstateAccess');
 
 const router = express.Router();
+// Every :id here is a uuid; anything else is simply not found (not a database error).
+router.param('id', (req, res, next, id) => (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? next() : res.status(404).json({ error: { message: 'Not found.' } })));
 
 async function requireJobsEligibleTenant(req, res) {
   const tenantRes = await query('SELECT industry, company_name FROM tenants WHERE id = $1', [req.tenantId]);

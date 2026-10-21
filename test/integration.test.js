@@ -414,7 +414,7 @@ describe('permits: mailer letters (POST /api/permits/mailer-letters)', () => {
 });
 
 describe('"not configured" fallbacks (external keys unset in this test run)', () => {
-  test('Stripe checkout returns a clean 500 with a clear message, not a crash', async () => {
+  test('Stripe checkout returns a clean 503 with a clear message, not a crash', async () => {
     const client = makeClient();
     const signup = await client.post('/api/auth/signup', {
       email: uniqueEmail('stripecheck'), password: 'TestPass1234!', companyName: 'Stripe Check', industry: 'home_services', acceptedTerms: true
@@ -422,7 +422,7 @@ describe('"not configured" fallbacks (external keys unset in this test run)', ()
     trackTenant((await signup.json()).tenantId);
 
     const r = await client.post('/api/stripe/create-checkout-session', {});
-    assert.equal(r.status, 500);
+    assert.equal(r.status, 503);
     const body = await r.json();
     assert.match(body.error.message, /not configured/i);
   });

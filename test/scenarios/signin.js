@@ -87,7 +87,7 @@ drive.setHttp(fakeGoogle);
     assert.ok(st2.mailboxes.find(m => m.email === 'levihomes@gmail.com').drive);
 
     // 3. Reading email: a customer on gmail.com is still the customer; Alex writing to her is the team.
-    const sync = await G.processGoogleSync({ http: fakeGoogle });
+    const sync = await G.processGoogleSync({ http: fakeGoogle, onlyTenantId: t });
     assert.equal(sync.errors, 0); assert.equal(sync.stored, 2, 'the newsletter is not kept');
     const emails = (await query('SELECT message_key, direction, deal_id, body_text FROM crm_emails WHERE tenant_id = $1 ORDER BY message_key', [t])).rows;
     assert.deepEqual(emails.map(e => [e.message_key, e.direction, e.deal_id]), [['<m1@x>', 'in', deal.id], ['<m2@x>', 'out', deal.id]]);
@@ -105,7 +105,7 @@ drive.setHttp(fakeGoogle);
     // 5. Access removed in Google: that mailbox says so (the others keep working).
     revoked.add('rt-alex'); G._tokenCache.clear();
     await query(`UPDATE crm_mailboxes SET last_synced_at = NULL WHERE tenant_id = $1`, [t]);
-    const s2 = await G.processGoogleSync({ http: fakeGoogle });
+    const s2 = await G.processGoogleSync({ http: fakeGoogle, onlyTenantId: t });
     assert.equal(s2.errors, 1);
     const bad = (await query(`SELECT status, last_error FROM crm_mailboxes WHERE tenant_id = $1 AND email = 'alex.levihomes@gmail.com'`, [t])).rows[0];
     assert.equal(bad.status, 'error'); assert.match(bad.last_error, /Sign in with Google again/);

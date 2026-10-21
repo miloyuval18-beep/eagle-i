@@ -10,6 +10,8 @@ const { query } = require('../db');
 const { requireAuth } = require('../auth');
 
 const router = express.Router();
+// Every :id here is a uuid; anything else is simply not found (not a database error).
+router.param('id', (req, res, next, id) => (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? next() : res.status(404).json({ error: { message: 'Not found.' } })));
 
 const DATA_URL_RE = /^data:image\/(png|jpeg|jpg|webp);base64,/;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB raw (client should compress before upload)

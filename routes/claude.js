@@ -26,7 +26,7 @@ const router = express.Router();
 router.post('/api/claude', requireAuth, async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY is not set on the server.' } });
+    return res.status(503).json({ error: { message: 'ANTHROPIC_API_KEY is not set on the server.' } });
   }
 
   if (isRateLimited(req.ip)) {
