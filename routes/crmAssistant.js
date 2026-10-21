@@ -27,7 +27,8 @@ router.post('/api/crm/assistant/test', requireAuth, wrap('The AI didn’t answer
   res.json(await require('../lib/anthropic').checkConnection());
 }));
 router.get('/api/crm/assistant/home', requireAuth, wrap('Failed to load', async (req, res) => res.json(await assistant.home(ctxOf(req)))));
-router.get('/api/crm/assistant/threads', requireAuth, wrap('Failed to load', async (req, res) => res.json({ threads: await assistant.listThreads(ctxOf(req)) })));
+router.get('/api/crm/assistant/threads', requireAuth, wrap('Failed to load', async (req, res) => res.json({ threads: await assistant.listThreads(ctxOf(req), { q: req.query.q, limit: req.query.limit, before: req.query.before }) })));
+router.patch('/api/crm/assistant/threads/:tid', requireAuth, wrap('Failed to rename', async (req, res) => res.json(await assistant.renameThread(ctxOf(req), req.params.tid, (req.body || {}).title))));
 router.post('/api/crm/assistant/threads', requireAuth, wrap('Failed to start', async (req, res) => res.json({ thread: await assistant.createThread(ctxOf(req)) })));
 router.get('/api/crm/assistant/threads/:tid', requireAuth, wrap('Failed to load', async (req, res) => res.json(await assistant.threadView(ctxOf(req), req.params.tid))));
 router.delete('/api/crm/assistant/threads/:tid', requireAuth, wrap('Failed to delete', async (req, res) => res.json(await assistant.deleteThread(ctxOf(req), req.params.tid))));

@@ -240,11 +240,6 @@ select{width:auto;cursor:pointer}
 .ai-send{border:0;width:38px;height:38px;border-radius:12px;color:#fff;font-size:18px;cursor:pointer;background:linear-gradient(135deg,#1f4e79,#2a6f97);flex:0 0 auto}
 .ai-send:disabled{opacity:.4;cursor:default}
 .ai-hint{font-size:11px;color:var(--ink3);text-align:center;margin-top:6px}
-.ai-hist{position:absolute;inset:64px 0 0 0;background:#f7f9fb;z-index:2;overflow-y:auto;padding:10px 12px;display:none}
-.ai-hist.open{display:block}
-.ai-hrow{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e1e7ec;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer}
-.ai-hrow .n{flex:1;min-width:0;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ai-hrow .d{font-size:12px;color:var(--ink3)}
 .ai-off{background:#fff;border:1px dashed #c3ccd4;border-radius:12px;padding:14px;margin-top:16px;font-size:14px;color:var(--ink2)}
 
 /* ---------- Eagle I design system ----------
@@ -385,7 +380,6 @@ input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-wid
 .ask-host{max-width:900px;margin:0 auto}
 .ai-panel.inline{position:relative;top:auto;right:auto;bottom:auto;transform:none;transition:none;width:100%;height:calc(100vh - 150px);height:calc(100dvh - 150px);min-height:480px;z-index:1;border:1px solid var(--bdr);border-radius:var(--r3);box-shadow:var(--sh3);overflow:hidden}
 .ai-panel.inline .ai-close{display:none}
-.ai-panel.inline .ai-hist{inset:60px 0 0 0}
 .ai-panel.inline .ai-hello{padding:34px 10px 8px;text-align:center}
 .ai-panel.inline .ai-hello .g{font-size:32px}
 .ai-panel.inline .ai-hello .s{max-width:560px;margin:8px auto 0}
@@ -407,6 +401,50 @@ body.on-ask .wrap{padding-bottom:16px}
 .ai-panel.inline .ai-hb:hover{background:var(--bdr)}
 body.on-ask .sh{display:none}
 
+/* Ask Eagle I: several chats, kept, like Claude or Gemini */
+.ai-panel{flex-direction:row}
+.ai-main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.ai-side{position:absolute;left:0;top:0;bottom:0;width:min(300px,86%);z-index:6;background:#fff;border-right:1px solid var(--bdr);display:flex;flex-direction:column;transform:translateX(-102%);transition:transform .22s cubic-bezier(.2,.8,.2,1);box-shadow:12px 0 32px rgba(14,24,34,.14)}
+.ai-panel.side-open .ai-side{transform:none}
+.ai-side-shade{position:absolute;inset:0;z-index:5;background:rgba(14,24,34,.28);opacity:0;pointer-events:none;transition:opacity .2s}
+.ai-panel.side-open .ai-side-shade{opacity:1;pointer-events:auto}
+.ai-side-top{display:flex;gap:8px;align-items:center;padding:12px 12px 8px}
+.ai-newchat{flex:1;display:flex;align-items:center;gap:8px;border:1px solid var(--bdr2);background:#fff;border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;box-shadow:var(--sh1);min-height:40px}
+.ai-newchat:hover{background:var(--bg4)}
+.ai-newchat span{color:var(--accent);font-size:16px}
+.ai-side .ai-side-x{background:var(--bg4);color:var(--ink2);width:36px;height:36px}
+.ai-search{padding:0 12px 8px}
+.ai-search input{width:100%;border:1px solid var(--bdr);background:var(--bg4);border-radius:9px;padding:8px 11px;font:inherit;font-size:13.5px;color:var(--ink);min-height:36px}
+.ai-search input:focus{outline:none;border-color:var(--accent-line);background:#fff}
+.ai-list{flex:1;overflow-y:auto;padding:2px 8px 14px}
+.ai-grp{font-size:11.5px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;padding:12px 8px 4px}
+.ai-row{position:relative;display:flex;align-items:center;border-radius:8px}
+.ai-row>button.go{flex:1;min-width:0;text-align:left;border:0;background:none;font:inherit;font-size:14px;color:var(--ink2);padding:8px 8px;border-radius:8px;cursor:pointer;min-height:36px}
+.ai-row>button.go .n{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-row>button.go .sn{display:block;font-size:12px;color:var(--ink3);margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal}
+.ai-row>button.go .sn mark{background:#fff3c4;color:inherit;border-radius:2px}
+.ai-row:hover{background:var(--bg4)}
+.ai-row.on{background:var(--accent-soft)}
+.ai-row.on>button.go{color:var(--accent);font-weight:600}
+.ai-row .acts{display:none;gap:2px;padding-right:4px}
+.ai-row:hover .acts,.ai-row.on .acts,.ai-row:focus-within .acts{display:flex}
+.ai-row .acts button{border:0;background:none;width:28px;height:28px;border-radius:6px;cursor:pointer;color:var(--ink3);font-size:13px;display:grid;place-items:center}
+.ai-row .acts button:hover{background:#fff;color:var(--ink)}
+.ai-row input{flex:1;min-width:0;margin:3px 4px;border:1px solid var(--accent);border-radius:7px;padding:6px 8px;font:inherit;font-size:14px}
+.ai-more{display:block;width:100%;border:0;background:none;color:var(--accent);font:inherit;font-size:13px;font-weight:600;padding:10px;cursor:pointer}
+.ai-none{font-size:13px;color:var(--ink3);padding:14px 10px}
+.ai-head .t{min-width:0}
+.ai-head .t b{font-weight:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ai-head .t small{white-space:nowrap}
+.ai-head .t.chat small{display:none}
+@media (pointer:coarse){.ai-row .acts{display:flex}.ai-row:not(.on) .acts{display:none}}
+/* the Ask tab on a computer: the chat list stays open on the left */
+@media (min-width:900px){
+  .ask-host{max-width:1200px}
+  .ai-panel.inline .ai-side{position:static;transform:none;width:268px;flex:0 0 268px;box-shadow:none;background:#fbfcfe;transition:none}
+  .ai-panel.inline .ai-side-x,.ai-panel.inline .ai-side-shade{display:none}
+  .ai-panel.inline.side-hide .ai-side{display:none}
+}
 /* billing */
 .bl-toggle{display:inline-flex;background:var(--bg4);border:1px solid var(--bdr);border-radius:999px;padding:4px;gap:4px;margin:6px 0 14px}
 .bl-toggle button{border:0;background:none;border-radius:999px;padding:7px 14px;font:inherit;font-weight:600;font-size:14px;color:var(--ink3);cursor:pointer}
@@ -812,7 +850,8 @@ function crView(v){
   if(v==='growth')mkLoad();
   if(v==='setup')suLoad();
   if(v==='billing')blLoad();
-  try{history.replaceState(null,'','#'+v);}catch(e){}
+  try{history.replaceState(null,'','#'+v+(v==='ask'&&AI.thread?'/'+AI.thread:''));}catch(e){}
+  if(v!=='ask')document.title='Eagle I CRM';
   window.scrollTo(0,0);
 }
 // On a phone, Eagle I can sit on the home screen like an app.
@@ -864,9 +903,12 @@ async function crInit(){
     const toCal=q.get('gcal')||location.hash==='#calendar';
     setTimeout(()=>{if(q.get('google_error'))showNotif('Google',q.get('google_error'));else if(q.get('gcal'))showNotif('Google Calendar on','Your meetings show on the calendar now.');else showNotif('Google connected',q.get('google')+(q.get('drive')==='on'?' · project files now go to Google Drive':' · reading recent customer email now'));},300);
     try{history.replaceState(null,'',toCal?'/crm#calendar':'/crm#company');}catch(e){}}}
-  const start=(location.hash||'').slice(1);
+  const hashParts=(location.hash||'').slice(1).split('/');const start=hashParts[0];
   await crLoadTeam();
+  // A link to one chat (#ask/<id>) opens that chat.
+  if(start==='ask'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||''))AI.loading=hashParts[1];
   crView(['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing'].includes(start)?start:'ask');
+  if(AI.loading)aiLoad(AI.loading);
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
 }
@@ -2940,11 +2982,17 @@ crInit();
 <button class="ai-fab" id="ai-fab" onclick="aiOpen()" aria-label="Ask Eagle I"><span class="spark">✦</span> Ask Eagle I</button>
 <div class="ai-shade" id="ai-shade" onclick="aiClose()"></div>
 <aside class="ai-panel" id="ai-panel" role="dialog" aria-label="Ask Eagle I" aria-modal="true">
-  <div class="ai-head"><div class="t"><span>✦</span> Eagle I <small>your assistant</small></div>
-    <button class="ai-hb" onclick="aiHistory()" title="Past conversations" aria-label="Past conversations">☰</button>
-    <button class="ai-hb" onclick="aiNew()" title="New conversation" aria-label="New conversation">＋</button>
+  <nav class="ai-side" id="ai-side" aria-label="Your chats">
+    <div class="ai-side-top"><button class="ai-newchat" onclick="aiNew()"><span aria-hidden="true">＋</span> New chat</button><button class="ai-hb ai-side-x" onclick="aiSide(false)" aria-label="Close the chat list">✕</button></div>
+    <div class="ai-search"><input id="ai-q" type="search" placeholder="Search your chats" aria-label="Search your chats" oninput="aiSearch()" autocomplete="off"></div>
+    <div class="ai-list" id="ai-list"></div>
+  </nav>
+  <div class="ai-side-shade" onclick="aiSide(false)"></div>
+  <div class="ai-main">
+  <div class="ai-head"><button class="ai-hb ai-menu" onclick="aiSide()" title="Your chats" aria-label="Your chats" aria-controls="ai-side">☰</button>
+    <div class="t"><span>✦</span> <b id="ai-ctitle">Eagle I</b> <small id="ai-csub">your assistant</small></div>
+    <button class="ai-hb" onclick="aiNew()" title="New chat" aria-label="New chat">＋</button>
     <button class="ai-hb ai-close" onclick="aiClose()" title="Close" aria-label="Close">✕</button></div>
-  <div class="ai-hist" id="ai-hist"></div>
   <div class="ai-body" id="ai-body"></div>
   <div class="ai-foot">
     <div class="ai-att" id="ai-att"></div>
@@ -2956,11 +3004,12 @@ crInit();
     </div>
     <div class="ai-hint">Eagle I asks you before anything is sent.</div>
   </div>
+  </div>
 </aside>
 
 <script>
 /* ---------- Ask Eagle I ---------- */
-const AI={thread:null,busy:false,files:[],home:null,rec:null};
+const AI={thread:null,title:null,threads:null,more:false,q:'',busy:false,files:[],home:null,rec:null};
 function aiMd(t){
   const e=uxEsc(String(t||''));
   const lines=e.split('\n');let out='',list=null;
@@ -2983,7 +3032,9 @@ function aiMount(inline){
     if(p.parentElement!==host)host.appendChild(p);
     p.classList.add('inline','open');p.setAttribute('aria-modal','false');p.setAttribute('role','region');document.getElementById('ai-shade').classList.remove('open');document.getElementById('ai-fab').classList.add('hide');
     document.getElementById('ai-mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
-    if(!AI.thread)aiHome();
+    try{p.classList.toggle('side-hide',!!localStorage.getItem('ai-side-hide'));}catch(e){}
+    if(!AI.threads)aiList();
+    if(!AI.thread&&!AI.loading)aiHome();if(!AI.loading)aiHash();aiHead();
     if(matchMedia('(pointer:fine)').matches)setTimeout(()=>document.getElementById('ai-in').focus(),100);
   }else if(p.classList.contains('inline')){
     document.body.appendChild(p);p.classList.remove('inline','open');p.setAttribute('aria-modal','true');p.setAttribute('role','dialog');document.getElementById('ai-fab').classList.remove('hide');
@@ -2997,7 +3048,7 @@ function aiOpen(){
   setTimeout(()=>document.getElementById('ai-in').focus(),250);
   try{history.replaceState(null,'','#ask');}catch(e){}
 }
-function aiClose(){if(document.getElementById('ai-panel').classList.contains('inline'))return;document.getElementById('ai-panel').classList.remove('open');document.getElementById('ai-shade').classList.remove('open');document.getElementById('ai-fab').classList.remove('hide');document.getElementById('ai-hist').classList.remove('open');try{history.replaceState(null,'','#'+(CR.view||'pipeline'));}catch(e){}}
+function aiClose(){if(document.getElementById('ai-panel').classList.contains('inline'))return;document.getElementById('ai-panel').classList.remove('open');document.getElementById('ai-shade').classList.remove('open');document.getElementById('ai-fab').classList.remove('hide');aiSide(false);try{history.replaceState(null,'','#'+(CR.view||'pipeline'));}catch(e){}}
 async function aiHome(){
   const el=document.getElementById('ai-body');
   el.innerHTML='<div class="ai-think"><span class="ai-dots"><i></i><i></i><i></i></span></div>';
@@ -3057,7 +3108,7 @@ async function aiSend(){
   if(!text&&!AI.files.length)return;
   AI.busy=true;document.getElementById('ai-go').disabled=true;
   const body=document.getElementById('ai-body');
-  if(!AI.thread){body.innerHTML='';try{AI.thread=(await plApi('/api/crm/assistant/threads',{body:{}})).thread.id;}catch(e){showNotif('Could not start',e.message);AI.busy=false;document.getElementById('ai-go').disabled=false;return;}}
+  if(!AI.thread){body.innerHTML='';try{AI.thread=(await plApi('/api/crm/assistant/threads',{body:{}})).thread.id;AI.title=text.slice(0,70)||null;aiHead();aiHash();}catch(e){showNotif('Could not start',e.message);AI.busy=false;document.getElementById('ai-go').disabled=false;return;}}
   const files=AI.files.splice(0);aiAttRender();
   aiBubble('user',uxEsc(text||'').replace(/\n/g,'<br>')+(files.length?`<div class="ai-files">${files.map(f=>`<span class="ai-file">📄 ${uxEsc(f.filename)}</span>`).join('')}</div>`:''));
   inp.value='';aiGrow(inp);
@@ -3071,27 +3122,96 @@ async function aiSend(){
         if(ev.type==='step'){const s=document.getElementById('ai-step');if(s)s.textContent=ev.label+'…';}
         else if(ev.type==='done')done=ev;else if(ev.type==='error')throw new Error(ev.message);}}
     think.remove();
-    if(done)aiShowReply(done);
+    if(done){aiShowReply(done);if(done.title){AI.title=done.title;aiHead();}aiList();}
   }catch(e){think.remove();aiBubble('assistant','<span style="color:var(--red)">'+uxEsc(e.message)+'</span>');}
   AI.busy=false;document.getElementById('ai-go').disabled=false;inp.focus();
 }
-function aiNew(){AI.thread=null;AI.files=[];aiAttRender();document.getElementById('ai-hist').classList.remove('open');aiHome();}
-async function aiHistory(){
-  const h=document.getElementById('ai-hist');if(h.classList.toggle('open')===false)return;
-  h.innerHTML='<div class="ai-think"><span class="ai-dots"><i></i><i></i><i></i></span></div>';
-  try{const {threads}=await plApi('/api/crm/assistant/threads');
-    h.innerHTML=threads.length?threads.map(t=>`<div class="ai-hrow" onclick="aiLoad('${t.id}')"><div class="n">${uxEsc(t.title||'Conversation')}</div><div class="d">${new Date(t.updated_at).toLocaleDateString([], {month:'short',day:'numeric'})}</div><button class="btn-xs" onclick="event.stopPropagation();aiDel('${t.id}')" aria-label="Delete">✕</button></div>`).join(''):'<div class="ai-off">No conversations yet.</div>';}
-  catch(e){h.innerHTML='<div class="ai-off">'+uxEsc(e.message)+'</div>';}
+/* chats: several kept per person, like Claude or Gemini */
+const aiWide=()=>document.getElementById('ai-panel').classList.contains('inline')&&matchMedia('(min-width:900px)').matches;
+function aiHash(){if(document.getElementById('ai-panel').classList.contains('inline')||CR.view==='ask'){try{history.replaceState(null,'','#ask'+(AI.thread?'/'+AI.thread:''));}catch(e){}}}
+function aiHead(){
+  const t=document.querySelector('.ai-head .t');
+  document.getElementById('ai-ctitle').textContent=AI.thread&&AI.title?AI.title:'Eagle I';
+  t.classList.toggle('chat',!!(AI.thread&&AI.title));
+  document.title=(AI.thread&&AI.title?AI.title+' · ':'')+'Eagle I CRM';
+}
+function aiSide(open){
+  const p=document.getElementById('ai-panel');
+  if(aiWide()){const hide=open===undefined?!p.classList.contains('side-hide'):!open;p.classList.toggle('side-hide',hide);try{localStorage.setItem('ai-side-hide',hide?'1':'');}catch(e){}if(!hide)aiList();return;}
+  const on=open===undefined?!p.classList.contains('side-open'):!!open;
+  p.classList.toggle('side-open',on);
+  if(on){aiList();}
+}
+function aiNew(){
+  AI.thread=null;AI.title=null;AI.files=[];aiAttRender();aiHead();aiHash();
+  if(!aiWide())aiSide(false);
+  aiHome();aiMark();
+  const i=document.getElementById('ai-in');if(i&&matchMedia('(pointer:fine)').matches)setTimeout(()=>i.focus(),50);
+}
+// Today / Yesterday / Previous 7 days / Previous 30 days / by month.
+function aiGroup(d){
+  const day=x=>new Date(x).toLocaleDateString('en-CA');
+  const t=new Date(),k=day(d),n=Math.round((new Date(day(t))-new Date(k))/86400000);
+  if(n<=0)return 'Today';if(n===1)return 'Yesterday';if(n<7)return 'Previous 7 days';if(n<30)return 'Previous 30 days';
+  return new Date(d).toLocaleDateString('en-US',{month:'long',year:new Date(d).getFullYear()===t.getFullYear()?undefined:'numeric'});
+}
+let aiQTimer=null;
+function aiSearch(){clearTimeout(aiQTimer);aiQTimer=setTimeout(()=>aiList(),250);}
+async function aiList(more){
+  const el=document.getElementById('ai-list');if(!el)return;
+  const q=(document.getElementById('ai-q').value||'').trim();
+  if(!more&&!AI.threads)el.innerHTML='<div class="ai-think" style="padding:10px"><span class="ai-dots"><i></i><i></i><i></i></span></div>';
+  try{
+    const last=more&&AI.threads&&AI.threads.length?AI.threads[AI.threads.length-1].updated_at:null;
+    const {threads}=await plApi('/api/crm/assistant/threads?limit=60'+(q?'&q='+encodeURIComponent(q):'')+(last?'&before='+encodeURIComponent(last):''));
+    AI.threads=more?[...(AI.threads||[]),...threads]:threads;AI.more=!q&&threads.length===60;AI.q=q;
+    aiRenderList();
+  }catch(e){el.innerHTML='<div class="ai-none">'+uxEsc(e.message)+'</div>';}
+}
+function aiRenderList(){
+  const el=document.getElementById('ai-list');if(!el)return;
+  const list=AI.threads||[];
+  if(!list.length){el.innerHTML=`<div class="ai-none">${AI.q?'No chats match “'+uxEsc(AI.q)+'”.':'Your chats show up here. Start one by asking anything.'}</div>`;return;}
+  const hl=(t)=>{const e=uxEsc(t||'');if(!AI.q)return e;const q=uxEsc(AI.q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');return e.replace(new RegExp(q,'ig'),m=>'<mark>'+m+'</mark>');};
+  let h='',g=null;
+  for(const t of list){
+    const grp=AI.q?'Results':aiGroup(t.updated_at);
+    if(grp!==g){h+=`<div class="ai-grp">${grp}</div>`;g=grp;}
+    h+=`<div class="ai-row${t.id===AI.thread?' on':''}" data-id="${t.id}"><button class="go" onclick="aiLoad('${t.id}')" title="${uxEsc(t.title||'New chat')}"><span class="n">${hl(t.title||'New chat')}</span>${t.snippet?`<span class="sn">${hl(t.snippet)}</span>`:''}</button><span class="acts"><button onclick="aiRename('${t.id}')" aria-label="Rename" title="Rename">✎</button><button onclick="aiDel('${t.id}')" aria-label="Delete" title="Delete">🗑</button></span></div>`;
+  }
+  if(AI.more)h+='<button class="ai-more" onclick="aiList(true)">Show older chats</button>';
+  el.innerHTML=h;
+}
+function aiMark(){document.querySelectorAll('#ai-list .ai-row').forEach(r=>r.classList.toggle('on',r.dataset.id===AI.thread));}
+function aiRename(id){
+  const row=document.querySelector(`#ai-list .ai-row[data-id="${id}"]`);if(!row)return;
+  const t=(AI.threads||[]).find(x=>x.id===id)||{};
+  row.innerHTML=`<input value="${uxEsc(t.title||'')}" maxlength="80" aria-label="Chat name">`;
+  const inp=row.querySelector('input');inp.focus();inp.select();
+  let done=false;
+  const save=async(keep)=>{if(done)return;done=true;const v=inp.value.trim();
+    if(keep&&v&&v!==t.title){try{await plApi('/api/crm/assistant/threads/'+id,{method:'PATCH',body:{title:v}});t.title=v;if(AI.thread===id){AI.title=v;aiHead();}}catch(e){showNotif('Could not rename it',e.message);}}
+    aiRenderList();};
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();save(true);}else if(e.key==='Escape'){e.preventDefault();save(false);}};
+  inp.onblur=()=>save(true);
 }
 async function aiLoad(id){
-  document.getElementById('ai-hist').classList.remove('open');
-  const body=document.getElementById('ai-body');body.innerHTML='';
-  try{const v=await plApi('/api/crm/assistant/threads/'+id);AI.thread=id;
+  if(AI.busy){showNotif('One moment','Eagle I is still answering.');return;}
+  if(!aiWide())aiSide(false);
+  const body=document.getElementById('ai-body');body.innerHTML='<div class="ai-think"><span class="ai-dots"><i></i><i></i><i></i></span></div>';
+  try{const v=await plApi('/api/crm/assistant/threads/'+id);AI.loading=null;AI.thread=id;AI.title=v.thread.title;AI.files=[];aiAttRender();
+    body.innerHTML='';
     for(const m of v.messages){if(m.role==='user')aiBubble('user',uxEsc(m.text||'').replace(/\n/g,'<br>')+((m.files||[]).length?`<div class="ai-files">${m.files.map(f=>`<span class="ai-file">📄 ${uxEsc(f.filename)}</span>`).join('')}</div>`:''));else aiShowReply(m);}
-    if(!v.messages.length)aiHome();}
-  catch(e){showNotif('Could not open it',e.message);aiHome();}
+    if(!v.messages.length)aiHome();
+    aiHead();aiHash();aiMark();}
+  catch(e){AI.loading=null;showNotif('Could not open it',e.message);AI.thread=null;AI.title=null;aiHead();aiHome();}
 }
-async function aiDel(id){if(!confirm('Delete this conversation?'))return;try{await plApi('/api/crm/assistant/threads/'+id,{method:'DELETE'});if(AI.thread===id)aiNew();aiHistory();aiHistory();}catch(e){showNotif('Could not delete',e.message);}}
+async function aiDel(id){
+  const t=(AI.threads||[]).find(x=>x.id===id)||{};
+  if(!confirm(`Delete “${t.title||'this chat'}”? This can’t be undone.`))return;
+  try{await plApi('/api/crm/assistant/threads/'+id,{method:'DELETE'});AI.threads=(AI.threads||[]).filter(x=>x.id!==id);aiRenderList();if(AI.thread===id)aiNew();}
+  catch(e){showNotif('Could not delete',e.message);}
+}
 function aiMic(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
   const btn=document.getElementById('ai-mic');
