@@ -78,6 +78,15 @@ const PERM_ROUTES = [
 // Back from "Continue with Google" on the create-account page (no session yet).
 router.get('/api/crm/google/oauth/callback', (req, res, next) => require('./crmAccounts').googleCallback(req, res, next));
 
+// Pages whose answers carry dollar figures, for people without "See money":
+// [path, unless they have one of these permissions].
+const MONEY_FILTERS = [
+  [/^\/api\/crm\/jobs$/], [/^\/api\/crm\/marketing$/], [/^\/api\/crm\/today$/], [/^\/api\/crm\/inbox$/], [/^\/api\/crm\/search$/],
+  [/^\/api\/crm\/deals\/[^/]+$/], [/^\/api\/crm\/deals\/[^/]+\/(fit|coach|lifetime|outlook|pulses|activities)$/], [/^\/api\/crm\/referrals$/],
+  [/^\/api\/crm\/(estimates|deals\/[^/]+\/estimates|takeoffs)(\/.*)?$/, ['estimates']],
+  [/^\/api\/crm\/catalog$/, ['estimates', 'subs']]
+];
+
 // Everything else under /api/crm is for signed-in people at companies that use the CRM.
 router.use('/api/crm', requireAuth, async (req, res, next) => {
   try {
@@ -91,6 +100,12 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
     const p = (req.baseUrl + req.path).toLowerCase().replace(/\/+$/, '');
     const rule = PERM_ROUTES.find(([, m, re]) => m.test(req.method) && re.test(p));
     if (rule && !team.can(me, rule[0])) return res.status(403).json({ error: { message: team.denyText(rule[0]), code: 'permission' } });
+    // Without "See money", what these pages send has its dollar figures taken out
+    // (unless the person makes estimates, or works with subs, where they need them).
+    if (req.method === 'GET' && !team.can(me, 'money')) {
+      const f = MONEY_FILTERS.find(([re, unless]) => re.test(p) && !(unless || []).some(k => team.can(me, k)));
+      if (f) { const json = res.json.bind(res); res.json = (b) => json(res.statusCode < 400 ? team.hideMoney(b) : b); }
+    }
     if (await crm.hasCrm(req.tenantId)) {
       // After the trial (with billing switched on) the CRM is read-only until a plan is chosen.
       if (!['GET', 'HEAD'].includes(req.method) && !/^\/api\/crm\/(billing|me)(\/|$)/.test(req.originalUrl.split('?')[0])) {

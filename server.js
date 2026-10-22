@@ -127,6 +127,10 @@ app.use((err, req, res, next) => {
   if (err && err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: { message: 'Malformed JSON in request body.' } });
   }
+  // Too big to accept (an upload over the limit): a plain answer, not a server error.
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({ error: { message: 'That file is too big. Files can be up to 8 MB: take a smaller photo, or save it as a PDF.' } });
+  }
   next(err);
 });
 app.use(sessionMiddleware());

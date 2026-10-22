@@ -1521,6 +1521,13 @@ describe('CRM team safety, money, homeowner and sub extras, help and errors', ()
     const supCal = await (await sup.get(`/api/crm/calendar?who=all&from=${day}&to=${day}`)).json();
     assert.ok(!supCal.items.some(i => i.type === 'money'), 'no payments on their calendar');
     assert.ok(ownerCal.items.every(i => i.type !== 'money' || /Payment due/.test(i.title)));
+    // Dollar figures written in the deal's history and in the jobs list come out too.
+    const hist = await (await sup.get(`/api/crm/deals/${deal.id}`)).json();
+    assert.ok(!/\$\d/.test(JSON.stringify(hist)), 'no dollar amounts in the deal or its history');
+    assert.ok(/\$\d/.test(JSON.stringify(await (await o.get(`/api/crm/deals/${deal.id}`)).json())), 'the owner still sees them');
+    assert.ok(!/\$\d/.test(JSON.stringify(await (await sup.get('/api/crm/marketing')).json())));
+    const big = await o.raw('/api/crm-account/insurance', { method: 'POST', body: JSON.stringify({ dataBase64: 'x'.repeat(13 * 1024 * 1024) }) });
+    assert.equal(big.status, 413, 'too big is a plain answer, not a server error');
     const found = await (await sup.get('/api/crm/search?q=Deposit')).json();
     assert.ok(!found.results.some(r => r.type === 'invoice'), 'no invoices in their search');
   });
