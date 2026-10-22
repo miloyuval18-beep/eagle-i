@@ -93,7 +93,9 @@ function registerAuthRoutes(app) {
       client = await pool.connect();
       await client.query('BEGIN');
 
-      const existing = await client.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+      // Eagle I CRM logins are separate from marketing logins: the same email can have one of each.
+      const app = product === 'crm' ? 'crm' : 'marketing';
+      const existing = await client.query(`SELECT id FROM users WHERE lower(email) = $1 AND app IN ($2, 'both')`, [email.toLowerCase(), app]);
       if (existing.rows.length) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: { message: 'An account with that email already exists.' } });
@@ -112,9 +114,9 @@ function registerAuthRoutes(app) {
       const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
       const verificationToken = crypto.randomBytes(32).toString('hex');
       const userResult = await client.query(
-        `INSERT INTO users (tenant_id, email, password_hash, terms_accepted_at, email_verification_token_hash, email_verification_sent_at)
-         VALUES ($1, $2, $3, now(), $4, now()) RETURNING id`,
-        [tenantId, email.toLowerCase(), passwordHash, hashToken(verificationToken)]
+        `INSERT INTO users (tenant_id, email, password_hash, terms_accepted_at, email_verification_token_hash, email_verification_sent_at, app)
+         VALUES ($1, $2, $3, now(), $4, now(), $5) RETURNING id`,
+        [tenantId, email.toLowerCase(), passwordHash, hashToken(verificationToken), app]
       );
 
       await client.query('COMMIT');
@@ -146,15 +148,20 @@ function registerAuthRoutes(app) {
     if (!email || !password) {
       return res.status(400).json({ error: { message: 'Email and password are required.' } });
     }
+    // Eagle I CRM has its own sign-in (/api/crm-auth/login); this one is for marketing.
+    if ((req.body || {}).app === 'crm') {
+      return require('./routes/crmAccounts').crmLogin(req, res);
+    }
     try {
-      const result = await query('SELECT id, tenant_id, password_hash FROM users WHERE email = $1', [email.toLowerCase()]);
+      const result = await query(`SELECT id, tenant_id, password_hash FROM users WHERE lower(email) = $1 AND app IN ('marketing', 'both')`, [email.toLowerCase()]);
       const user = result.rows[0];
       // Always run bcrypt.compare, even with a placeholder hash, so failed
       // lookups take the same time as failed password checks (no user-enumeration timing leak).
       const hashToCheck = user ? user.password_hash : '$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidin.';
       const valid = await bcrypt.compare(password, hashToCheck);
       if (!user || !valid) {
-        return res.status(401).json({ error: { message: 'Invalid email or password.' } });
+        const crmOnly = !user && (await query(`SELECT 1 FROM users WHERE lower(email) = $1 AND app = 'crm'`, [email.toLowerCase()])).rows.length;
+        return res.status(401).json({ error: { message: crmOnly ? 'That email is an Eagle I CRM login, which is separate. Sign in at /crm/login.' : 'Invalid email or password.' } });
       }
       req.session.userId = user.id;
       req.session.tenantId = user.tenant_id;
@@ -190,13 +197,17 @@ function registerAuthRoutes(app) {
 
   app.post('/api/auth/request-password-reset', async (req, res) => {
     const { email } = req.body || {};
+    if ((req.body || {}).app === 'crm') {
+      await require('./lib/crmAccounts').forgot({ email, baseUrl: `${req.protocol}://${req.get('host')}` }).catch(e => console.warn('CRM reset failed:', e.message));
+      return res.json({ ok: true });
+    }
     // Always respond ok:true regardless of whether the email exists, so this
     // endpoint can't be used to enumerate registered accounts.
     if (!email || !EMAIL_RE.test(email)) {
       return res.json({ ok: true });
     }
     try {
-      const userRes = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+      const userRes = await query(`SELECT id FROM users WHERE lower(email) = $1 AND app IN ('marketing', 'both')`, [email.toLowerCase()]);
       if (userRes.rows.length) {
         const userId = userRes.rows[0].id;
         const token = crypto.randomBytes(32).toString('hex');
@@ -228,7 +239,7 @@ function registerAuthRoutes(app) {
       client = await pool.connect();
       await client.query('BEGIN');
       const tokenRes = await client.query(
-        `SELECT id, user_id FROM password_reset_tokens
+        `SELECT id, user_id, account_id FROM password_reset_tokens
          WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()`,
         [hashToken(token)]
       );
@@ -236,9 +247,11 @@ function registerAuthRoutes(app) {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: { message: 'That reset link is invalid or has expired.' } });
       }
-      const { id: tokenId, user_id: userId } = tokenRes.rows[0];
+      const { id: tokenId, user_id: userId, account_id: accountId } = tokenRes.rows[0];
       const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-      await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+      if (userId) await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+      // A homeowner's or sub's account (lib/crmAccounts.js).
+      else await client.query('UPDATE crm_accounts SET password_hash = $1 WHERE id = $2', [passwordHash, accountId]);
       await client.query('UPDATE password_reset_tokens SET used_at = now() WHERE id = $1', [tokenId]);
       await client.query('COMMIT');
       res.json({ ok: true });

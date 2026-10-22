@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>My Eagle I</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6f8;--card:#ffffff;--soft:#eef1f4;
+  --ink:#14202b;--ink2:#3a4855;--ink3:#55636f;
+  --bdr:#c3ccd4;--bdr2:#8794a0;--accent:#1f4e79;--accent2:#173b5c;--err:#a12a1f;--ok:#067647;
+  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:18.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:#fff;border-bottom:1px solid var(--bdr)}
+.brand{font-size:22px;font-weight:800;line-height:1.2}.brand span{color:var(--accent);display:block;font-size:16px;font-weight:700}
+main{max-width:640px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:26px;margin:4px 0 4px}
+h2{font-size:21px;margin:0 0 6px}
+.sub{font-size:17px;color:var(--ink3)}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:18px;margin-top:14px}
+label{display:block;font-size:16px;font-weight:700;color:var(--ink2);margin:12px 0 5px}
+label .opt{font-weight:400;color:var(--ink3)}
+input{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:18.5px;color:var(--ink);outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
+.hint{font-size:15.5px;color:var(--ink3);margin-top:4px}
+.btn{display:inline-block;padding:13px 18px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-family:var(--f);font-size:18px;font-weight:800;cursor:pointer;text-decoration:none;text-align:center}
+.btn:hover{background:var(--accent2)}
+.btn:disabled{opacity:.5}
+.btn.o{background:#fff;color:var(--accent);border:1.5px solid var(--accent)}
+.btn.sm{padding:9px 14px;font-size:16.5px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.link{background:none;border:0;color:var(--accent);font-family:var(--f);font-size:17px;text-decoration:underline;cursor:pointer;padding:0}
+.err{color:var(--err);font-size:17px;margin-top:8px;min-height:1em}
+.note{background:#f6f9fc;border:1px solid #c9d8e8;border-radius:10px;padding:12px 14px;font-size:17px;color:var(--ink2);margin-top:12px}
+.note.ok{background:#ecfdf3;border-color:#abefc6}
+.note.warn{background:#fffaeb;border-color:#fedf89}
+.steps{display:flex;gap:6px;margin:10px 0 2px}
+.steps i{flex:1;height:7px;border-radius:4px;background:#d0d5dd}
+.steps i.on{background:var(--accent)}
+.item{border:1px solid var(--bdr);border-radius:12px;padding:14px;margin-top:10px;background:#fff}
+.item b{font-size:19px;display:block}
+.item .d{font-size:16.5px;color:var(--ink3);margin-top:2px}
+.pill{display:inline-block;font-size:15px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--soft);color:var(--ink2);margin-top:6px}
+.empty{color:var(--ink3);font-size:17px;margin-top:8px}
+[hidden]{display:none!important}
+</style>
+<link rel="stylesheet" href="/eaglei-theme.css">
+</head>
+<body>
+<header><div class="brand">Eagle I <span id="kind-label"></span></div><button class="btn o sm" onclick="signOut()">Sign out</button></header>
+<main id="app"><div class="sub">Loading…</div></main>
+<script>
+const $=(id)=>document.getElementById(id);
+const esc=(s)=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let D=null,STEP=0;
+const q=new URLSearchParams(location.search);
+async function call(url,body,method){
+  const r=await fetch(url,{method:method||(body?'POST':'GET'),headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  let d={};try{d=await r.json();}catch(e){}
+  if(r.status===401){location.href='/crm/login';throw new Error('Not signed in');}
+  if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
+  return d;
+}
+let FIRST=true;
+async function load(){D=await call('/api/crm-account');
+  // Back from the confirmation link: carry on where they were (the list).
+  if(FIRST&&q.get('confirmed')==='1'&&!D.account.setup_done_at)STEP=steps().indexOf('list');FIRST=false;
+  $('kind-label').textContent=D.account.kind==='sub'?'for subs':'for homeowners';render();}
+const isSub=()=>D.account.kind==='sub';
+const list=()=>isSub()?D.builders:D.projects;
+const niceDay=(s)=>new Date(s).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+
+// ---------- guided setup ----------
+function steps(){return isSub()?['biz','insurance','email','list']:['you','email','list'];}
+function render(){
+  const a=D.account,el=$('app');
+  const banner=q.get('confirmed')==='1'?'<div class="note ok">✓ Your email is confirmed.</div>':q.get('confirmed')==='0'?'<div class="note warn">That confirmation link didn’t work (it may be old). Send a new one below.</div>':'';
+  if(!a.setup_done_at){el.innerHTML=banner+setupHtml();return;}
+  el.innerHTML=banner+`<h1>Hi ${esc((a.name||'').split(' ')[0])}</h1><div class="sub">${isSub()?'The builders you work with. Open a builder’s page for your jobs, dates, plans and bid requests.':'Your projects. Open one for updates, visits, estimates, invoices, photos and messages with your builder.'}</div>
+    ${a.email_verified?'':emailCard()}
+    <div class="card"><h2>${isSub()?'Your builders':'Your projects'}</h2>${listHtml()}${addHtml()}</div>
+    <div class="card"><h2>Your details</h2>${detailsHtml()}<div class="btns"><button class="btn" onclick="saveDetails(this)">Save</button></div><div class="err" id="det-err"></div></div>
+    <div class="card"><h2>Password</h2><label for="pw-cur">Current password</label><input id="pw-cur" type="password" autocomplete="current-password"><label for="pw-new">New password <span class="opt">(at least 8 characters)</span></label><input id="pw-new" type="password" autocomplete="new-password"><div class="btns"><button class="btn o" onclick="changePw(this)">Change password</button></div><div class="err" id="pw-err"></div></div>`;
+}
+function setupHtml(){
+  const st=steps(),k=st[Math.min(STEP,st.length-1)],a=D.account;
+  const bar=`<div class="steps" aria-hidden="true">${st.map((_,i)=>`<i class="${i<=STEP?'on':''}"></i>`).join('')}</div><div class="sub">Step ${STEP+1} of ${st.length}</div>`;
+  let body='';
+  if(k==='you')body=`<h2>Your details</h2><div class="sub">So your builder knows how to reach you.</div>${detailsHtml()}`;
+  if(k==='biz')body=`<h2>Your business</h2><div class="sub">Builders see this. It fills in anything they don’t already have on file for you.</div>${detailsHtml()}`;
+  if(k==='insurance')body=`<h2>Your insurance</h2><div class="sub">When does your liability insurance run out? Builders need a current certificate before you start a job; Eagle I reminds them (and you) before it expires.</div>
+    <label for="d-ins">Insurance runs out on <span class="opt">(optional)</span></label><input id="d-ins" type="date" value="${esc(a.insurance_expires||'')}"><div class="hint">You can skip this and add it later.</div>`;
+  if(k==='email')body=`<h2>Confirm your email</h2>${a.email_verified?'<div class="note ok">✓ '+esc(a.email)+' is confirmed.</div>':`<div class="sub">We sent a link to <b>${esc(a.email)}</b>. Tap it, then come back here. ${isSub()?'Builders who have this email':'Projects with this email'} show up once it’s confirmed, so nobody else can see them.</div><div class="btns"><button class="btn o" onclick="resend(this)">Send the link again</button><button class="btn o" onclick="load()">I’ve tapped it</button></div><div class="hint" id="rs-msg">Not there? Check your spam or junk folder.</div>`}`;
+  if(k==='list')body=`<h2>${isSub()?'Your builders':'Your projects'}</h2>${listHtml()}${addHtml()}`;
+  const last=STEP>=st.length-1;
+  return `<h1>Let’s set up your account</h1>${bar}<div class="card">${body}<div class="btns"><button class="btn" onclick="next(this)">${last?'Finish':'Next'}</button>${STEP>0?'<button class="link" onclick="STEP--;render()">← Back</button>':''}${!last&&(k==='insurance'||k==='email')?'<button class="link" onclick="STEP++;render()">Skip for now</button>':''}</div><div class="err" id="st-err"></div></div>`;
+}
+function detailsHtml(){
+  const a=D.account;
+  return (isSub()?`<label for="d-biz">Business name</label><input id="d-biz" value="${esc(a.business_name)}" autocomplete="organization">
+    <label for="d-trade">Trade <span class="opt">(optional)</span></label><input id="d-trade" value="${esc(a.trade)}" placeholder="Framing, electrical, tile, lumber…">
+    <label for="d-lic">License number <span class="opt">(optional)</span></label><input id="d-lic" value="${esc(a.license)}">`:'')+
+    `<label for="d-name">Your name</label><input id="d-name" value="${esc(a.name)}" autocomplete="name">
+    <label for="d-phone">Phone <span class="opt">(optional)</span></label><input id="d-phone" type="tel" inputmode="tel" value="${esc(a.phone)}" placeholder="713-555-0100" autocomplete="tel">`+
+    (isSub()?'':`<label for="d-addr">Your home’s address <span class="opt">(optional)</span></label><input id="d-addr" value="${esc(a.address)}" autocomplete="street-address">`)+
+    (isSub()&&a.setup_done_at?`<label for="d-ins">Insurance runs out on <span class="opt">(optional)</span></label><input id="d-ins" type="date" value="${esc(a.insurance_expires||'')}">`:'');
+}
+function detailsBody(){
+  const v=(id)=>{const e=$(id);return e?e.value:undefined;};
+  const b={name:v('d-name'),phone:v('d-phone'),address:v('d-addr'),businessName:v('d-biz'),trade:v('d-trade'),license:v('d-lic'),insuranceExpires:v('d-ins')};
+  Object.keys(b).forEach(k=>b[k]===undefined&&delete b[k]);return b;
+}
+async function next(btn){
+  const st=steps(),k=st[STEP],last=STEP>=st.length-1;btn.disabled=true;
+  try{
+    const body=['you','biz','insurance'].includes(k)?detailsBody():{};
+    if(last)body.done=true;
+    if(Object.keys(body).length){const r=await call('/api/crm-account',body,'PATCH');D.account=r.account;}
+    if(last){await load();window.scrollTo(0,0);return;}
+    STEP++;if(steps()[STEP]==='list'||steps()[STEP]==='email')D=await call('/api/crm-account');render();window.scrollTo(0,0);
+  }catch(x){$('st-err').textContent=x.message;btn.disabled=false;}
+}
+function emailCard(){return `<div class="note warn"><b>Confirm your email</b> to see ${isSub()?'every builder who has':'every project with'} ${esc(D.account.email)}. We sent you a link. <button class="link" onclick="resend(this)">Send it again</button></div>`;}
+function listHtml(){
+  const L=list()||[];
+  if(!L.length)return `<div class="empty">${!D.account.email_verified?'Nothing yet: confirm your email first.':isSub()?'No builders have '+esc(D.account.email)+' in their subs list yet. When one adds you, or sends you a link, they show up here.':'No builders have '+esc(D.account.email)+' on a project yet. When your builder adds you, it shows up here.'}</div>`;
+  return L.map(x=>isSub()
+    ?`<div class="item"><b>${esc(x.builder)}</b><div class="d">${x.jobs?x.jobs+' job'+(x.jobs===1?'':'s')+' underway':'No jobs underway'}${x.bids?' · <b style="display:inline;font-size:inherit">'+x.bids+' bid request'+(x.bids===1?'':'s')+' waiting</b>':''}${x.builderPhone?' · '+esc(x.builderPhone):''}</div><div class="btns" style="margin-top:10px"><a class="btn sm" href="${esc(x.url)}">Open my page with ${esc(x.builder)}</a></div></div>`
+    :`<div class="item"><b>${esc(x.title)}</b><div class="d">${esc(x.builder)}${x.address?' · '+esc(x.address):''}</div><span class="pill">${esc(x.status)}</span>${x.nextVisit?`<div class="d">Next visit: ${niceDay(x.nextVisit)}</div>`:''}<div class="btns" style="margin-top:10px"><a class="btn sm" href="${esc(x.url)}">Open my project</a>${x.builderPhone?`<a class="btn o sm" href="tel:${esc(x.builderPhone)}">Call ${esc(x.builder)}</a>`:''}</div></div>`).join('');
+}
+function addHtml(){return `<details style="margin-top:14px"><summary style="cursor:pointer;font-size:17px;color:var(--accent)">${isSub()?'A builder sent you a link? Add it here':'Your builder sent you a link? Add it here'}</summary>
+  <label for="lnk">Paste the link from the email</label><input id="lnk" placeholder="https://myeaglei.com/${isSub()?'s':'p'}/…" autocomplete="off"><div class="btns"><button class="btn o sm" onclick="addLink(this)">Add it</button></div><div class="err" id="lnk-err"></div></details>`;}
+async function addLink(btn){btn.disabled=true;try{const r=await call('/api/crm-account/link',{url:$('lnk').value});D=await call('/api/crm-account');render();alert('Added: '+r.linked);}catch(x){$('lnk-err').textContent=x.message;btn.disabled=false;}}
+async function resend(btn){btn.disabled=true;try{const r=await call('/api/crm-account/resend',{});const m=$('rs-msg');if(m)m.textContent=r.sent?'Sent. Check your inbox (and spam folder).':'The email couldn’t be sent right now. Try again in a few minutes.';else alert(r.sent?'Sent. Check your inbox (and spam folder).':'The email couldn’t be sent right now.');}catch(x){alert(x.message);}btn.disabled=false;}
+async function saveDetails(btn){btn.disabled=true;$('det-err').textContent='';try{const r=await call('/api/crm-account',detailsBody(),'PATCH');D.account=r.account;$('det-err').innerHTML='<span style="color:var(--ok)">Saved.</span>';}catch(x){$('det-err').textContent=x.message;}btn.disabled=false;}
+async function changePw(btn){btn.disabled=true;$('pw-err').textContent='';try{await call('/api/crm-account/password',{current:$('pw-cur').value,password:$('pw-new').value});$('pw-err').innerHTML='<span style="color:var(--ok)">Password changed.</span>';$('pw-cur').value=$('pw-new').value='';}catch(x){$('pw-err').textContent=x.message;}btn.disabled=false;}
+async function signOut(){await fetch('/api/auth/logout',{method:'POST'});location.href='/crm/login';}
+load().catch(e=>{$('app').innerHTML='<div class="note warn">'+esc(e.message)+'</div>';});
+</script>
+</body>
+</html>

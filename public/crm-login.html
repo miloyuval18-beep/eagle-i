@@ -10,29 +10,44 @@
 :root{
   --bg:#f4f6f8;--card:#ffffff;--soft:#eef1f4;
   --ink:#14202b;--ink2:#3a4855;--ink3:#55636f;
-  --bdr:#c3ccd4;--bdr2:#8794a0;--accent:#1f4e79;--accent2:#173b5c;--err:#a12a1f;
+  --bdr:#c3ccd4;--bdr2:#8794a0;--accent:#1f4e79;--accent2:#173b5c;--err:#a12a1f;--ok:#067647;
   --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:18.5px;line-height:1.5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-font-smoothing:antialiased}
-.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:28px 24px;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:18.5px;line-height:1.5;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;-webkit-font-smoothing:antialiased}
+.card{width:100%;max-width:480px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:28px 22px;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
 .brand{font-size:26px;font-weight:800;text-align:center;color:var(--ink)}
 .brand span{color:var(--accent)}
 .tag{font-size:17px;color:var(--ink3);text-align:center;margin:4px 0 20px}
 .tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--soft);border-radius:9px;padding:4px}
 .tab{flex:1;text-align:center;padding:10px;border-radius:6px;cursor:pointer;font-size:17.5px;font-weight:700;color:var(--ink3);border:0;background:transparent;font-family:var(--f)}
 .tab.active{background:var(--accent);color:#fff}
+h2{font-size:21px;margin:2px 0 4px}
+.sub{font-size:16.5px;color:var(--ink3);margin-bottom:6px}
 label{display:block;font-size:16px;font-weight:700;color:var(--ink2);margin:12px 0 5px}
-input{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:18.5px;color:var(--ink);outline:none}
-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
-.check{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:16px;color:var(--ink2)}
-.check input{width:18px;height:18px;margin-top:2px;flex:0 0 auto}
-.check a,.forgot{color:var(--accent)}
-.btn{width:100%;margin-top:18px;padding:13px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-family:var(--f);font-size:18.5px;font-weight:800;cursor:pointer}
+label .opt{font-weight:400;color:var(--ink3)}
+input,textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius:8px;padding:12px 13px;font-family:var(--f);font-size:18.5px;color:var(--ink);outline:none}
+input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
+.hint{font-size:15.5px;color:var(--ink3);margin-top:4px}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-size:16px;color:var(--ink2)}
+.check input{width:22px;height:22px;margin-top:2px;flex:0 0 auto}
+.check a,.link{color:var(--accent)}
+.btn{width:100%;margin-top:18px;padding:14px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-family:var(--f);font-size:18.5px;font-weight:800;cursor:pointer}
 .btn:hover{background:var(--accent2)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.o{background:#fff;color:var(--accent);border:1.5px solid var(--accent);margin-top:10px}
 .err{color:var(--err);font-size:17px;margin-top:10px;min-height:20px}
-.forgot{display:inline-block;margin-top:10px;font-size:17px}
+.link{display:inline-block;margin-top:12px;font-size:17px;background:none;border:0;font-family:var(--f);cursor:pointer;padding:0;text-decoration:underline}
+.choices{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.choice{display:flex;gap:14px;align-items:flex-start;text-align:left;width:100%;background:#fff;border:1.5px solid var(--bdr);border-radius:12px;padding:14px;cursor:pointer;font-family:var(--f);color:var(--ink)}
+.choice:hover,.choice:focus-visible{border-color:var(--accent);background:#f6f9fc}
+.choice .ic{font-size:30px;line-height:1;flex:0 0 auto}
+.choice b{display:block;font-size:19px}
+.choice span{display:block;font-size:16px;color:var(--ink3);margin-top:2px}
+.note{background:#f6f9fc;border:1px solid #c9d8e8;border-radius:10px;padding:12px 14px;font-size:16.5px;color:var(--ink2);margin-top:12px}
+.note.ok{background:#ecfdf3;border-color:#abefc6}
+.row{display:flex;gap:8px;align-items:flex-end}
+.row .btn{width:auto;margin-top:0;padding:12px 16px;white-space:nowrap}
 .foot{font-size:16px;color:var(--ink3);text-align:center;margin-top:18px}
 .foot a{color:var(--ink2)}
 [hidden]{display:none!important}
@@ -42,55 +57,126 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
 <body>
 <main class="card">
   <div class="brand">Eagle I <span>CRM</span></div>
-  <div class="tag">The self-running pipeline for builders and remodelers</div>
+  <div class="tag">For builders, their teams, homeowners and subs</div>
+  <div class="note" id="mkt-note" hidden>You’re signed in to Eagle I marketing. Eagle I CRM has its own accounts: sign in below, or create one.</div>
   <div class="tabs" role="tablist">
     <button class="tab active" id="tab-in" role="tab" aria-selected="true" onclick="show('in')">Sign in</button>
     <button class="tab" id="tab-up" role="tab" aria-selected="false" onclick="show('up')">Create account</button>
   </div>
+
   <form id="form-in" onsubmit="signIn(event)">
-    <label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" required>
+    <label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" inputmode="email" required>
     <label for="in-pw">Password</label><input id="in-pw" type="password" autocomplete="current-password" required>
     <button class="btn" id="in-btn">Sign in</button>
     <div class="err" id="in-err" role="alert"></div>
-    <a class="forgot" href="/forgot-password.html">Forgot password?</a>
+    <div id="in-choose" hidden><div class="sub" style="margin-top:6px">This email has more than one account. Which one?</div><div class="choices" id="in-choices"></div></div>
+    <a class="link" href="/forgot-password.html?app=crm">Forgot password?</a>
   </form>
+
+  <section id="pick" hidden>
+    <h2>What brings you to Eagle I?</h2>
+    <div class="sub">Pick the one that fits. You can make another kind of account later with the same email.</div>
+    <div class="choices">
+      <button class="choice" onclick="pick('company')"><span class="ic" aria-hidden="true">🏢</span><span><b>Start my company</b><span>I own or run a building or remodeling company and want to set it up on Eagle I.</span></span></button>
+      <button class="choice" onclick="pick('join')"><span class="ic" aria-hidden="true">👷</span><span><b>Join my company</b><span>My company already uses Eagle I and I work there.</span></span></button>
+      <button class="choice" onclick="pick('homeowner')"><span class="ic" aria-hidden="true">🏠</span><span><b>I’m a homeowner</b><span>See my project, updates, visits, estimates and invoices from my builder.</span></span></button>
+      <button class="choice" onclick="pick('sub')"><span class="ic" aria-hidden="true">🔨</span><span><b>I’m a sub or supplier</b><span>See the jobs, dates, plans and bid requests from the builders I work with.</span></span></button>
+    </div>
+  </section>
+
   <form id="form-up" onsubmit="signUp(event)" hidden>
-    <label for="up-company">Company name</label><input id="up-company" autocomplete="organization" required>
-    <label for="up-email">Email</label><input id="up-email" type="email" autocomplete="email" required>
-    <label for="up-pw">Password (at least 8 characters)</label><input id="up-pw" type="password" autocomplete="new-password" minlength="8" required>
+    <button type="button" class="link" style="margin-top:0" onclick="show('up')">← Back</button>
+    <h2 id="up-title" style="margin-top:8px"></h2>
+    <div class="sub" id="up-sub"></div>
+    <div id="f-code" hidden>
+      <div class="note">Got an invitation email? Tap the link in it instead; it lets you straight in.</div>
+      <label for="up-code">Company code</label>
+      <div class="row"><input id="up-code" autocomplete="off" autocapitalize="characters" placeholder="ABCD-2345" maxlength="9"><button type="button" class="btn" onclick="checkCode()">Check</button></div>
+      <div class="hint">The owner or an admin finds it under Account → Team.</div>
+      <div class="note ok" id="code-ok" hidden></div>
+    </div>
+    <div id="f-company" hidden><label for="up-company">Company name</label><input id="up-company" autocomplete="organization"></div>
+    <div id="f-biz" hidden>
+      <label for="up-biz">Business name</label><input id="up-biz" autocomplete="organization">
+      <div class="hint">If you work for yourself, your own name is fine.</div>
+      <label for="up-trade">Trade <span class="opt">(optional)</span></label><input id="up-trade" placeholder="Framing, electrical, tile, lumber…" autocomplete="off">
+    </div>
+    <label for="up-name">Your name</label><input id="up-name" autocomplete="name" required>
+    <label for="up-phone">Phone <span class="opt">(optional)</span></label><input id="up-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="713-555-0100">
+    <label for="up-email">Email</label><input id="up-email" type="email" inputmode="email" autocomplete="email" required>
+    <div class="hint" id="up-email-hint"></div>
+    <label for="up-pw">Password <span class="opt">(at least 8 characters)</span></label><input id="up-pw" type="password" autocomplete="new-password" minlength="8" required>
+    <div id="f-note" hidden><label for="up-note">Note for the owner <span class="opt">(optional)</span></label><input id="up-note" placeholder="Hi, it’s Sam, the new superintendent" maxlength="300"></div>
     <div class="check"><input type="checkbox" id="up-terms" required><label for="up-terms" style="margin:0;font-weight:400">I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></label></div>
     <button class="btn" id="up-btn">Create account</button>
     <div class="err" id="up-err" role="alert"></div>
   </form>
-  <div class="foot">Looking for Eagle I marketing? <a href="/login.html">Sign in here</a></div>
+
+  <section id="sent" hidden>
+    <h2>Request sent</h2>
+    <div class="note ok" id="sent-msg"></div>
+    <button class="btn o" onclick="show('in')">Back to sign in</button>
+  </section>
+
+  <div class="foot">Looking for Eagle I marketing? It has separate logins: <a href="/login.html">sign in here</a></div>
 </main>
 <script>
+const COPY={
+  company:{t:'Start my company',s:'You’ll be the owner. Next, Eagle I walks you through setting everything up: your company details, your team, your email and your customers.',e:'Use your work email.',b:'Create my company'},
+  join:{t:'Join my company',s:'Enter the code from your company. The owner or an admin lets you in and picks your role.',e:'Use the email you use for work.',b:'Ask to join'},
+  homeowner:{t:'I’m a homeowner',s:'Your projects show up once you confirm your email.',e:'Use the email your builder has for you, so your project shows up.',b:'Create my account'},
+  sub:{t:'I’m a sub or supplier',s:'The builders you work with show up once you confirm your email.',e:'Use the email builders send your work to, so they show up.',b:'Create my account'}
+};
+let TYPE=null,CODE_OK=null;
+const $=(id)=>document.getElementById(id);
 function show(which){
-  document.getElementById('form-in').hidden=which!=='in';
-  document.getElementById('form-up').hidden=which!=='up';
-  for(const k of ['in','up']){const t=document.getElementById('tab-'+k);t.classList.toggle('active',k===which);t.setAttribute('aria-selected',k===which);}
+  for(const id of ['form-in','pick','form-up','sent'])$(id).hidden=true;
+  if(which==='in')$('form-in').hidden=false;else if(which==='up')$('pick').hidden=false;else $(which).hidden=false;
+  for(const k of ['in','up']){const t=$('tab-'+k);const on=k===which||(k==='up'&&which!=='in');t.classList.toggle('active',on);t.setAttribute('aria-selected',on);}
 }
-if(location.hash==='#signup')show('up');
-async function post(url,body){
-  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+function pick(type){
+  TYPE=type;const c=COPY[type];
+  $('up-title').textContent=c.t;$('up-sub').textContent=c.s;$('up-email-hint').textContent=c.e;$('up-btn').textContent=c.b;
+  $('f-code').hidden=type!=='join';$('f-company').hidden=type!=='company';$('f-biz').hidden=type!=='sub';$('f-note').hidden=type!=='join';
+  $('up-err').textContent='';show('form-up');
+  (type==='join'?$('up-code'):type==='company'?$('up-company'):type==='sub'?$('up-biz'):$('up-name')).focus();
+}
+async function call(url,body,method){
+  const r=await fetch(url,{method:method||'POST',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
   let d={};try{d=await r.json();}catch(e){}
   if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
   return d;
 }
-async function signIn(e){
-  e.preventDefault();const b=document.getElementById('in-btn'),err=document.getElementById('in-err');
-  b.disabled=true;err.textContent='';
-  try{await post('/api/auth/login',{email:document.getElementById('in-email').value,password:document.getElementById('in-pw').value});location.href='/crm';}
-  catch(x){err.textContent=x.message;b.disabled=false;}
+async function checkCode(){
+  const ok=$('code-ok');ok.hidden=true;$('up-err').textContent='';
+  try{const d=await call('/api/crm-auth/company-code?code='+encodeURIComponent($('up-code').value),null,'GET');CODE_OK=d.code;$('up-code').value=d.code;ok.textContent='✓ You’re asking to join '+d.companyName+'.';ok.hidden=false;}
+  catch(x){CODE_OK=null;$('up-err').textContent=x.message;}
 }
-async function signUp(e){
-  e.preventDefault();const b=document.getElementById('up-btn'),err=document.getElementById('up-err');
+async function signIn(e,as){
+  if(e)e.preventDefault();const b=$('in-btn'),err=$('in-err');
   b.disabled=true;err.textContent='';
   try{
-    await post('/api/auth/signup',{companyName:document.getElementById('up-company').value,email:document.getElementById('up-email').value,password:document.getElementById('up-pw').value,industry:'home_services',acceptedTerms:document.getElementById('up-terms').checked,product:'crm'});
-    location.href='/crm';
+    const d=await call('/api/crm-auth/login',{email:$('in-email').value,password:$('in-pw').value,as});
+    if(d.choose){$('in-choices').innerHTML=d.choose.map(c=>`<button type="button" class="btn o" onclick="signIn(null,'${c.as}')">${c.label.replace(/[<>&]/g,'')}</button>`).join('');$('in-choose').hidden=false;b.disabled=false;return;}
+    location.href=d.go||'/crm';
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
+async function signUp(e){
+  e.preventDefault();const b=$('up-btn'),err=$('up-err');
+  if(TYPE==='join'&&!CODE_OK){await checkCode();if(!CODE_OK)return;}
+  b.disabled=true;err.textContent='';
+  try{
+    const d=await call('/api/crm-auth/signup',{type:TYPE,code:$('up-code').value,companyName:$('up-company').value,businessName:$('up-biz').value,trade:$('up-trade').value,
+      name:$('up-name').value,phone:$('up-phone').value,email:$('up-email').value,password:$('up-pw').value,note:$('up-note').value,acceptedTerms:$('up-terms').checked});
+    if(d.pending){$('sent-msg').textContent=`We asked ${d.companyName} to let you in. You’ll get an email when they do, then sign in here with the email and password you just picked.`;show('sent');return;}
+    location.href=d.go||'/crm';
+  }catch(x){err.textContent=x.message;b.disabled=false;}
+}
+// Links: /crm/login#signup, ?code=ABCD-2345 (from the Team screen), ?marketing=1.
+const q=new URLSearchParams(location.search);
+if(q.get('marketing'))$('mkt-note').hidden=false;
+if(q.get('code')){pick('join');$('up-code').value=q.get('code');checkCode();}
+else if(location.hash==='#signup')show('up');
 </script>
 </body>
 </html>

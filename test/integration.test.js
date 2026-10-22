@@ -1098,21 +1098,24 @@ describe('pipeline (CRM)', () => {
     assert.equal((await makeClient().get('/crm')).headers.get('location'), '/crm/login');
   });
 
-  test('a marketing company cannot use the CRM until it switches it on, and its leads stay out of it until then', async () => {
-    const client = await signup('mkt-only', 'marketing');
-    const blocked = await client.get('/api/crm/pipeline');
-    assert.equal(blocked.status, 403);
-    assert.equal((await blocked.json()).error.code, 'no_crm');
+  test('marketing logins and CRM logins are separate', async () => {
+    const mkt = await signup('mkt-only', 'marketing');
+    assert.equal((await mkt.get('/api/crm/pipeline')).status, 401, 'a marketing login never opens the CRM');
+    assert.equal((await mkt.get('/crm')).headers.get('location'), '/crm/login?marketing=1');
+    assert.equal((await mkt.post('/api/crm/activate', {})).status, 410);
+    // The same email can have its own CRM account, with its own password.
     const pool = getTestPool();
-    try {
-      await pool.query(`INSERT INTO landing_pages (tenant_id, slug, headline, status) VALUES ($1, $2, 'H', 'published')`, [client.tenantId, `mkt-${client.tenantId.slice(0, 8)}`]);
-    } finally { await pool.end(); }
-    await makeClient().post(`/lp/mkt-${client.tenantId.slice(0, 8)}/submit`, { name: 'Form Person', email: 'form@example.test' });
-    assert.equal((await client.post('/api/crm/activate', {})).status, 200);
-    const pipe = await (await client.get('/api/crm/pipeline')).json();
-    // Switching it on brings existing leads in.
-    assert.equal(pipe.deals.length, 1);
-    assert.equal(pipe.deals[0].contact_name, 'Form Person');
+    let email;
+    try { email = (await pool.query('SELECT email FROM users WHERE tenant_id = $1', [mkt.tenantId])).rows[0].email; } finally { await pool.end(); }
+    const crm = makeClient();
+    const r = await crm.post('/api/crm-auth/signup', { type: 'company', companyName: 'Same Person Builders', name: 'Sam Same', email, password: 'CrmPass12345!', acceptedTerms: true });
+    assert.equal(r.status, 200);
+    trackTenant(await getTenantOf(email, 'crm'));
+    assert.equal((await crm.get('/api/crm/pipeline')).status, 200);
+    assert.equal((await crm.get('/api/leads')).status, 403, 'and the CRM login doesn’t open marketing');
+    assert.equal((await makeClient().post('/api/crm-auth/login', { email, password: 'TestPass1234!' })).status, 401, 'the marketing password doesn’t open the CRM');
+    assert.equal((await makeClient().post('/api/auth/login', { email, password: 'CrmPass12345!' })).status, 401, 'nor the other way');
+    assert.equal((await makeClient().post('/api/auth/login', { email, password: 'TestPass1234!' })).status, 200);
   });
 
   test('company details for email footers can be saved', async () => {
@@ -1187,6 +1190,157 @@ describe('pipeline (CRM)', () => {
     assert.equal((await a.delete(`/api/crm/deals/${deal.id}`)).status, 404);
     const pipeA = await (await a.get('/api/crm/pipeline')).json();
     assert.equal(pipeA.deals.length, 0);
+  });
+});
+
+async function getTenantOf(email, app) {
+  const pool = getTestPool();
+  try { return ((await pool.query('SELECT tenant_id FROM users WHERE lower(email) = lower($1) AND app = $2', [email, app])).rows[0] || {}).tenant_id; } finally { await pool.end(); }
+}
+
+describe('CRM accounts: create a company, join one, homeowners and subs', () => {
+  const pw = 'AcctPass1234!';
+  const made = [];
+  after(async () => {
+    const pool = getTestPool();
+    try { await pool.query('DELETE FROM crm_accounts WHERE lower(email) = ANY($1::text[])', [made.map(e => e.toLowerCase())]); } finally { await pool.end(); }
+  });
+  async function company() {
+    const c = makeClient();
+    const email = uniqueEmail('acct-owner');
+    const r = await c.post('/api/crm-auth/signup', { type: 'company', companyName: 'Acct Builders', name: 'Olga Owner', phone: '713-555-0100', email, password: pw, acceptedTerms: true });
+    assert.equal(r.status, 200);
+    assert.equal((await r.json()).go, '/crm');
+    c.tenantId = await getTenantOf(email, 'crm'); trackTenant(c.tenantId);
+    c.email = email;
+    return c;
+  }
+
+  test('creating a company makes you its owner and starts the guided setup', async () => {
+    const c = await company();
+    const me = await (await c.get('/api/crm/me')).json();
+    assert.equal(me.role, 'owner'); assert.equal(me.companyName, 'Acct Builders'); assert.equal(me.name, 'Olga Owner');
+    assert.equal(me.needsSetup, true);
+    assert.equal((await c.post('/api/crm-auth/signup', { type: 'company', companyName: 'Again', name: 'O', email: c.email, password: pw, acceptedTerms: true })).status, 409);
+    assert.equal((await makeClient().post('/api/crm-auth/signup', { type: 'company', companyName: 'X', name: 'X', email: uniqueEmail('x'), password: pw })).status, 400, 'terms must be ticked');
+    assert.equal((await c.post('/api/crm/setup/done', {})).status, 200);
+    assert.equal((await (await c.get('/api/crm/me')).json()).needsSetup, false);
+    assert.equal((await c.patch('/api/crm/me', { phone: '12' })).status, 400);
+  });
+
+  test('joining with the company code waits for the owner, who picks the role', async () => {
+    const c = await company();
+    const { code, requests } = await (await c.get('/api/crm/join-code')).json();
+    assert.match(code, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/); assert.equal(requests.length, 0);
+    assert.equal((await (await makeClient().get('/api/crm-auth/company-code?code=' + code.toLowerCase().replace('-', ''))).json()).companyName, 'Acct Builders');
+    assert.equal((await makeClient().get('/api/crm-auth/company-code?code=ZZZZ-ZZZZ')).status, 404);
+    const email = uniqueEmail('acct-joiner');
+    const j = makeClient();
+    const r = await (await j.post('/api/crm-auth/signup', { type: 'join', code, name: 'Jo Joiner', email, password: pw, note: 'New super', acceptedTerms: true })).json();
+    assert.equal(r.pending, true); assert.equal(r.companyName, 'Acct Builders');
+    assert.equal((await j.get('/api/crm/me')).status, 401, 'not in yet');
+    const login = await makeClient().post('/api/crm-auth/login', { email, password: pw });
+    assert.equal(login.status, 403); assert.match((await login.json()).error.message, /waiting for the owner/);
+    const today = await (await c.get('/api/crm/today')).json();
+    assert.ok(today.inbox.some(i => /Jo Joiner asked to join/.test(i.title)), 'the owner sees it in Today');
+    const reqs = (await (await c.get('/api/crm/join-code')).json()).requests;
+    assert.equal(reqs.length, 1); assert.equal(reqs[0].note, 'New super');
+    const ownerId = (await (await c.get('/api/crm/me')).json()).userId;
+    assert.equal((await c.post('/api/crm/join-requests/' + reqs[0].id, { approve: true, role: 'superintendent', reportsTo: ownerId })).status, 200);
+    const s = makeClient();
+    const ok = await (await s.post('/api/crm-auth/login', { email, password: pw })).json();
+    assert.equal(ok.go, '/crm');
+    const me = await (await s.get('/api/crm/me')).json();
+    assert.equal(me.role, 'superintendent'); assert.equal(me.needsSetup, true, 'their own short setup');
+    assert.equal((await s.get('/api/crm/join-code')).status, 403, 'only the owner or an admin sees the code');
+    // A fresh code stops the old one working.
+    const fresh = (await (await c.post('/api/crm/join-code/new', {})).json()).code;
+    assert.notEqual(fresh, code);
+    assert.equal((await makeClient().get('/api/crm-auth/company-code?code=' + code)).status, 404);
+  });
+
+  test('an invited person who uses the company code goes straight in with their invitation’s role', async () => {
+    const c = await company();
+    const email = uniqueEmail('acct-invited');
+    await c.post('/api/crm/team/invites', { email, name: 'Ivy', role: 'office' });
+    const { code } = await (await c.get('/api/crm/join-code')).json();
+    const j = makeClient();
+    const r = await (await j.post('/api/crm-auth/signup', { type: 'join', code, name: 'Ivy Invited', email, password: pw, acceptedTerms: true })).json();
+    assert.equal(r.go, '/crm');
+    assert.equal((await (await j.get('/api/crm/me')).json()).role, 'office');
+  });
+
+  test('saying no to a join request', async () => {
+    const c = await company();
+    const { code } = await (await c.get('/api/crm/join-code')).json();
+    const email = uniqueEmail('acct-stranger');
+    await makeClient().post('/api/crm-auth/signup', { type: 'join', code, name: 'Stranger', email, password: pw, acceptedTerms: true });
+    const id = (await (await c.get('/api/crm/join-code')).json()).requests[0].id;
+    assert.equal((await c.post('/api/crm/join-requests/' + id, { approve: false })).status, 200);
+    assert.equal((await makeClient().post('/api/crm-auth/login', { email, password: pw })).status, 401);
+    assert.equal((await c.post('/api/crm/join-requests/' + id, { approve: true })).status, 404, 'decided once');
+  });
+
+  test('a homeowner sees their projects from every builder once their email is confirmed', async () => {
+    const c = await company();
+    const email = uniqueEmail('acct-home'); made.push(email);
+    const { deal } = await (await c.post('/api/crm/deals', { name: 'Hana Home', email, title: 'Hana kitchen' })).json();
+    const h = makeClient();
+    const r = await (await h.post('/api/crm-auth/signup', { type: 'homeowner', name: 'Hana Home', email, password: pw, acceptedTerms: true })).json();
+    assert.equal(r.go, '/crm/home');
+    assert.equal((await h.get('/api/crm/me')).status, 401, 'a homeowner never gets into a company’s CRM');
+    assert.equal((await h.get('/crm')).headers.get('location'), '/crm/home');
+    let home = await (await h.get('/api/crm-account')).json();
+    assert.equal(home.account.kind, 'homeowner'); assert.equal(home.projects.length, 0, 'nothing until the email is confirmed');
+    // Confirm the email (the token from the database stands in for the emailed link).
+    const pool = getTestPool();
+    const token = require('crypto').randomBytes(32).toString('hex');
+    try { await pool.query('UPDATE crm_accounts SET verify_token_hash = $2 WHERE lower(email) = lower($1)', [email, require('crypto').createHash('sha256').update(token).digest('hex')]); } finally { await pool.end(); }
+    assert.equal((await h.get('/crm/verify?token=' + token)).headers.get('location'), '/crm/home?confirmed=1');
+    home = await (await h.get('/api/crm-account')).json();
+    assert.equal(home.projects.length, 1); assert.equal(home.projects[0].title, 'Hana kitchen'); assert.equal(home.projects[0].builder, 'Acct Builders');
+    assert.match(home.projects[0].url, /\/p\/[0-9a-f]{48}$/);
+    assert.equal((await makeClient().get(home.projects[0].url.replace(/^https?:\/\/[^/]+/, ''))).status, 200);
+    assert.equal((await h.patch('/api/crm-account', { phone: '713-555-0199', address: '9 Elm St, Houston TX', done: true })).status, 200);
+    assert.ok((await (await h.get('/api/crm-account')).json()).account.setup_done_at);
+    assert.equal((await h.patch('/api/crm-account', { phone: '5' })).status, 400);
+    // Signing in again goes to the homeowner page; a wrong password doesn’t.
+    assert.equal((await (await makeClient().post('/api/crm-auth/login', { email, password: pw })).json()).go, '/crm/home');
+    assert.equal((await makeClient().post('/api/crm-auth/login', { email, password: 'wrongwrong' })).status, 401);
+    assert.ok(deal.id);
+  });
+
+  test('a sub sees their builders, links one by its page link, and fills in what builders are missing', async () => {
+    const c = await company();
+    const email = uniqueEmail('acct-sub'); made.push(email);
+    const v = await (await c.post('/api/crm/vendors', { name: 'Sid Framing', email, trade: '' })).json();
+    const vendorId = (v.vendor || v).id;
+    const sb = makeClient();
+    assert.equal((await sb.post('/api/crm-auth/signup', { type: 'sub', name: 'Sid', email, password: pw, acceptedTerms: true })).status, 400, 'a sub needs a business name');
+    assert.equal((await sb.post('/api/crm-auth/signup', { type: 'sub', name: 'Sid', businessName: 'Sid Framing LLC', trade: 'Framing', email, password: pw, acceptedTerms: true })).status, 200);
+    let home = await (await sb.get('/api/crm-account')).json();
+    assert.equal(home.builders.length, 0, 'not confirmed yet');
+    // A link the builder sent links that builder even before confirming.
+    const page = await (await c.get(`/api/crm/vendors/${vendorId}/portal`)).json();
+    const url = page.url || page.link;
+    assert.equal((await sb.post('/api/crm-account/link', { url: 'https://x.test/p/' + 'a'.repeat(48) })).status, 400, 'a homeowner link isn’t a sub link');
+    const lk = await (await sb.post('/api/crm-account/link', { url })).json();
+    assert.equal(lk.linked, 'Acct Builders');
+    home = await (await sb.get('/api/crm-account')).json();
+    assert.equal(home.builders.length, 1); assert.equal(home.builders[0].builder, 'Acct Builders');
+    const pool = getTestPool();
+    try { await pool.query('UPDATE crm_accounts SET email_verified = true WHERE lower(email) = lower($1)', [email]); } finally { await pool.end(); }
+    assert.equal((await sb.patch('/api/crm-account', { phone: '713-555-0142', trade: 'Framing', insuranceExpires: '2031-05-01', done: true })).status, 200);
+    const vendors = (await (await c.get('/api/crm/vendors')).json()).vendors;
+    const mine = vendors.find(x => x.id === vendorId);
+    assert.equal(mine.trade, 'Framing', 'blank trade filled in'); assert.equal(mine.phone, '713-555-0142');
+    assert.equal(String(mine.insurance_expires).slice(0, 10), '2031-05-01');
+    // One email, two kinds of account: signing in asks which.
+    const h = makeClient();
+    await h.post('/api/crm-auth/signup', { type: 'homeowner', name: 'Sid', email, password: pw, acceptedTerms: true });
+    const both = await (await makeClient().post('/api/crm-auth/login', { email, password: pw })).json();
+    assert.deepEqual(both.choose.map(x => x.as).sort(), ['homeowner', 'sub']);
+    assert.equal((await (await makeClient().post('/api/crm-auth/login', { email, password: pw, as: 'sub' })).json()).go, '/crm/home');
   });
 });
 

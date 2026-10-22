@@ -26,10 +26,12 @@ function fail(res, err, what) {
 router.get('/api/crm/me', requireAuth, async (req, res) => {
   try {
     const r = (await query(
-      `SELECT u.id, u.email, u.name, u.role, t.company_name, t.products FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
-    if (!r) return res.status(401).json({ error: { message: 'Not logged in.' } });
+      `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
+    if (!r || r.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
     res.json({
-      userId: r.id, email: r.email, name: r.name, role: r.role, roleLabel: team.roleLabel(r.role), canManage: team.isManager(r.role), companyName: r.company_name,
+      userId: r.id, email: r.email, name: r.name, phone: r.phone, role: r.role, roleLabel: team.roleLabel(r.role), canManage: team.isManager(r.role), companyName: r.company_name,
+      // Guided setup (crm.html #setup): the company's for its owner, a shorter one for everyone else.
+      needsSetup: r.role === 'owner' ? !r.company_setup_done : !r.setup_done_at,
       products: r.products || [], hasCrm: (r.products || []).includes('crm'),
       // Team members invited to the CRM only see the CRM; the marketing dashboard is the owner's.
       hasMarketing: (r.products || []).includes('marketing') && r.role === 'owner'
@@ -37,15 +39,9 @@ router.get('/api/crm/me', requireAuth, async (req, res) => {
   } catch (err) { fail(res, err, 'Failed to load your account'); }
 });
 
-// A company already on Eagle I marketing can add the CRM to the same login.
-router.post('/api/crm/activate', requireAuth, async (req, res) => {
-  try {
-    const me = await team.getUser(req.userId);
-    if (!me || me.role !== 'owner') return res.status(403).json({ error: { message: 'Only the account owner can switch the CRM on.' } });
-    await query(`UPDATE tenants SET products = array_append(products, 'crm') WHERE id = $1 AND NOT ('crm' = ANY(products))`, [req.tenantId]);
-    res.json({ ok: true });
-  } catch (err) { fail(res, err, 'Failed to switch on the CRM'); }
-});
+// Eagle I CRM accounts are separate from marketing logins (lib/crmAccounts.js):
+// a marketing company starts the CRM by creating a CRM account at /crm/login.
+router.post('/api/crm/activate', requireAuth, (req, res) => res.status(410).json({ error: { message: 'Eagle I CRM has its own accounts now. Create one at /crm/login.' } }));
 
 // Invitation links (no login: the person doesn't have one yet).
 router.get('/api/crm/join', async (req, res) => {
@@ -71,8 +67,8 @@ router.post('/api/crm/join', async (req, res) => {
 router.use('/api/crm', requireAuth, async (req, res, next) => {
   try {
     const me = await team.getUser(req.userId);
-    // A removed team member's old session stops working at once.
-    if (!me || me.tenant_id !== req.tenantId) return res.status(401).json({ error: { message: 'Not logged in.' } });
+    // A removed team member's old session stops working at once, and a marketing login never opens the CRM.
+    if (!me || me.tenant_id !== req.tenantId || me.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
     req.crmUser = me;
     if (await crm.hasCrm(req.tenantId)) {
       // After the trial (with billing switched on) the CRM is read-only until a plan is chosen.
@@ -411,10 +407,26 @@ router.delete('/api/crm/tasks/:id', requireAuth, async (req, res) => {
 
 // Your own name, shown to your team on deals and in history.
 router.patch('/api/crm/me', requireAuth, async (req, res) => {
-  const name = String((req.body || {}).name || '').trim().slice(0, 120);
-  if (!name) return res.status(400).json({ error: { message: 'Add your name.' } });
-  try { await query('UPDATE users SET name = $1 WHERE id = $2', [name, req.userId]); res.json({ ok: true }); }
+  const b = req.body || {};
+  const name = String(b.name || '').trim().slice(0, 120);
+  if (b.name !== undefined && !name) return res.status(400).json({ error: { message: 'Add your name.' } });
+  const phone = b.phone === undefined ? undefined : String(b.phone || '').trim().slice(0, 40);
+  if (phone && !/^(1)?\d{10}$/.test(phone.replace(/\D/g, ''))) return res.status(400).json({ error: { message: 'That phone number doesn’t look right. Use 10 digits, like 713-555-0100.' } });
+  try {
+    if (name) await query('UPDATE users SET name = $1 WHERE id = $2', [name, req.userId]);
+    if (phone !== undefined) await query('UPDATE users SET phone = $1 WHERE id = $2', [phone || null, req.userId]);
+    res.json({ ok: true });
+  }
   catch (err) { fail(res, err, 'Failed to save your name'); }
+});
+
+// Guided setup finished (or skipped): the company's for the owner, their own for anyone else.
+router.post('/api/crm/setup/done', requireAuth, async (req, res) => {
+  try {
+    if (req.crmUser.role === 'owner') await query('UPDATE tenants SET setup_done_at = COALESCE(setup_done_at, now()) WHERE id = $1', [req.tenantId]);
+    await query('UPDATE users SET setup_done_at = COALESCE(setup_done_at, now()) WHERE id = $1', [req.userId]);
+    res.json({ ok: true });
+  } catch (err) { fail(res, err, 'Failed to save'); }
 });
 
 router.get('/api/crm/team', requireAuth, async (req, res) => {

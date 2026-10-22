@@ -187,6 +187,7 @@ select{width:auto;cursor:pointer}
 .ai-fab:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(31,78,121,.42)}
 .ai-fab .spark{font-size:20.5px;line-height:1}
 .ai-fab.hide{display:none}
+body.on-start .ai-fab{display:none}
 .ai-shade{position:fixed;inset:0;background:rgba(14,24,34,.38);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s}
 .ai-shade.open{opacity:1;pointer-events:auto}
 .ai-panel{position:fixed;top:0;right:0;bottom:0;width:min(480px,100vw);z-index:90;background:#f7f9fb;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .25s cubic-bezier(.2,.8,.2,1),visibility .25s;box-shadow:-12px 0 40px rgba(14,24,34,.18)}
@@ -674,6 +675,7 @@ select{max-width:100%;text-overflow:ellipsis}
       <button onclick="crMenu(false);crView('billing')">Plan &amp; billing</button>
       <button onclick="crMenu(false);dyOpen()">My calendar &amp; morning email</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
+      <button onclick="crMenu(false);crView('start')">✓ Guided setup</button>
       <button onclick="crMenu(false);binOpen()">🗑 Recycle bin</button>
       <button onclick="crMenu(false);crPauseAll()" id="cr-pause-btn" hidden>⏸ Pause all automatic emails</button>
       <button onclick="crMenu(false);crSimple()" id="cr-simple-btn">Simple view: fewer tabs</button>
@@ -867,12 +869,16 @@ select{max-width:100%;text-overflow:ellipsis}
   <section class="view" id="view-team">
     <div class="sh"><div><div class="st">Team</div><div class="ss">Everyone at your company who uses Eagle I CRM, what each person does, and who they report to. People see the schedules of those above and below them.</div></div></div>
     <div id="tm-invite"></div>
+    <div id="tm-join"></div>
     <div id="tm-sees"></div>
     <div class="pl-h">People</div>
     <div class="pl-list" id="tm-list"><div class="pl-empty">Loading…</div></div>
     <div id="tm-invites"></div>
     <div class="pl-h">How your team fits together</div>
     <div id="tm-tree" class="tm-tree"></div>
+  </section>
+  <section class="view" id="view-start">
+    <div id="st-box"></div>
   </section>
   <section class="view" id="view-company">
     <div class="sh"><div><div class="st">Company</div><div class="ss">These details go on every automatic email: your name and phone in the signature, and your business address at the bottom (required by law for marketing email, so emails wait until it's filled in).</div></div></div>
@@ -1000,12 +1006,15 @@ function crView(v){
   if(VN){try{VN.stop();}catch(e){}}
   if(typeof aiMount==='function')aiMount(v==='ask');
   document.body.classList.toggle('on-ask',v==='ask');
+  document.body.classList.toggle('on-start',v==='start');
   if(v==='pipeline')plLoad();
   if(v==='needs'){plLoadNeeds();clLoad('cl-box');}
   if(v==='calendar')cvLoad();
   if(v==='auto')plLoadAuto();
   if(v==='company')coLoad();
   if(v==='team')tmLoad();
+  if(v==='start')stLoad();
+  crSetupBanner();
   if(v==='estimates')esLoad();
   if(v==='reports')rpLoad();
   if(v==='jobs')jbList();
@@ -1071,7 +1080,9 @@ async function crInit(){
   await crLoadTeam();
   // A link to one chat (#ask/<id>) opens that chat.
   if(start==='ask'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||''))AI.loading=hashParts[1];
-  crView(['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing'].includes(start)?start:'ask');
+  // A new company (or a new person) is walked through setting up first.
+  crView(me.needsSetup?'start':['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start'].includes(start)?start:'ask');
+  crSetupBanner();
   if(AI.loading)aiLoad(AI.loading);
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
   plCheckSetup();
@@ -1771,6 +1782,7 @@ async function tmLoad(){
   }).join('');
   document.getElementById('tm-invites').innerHTML=d.invites.length?'<div class="pl-h">Waiting to join</div><div class="pl-list">'+d.invites.map(i=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(i.name||i.email)}</div><div class="pl-item-d">${uxEsc(i.email)} · ${uxEsc(tmLabel(i.role))}${i.reports_to?' · will report to '+uxEsc(tmName(i.reports_to)):''} · invited ${new Date(i.created_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}, link works until ${new Date(i.expires_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>${manage?`<div class="pl-acts"><button class="btn-xs" onclick="tmCancel('${i.id}')">Cancel invitation</button></div>`:''}</div>`).join('')+'</div>':'';
   tmTree(d.members);
+  tmJoinLoad();
 }
 // Owner at the top; under them everyone who reports to no one; then each person's reports.
 function tmTree(ms){
@@ -1807,6 +1819,116 @@ async function tmRemove(id){const name=TMN[id]||'this person';
   try{await plApi('/api/crm/team/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not remove',e.message);}
 }
 async function tmCancel(id){try{await plApi('/api/crm/team/invites/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not cancel',e.message);}}
+
+
+/* ---------- guided setup (#start) ----------
+   The owner of a new company: about you, the company, the team, Google,
+   customers and subs, automatic emails. Anyone else who joins: about you,
+   your team, email and calendar. Each step saves as it goes; Skip is always there. */
+const ST={step:0};
+const stOwner=()=>CR.me&&CR.me.role==='owner';
+const stSteps=()=>stOwner()?['you','company','team','google','data','emails']:['you','myteam','google'];
+const ST_TITLE={you:'About you',company:'Your company',team:'Your team',google:'Your email and calendar',data:'Your customers and subs',emails:'Automatic emails',myteam:'Your team'};
+function stGetStep(){try{const n=parseInt(localStorage.getItem('stStep')||'0',10);return isNaN(n)?0:n;}catch(e){return 0;}}
+function stSetStep(n){ST.step=n;try{localStorage.setItem('stStep',String(n));}catch(e){}}
+function crSetupBanner(){
+  let el=document.getElementById('st-banner');
+  const show=CR.me&&CR.me.needsSetup&&CR.view!=='start';
+  if(!show){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='st-banner';el.className='pl-banner';el.style.cssText='margin:10px 16px 0';document.querySelector('.cr-top').insertAdjacentElement('afterend',el);}
+  const st=stSteps();el.innerHTML=`<span>Setting up: step ${Math.min(stGetStep(),st.length-1)+1} of ${st.length}, ${uxEsc(ST_TITLE[st[Math.min(stGetStep(),st.length-1)]])}.</span><button class="btn-xs p" onclick="crView('start')">Continue setup</button>`;
+}
+async function stLoad(){
+  ST.step=Math.min(stGetStep(),stSteps().length-1);
+  const box=document.getElementById('st-box');box.innerHTML='<div class="sm">Loading…</div>';
+  const st=stSteps(),k=st[ST.step],me=CR.me;
+  const bar=`<div style="display:flex;gap:6px;margin:10px 0 4px" aria-hidden="true">${st.map((_,i)=>`<i style="flex:1;height:7px;border-radius:4px;background:${i<=ST.step?'var(--blue)':'var(--bdr2)'}"></i>`).join('')}</div><div class="sm" style="margin-top:0">Step ${ST.step+1} of ${st.length}: ${uxEsc(ST_TITLE[k])}</div>`;
+  let body='';
+  try{
+    if(k==='you')body=`<div class="ss">So your team knows who did what, and customers know who to call.</div><div class="pl-form" style="margin-top:10px"><div><label for="st-name">Your name</label><input id="st-name" class="cred-input" value="${uxEsc(me.name||'')}" autocomplete="name"></div><div><label for="st-phone">Your phone <span class="sm">(optional)</span></label><input id="st-phone" class="cred-input" type="tel" inputmode="tel" placeholder="713-555-0100" autocomplete="tel" value="${uxEsc(me.phone||'')}"></div></div>`;
+    if(k==='company'){const {company}=await plApi('/api/crm/company');body=`<div class="ss">These go on every email Eagle I sends for you: your name and phone in the signature, your address at the bottom (the law requires it on marketing email, so automatic emails wait until it’s filled in).</div><div class="pl-form" style="margin-top:10px">
+      <div class="full"><label for="st-co">Company name</label><input id="st-co" class="cred-input" value="${uxEsc(company.company_name||'')}" autocomplete="organization"></div>
+      <div><label for="st-cphone">Company phone</label><input id="st-cphone" class="cred-input" type="tel" inputmode="tel" value="${uxEsc(company.phone||'')}" placeholder="713-555-0100"></div>
+      <div><label for="st-cemail">Company email <span class="sm">(where customer replies go)</span></label><input id="st-cemail" class="cred-input" type="email" inputmode="email" value="${uxEsc(company.email||'')}"></div>
+      <div class="full"><label for="st-addr">Business address</label><input id="st-addr" class="cred-input" value="${uxEsc(company.address||'')}" placeholder="1001 S Dairy Ashford, Houston TX 77077" autocomplete="street-address"></div></div>`;}
+    if(k==='team'){const d=await crLoadTeam();const j=await plApi('/api/crm/join-code');ST.code=j.code;
+      body=`<div class="ss">Add the people who work with you. Each gets an email with a link to join, already set up with their role and who they report to. You can change these any time under Account → Team.</div>
+      <div class="pl-form" style="margin-top:10px"><div><label for="tm-name">Name</label><input id="tm-name" class="cred-input" autocomplete="off"></div><div><label for="tm-email">Email</label><input id="tm-email" class="cred-input" type="email" inputmode="email" autocomplete="off"></div>
+      <div><label for="tm-role">Role</label><select id="tm-role" onchange="tmInviteRole()">${tmRoleOpts('member')}</select><div class="sm" id="tm-role-about" style="margin-top:4px">${tmAbout('member')}</div></div><div><label for="tm-boss">Reports to</label><select id="tm-boss">${tmBossOpts('member','',null)}</select></div></div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="stInvite(this)">Send invitation</button></div><div class="sm" id="tm-msg"></div>
+      ${(d&&(d.members.length>1||d.invites.length))?`<div class="pl-h">On your team so far</div><div class="sm" style="margin-top:0">${d.members.map(m=>uxEsc((m.name||m.email)+' ('+(m.role_label||m.role)+')')).join(', ')}${d.invites.length?'<br>Invited: '+d.invites.map(i=>uxEsc(i.name||i.email)).join(', '):''}</div>`:''}
+      <div class="pl-pb" style="margin-top:14px"><div class="pl-item-t">Or share your company code</div><div class="sm" style="margin-top:2px">People pick “Join my company” when they create an account and type this code. You let each one in and pick their role.</div><div style="font-size:30px;font-weight:800;letter-spacing:.08em;margin:8px 0">${uxEsc(j.code)}</div><button class="btn-xs" onclick="stCopy()">Copy a sign-up link to send them</button></div>`;}
+    if(k==='google'){const g=await plApi('/api/crm/google').catch(()=>({mailboxes:[]}));const mine=(g.mailboxes||[]).find(m=>m.mine&&m.signed_in);const ws=g.connection&&g.connection.kind==='workspace';
+      body=`<div class="ss">Connect your Gmail and every email with a customer or sub lands on the right job by itself. Replies stop the follow-ups, and meetings in your email show up on the calendar. Eagle I only reads; it never sends from your Gmail.</div>
+      <div style="margin-top:12px">${ws?'<div class="sm">✓ Your company’s Google Workspace is connected.</div>':mine?'<div class="sm">✓ Connected as '+uxEsc(mine.email)+'.</div>':g.signIn===false?'<div class="sm">Google sign-in isn’t switched on for Eagle I yet. You can do this later from Company details.</div>':gBtn('Connect my Gmail','stGoogle()')}</div>
+      <div class="pl-h">The calendar on your phone</div><div class="sm" style="margin-top:0">Your visits, job schedule and tasks on your phone’s own calendar, updated by themselves.</div><div class="vd-mbtns"><button class="btn-xs p" onclick="dyOpen()">Put it on my phone</button></div>`;}
+    if(k==='data'){const pr=await plApi('/api/crm/practice').catch(()=>({}));body=`<div class="ss">Bring in what you already have, so Eagle I starts with your real customers, jobs and subs. Nothing gets emailed while it’s brought in.</div>
+      <div class="pl-list" style="margin-top:10px">
+        <button class="pl-card" onclick="crView('setup')"><div class="pl-card-title">📄 Bring in a spreadsheet</div><div class="pl-card-sub">From Buildertrend, JobTread, CoConstruct, Houzz Pro, QuickBooks, Excel or Google Sheets: customers, subs and vendors, schedules, past invoices and more.</div></button>
+        <button class="pl-card" onclick="crView('pipeline');plNewDeal()"><div class="pl-card-title">＋ Add a customer by hand</div><div class="pl-card-sub">One at a time.</div></button>
+        <button class="pl-card" onclick="crView('jobs')"><div class="pl-card-title">🔨 Add your subs and suppliers</div><div class="pl-card-sub">Subs with an Eagle I account who use the same email are linked to you by themselves.</div></button>
+        ${pr&&pr.on?'':`<button class="pl-card" onclick="stPractice(this)"><div class="pl-card-title">🧪 Try it out with practice customers</div><div class="pl-card-sub">Made-up customers you can click around with. Never emailed; removed with one tap.</div></button>`}
+      </div><div class="sm">When you’re done, come back with “Continue setup” at the top.</div>`;}
+    if(k==='emails')body=`<div class="ss">Eagle I can follow up with leads, remind homeowners about visits and nudge unpaid invoices on its own. Nothing goes out until you read each one and turn it on.</div>
+      <div class="vd-mbtns"><button class="btn-xs p" onclick="crView('auto')">Read the automatic emails</button></div>
+      <div class="pl-h">Homeowners and subs</div><div class="sm" style="margin-top:0">Homeowners and subs can make their own free Eagle I account with the email you have for them. Their projects and jobs with you show up there by themselves, the same pages you already share.</div>`;
+    if(k==='myteam'){const d=await crLoadTeam();const m=d.members.find(x=>x.id===me.userId)||{};const boss=m.reports_to?tmName(m.reports_to):'';const under=d.members.filter(x=>x.reports_to===me.userId);
+      body=`<div class="ss">You’re ${(w=>(/^[aeiou]/i.test(w)?'an ':'a ')+w)(uxEsc((me.roleLabel||'team member').toLowerCase()))} at <b>${uxEsc(me.companyName||'')}</b>${boss?', reporting to <b>'+uxEsc(boss)+'</b>':''}.</div>
+      <div class="sm">${uxEsc(tmAbout(me.role))}</div>
+      <div class="sm">You can see the schedules of: <b>${crCanManage()||d.visibility==='everyone'?'everyone on the team':crSees().map(x=>uxEsc(x.name||x.email)).join(', ')||'just your own for now'}</b>.${under.length?' '+under.map(x=>uxEsc(x.name||x.email)).join(', ')+(under.length===1?' reports':' report')+' to you.':''}</div>`;}
+  }catch(e){body=`<div class="sm">${uxEsc(e.message)}</div>`;}
+  const last=ST.step>=st.length-1;
+  box.innerHTML=`<div class="sh"><div><div class="st">${stOwner()?'Let’s set up '+uxEsc(me.companyName||'your company'):'Welcome to '+uxEsc(me.companyName||'Eagle I')}</div>${bar}</div></div>
+    <div class="pl-pb"><div class="pl-item-t" style="font-size:21px">${uxEsc(ST_TITLE[k])}</div>${body}
+    <div class="vd-mbtns" style="margin-top:16px;align-items:center"><button class="btn btn-blue" onclick="stNext(this)">${last?'Finish':'Save and continue'}</button>${ST.step>0?'<button class="btn-xs" onclick="stSetStep(ST.step-1);stLoad()">← Back</button>':''}${last?'':'<button class="btn-xs" onclick="stSetStep(ST.step+1);stLoad()">Skip this step</button>'}</div><div class="sm" id="st-err" style="color:var(--red)"></div></div>
+    <div class="sm" style="margin-top:14px">Want to do this later? <button class="btn-xs" onclick="stFinish(true)">Skip setup for now</button> You can come back to it from Account → Guided setup.</div>`;
+  window.scrollTo(0,0);
+}
+async function stNext(btn){
+  const st=stSteps(),k=st[ST.step],v=(id)=>{const e=document.getElementById(id);return e?e.value:'';};btn.disabled=true;
+  try{
+    if(k==='you'){await plApi('/api/crm/me',{method:'PATCH',body:{name:v('st-name'),phone:v('st-phone')}});CR.me.name=v('st-name').trim();CR.me.phone=v('st-phone').trim();}
+    if(k==='company'){
+      if(v('st-addr').trim()&&v('st-addr').trim().length<8)throw new Error('Add your full business address, with the city and ZIP.');
+      await plApi('/api/crm/company',{method:'PATCH',body:{companyName:v('st-co'),phone:v('st-cphone'),email:v('st-cemail'),address:v('st-addr')}});CR.me.companyName=v('st-co').trim();document.getElementById('cr-company').textContent=CR.me.companyName;}
+    if(ST.step>=st.length-1)return stFinish(false);
+    stSetStep(ST.step+1);stLoad();
+  }catch(e){document.getElementById('st-err').textContent=e.message;btn.disabled=false;}
+}
+async function stFinish(skipped){
+  try{await plApi('/api/crm/setup/done',{body:{}});}catch(e){showNotif('Could not save',e.message);return;}
+  CR.me.needsSetup=false;stSetStep(0);
+  showNotif(skipped?'Setup skipped':'You’re all set',skipped?'Come back to it any time from Account → Guided setup.':'Ask Eagle I anything, or open Today to see what needs you.');
+  crView(stOwner()?'needs':'ask');
+}
+// After an emailed invitation the step refreshes to list them; a link to pass on by hand stays on screen to copy.
+async function stInvite(btn){await tmInvite(btn);const m=document.getElementById('tm-msg');if(m&&/^Invitation sent/.test(m.textContent))setTimeout(()=>stLoad(),1500);}
+function stCopy(){const url=location.origin+'/crm/login?code='+encodeURIComponent(ST.code||'');try{navigator.clipboard.writeText(url);showNotif('Copied','Send it by text or email: '+url);}catch(e){prompt('Copy this link:',url);}}
+function stGoogle(){location.href='/api/crm/google/oauth/start';}
+async function stPractice(btn){btn.disabled=true;try{await plApi('/api/crm/practice',{body:{}});showNotif('Practice customers added','Look around in Pipeline. Remove them with one tap when you’re done.');stLoad();}catch(e){showNotif('Could not add them',e.message);btn.disabled=false;}}
+
+/* ---------- letting people join with the company code ---------- */
+async function tmJoinLoad(){
+  const el=document.getElementById('tm-join');if(!el)return;
+  if(!crCanManage()){el.innerHTML='';return;}
+  let j;try{j=await plApi('/api/crm/join-code');}catch(e){el.innerHTML='';return;}
+  ST.code=j.code;
+  el.innerHTML=(j.requests.length?`<div class="pl-h">Asking to join (${j.requests.length})</div><div class="pl-list">${j.requests.map(r=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(r.name)}</div><div class="pl-item-d">${uxEsc(r.email)} · asked ${crWhen(r.created_at)}</div>${r.note?`<div class="pl-item-d">“${uxEsc(r.note)}”</div>`:''}
+    <div class="pl-form" style="margin-top:8px"><div><label for="jr-r-${r.id}">Their role</label><select id="jr-r-${r.id}" onchange="document.getElementById('jr-b-${r.id}').innerHTML=tmBossOpts(this.value,'',null)">${tmRoleOpts('member')}</select></div><div><label for="jr-b-${r.id}">Reports to</label><select id="jr-b-${r.id}">${tmBossOpts('member','',null)}</select></div></div>
+    <div class="pl-acts"><button class="btn-xs p" onclick="tmDecide('${r.id}',true,this)">Let them in</button><button class="btn-xs" style="color:var(--red)" onclick="tmDecide('${r.id}',false,this)">Say no</button></div><div class="sm">Only let in people you know. If you don’t recognise them, say no.</div></div>`).join('')}</div>`:'')+
+  `<div class="pl-pb"><div class="pl-item-t">Your company code: <span style="letter-spacing:.08em">${uxEsc(j.code)}</span></div><div class="sm" style="margin-top:2px">People who work with you pick “Join my company” when they create an account and type this code. You let each one in here and pick their role. Inviting them by email (below) lets them straight in.</div>
+    <div class="pl-acts"><button class="btn-xs" onclick="stCopy()">Copy a sign-up link</button><button class="btn-xs" onclick="tmNewCode()">Make a new code</button></div></div>`;
+}
+async function tmDecide(id,yes,btn){
+  const name=(btn.closest('.pl-item').querySelector('.pl-item-t')||{}).textContent||'them';
+  const role=document.getElementById('jr-r-'+id).value,boss=document.getElementById('jr-b-'+id).value;
+  if(yes&&role==='admin'&&!confirm('Let '+name+' in as an admin? Admins can change the team, company details, automatic emails and billing.'))return;
+  if(!yes&&!confirm('Say no to '+name+'? They won’t be able to sign in. They can ask again.'))return;
+  btn.disabled=true;
+  try{await plApi('/api/crm/join-requests/'+id,{body:{approve:yes,role,reportsTo:boss||null}});showNotif(yes?name+' is in':'Said no',yes?'They’ve been emailed that they can sign in.':'');tmLoad();}
+  catch(e){showNotif('Could not do that',e.message);btn.disabled=false;}
+}
+async function tmNewCode(){if(!confirm('Make a new code? The old one stops working, so anyone you gave it to needs the new one.'))return;try{await plApi('/api/crm/join-code/new',{body:{}});tmJoinLoad();}catch(e){showNotif('Could not do that',e.message);}}
 
 /* ---------- Google Workspace ---------- */
 const G_LOGO='<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" style="flex:0 0 auto"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 38.2 44 33 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';

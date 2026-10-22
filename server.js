@@ -141,8 +141,8 @@ registerAuthRoutes(app);
 app.use('/api', async (req, res, next) => {
   if (!req.session || !req.session.userId || req.path.startsWith('/crm') || req.path.startsWith('/auth')) return next();
   try {
-    const r = await query('SELECT role FROM users WHERE id = $1', [req.session.userId]);
-    if (r.rows.length && r.rows[0].role && r.rows[0].role !== 'owner') {
+    const r = await query('SELECT role, app FROM users WHERE id = $1', [req.session.userId]);
+    if (r.rows.length && ((r.rows[0].role && r.rows[0].role !== 'owner') || r.rows[0].app === 'crm')) {
       return res.status(403).json({ error: { message: 'Your login is for Eagle I CRM only.' } });
     }
     next();
@@ -221,14 +221,22 @@ app.use(crmAiPlusRoutes);
 app.use(crmSubPortalRoutes);
 app.use(crmCalendarRoutes);
 app.use(crmTrashRoutes);
+app.use(require('./routes/crmAccounts')); // after crmRoutes: its /api/crm/* routes rely on that sign-in check
 app.use(stripeRoutes);
 
 // Which build is live (Render sets RENDER_GIT_COMMIT), so a deploy can be checked from outside.
 app.get('/healthz', (req, res) => res.json({ ok: true, version: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null }));
 
 // Eagle I CRM: a separate product with its own app, login and signup.
-app.get(['/crm', '/crm/'], (req, res) => {
+app.get(['/crm', '/crm/'], async (req, res) => {
+  // Homeowners and subs have their own page; marketing logins are separate from the CRM's.
+  if (req.session && !req.session.userId && req.session.accountId) return res.redirect('/crm/home');
   if (!req.session || !req.session.userId) return res.redirect('/crm/login');
+  try {
+    const u = (await query('SELECT app FROM users WHERE id = $1', [req.session.userId])).rows[0];
+    if (!u) return res.redirect('/crm/login');
+    if (u.app === 'marketing') return res.redirect('/crm/login?marketing=1');
+  } catch (err) { console.error('CRM login check failed:', err.message); }
   // Always check for a newer copy, so a deploy's page never runs against an older or newer server.
   res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'crm.html'));
@@ -244,13 +252,13 @@ app.get(['/', '/index.html'], async (req, res) => {
   }
   try {
     const result = await query(
-      `SELECT bp.generated_content, t.products, u.role FROM tenants t LEFT JOIN business_profile bp ON bp.tenant_id = t.id
+      `SELECT bp.generated_content, t.products, u.role, u.app FROM tenants t LEFT JOIN business_profile bp ON bp.tenant_id = t.id
        LEFT JOIN users u ON u.id = $2 WHERE t.id = $1`,
       [req.session.tenantId, req.session.userId]
     );
     // A CRM-only company has no marketing dashboard, and team members invited
     // to the CRM only use the CRM: send them to its own app.
-    if (result.rows.length && ((Array.isArray(result.rows[0].products) && !result.rows[0].products.includes('marketing')) || (result.rows[0].role && result.rows[0].role !== 'owner'))) {
+    if (result.rows.length && ((Array.isArray(result.rows[0].products) && !result.rows[0].products.includes('marketing')) || (result.rows[0].role && result.rows[0].role !== 'owner') || result.rows[0].app === 'crm')) {
       return res.redirect('/crm');
     }
     const onboarded = result.rows.length && Object.keys(result.rows[0].generated_content || {}).length > 0;
