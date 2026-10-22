@@ -37,11 +37,14 @@ router.post('/api/crm/imports/check', requireAuth, wrap('Failed to check the fil
 router.post('/api/crm/imports', requireAuth, wrap('Failed to bring it in', async (req, res) => {
   if (managersOnly(req, res)) return;
   const b = req.body || {};
+  require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'import', targetName: String(b.filename || '').slice(0, 120) });
   res.json({ ok: true, ...(await imp.run({ tenantId: req.tenantId, userId: req.userId, filename: b.filename, dataBase64: b.dataBase64, kind: b.kind, mapping: b.mapping, headerRow: b.headerRow, platform: b.platform || null })) });
 }));
 router.post('/api/crm/imports/:importId/undo', requireAuth, wrap('Failed to undo it', async (req, res) => {
   if (managersOnly(req, res)) return;
-  res.json({ ok: true, ...(await imp.undo({ tenantId: req.tenantId, id: req.params.importId })) });
+  const r = await imp.undo({ tenantId: req.tenantId, id: req.params.importId });
+  require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'import_undo', detail: `${r.removed} removed` });
+  res.json({ ok: true, ...r });
 }));
 router.get('/api/crm/import', requireAuth, wrap('Failed to load', async (req, res) => res.json({ imports: await assist.listImports(req.tenantId), fields: assist.FIELDS })));
 router.post('/api/crm/import/preview', requireAuth, wrap('Failed to read the file', async (req, res) => {

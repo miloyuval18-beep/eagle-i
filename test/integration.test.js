@@ -1414,6 +1414,185 @@ describe('CRM accounts: create a company, join one, homeowners and subs', () => 
   });
 });
 
+describe('CRM team safety, money, homeowner and sub extras, help and errors', () => {
+  const pw = 'SafePass1234!';
+  const crypto = require('crypto');
+  const sql = async (q, p) => { const pool = getTestPool(); try { return (await pool.query(q, p)).rows; } finally { await pool.end(); } };
+  async function company(label) {
+    const c = makeClient(); const email = uniqueEmail(label);
+    await c.post('/api/crm-auth/signup', { type: 'company', companyName: 'Safe ' + label, name: 'Owner ' + label, email, password: pw, acceptedTerms: true });
+    c.me = await (await c.get('/api/crm/me')).json(); c.email = email;
+    c.tenantId = (await sql('SELECT tenant_id FROM users WHERE id = $1', [c.me.userId]))[0].tenant_id; trackTenant(c.tenantId);
+    return c;
+  }
+  async function member(o, role, label = role) {
+    const email = uniqueEmail('safe-' + label);
+    const inv = await (await o.post('/api/crm/team/invites', { email, name: label + ' Person', role })).json();
+    const m = makeClient();
+    await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: label + ' Person', password: pw });
+    m.me = await (await m.get('/api/crm/me')).json(); m.email = email;
+    return m;
+  }
+
+  test('owners and admins need an emailed code on a new device, unless they trusted it', async () => {
+    const o = await company('2fa');
+    const c = makeClient();
+    const first = await (await c.post('/api/crm-auth/login', { email: o.email, password: pw })).json();
+    assert.equal(first.code, true); assert.match(first.to, /•/);
+    assert.equal((await c.get('/api/crm/me')).status, 401, 'not in yet');
+    assert.equal((await c.post('/api/crm-auth/login/code', { code: '000000' })).status, 400);
+    const code = '482913';
+    await sql(`UPDATE crm_login_codes SET code_hash = $2 WHERE user_id = $1 AND used_at IS NULL`, [o.me.userId, crypto.createHash('sha256').update(code).digest('hex')]);
+    const ok = await c.raw('/api/crm-auth/login/code', { method: 'POST', body: JSON.stringify({ code, remember: true }) });
+    assert.equal(ok.status, 200);
+    const trust = (ok.headers.get('set-cookie') || '').match(/eagle_trust=([0-9a-f]{64})/);
+    assert.ok(trust, 'a trusted-device cookie');
+    assert.equal((await c.get('/api/crm/me')).status, 200);
+    assert.equal((await c.post('/api/crm-auth/login/code', { code })).status, 400, 'a code works once');
+    // The trusted device skips the code next time.
+    const again = makeClient();
+    const r2 = await again.raw('/api/crm-auth/login', { method: 'POST', body: JSON.stringify({ email: o.email, password: pw }), headers: { Cookie: 'eagle_trust=' + trust[1] } });
+    assert.equal((await r2.json()).go, '/crm');
+    // Team members don't get a code.
+    const m = await member(o, 'member');
+    assert.equal((await (await makeClient().post('/api/crm-auth/login', { email: m.email, password: pw })).json()).go, '/crm');
+    // Five wrong codes and that code is done.
+    const d = makeClient(); await d.post('/api/crm-auth/login', { email: o.email, password: pw });
+    for (let i = 0; i < 5; i++) await d.post('/api/crm-auth/login/code', { code: '111111' });
+    assert.match((await (await d.post('/api/crm-auth/login/code', { code: '111111' })).json()).error.message, /Too many wrong codes/);
+    // Signing out everywhere else makes trusted devices ask again.
+    await c.post('/api/crm/me/devices/sign-out-others', {});
+    assert.equal((await sql('SELECT COUNT(*)::int AS n FROM crm_trusted_devices WHERE user_id = $1', [o.me.userId]))[0].n, 0);
+    const log = (await (await c.get('/api/crm/activity-log')).json()).items;
+    assert.ok(log.some(a => a.action === 'signed_in_new'));
+  });
+
+  test('turning someone off, handing over their work, and the activity log', async () => {
+    const o = await company('off');
+    const pm = await member(o, 'project_manager', 'pm');
+    const sup = await member(o, 'superintendent', 'sup');
+    await o.patch(`/api/crm/team/${sup.me.userId}`, { reportsTo: pm.me.userId });
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Handover Lead', email: 'ho@x.test' })).json();
+    await o.patch(`/api/crm/deals/${deal.id}`, { ownerUserId: pm.me.userId });
+    await sql('UPDATE crm_deals SET owner_user_id = $2 WHERE id = $1', [deal.id, pm.me.userId]);
+    await o.post('/api/crm/tasks', { title: 'Order windows', assigneeUserId: pm.me.userId });
+    // Turn off: signed out at once, can't sign in, keeps their login.
+    assert.equal((await o.post(`/api/crm/team/${pm.me.userId}/active`, { on: false })).status, 200);
+    const gone = await pm.get('/api/crm/pipeline');
+    assert.equal(gone.status, 401);
+    const back = await makeClient().post('/api/crm-auth/login', { email: pm.email, password: pw });
+    assert.equal(back.status, 403); assert.match((await back.json()).error.message, /turned off/);
+    assert.equal((await o.post(`/api/crm/team/${o.me.userId}/active`, { on: false })).status, 400, 'not the owner');
+    // Hand over: deals, tasks and the people who reported to them.
+    const ho = await (await o.post(`/api/crm/team/${pm.me.userId}/handover`, { to: o.me.userId })).json();
+    assert.equal(ho.moved.deals, 1); assert.equal(ho.moved.tasks, 1); assert.equal(ho.moved.reports, 1);
+    assert.equal((await sql('SELECT owner_user_id FROM crm_deals WHERE id = $1', [deal.id]))[0].owner_user_id, o.me.userId);
+    assert.equal((await sql('SELECT reports_to FROM users WHERE id = $1', [sup.me.userId]))[0].reports_to, o.me.userId);
+    assert.equal((await o.post(`/api/crm/team/${sup.me.userId}/handover`, { to: pm.me.userId })).status, 400, 'not to someone turned off');
+    // Back on.
+    assert.equal((await o.post(`/api/crm/team/${pm.me.userId}/active`, { on: true })).status, 200);
+    assert.equal((await makeClient().post('/api/crm-auth/login', { email: pm.email, password: pw })).status, 200);
+    // Everything above is in the log, newest first; only people who manage the team see it.
+    await o.patch(`/api/crm/team/${sup.me.userId}`, { permissions: { money: true } });
+    const log = (await (await o.get('/api/crm/activity-log')).json()).items;
+    for (const a of ['turned_off', 'turned_on', 'handover', 'reports_to', 'permissions']) assert.ok(log.some(x => x.action === a), a);
+    assert.match(log.find(x => x.action === 'permissions').detail, /can now: see money/);
+    const mine = (await (await o.get('/api/crm/activity-log?person=' + pm.me.userId)).json()).items;
+    assert.ok(mine.length && mine.every(x => x.target_id === pm.me.userId || x.actor_id === pm.me.userId));
+    assert.equal((await sup.get('/api/crm/activity-log')).status, 403);
+  });
+
+  test('without See money: no deal values, no payments on the calendar, no prices on a job', async () => {
+    const o = await company('money');
+    const sup = await member(o, 'superintendent', 'nomoney');
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Money Lead', email: 'ml@x.test', value: '85k' })).json();
+    const pipe = await (await sup.get('/api/crm/pipeline')).json();
+    assert.equal(pipe.moneyHidden, true); assert.equal(pipe.openValue, null);
+    assert.equal(pipe.deals.find(d => d.id === deal.id).value, null);
+    assert.equal(Number((await (await o.get('/api/crm/pipeline')).json()).deals.find(d => d.id === deal.id).value), 85000, 'the owner still sees it');
+    assert.equal((await (await sup.get(`/api/crm/deals/${deal.id}`)).json()).deal.value, null);
+    const sum = (await (await sup.get('/api/crm/summary')).json()).summary;
+    assert.ok(!JSON.stringify(sum).match(/"(signedValue|openValue)":\d/), 'no money in the weekly numbers');
+    const job = await (await sup.get(`/api/crm/deals/${deal.id}/job`)).json();
+    assert.equal(job.moneyHidden, true);
+    await o.post(`/api/crm/deals/${deal.id}/invoices`, { title: 'Deposit', amount: 5000, dueDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10) });
+    const day = new Date().toISOString().slice(0, 10);
+    const ownerCal = await (await o.get(`/api/crm/calendar?who=all&from=${day}&to=${day}`)).json();
+    const supCal = await (await sup.get(`/api/crm/calendar?who=all&from=${day}&to=${day}`)).json();
+    assert.ok(!supCal.items.some(i => i.type === 'money'), 'no payments on their calendar');
+    assert.ok(ownerCal.items.every(i => i.type !== 'money' || /Payment due/.test(i.title)));
+    const found = await (await sup.get('/api/crm/search?q=Deposit')).json();
+    assert.ok(!found.results.some(r => r.type === 'invoice'), 'no invoices in their search');
+  });
+
+  test('homeowner and sub extras: waiting list always; invites, notices and insurance only once switched on', async () => {
+    const o = await company('extras');
+    const hEmail = uniqueEmail('extras-home');
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Hal Home', email: hEmail, title: 'Hal kitchen' })).json();
+    await o.patch('/api/crm/company', { address: '1001 S Dairy Ashford, Houston TX 77077' });
+    await o.post(`/api/crm/deals/${deal.id}/invoices`, { title: 'Deposit', amount: 2500, send: true });
+    const inv = (await sql('SELECT id FROM crm_invoices WHERE deal_id = $1', [deal.id]))[0];
+    await sql(`UPDATE crm_invoices SET status = 'sent', sent_at = now() WHERE id = $1`, [inv.id]);
+    // Invitations are off until switched on.
+    const st = await (await o.get(`/api/crm/deals/${deal.id}/account-invite`)).json();
+    assert.equal(st.on, false); assert.equal(st.hasAccount, false);
+    assert.equal((await o.post(`/api/crm/deals/${deal.id}/account-invite`, {})).status, 400);
+    const f = await (await o.get('/api/crm/account-features')).json();
+    assert.deepEqual(f.features, { invites: false, notices: false, insurance: false });
+    const sales = await member(o, 'sales', 'feat');
+    assert.equal((await sales.patch('/api/crm/account-features', { invites: true })).status, 403);
+    assert.equal((await o.patch('/api/crm/account-features', { invites: true, notices: true, insurance: true, junk: true })).status, 200);
+    // (No email on the test server: it says so plainly instead of failing.)
+    const sentInv = await o.post(`/api/crm/deals/${deal.id}/account-invite`, {});
+    assert.ok([200, 503].includes(sentInv.status), String(sentInv.status));
+    if (sentInv.status === 503) assert.match((await sentInv.json()).error.message, /couldn’t be sent/);
+    // The homeowner makes an account and confirms: the invoice waits for them.
+    const h = makeClient();
+    await h.post('/api/crm-auth/signup', { type: 'homeowner', name: 'Hal Home', email: hEmail, password: pw, acceptedTerms: true });
+    await sql('UPDATE crm_accounts SET email_verified = true WHERE lower(email) = lower($1)', [hEmail]);
+    const home = await (await h.get('/api/crm-account')).json();
+    assert.equal(home.waiting.length, 1); assert.equal(home.waiting[0].kind, 'invoice'); assert.match(home.waiting[0].url, /^\/i\//); assert.match(home.waiting[0].detail, /\$2,500/);
+    assert.equal((await (await o.get(`/api/crm/deals/${deal.id}/account-invite`)).json()).hasAccount, true);
+    // An update posted (not emailed) tells them once.
+    await o.post(`/api/crm/deals/${deal.id}/updates`, { body: 'Cabinets arrive Thursday.' });
+    await o.post(`/api/crm/deals/${deal.id}/updates`, { body: 'Tile next week.' });
+    await new Promise(r => setTimeout(r, 300));
+    assert.equal((await sql(`SELECT COUNT(*)::int AS n FROM crm_account_notices n JOIN crm_accounts a ON a.id = n.account_id WHERE lower(a.email) = lower($1)`, [hEmail]))[0].n, 1, 'one notice, not two');
+    // A sub uploads insurance; the builder sees it.
+    const sEmail = uniqueEmail('extras-sub');
+    const v = (await (await o.post('/api/crm/vendors', { name: 'Ins Tile', email: sEmail })).json()).vendor;
+    const sb = makeClient();
+    await sb.post('/api/crm-auth/signup', { type: 'sub', name: 'Ivan', businessName: 'Ins Tile', email: sEmail, password: pw, acceptedTerms: true });
+    await sql('UPDATE crm_accounts SET email_verified = true WHERE lower(email) = lower($1)', [sEmail]);
+    assert.deepEqual((await (await sb.get('/api/crm-account')).json()).insurance.builders, ['Safe extras']);
+    const pdf = Buffer.from('%PDF-1.4 fake certificate').toString('base64');
+    assert.equal((await sb.post('/api/crm-account/insurance', { filename: 'coi.pdf', dataBase64: Buffer.from('not a pdf').toString('base64'), expires: '2031-01-01' })).status, 400);
+    assert.equal((await sb.post('/api/crm-account/insurance', { filename: 'coi.pdf', dataBase64: pdf, expires: '2020-01-01' })).status, 400, 'not an old one');
+    assert.equal((await sb.post('/api/crm-account/insurance', { filename: 'coi.pdf', dataBase64: pdf, expires: '2031-01-01' })).status, 200);
+    const cert = (await (await o.get(`/api/crm/vendors/${v.id}/insurance`)).json()).certificate;
+    assert.equal(String(cert.expires).slice(0, 10), '2031-01-01');
+    const file = await o.get(`/api/crm/vendors/${v.id}/insurance/file`);
+    assert.equal(file.headers.get('content-type'), 'application/pdf');
+    assert.equal(String((await sql('SELECT insurance_expires FROM crm_vendors WHERE id = $1', [v.id]))[0].insurance_expires.toISOString()).slice(0, 10), '2031-01-01');
+    // Switched off again: the builder no longer sees certificates.
+    await o.patch('/api/crm/account-features', { insurance: false });
+    assert.equal((await (await o.get(`/api/crm/vendors/${v.id}/insurance`)).json()).certificate, null);
+  });
+
+  test('help requests, and errors from people’s screens are kept', async () => {
+    const o = await company('help');
+    assert.equal((await o.post('/api/crm/help-request', {})).status, 400);
+    assert.equal((await o.post('/api/crm/help-request', { phone: '713-555-0100', bestTime: 'Mornings', need: 'Importing from Buildertrend' })).status, 200);
+    assert.equal((await sql('SELECT need FROM crm_help_requests WHERE tenant_id = $1', [o.tenantId]))[0].need, 'Importing from Buildertrend');
+    const msg = 'TypeError: x is undefined ' + Date.now();
+    await o.post('/api/crm/client-error', { message: msg, stack: 'at foo', screen: 'pipeline' });
+    await new Promise(r => setTimeout(r, 300));
+    const row = (await sql('SELECT source, path, user_id FROM crm_errors WHERE message = $1', [msg]))[0];
+    assert.equal(row.source, 'browser'); assert.equal(row.path, 'pipeline'); assert.equal(row.user_id, o.me.userId);
+    assert.equal((await makeClient().post('/api/crm/client-error', { message: 'x' })).status, 401);
+  });
+});
+
 describe('CRM team', () => {
   async function owner() {
     const client = makeClient();

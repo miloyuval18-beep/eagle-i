@@ -41,10 +41,40 @@ async function crmLogin(req, res) {
   try {
     const r = await acc.signIn({ email, password, as: ['staff', 'homeowner', 'sub'].includes(as) ? as : null });
     if (r.choose) return res.json({ choose: r.choose });
+    // Owners and admins on a device they haven't trusted: a code by email first.
+    if (r.as === 'staff') {
+      const u = await team.getUser(r.id);
+      if (acc.needsTwoStep(u) && !(await acc.isTrusted(u.id, cookieOf(req, TRUST_COOKIE)))) {
+        const sent = await acc.sendLoginCode(u.id).catch(e => { throw Object.assign(new Error(e.status === 429 ? e.message : 'We couldn’t email your sign-in code just now. Try again in a few minutes, or use “Sign in with Google”.'), { status: e.status || 503 }); });
+        req.session.twoStep = { userId: u.id, tenantId: u.tenant_id, at: Date.now() };
+        return res.json({ code: true, to: sent.to });
+      }
+    }
     await start(req, r);
     res.json({ ok: true, go: whereTo(r.as) });
   } catch (err) { fail(res, err, 'Sign-in failed'); }
 }
+// The code from the email (two-step sign-in); `remember` trusts this device for 30 days.
+const TRUST_COOKIE = 'eagle_trust';
+function cookieOf(req, name) {
+  const m = String(req.headers.cookie || '').split(/;\s*/).find(c => c.startsWith(name + '='));
+  return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
+}
+router.post('/api/crm-auth/login/code', lim('code2', 20, FIFTEEN), wrap('Couldn’t check the code', async (req, res) => {
+  const p = req.session && req.session.twoStep;
+  if (!p || Date.now() - p.at > 15 * 60000) return res.status(400).json({ error: { message: 'That took too long. Sign in again.' } });
+  const b = req.body || {};
+  if (b.resend) return res.json({ ok: true, ...(await acc.sendLoginCode(p.userId)) });
+  await acc.checkLoginCode(p.userId, b.code);
+  const fresh = !b.remember;
+  await start(req, { as: 'staff', id: p.userId, tenantId: p.tenantId });
+  if (b.remember) {
+    const token = await acc.trustDevice(p.userId, deviceOf(req).name);
+    res.cookie(TRUST_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 30 * 86400000, path: '/' });
+  }
+  require('../lib/crmAudit').log({ tenantId: p.tenantId, actor: { id: p.userId }, action: 'signed_in_new', detail: `${deviceOf(req).name}${fresh ? '' : ' (trusted for 30 days)'}` });
+  res.json({ ok: true, go: '/crm' });
+}));
 router.post('/api/crm-auth/login', lim('login', 20, FIFTEEN, { byEmail: true }), crmLogin);
 
 // { type: 'company' | 'join' | 'homeowner' | 'sub', ... }
@@ -143,6 +173,10 @@ router.post('/api/crm-account/link', account, wrap('Couldn’t add it', async (r
 router.post('/api/crm-account/resend', account, wrap('Couldn’t send it', async (req, res) => {
   res.json(await acc.sendAccountVerify(req.accountId, baseUrlOf(req)));
 }));
+router.post('/api/crm-account/insurance', account, wrap('Couldn’t upload it', async (req, res) => {
+  const b = req.body || {};
+  res.json(await require('../lib/crmAccountFeatures').uploadInsurance({ accountId: req.accountId, filename: b.filename, dataBase64: b.dataBase64, expires: b.expires }));
+}));
 router.post('/api/crm-account/password', account, wrap('Couldn’t change it', async (req, res) => {
   await acc.changePassword({ accountId: req.accountId, current: (req.body || {}).current, password: (req.body || {}).password });
   res.json({ ok: true });
@@ -162,6 +196,54 @@ router.post('/api/crm/join-requests/:id', requireAuth, managersOnly, wrap('Could
   const b = req.body || {};
   res.json(await acc.decideJoin({ tenantId: req.tenantId, actor: req.crmUser, id: req.params.id, approve: !!b.approve, role: b.role || 'member', reportsTo: b.reportsTo || null, baseUrl: baseUrlOf(req) }));
 }));
+
+// ---------- homeowner and sub accounts, from the company's side (lib/crmAccountFeatures.js) ----------
+const feat = require('../lib/crmAccountFeatures');
+router.get('/api/crm/account-features', requireAuth, wrap('Couldn’t load', async (req, res) => res.json({ features: await feat.features(req.tenantId), labels: feat.FEATURES })));
+router.patch('/api/crm/account-features', requireAuth, team.need('settings'), wrap('Couldn’t save', async (req, res) => res.json({ features: await feat.setFeatures(req.tenantId, req.body || {}, req.crmUser) })));
+router.get('/api/crm/deals/:id/account-invite', requireAuth, wrap('Couldn’t load', async (req, res) => res.json(await feat.inviteStatus({ tenantId: req.tenantId, dealId: req.params.id }))));
+router.post('/api/crm/deals/:id/account-invite', requireAuth, wrap('Couldn’t send it', async (req, res) => res.json(await feat.sendInvite({ tenantId: req.tenantId, dealId: req.params.id, actor: req.crmUser, baseUrl: baseUrlOf(req) }))));
+router.get('/api/crm/vendors/:id/account-invite', requireAuth, wrap('Couldn’t load', async (req, res) => res.json(await feat.inviteStatus({ tenantId: req.tenantId, vendorId: req.params.id }))));
+router.post('/api/crm/vendors/:id/account-invite', requireAuth, team.need('subs'), wrap('Couldn’t send it', async (req, res) => res.json(await feat.sendInvite({ tenantId: req.tenantId, vendorId: req.params.id, actor: req.crmUser, baseUrl: baseUrlOf(req) }))));
+router.get('/api/crm/vendors/:id/insurance', requireAuth, wrap('Couldn’t load', async (req, res) => res.json({ certificate: await feat.certificateFor({ tenantId: req.tenantId, vendorId: req.params.id }) })));
+router.get('/api/crm/vendors/:id/insurance/file', requireAuth, wrap('Couldn’t load the file', async (req, res) => {
+  const f = await feat.certificateFile({ tenantId: req.tenantId, vendorId: req.params.id });
+  if (!f) return res.status(404).json({ error: { message: 'No certificate.' } });
+  res.set({ 'Content-Type': f.content_type, 'Content-Disposition': `inline; filename="${String(f.filename).replace(/"/g, '')}"`, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+  res.send(f.data);
+}));
+
+// ---------- "Help me set up" and errors from people's screens ----------
+router.post('/api/crm/help-request', requireAuth, lim('help', 5, 60 * 60000), wrap('Couldn’t send it', async (req, res) => {
+  const b = req.body || {};
+  const clip = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
+  const need = clip(b.need, 2000), phone = clip(b.phone, 40), when = clip(b.bestTime, 80);
+  if (!phone && !need) return res.status(400).json({ error: { message: 'Add your phone number, or say what you need help with.' } });
+  const { query } = require('../db');
+  await query('INSERT INTO crm_help_requests (tenant_id, user_id, phone, best_time, need) VALUES ($1, $2, $3, $4, $5)', [req.tenantId, req.userId, phone || null, when || null, need || null]);
+  const u = req.crmUser;
+  const co = (await query('SELECT company_name FROM tenants WHERE id = $1', [req.tenantId])).rows[0] || {};
+  const { sendEmail } = require('../lib/email');
+  const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const to = process.env.ADMIN_ALERT_EMAIL || 'miloyuval18@gmail.com';
+  await sendEmail({ to, subject: `🙋 Setup help: ${u.name || u.email} at ${co.company_name}`, replyTo: u.email,
+    text: `${u.name || u.email} (${u.email}, ${u.role}) at ${co.company_name} wants help setting up.
+Phone: ${phone || '—'}
+Best time: ${when || '—'}
+
+${need || ''}`,
+    html: `<p style="font-size:16px"><b>${esc(u.name || u.email)}</b> (${esc(u.email)}, ${esc(u.role)}) at <b>${esc(co.company_name)}</b> wants help setting up.</p><p style="font-size:16px">Phone: ${esc(phone || '—')}<br>Best time: ${esc(when || '—')}</p><p style="font-size:16px;white-space:pre-wrap">${esc(need)}</p>` })
+    .catch(e => console.warn('[help] not emailed:', e.message));
+  sendEmail({ to: u.email, subject: 'We got your request for setup help', text: `Thanks${u.name ? ', ' + u.name.split(' ')[0] : ''}. Someone from Eagle I will call you${phone ? ' at ' + phone : ''}${when ? ' (' + when.toLowerCase() + ')' : ''}, usually within one business day.`,
+    html: `<p style="font-size:18px">Thanks${u.name ? ', ' + esc(u.name.split(' ')[0]) : ''}. Someone from Eagle I will call you${phone ? ' at ' + esc(phone) : ''}${when ? ' (' + esc(when.toLowerCase()) + ')' : ''}, usually within one business day.</p>` }).catch(() => {});
+  res.json({ ok: true });
+}));
+// Errors in someone's browser on the CRM (crm.html sends them).
+router.post('/api/crm/client-error', requireAuth, lim('clienterr', 30, 60 * 60000), (req, res) => {
+  const b = req.body || {};
+  if (b.message) require('../lib/crmErrors').record({ source: 'browser', message: String(b.message), detail: [b.stack, b.agent ? 'Browser: ' + b.agent : ''].filter(Boolean).join('\n'), path: String(b.screen || ''), tenantId: req.tenantId, userId: req.userId }).catch(() => {});
+  res.json({ ok: true });
+});
 
 // ---------- the quick way through setup (lib/crmQuickSetup.js) ----------
 const quick = require('../lib/crmQuickSetup');

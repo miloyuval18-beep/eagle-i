@@ -684,6 +684,8 @@ select{max-width:100%;text-overflow:ellipsis}
       <button onclick="crMenu(false);crView('billing')">Plan &amp; billing</button>
       <button onclick="crMenu(false);dyOpen()">My calendar &amp; morning email</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
+      <button onclick="crMenu(false);alOpen()" id="cr-activity-btn" hidden>📋 Activity log</button>
+      <button onclick="crMenu(false);hpOpen()">🙋 Help me set up</button>
       <button onclick="crMenu(false);crView('start')">✓ Guided setup</button>
       <button onclick="crMenu(false);binOpen()">🗑 Recycle bin</button>
       <button onclick="crMenu(false);crPauseAll()" id="cr-pause-btn" hidden>⏸ Pause all automatic emails</button>
@@ -906,6 +908,9 @@ select{max-width:100%;text-overflow:ellipsis}
     <div class="pl-h" style="margin-top:26px">Google: email &amp; Drive</div>
     <div class="ss" style="margin-bottom:10px">Connect Google and every email between your team and a customer lands on that customer’s deal by itself. A customer’s email stops the follow-ups; your team’s email to a new lead counts as picking it up. Only emails with people in your CRM are kept (who, when, subject and what was written). Personal mail and attachments are never stored. Optionally, keep every job’s files in Google Drive too.</div>
     <div id="gw"><div class="sm">Loading…</div></div>
+    <div class="pl-h" style="margin-top:26px">Homeowners and subs</div>
+    <div class="ss" style="margin-bottom:10px">Homeowners and subs can make their own free Eagle I account. Their projects with you, and everything waiting on them, show up there by themselves. These extras are off until you switch them on.</div>
+    <div id="af-box"><div class="sm">Loading…</div></div>
   </section>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -981,7 +986,32 @@ const CR={me:null,view:'pipeline',team:[]};
 const crCanManage=()=>!!(CR.me&&CR.me.canManage);
 // What this person may do: their permissions checklist (Account → Team).
 const crCan=(k)=>!!(CR.me&&CR.me.perms&&CR.me.perms[k]);
-async function crLoadTeam(){try{const d=await plApi('/api/crm/team');CR.team=d.members||[];CR.teamInfo=d;return d;}catch(e){return null;}}
+// Menus and tabs that depend on permissions.
+function crApplyMe(){
+  document.getElementById('cr-reports-link').hidden=!crCan('reports');
+  document.getElementById('cr-export').hidden=!crCan('data');
+  // Money (estimates, invoices, cash flow) only for people who may see or make them.
+  {const t=document.querySelector('.cr-tab[data-view="estimates"]');if(t)t.hidden=!crCan('money')&&!crCan('estimates');}
+  {const a=document.getElementById('vd-add');if(a)a.hidden=!crCan('subs');}
+  {const al=document.getElementById('cr-activity-btn');if(al)al.hidden=!crCan('team');}
+}
+// When the owner changes someone's role or permissions, their screen follows
+// without a reload: checked on coming back to the tab, every 2 minutes, and
+// whenever the server says "no permission".
+let CR_ME_AT=0;
+async function crRefreshMe(force){
+  if(!CR.me||(!force&&Date.now()-CR_ME_AT<20000))return;CR_ME_AT=Date.now();
+  let me;try{const r=await fetch('/api/crm/me');if(r.status===401){location.href='/crm/login';return;}me=await r.json();}catch(e){return;}
+  const sig=(m)=>JSON.stringify([m.role,m.perms]);
+  if(sig(me)===sig(CR.me))return;
+  const was=CR.me.roleLabel;CR.me={...CR.me,...me};crApplyMe();
+  if(CR.view==='estimates'&&!crCan('money')&&!crCan('estimates'))crView('needs');else crView(CR.view);
+  showNotif('Your access was updated',was!==me.roleLabel?'You’re now '+(/^[aeiou]/i.test(me.roleLabel)?'an ':'a ')+me.roleLabel.toLowerCase()+'.':'The owner or an admin changed what you can do.');
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)crRefreshMe();});
+setInterval(()=>{if(!document.hidden)crRefreshMe();},120000);
+// CR.team: the people working now (turned-off ones aren't offered for new work).
+async function crLoadTeam(){try{const d=await plApi('/api/crm/team');CR.team=(d.members||[]).filter(m=>!m.disabled_at);CR.teamInfo=d;return d;}catch(e){return null;}}
 // Whose schedule I can see (up and down my line), and who is under me.
 const crSees=()=>{const m=CR.teamInfo&&CR.teamInfo.me;return m?CR.team.filter(x=>x.id!==m.id&&m.sees.includes(x.id)):[];};
 const crBelow=()=>{const m=CR.teamInfo&&CR.teamInfo.me;return m?CR.team.filter(x=>m.below.includes(x.id)):[];};
@@ -1024,7 +1054,7 @@ function crView(v){
   if(v==='needs'){plLoadNeeds();clLoad('cl-box');}
   if(v==='calendar')cvLoad();
   if(v==='auto')plLoadAuto();
-  if(v==='company')coLoad();
+  if(v==='company'){coLoad();afLoad();}
   if(v==='team')tmLoad();
   if(v==='start')stLoad();
   crSetupBanner();
@@ -1078,11 +1108,7 @@ async function crInit(){
   document.getElementById('cr-company').textContent=me.companyName||'';
   document.getElementById('cr-who').textContent=me.email||'';
   document.getElementById('cr-mkt').hidden=!me.hasMarketing;
-  document.getElementById('cr-reports-link').hidden=!crCan('reports');
-  document.getElementById('cr-export').hidden=!crCan('data');
-  // Money (estimates, invoices, cash flow) only for people who may see or make them.
-  {const t=document.querySelector('.cr-tab[data-view="estimates"]');if(t)t.hidden=!crCan('money')&&!crCan('estimates');}
-  {const a=document.getElementById('vd-add');if(a)a.hidden=!crCan('subs');}
+  crApplyMe();
   if(!me.hasCrm){
     document.getElementById('cr-nav').style.display='none';
     document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
@@ -1418,8 +1444,17 @@ function srGo(i){const x=SR.list[i];if(!x)return;CR.dirty=false;uxClose();
 const CR_ERRS=[];
 function crNoteErr(m){CR_ERRS.push(new Date().toLocaleTimeString()+' '+String(m).slice(0,300));if(CR_ERRS.length>8)CR_ERRS.shift();}
 let crErrToastAt=0;
-window.addEventListener('error',e=>{crNoteErr((e.message||'error')+(e.filename?' @'+e.filename.split('/').pop()+':'+e.lineno:''));if(Date.now()-crErrToastAt>60000){crErrToastAt=Date.now();showNotif('Something didn’t work on this screen','Try again. If it keeps happening: Account → Report a problem.');}});
-window.addEventListener('unhandledrejection',e=>crNoteErr('unhandled: '+((e.reason&&e.reason.message)||e.reason)));
+// Errors on this screen are sent to Eagle I too (lib/crmErrors.js emails the
+// first time a problem shows up), once per kind of problem per page load.
+const CR_SENT_ERRS=new Set();
+function crSendErr(message,stack){
+  const key=String(message).replace(/\d+/g,'#').slice(0,200);if(CR_SENT_ERRS.has(key)||CR_SENT_ERRS.size>20)return;CR_SENT_ERRS.add(key);
+  try{fetch('/api/crm/client-error',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:String(message).slice(0,500),stack:String(stack||'').slice(0,2000),screen:(CR.view||'')+(location.hash?' '+location.hash:''),agent:navigator.userAgent})}).catch(()=>{});}catch(x){}
+}
+window.addEventListener('error',e=>{if(e.message&&!/^Script error\.?$/.test(e.message)&&!/ResizeObserver/.test(e.message))crSendErr(e.message+(e.filename?' @'+e.filename.split('/').pop()+':'+e.lineno:''),e.error&&e.error.stack);crNoteErr((e.message||'error')+(e.filename?' @'+e.filename.split('/').pop()+':'+e.lineno:''));if(Date.now()-crErrToastAt>60000){crErrToastAt=Date.now();showNotif('Something didn’t work on this screen','Try again. If it keeps happening: Account → Report a problem.');}});
+window.addEventListener('unhandledrejection',e=>{const m=(e.reason&&e.reason.message)||e.reason;crNoteErr('unhandled: '+m);
+  // Not a bug: no signal, or the server already said why (those are logged on the server).
+  if(!/offline|didn’t answer|Failed to fetch|NetworkError|Load failed|permission|Not logged in/i.test(String(m)))crSendErr('Unhandled: '+m,e.reason&&e.reason.stack);});
 function rpOpenProblem(){
   uxOpen(uxHead('Report a problem','Tell us what happened, in your own words. We’ll look into it.')+`<div class="pl-form"><div class="full"><label for="rp-what">What happened? What did you expect?</label><textarea id="rp-what" class="cred-input" rows="5" placeholder="e.g. I tapped Send on the invoice for the Ruiz job and nothing happened."></textarea></div></div>
     <div class="sm">We include which screen you were on and any error that showed up, so you don’t have to.</div>
@@ -1437,7 +1472,8 @@ async function dvOpen(){
   try{const {devices}=await plApi('/api/crm/me/devices');
     uxOpen(uxHead('Devices signed in','Every phone and computer signed in to your account. If you lost a phone or used someone else’s computer, sign out everywhere else.')+
       devices.map(d=>`<div class="bin-row"><div class="w"><div style="font-weight:600">${d.current?'📍 ':''}${uxEsc(d.name)}${d.current?' <span class="sm">(this one)</span>':''}</div><div class="k">${d.since?'Signed in '+crWhen(d.since):''}</div></div></div>`).join('')+
-      (devices.length>1?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="dvOut(this)">Sign out everywhere else</button></div>`:'<div class="sm">Only this device is signed in.</div>'));}
+      (devices.length>1?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="dvOut(this)">Sign out everywhere else</button></div>`:'<div class="sm">Only this device is signed in.</div>')+
+      (['owner','admin'].includes(CR.me&&CR.me.role)?`<div class="sm" style="margin-top:10px">🔐 As ${CR.me.role==='owner'?'the owner':'an admin'}, signing in with a password on a new device needs a code from your email. Devices you said were yours don’t ask for 30 days; “Sign out everywhere else” makes them ask again.</div>`:''));}
   catch(e){uxOpen(uxHead('Could not load your devices',uxEsc(e.message)));}
 }
 async function dvOut(btn){if(!confirm('Sign out every other phone and computer? You stay signed in here.'))return;btn.disabled=true;try{const r=await plApi('/api/crm/me/devices/sign-out-others',{body:{}});showNotif('Signed out',`${r.signedOut} other device${r.signedOut===1?'':'s'} signed out.`);dvOpen();}catch(e){btn.disabled=false;showNotif('Could not do that',e.message);}}
@@ -1542,7 +1578,7 @@ function rpRender(r,label){
   document.getElementById('rp-view').innerHTML=`<div class="pl-pb">
     <div class="sm" style="margin-top:0">${uxEsc(label)}${r.writtenBy==='ai'?' · written with AI from your records':' · written from your records'}</div>
     <div class="pl-card-top" style="align-items:center"><div class="st" style="font-size:22px;margin:4px 0 10px">${uxEsc(n.headline)}</div>${'speechSynthesis' in window?'<button class="btn-xs p" id="rp-listen" onclick="rpListen()">▶ Listen</button>':''}</div>
-    <div class="pl-strip">${[[c.newLeads,'New leads'],[c.medianResponseMinutes==null?'—':plFmtMin(c.medianResponseMinutes),'To pick up a lead'],[plMoney(c.signedValue)||'$0','Signed'],[plMoney(c.openValue)||'$0','Being sold']].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('')}</div>
+    <div class="pl-strip">${[[c.newLeads,'New leads'],[c.medianResponseMinutes==null?'—':plFmtMin(c.medianResponseMinutes),'To pick up a lead'],...(c.signedValue===null&&c.openValue===null?[]:[[plMoney(c.signedValue)||'$0','Signed'],[plMoney(c.openValue)||'$0','Being sold']])].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('')}</div>
     <div class="pl-h">What went well</div>${ul(n.successes||[])}
     <div class="pl-h">What needs attention</div>${ul(n.challenges||[])}
     ${n.team&&n.team.length?'<div class="pl-h">The team</div><ul style="margin:4px 0 12px 18px;font-size:17px;line-height:1.55">'+n.team.map(t=>`<li><b>${uxEsc(t.name)}:</b> ${uxEsc(t.note)}</li>`).join('')+'</ul>':''}
@@ -1793,12 +1829,12 @@ async function tmLoad(){
     const canEdit=manage&&m.role!=='owner'&&!isMe;
     const boss=m.reports_to?tmName(m.reports_to):'';
     const under=d.members.filter(x=>x.reports_to===m.id);
-    const line=m.role==='owner'?'Runs the company':boss?'Reports to '+uxEsc(boss):m.role==='admin'?'Reports to the owner':'Reports to the owner and admins';
+    const line=m.disabled_at?'⏸ Turned off '+new Date(m.disabled_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})+': can’t sign in':m.role==='owner'?'Runs the company':boss?'Reports to '+uxEsc(boss):m.role==='admin'?'Reports to the owner':'Reports to the owner and admins';
     return `<div class="pl-item"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(m.name||m.email)}${isMe?' (you)':''}</div><div class="pl-item-d">${uxEsc(m.email)} · ${m.open_deals} open deal${m.open_deals===1?'':'s'}</div><div class="pl-item-d">${line}${under.length?' · '+(under.length===1?'1 person reports':under.length+' people report')+' to them':''}</div></div><span class="pl-pill${m.role==='owner'?' on':''}">${uxEsc(m.role_label||tmLabel(m.role))}</span></div>
       ${canEdit?`<div class="pl-form" style="margin-top:8px">
         <div><label for="tm-r-${m.id}">Role</label><select id="tm-r-${m.id}" onchange="tmRole('${m.id}',this.value)">${tmRoleOpts(m.role)}</select></div>
         <div><label for="tm-b-${m.id}">Reports to</label><select id="tm-b-${m.id}" onchange="tmBoss('${m.id}',this.value)">${tmBossOpts(m.role,m.reports_to||'',m.id)}</select></div>
-      </div>${tmPermsHtml(m)}<div class="pl-acts"><button class="btn-xs" style="color:var(--red)" onclick="tmRemove('${m.id}')">Remove</button></div>`:tmPermsSummary(m)}</div>`;
+      </div>${tmPermsHtml(m)}<div class="pl-acts">${m.disabled_at?`<button class="btn-xs p" onclick="tmActive('${m.id}',true)">Turn back on</button>`:`<button class="btn-xs" onclick="tmActive('${m.id}',false)">Turn off</button>`}<button class="btn-xs" onclick="tmHandover('${m.id}')">Hand over their work</button><button class="btn-xs" style="color:var(--red)" onclick="tmRemove('${m.id}')">Remove</button></div>`:tmPermsSummary(m)}</div>`;
   }).join('');
   document.getElementById('tm-invites').innerHTML=d.invites.length?'<div class="pl-h">Waiting to join</div><div class="pl-list">'+d.invites.map(i=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(i.name||i.email)}</div><div class="pl-item-d">${uxEsc(i.email)} · ${uxEsc(tmLabel(i.role))}${i.reports_to?' · will report to '+uxEsc(tmName(i.reports_to)):''} · invited ${new Date(i.created_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}, link works until ${new Date(i.expires_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>${manage?`<div class="pl-acts"><button class="btn-xs" onclick="tmCancel('${i.id}')">Cancel invitation</button></div>`:''}</div>`).join('')+'</div>':'';
   tmTree(d.members);
@@ -1867,8 +1903,69 @@ async function tmRole(id,role){
   try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{role}});showNotif('Role changed',(TMN[id]||'They')+' is now '+(w=>(/^[aeiou]/.test(w)?'an ':'a ')+w)(tmLabel(role).toLowerCase())+'.');tmLoad();}catch(e){showNotif('Could not change the role',e.message);tmLoad();}}
 let TMN={};
 async function tmRemove(id){const name=TMN[id]||'this person';
-  if(!confirm('Remove '+name+'? Their login stops working right away. Their deals become unassigned and their history stays.'))return;
-  try{await plApi('/api/crm/team/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not remove',e.message);}
+  // First offer to give their open work to someone, so nothing is left with nobody.
+  if(await tmHandover(id,{before:'remove'})===null)return;
+  if(!confirm('Remove '+name+'? Their login is deleted for good. Their history stays on each deal.\n\nWant them back later? Use “Turn off” instead: it keeps their login.'))return;
+  try{await plApi('/api/crm/team/'+id,{method:'DELETE'});showNotif('Removed',name);tmLoad();}catch(e){showNotif('Could not remove',e.message);}
+}
+// Turn off (can't sign in, signed out everywhere, keeps their login and history) or back on.
+async function tmActive(id,on){const name=TMN[id]||'this person';
+  if(!on){if(await tmHandover(id,{before:'off'})===null)return;
+    if(!confirm('Turn off '+name+'?\n\nThey’re signed out everywhere and can’t sign in until you turn them back on. Their login, history and anything you didn’t hand over stay as they are. They don’t take up a seat on your plan while off.'))return;}
+  try{await plApi('/api/crm/team/'+id+'/active',{body:{on}});showNotif(on?name+' is back on':name+' is turned off',on?'They can sign in again.':'They’ve been signed out everywhere.');tmLoad();}catch(e){showNotif('Could not change that',e.message);}
+}
+// Hand over their open deals, visits, tasks, job phases, appointments and reports. null = cancelled.
+function tmHandover(id,{before}={}){
+  const name=TMN[id]||'this person';
+  const others=CR.team.filter(m=>m.id!==id);
+  return new Promise((done)=>{
+    TM_HO=done;
+    uxOpen(uxHead('Hand over '+uxEsc(name.split(' ')[0])+'’s work',before?'Before you '+(before==='remove'?'remove':'turn off')+' '+uxEsc(name)+', give their open work to someone so nothing is left with nobody.':'Give their open work to someone else.')+`
+      <div class="sm" style="margin-top:0">Moves their open deals, upcoming site visits, open tasks, job phases not done, appointments still to come, and the people who report to them. Finished work and history stay under ${uxEsc(name.split(' ')[0])}’s name.</div>
+      <label for="ho-to" style="display:block;font-weight:700;margin-top:10px">Give it to</label><select id="ho-to" class="cred-input">${others.map(m=>`<option value="${m.id}">${uxEsc(m.name||m.email)} · ${uxEsc(m.role_label||'')}</option>`).join('')}</select>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="tmHandoverGo('${id}',this)">Hand it over</button>${before?`<button class="btn-xs" onclick="uxClose();TM_HO&&TM_HO(false)">Skip: leave it with them</button>`:''}<button class="btn-xs" onclick="uxClose();TM_HO&&TM_HO(null)">Cancel</button></div><div class="sm" id="ho-msg"></div>`);
+  });
+}
+let TM_HO=null;
+async function tmHandoverGo(id,btn){
+  const to=document.getElementById('ho-to').value;btn.disabled=true;
+  try{const r=await plApi('/api/crm/team/'+id+'/handover',{body:{to}});const m=r.moved;
+    const any=m.deals||m.visits||m.tasks||m.phases||m.appointments||m.reports;
+    showNotif('Handed over to '+(TMN[to]||'them'),any?`${m.deals} deals, ${m.visits} visits, ${m.tasks} tasks, ${m.phases} phases, ${m.appointments} appointments${m.reports?', '+m.reports+' people':''}.`:'They had nothing open to hand over.');
+    uxClose();const d=TM_HO;TM_HO=null;if(d)d(true);if(CR.view==='team')tmLoad();}
+  catch(e){document.getElementById('ho-msg').textContent=e.message;btn.disabled=false;}
+}
+
+/* ---------- "Help me set up" ---------- */
+function hpOpen(){
+  uxOpen(uxHead('Help me set up','Someone from Eagle I will call you and set things up with you, usually within one business day. It’s free.')+`
+    <div class="pl-form"><div><label for="hp-phone">Your phone</label><input id="hp-phone" class="cred-input" type="tel" inputmode="tel" value="${uxEsc((CR.me&&CR.me.phone)||'')}" placeholder="713-555-0100"></div>
+    <div><label for="hp-when">Best time to call</label><select id="hp-when" class="cred-input"><option>Any time</option><option>Mornings</option><option>Afternoons</option><option>Evenings</option></select></div>
+    <div class="full"><label for="hp-need">What would you like help with? <span class="sm">(optional)</span></label><textarea id="hp-need" class="cred-input" rows="4" placeholder="e.g. bringing in our customers from Buildertrend, setting up the team, the automatic emails…"></textarea></div></div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="hpSend(this)">Ask for a call</button></div><div class="sm" id="hp-msg"></div>`);
+}
+async function hpSend(btn){
+  const v=(id)=>document.getElementById(id).value;
+  if(!v('hp-phone').trim()&&!v('hp-need').trim()){document.getElementById('hp-msg').textContent='Add your phone number so we can call you.';return;}
+  btn.disabled=true;
+  try{await plApi('/api/crm/help-request',{body:{phone:v('hp-phone'),bestTime:v('hp-when'),need:v('hp-need')}});uxClose();showNotif('Request sent','We’ll call you'+(v('hp-phone').trim()?' at '+v('hp-phone').trim():'')+', usually within one business day.');}
+  catch(e){document.getElementById('hp-msg').textContent=e.message;btn.disabled=false;}
+}
+
+/* ---------- activity log (lib/crmAudit.js) ---------- */
+const AL={person:'',items:[]};
+async function alOpen(more){
+  if(!more){AL.items=[];}
+  try{
+    const before=more&&AL.items.length?AL.items[AL.items.length-1].id:'';
+    const {items}=await plApi('/api/crm/activity-log?person='+encodeURIComponent(AL.person)+(before?'&before='+before:''));
+    AL.items=[...AL.items,...items];
+    const people=(CR.teamInfo&&CR.teamInfo.members)||CR.team;
+    uxOpen(uxHead('Activity log','Who changed what: roles, permissions, people let in or turned off, deletes, imports and settings. Newest first.')+`
+      <label for="al-person" style="display:block;font-weight:700">Show</label><select id="al-person" class="cred-input" onchange="AL.person=this.value;alOpen()"><option value="">Everyone</option>${people.map(m=>`<option value="${m.id}"${AL.person===m.id?' selected':''}>${uxEsc(m.name||m.email)}</option>`).join('')}</select>
+      <div style="margin-top:10px">${AL.items.length?AL.items.map(a=>`<div class="bin-row"><div class="w"><div style="font-weight:600">${uxEsc(a.label)}${a.target_name?': '+uxEsc(a.target_name):''}</div><div class="sm" style="margin:2px 0 0">${a.detail?uxEsc(a.detail)+'<br>':''}${uxEsc(a.actor_name||'Eagle I')} · ${crWhen(a.created_at)}</div></div></div>`).join(''):'<div class="pl-empty">Nothing yet. Changes to the team, deletes and settings show up here.</div>'}</div>
+      ${items.length>=60?'<div class="vd-mbtns"><button class="btn-xs" onclick="alOpen(true)">Show older</button></div>':''}`);
+  }catch(e){uxOpen(uxHead('Couldn’t load the activity log',uxEsc(e.message)));}
 }
 async function tmCancel(id){try{await plApi('/api/crm/team/invites/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not cancel',e.message);}}
 
@@ -1956,6 +2053,7 @@ async function stLoad(){
   box.innerHTML=`<div class="sh"><div><div class="st">${stOwner()?'Let’s set up '+uxEsc(me.companyName||'your company'):'Welcome to '+uxEsc(me.companyName||'Eagle I')}</div>${bar}</div></div>
     <div class="pl-pb"><div class="pl-item-t" style="font-size:21px">${uxEsc(ST_TITLE[k])}</div>${body}
     <div class="vd-mbtns" style="margin-top:16px;align-items:center"><button class="btn btn-blue" id="st-go" onclick="stNext(this)">${last?'Finish':'Save and continue'}</button>${ST.step>0?'<button class="btn-xs" onclick="stSetStep(ST.step-1);stLoad()">← Back</button>':''}${last?'':'<button class="btn-xs" onclick="stSetStep(ST.step+1);stLoad()">Skip this step</button>'}</div><div class="sm" id="st-err" style="color:var(--red)"></div></div>
+    <div class="st-warn" style="margin-top:14px;background:#f6f9fc;border-color:#c9d8e8">🙋 <b>Rather have someone walk you through it?</b> We’ll call you and set it up with you, free. <button class="btn-xs p" onclick="hpOpen()">Help me set up</button></div>
     <div class="sm" style="margin-top:14px">Want to do this later? <button class="btn-xs" onclick="stFinish(true)">Skip setup for now</button> You can come back to it from Account → Guided setup.</div>`;
   window.scrollTo(0,0);
   stLabel();
@@ -2563,7 +2661,13 @@ async function plApi(url,opts){
     throw new Error(navigator.onLine?'Eagle I didn’t answer. Check your connection and try again.':'You’re offline. Try again when you have signal.');
   }
   let d={};try{d=await r.json();}catch(e){}
-  if(!r.ok)throw new Error((d.error&&d.error.message)||('Request failed ('+r.status+')'));
+  if(!r.ok){
+    const code=d.error&&d.error.code;
+    // Turned off while signed in, or permissions changed: catch up straight away.
+    if(code==='disabled'){alert((d.error&&d.error.message)||'Your account has been turned off.');location.href='/crm/login';}
+    if(code==='permission')setTimeout(()=>crRefreshMe(true),0);
+    throw new Error((d.error&&d.error.message)||('Request failed ('+r.status+')'));
+  }
   if(opts&&(opts.body!==undefined||opts.method&&opts.method!=='GET')){CR.dirty=false;crDraftsClear();}
   // Deleted things go to the recycle bin: offer to put them back.
   if(d&&d.undo&&opts&&opts.method==='DELETE'){const id=d.undo;setTimeout(()=>crUndo('Moved to the recycle bin.',()=>crRestore(id)),0);}
@@ -2587,7 +2691,7 @@ function plRender(){
   const weekAgo=Date.now()-7*86400000;
   const newWeek=d.deals.filter(x=>x.inbound&&new Date(x.created_at).getTime()>weekAgo).length;
   document.getElementById('pl-strip').innerHTML=[
-    [selling.length,'Deals being sold'],[plMoney(d.openValue)||'$0','Value being sold'],[newWeek,'New leads this week'],[d.needsYou,'Need you']
+    [selling.length,'Deals being sold'],...(d.moneyHidden?[]:[[plMoney(d.openValue)||'$0','Value being sold']]),[newWeek,'New leads this week'],[d.needsYou,'Need you']
   ].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
   document.getElementById('pl-paused-banner').innerHTML=d.settings&&d.settings.paused?'<div class="pl-banner"><span>⏸ All automatic emails are paused. Nothing is being sent.</span><button class="btn-xs p" onclick="plSetting({paused:false})">Resume</button></div>':'';
   const mine=open.filter(x=>CR.me&&x.owner_user_id===CR.me.userId);
@@ -2674,7 +2778,7 @@ async function plOpenDeal(id){
   uxOpen(uxHead(uxEsc(x.title),uxEsc(plSourceLabel(x.source))+' · added '+new Date(x.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+zipInfo)+
     plNextStep(x,d.nextStep)+`<div class="pl-form">
       <div class="full"><label for="pld-stage">Stage</label><select id="pld-stage" onchange="plStageChanged('${x.id}',this)">${plStageOptions(x.stage)}</select></div>
-      ${plField('pld-title','Project',x.title)}${plField('pld-value','Estimated value',x.value==null?'':Math.round(x.value),{mode:'decimal',ph:'e.g. 85k'})}
+      ${plField('pld-title','Project',x.title)}${crCan('money')?plField('pld-value','Estimated value',x.value==null?'':Math.round(x.value),{mode:'decimal',ph:'e.g. 85k'}):''}
       ${plField('pld-name','Name',x.contact_name)}${plField('pld-phone','Phone',x.contact_phone,{type:'tel',mode:'tel'})}
       ${plField('pld-email','Email',x.contact_email,{type:'email',mode:'email',full:true})}
       ${plField('pld-address','Property address',x.property_address,{full:true})}
@@ -3128,11 +3232,16 @@ async function vdPage(id){
       <label for="vp-url" style="font-size:15px;font-weight:700;display:block">Their link (keep it between you and them)</label>
       <div style="display:flex;gap:6px;margin-top:4px"><input id="vp-url" class="cred-input" readonly value="${uxEsc(r.url)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('vp-url')">Copy</button><a class="btn-xs" href="${uxEsc(r.url)}" target="_blank" rel="noopener">Open</a></div>
       <div class="vd-mbtns">${r.email?`<button class="btn btn-blue" onclick="vdPageEmail('${id}',this)">Email it to ${uxEsc(r.email)}</button>`:'<span class="sm" style="margin:0">Add their email to send it to them.</span>'}${crCan('subs')?`<button class="btn-xs" onclick="vdPageReset('${id}')">Make a new link</button>`:''}</div>
+      <div id="vp-invite"></div><div id="vp-ins"></div>
       <div class="pl-h">What they can see</div>
       ${r.jobs.length?'<div class="pl-list">'+r.jobs.map(j=>`<div class="pl-item" style="padding:9px 12px"><div class="pl-card-top"><span class="pl-item-t">${uxEsc(j.title)}</span><span class="pl-pill ${j.status==='on'?'on':''}">${j.status==='on'?'On the job':'Bidding'}</span></div><div class="pl-item-d">${j.files} file${j.files===1?'':'s'} shared with subs</div></div>`).join('')+'</div>':'<div class="sm">No jobs yet. Put them on a schedule phase, a purchase order or a bid request and the job shows up on their page.</div>'}
       <div class="sm">On each job: the address, the schedule, their own phases and purchase orders, plans and selection sheets (switch any file on or off with “Subs see it” in its ⋯ menu), what the homeowner picked, and approved changes without prices. Never the homeowner’s phone or email, or anyone else’s prices.</div>
-      ${r.questions.length?`<div class="pl-h">What they’ve asked</div><ul class="pl-tl">${r.questions.map(q=>`<li><b>${uxEsc(q.question)}</b><br>${uxEsc(q.answer||'')}<div class="pl-tl-meta">${new Date(q.created_at).toLocaleString()}${q.job?' · '+uxEsc(q.job):''}${q.forwarded?' · sent to you':''}</div></li>`).join('')}</ul>`:''}`);}
-  catch(e){uxOpen(uxHead('Could not open it',uxEsc(e.message)));}
+      ${r.questions.length?`<div class="pl-h">What they’ve asked</div><ul class="pl-tl">${r.questions.map(q=>`<li><b>${uxEsc(q.question)}</b><br>${uxEsc(q.answer||'')}<div class="pl-tl-meta">${new Date(q.created_at).toLocaleString()}${q.job?' · '+uxEsc(q.job):''}${q.forwarded?' · sent to you':''}</div></li>`).join('')}</ul>`:''}`);
+    afInviteHtml('vendor',id,'vp-invite');
+    plApi('/api/crm/vendors/'+id+'/insurance').then(({certificate:c})=>{const el=document.getElementById('vp-ins');if(!el||!c)return;
+      const exp=new Date(String(c.expires).slice(0,10)+'T12:00:00Z');const late=exp<new Date();
+      el.innerHTML=`<div class="pl-banner"${late?' style="border-color:var(--red)"':''}><span>📄 Insurance certificate from their Eagle I account: runs out ${exp.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}${late?' (<b>expired</b>)':''}.</span><a class="btn-xs p" style="text-decoration:none" href="/api/crm/vendors/${id}/insurance/file" target="_blank" rel="noopener">View it</a></div>`;}).catch(()=>{});
+  }catch(e){uxOpen(uxHead('Could not open it',uxEsc(e.message)));}
 }
 async function vdPageEmail(id,btn){
   const v=(JB.vendors||[]).find(x=>x.id===id)||{};
@@ -3460,8 +3569,39 @@ async function ptLoad(dealId){
       <textarea id="pt-body" class="cred-input" rows="${d.draft?6:3}" placeholder="e.g. Cabinets arrive Thursday; tile goes in next week.">${uxEsc(d.draft||'')}</textarea>
       <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="ptPost('${dealId}',this)">Post</button><button class="btn-xs" onclick="ptDraft('${dealId}',this)">✨ Draft this week’s update</button><label class="pl-switch" style="font-size:16px"><input type="checkbox" id="pt-email" checked> Also email it to them</label>${crCan('settings')?`<button class="btn-xs" onclick="ptReset('${dealId}')" style="margin-left:auto">New link</button>`:''}</div>
       <div class="sm" id="pt-msg"></div>
+      <div id="pt-invite"></div>
       ${d.updates.length?'<ul class="pl-tl" style="margin-top:8px">'+d.updates.map(u=>`<li>${uxEsc(u.body)}<div class="pl-tl-meta">${uxEsc(u.author||'')} · ${new Date(u.created_at).toLocaleString()}${u.emailed_at?' · emailed':''}</div></li>`).join('')+'</ul>':''}`;
+    afInviteHtml('deal',dealId,'pt-invite');
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+/* ---------- homeowner and sub accounts (lib/crmAccountFeatures.js) ---------- */
+async function afLoad(){
+  const el=document.getElementById('af-box');if(!el)return;
+  try{const d=await plApi('/api/crm/account-features');AF=d.features;const dis=crCan('settings')?'':'disabled';
+    el.innerHTML=Object.entries(d.labels).map(([k,f])=>`<label class="pl-switch tm-perm"><input type="checkbox" ${d.features[k]?'checked':''} ${dis} onchange="afSave('${k}',this)"><span><b>${uxEsc(f.label)}</b><br><span class="sm">${uxEsc(f.help)}</span></span></label>`).join('')+(dis?'<div class="sm">Only people with “Company details and settings” can change these.</div>':'');
+  }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+let AF={};
+async function afSave(k,box){
+  if(box.checked&&k==='notices'&&!confirm('Turn on emails to people with an Eagle I account?\n\nWhen you post an update on a project or move a sub’s dates, homeowners and subs who have an account get a short email pointing to it.'))return box.checked=false;
+  try{const d=await plApi('/api/crm/account-features',{method:'PATCH',body:{[k]:box.checked}});AF=d.features;showNotif('Saved',box.checked?'Switched on.':'Switched off.');}
+  catch(e){box.checked=!box.checked;showNotif('Could not save',e.message);}
+}
+// "Invite to Eagle I" for a homeowner (deal) or a sub (vendor), when the company switched it on.
+async function afInviteHtml(kind,id,elId){
+  const el=document.getElementById(elId);if(!el)return;
+  try{const st=await plApi(`/api/crm/${kind==='deal'?'deals':'vendors'}/${id}/account-invite`);
+    if(st.hasAccount){el.innerHTML='<div class="sm">✓ '+uxEsc(st.name||'They')+' has an Eagle I account: everything you share shows up there.</div>';return;}
+    if(!st.on){el.innerHTML='';return;}
+    el.innerHTML=`<div class="vd-mbtns"><button class="btn-xs" onclick="afInvite('${kind}','${id}',this)">✉ Invite to Eagle I</button>${st.started?'<span class="sm" style="margin:0">They started an account but haven’t confirmed their email.</span>':''}</div>`;
+  }catch(e){el.innerHTML='';}
+}
+async function afInvite(kind,id,btn){
+  const st=await plApi(`/api/crm/${kind==='deal'?'deals':'vendors'}/${id}/account-invite`).catch(()=>({}));
+  if(!crAskSend('an invitation to make a free Eagle I account',st.name,st.email,'It comes from your company. They don’t have to: your links keep working either way.'))return;
+  btn.disabled=true;
+  try{const r=await plApi(`/api/crm/${kind==='deal'?'deals':'vendors'}/${id}/account-invite`,{body:{}});showNotif('Invitation sent','To '+r.to);}
+  catch(e){showNotif('Could not send it',e.message);btn.disabled=false;}
 }
 async function ptPost(dealId,btn){
   const body=document.getElementById('pt-body').value,email=document.getElementById('pt-email').checked;if(!body.trim())return;
@@ -3884,7 +4024,7 @@ async function aiHome(){
     const g=h.glance||{},inl=document.getElementById('ai-panel').classList.contains('inline');
     const tile=(n,l,v)=>`<button class="ai-glance-t" onclick="crView('${v}')"><b>${n}</b><span>${l}</span></button>`;
     el.innerHTML=`<div class="ai-hello"><div class="g">${uxEsc(h.greeting)}</div><div class="s">Ask me anything about your jobs and numbers. I can read plans, draft estimates, email anyone, book visits${h.drive?', find files in your Google Drive':''}, and file what happened today.</div>
-      ${inl&&g.openDeals!=null?`<div class="ai-glance">${tile(g.needsYou,'need you','needs')}${tile(g.visitsToday,'visits today','needs')}${tile(g.openDeals,'deals in the pipeline','pipeline')}${tile('$'+Math.round((g.openValue||0)/1000)+'k','being sold','pipeline')}${tile(g.jobs,'jobs underway','jobs')}${g.overdueInvoices?tile(g.overdueInvoices,'invoices overdue','estimates'):''}</div>`:''}
+      ${inl&&g.openDeals!=null?`<div class="ai-glance">${tile(g.needsYou,'need you','needs')}${tile(g.visitsToday,'visits today','needs')}${tile(g.openDeals,'deals in the pipeline','pipeline')}${g.openValue==null?'':tile('$'+Math.round((g.openValue||0)/1000)+'k','being sold','pipeline')}${tile(g.jobs,'jobs underway','jobs')}${g.overdueInvoices?tile(g.overdueInvoices,'invoices overdue','estimates'):''}</div>`:''}
       ${h.ai?'':'<div class="ai-off">The assistant needs its AI key on the server (ANTHROPIC_API_KEY) before it can answer. Everything else in Eagle I works without it.</div>'}
       <div id="cl-box-ai" style="max-width:680px;margin:18px auto 0;text-align:left"></div>
       <div class="ai-chips">${h.chips.map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div>

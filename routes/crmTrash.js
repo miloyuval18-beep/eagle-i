@@ -27,12 +27,16 @@ router.get('/api/crm/trash', requireAuth, wrap('Failed to load the recycle bin',
 }));
 router.post('/api/crm/trash/:id/restore', requireAuth, wrap('Failed to restore it', async (req, res) => {
   await allowed(req);
-  res.json({ ok: true, restored: await trash.restore({ tenantId: req.tenantId, id: req.params.id }) });
+  const restored = await trash.restore({ tenantId: req.tenantId, id: req.params.id });
+  require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'restored', targetName: restored && `${restored.name}: ${restored.label || ''}` });
+  res.json({ ok: true, restored });
 }));
 router.delete('/api/crm/trash/:id', requireAuth, wrap('Failed to delete it', async (req, res) => {
   if (!manager(req)) return res.status(403).json({ error: { message: team.denyText('delete') } });
   await allowed(req);
-  res.json({ ok: (await trash.purge({ tenantId: req.tenantId, id: req.params.id })) > 0 });
+  const ok = (await trash.purge({ tenantId: req.tenantId, id: req.params.id })) > 0;
+  if (ok) require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'purged' });
+  res.json({ ok });
 }));
 
 module.exports = router;

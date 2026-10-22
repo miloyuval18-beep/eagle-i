@@ -110,7 +110,9 @@ function makeClient() {
     if (cookie) headers.Cookie = cookie;
     const r = await fetch(`${BASE_URL}${path}`, { ...opts, headers, redirect: 'manual' });
     const setCookie = r.headers.get('set-cookie');
-    if (setCookie) cookie = setCookie.split(';')[0];
+    // The session cookie (a reply can set others too, like a trusted-device cookie).
+    const sid = String(setCookie || '').match(/connect\.sid=[^;]+/);
+    if (sid) cookie = sid[0];
     // Read the whole reply before handing it back, like a browser does. The
     // server only finishes saving a new session as the reply ends, so a test
     // that checked just the status and fired the next request at once could

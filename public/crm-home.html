@@ -46,6 +46,10 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
 .item .d{font-size:16.5px;color:var(--ink3);margin-top:2px}
 .pill{display:inline-block;font-size:15px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--soft);color:var(--ink2);margin-top:6px}
 .empty{color:var(--ink3);font-size:17px;margin-top:8px}
+.wait{border:1.5px solid #fedf89;background:#fffdf5;border-radius:12px;padding:14px;margin-top:10px}
+.wait.late{border-color:#fda29b;background:#fff8f7}
+.wait b{font-size:18.5px;display:block}
+.wait .d{font-size:16.5px;color:var(--ink3);margin-top:2px}
 [hidden]{display:none!important}
 </style>
 <link rel="stylesheet" href="/eaglei-theme.css">
@@ -82,7 +86,9 @@ function render(){
   if(!a.setup_done_at){el.innerHTML=banner+setupHtml();return;}
   el.innerHTML=banner+`<h1>Hi ${esc((a.name||'').split(' ')[0])}</h1><div class="sub">${isSub()?'The builders you work with. Open a builder’s page for your jobs, dates, plans and bid requests.':'Your projects. Open one for updates, visits, estimates, invoices, photos and messages with your builder.'}</div>
     ${a.email_verified?'':emailCard()}
+    ${isSub()?'':waitHtml()}
     <div class="card"><h2>${isSub()?'Your builders':'Your projects'}</h2>${listHtml()}${addHtml()}</div>
+    ${isSub()?insuranceHtml():''}
     <div class="card"><h2>Your details</h2>${detailsHtml()}<div class="btns"><button class="btn" onclick="saveDetails(this)">Save</button></div><div class="err" id="det-err"></div></div>
     <div class="card"><h2>Password</h2><label for="pw-cur">Current password</label><input id="pw-cur" type="password" autocomplete="current-password"><label for="pw-new">New password <span class="opt">(at least 8 characters)</span></label><input id="pw-new" type="password" autocomplete="new-password"><div class="btns"><button class="btn o" onclick="changePw(this)">Change password</button></div><div class="err" id="pw-err"></div></div>`;
 }
@@ -123,6 +129,33 @@ async function next(btn){
     if(last){await load();window.scrollTo(0,0);return;}
     STEP++;if(steps()[STEP]==='list'||steps()[STEP]==='email')D=await call('/api/crm-account');render();window.scrollTo(0,0);
   }catch(x){$('st-err').textContent=x.message;btn.disabled=false;}
+}
+// Homeowners: everything waiting on them, from every builder, in one place.
+function waitHtml(){
+  const W=D.waiting||[];
+  if(!W.length)return D.projects&&D.projects.length?'<div class="card"><h2>Waiting for you</h2><div class="empty">✓ Nothing right now. When a builder sends you something to sign, approve, choose or pay, it shows up here.</div></div>':'';
+  return `<div class="card"><h2>Waiting for you (${W.length})</h2><div class="sub">Things your builder${new Set(W.map(w=>w.builder)).size>1?'s need':' needs'} from you, oldest and overdue first.</div>${W.map(w=>`<div class="wait${w.late?' late':''}"><b>${esc(w.title)}</b><div class="d">${esc(w.project)} · ${esc(w.builder)}</div><div class="d">${w.late?'⚠ ':''}${esc(w.detail)}</div><div class="btns" style="margin-top:10px"><a class="btn sm" href="${esc(w.url)}">${esc(w.action)}</a></div></div>`).join('')}</div>`;
+}
+// Subs: upload the insurance certificate, for the builders who asked for it through Eagle I.
+function insuranceHtml(){
+  const I=D.insurance||{};if(!(I.builders||[]).length)return '';
+  const L=I.latest;
+  return `<div class="card"><h2>Your insurance certificate</h2><div class="sub">${esc(I.builders.join(', '))} ${I.builders.length===1?'gets':'get'} it from here, with the date it runs out.</div>
+    ${L?`<div class="note ok">✓ On file: ${esc(L.filename)}, runs out ${new Date(String(L.expires).slice(0,10)+'T12:00:00Z').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}.</div>`:''}
+    <label for="ins-file">${L?'Upload a newer one':'Certificate (PDF or a photo)'}</label><input id="ins-file" type="file" accept="application/pdf,image/*">
+    <label for="ins-exp">Runs out on</label><input id="ins-exp" type="date">
+    <div class="btns"><button class="btn" onclick="upIns(this)">Upload</button></div><div class="err" id="ins-err"></div></div>`;
+}
+async function upIns(btn){
+  const f=$('ins-file').files[0],err=$('ins-err');err.textContent='';
+  if(!f){err.textContent='Pick the certificate file.';return;}
+  if(f.size>8*1024*1024){err.textContent='That file is over 8 MB. Take a smaller photo, or save it as a PDF.';return;}
+  if(!$('ins-exp').value){err.textContent='Pick the date it runs out (it’s on the certificate).';return;}
+  btn.disabled=true;
+  try{const data=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=no;r.readAsDataURL(f);});
+    const r=await call('/api/crm-account/insurance',{filename:f.name,dataBase64:data,expires:$('ins-exp').value});
+    D=await call('/api/crm-account');render();alert('Uploaded. '+r.builders.join(', ')+(r.builders.length===1?' has':' have')+' it now.');}
+  catch(x){err.textContent=x.message;btn.disabled=false;}
 }
 function emailCard(){return `<div class="note warn"><b>Confirm your email</b> to see ${isSub()?'every builder who has':'every project with'} ${esc(D.account.email)}. We sent you a link. <button class="link" onclick="resend(this)">Send it again</button></div>`;}
 function listHtml(){

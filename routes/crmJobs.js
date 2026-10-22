@@ -31,10 +31,18 @@ router.get('/api/crm/jobs', requireAuth, wrap('Failed to load jobs', async (req,
 
 router.get('/api/crm/deals/:id/job', requireAuth, wrap('Failed to load the job', async (req, res) => {
   if (!(await ownDeal(req, res))) return;
-  const [schedule, logs, pos, cos, selections, vendors] = await Promise.all([
+  let [schedule, logs, pos, cos, selections, vendors] = await Promise.all([
     jobs.listSchedule(req.tenantId, req.params.id), jobs.listLogs(req.tenantId, req.params.id), jobs.listPOs(req.tenantId, req.params.id),
     jobs.listCOs(req.tenantId, req.params.id), jobs.listSelections(req.tenantId, req.params.id), jobs.listVendors(req.tenantId)]);
-  res.json({ schedule, logs, pos, cos, selections, vendors });
+  // Without "See money": purchase-order prices only for people who work with subs, change-order
+  // prices only for people who make estimates, and the company's own costs for nobody.
+  const can = (k) => team.can(req.crmUser, k);
+  if (!can('money')) {
+    if (!can('subs')) pos = team.hideMoney(pos);
+    cos = can('estimates') ? cos.map(c => ({ ...c, cost: null })) : team.hideMoney(cos);
+    selections = team.hideMoney(selections);
+  }
+  res.json({ schedule, logs, pos, cos, selections, vendors, moneyHidden: !can('money') });
 }));
 
 // schedule

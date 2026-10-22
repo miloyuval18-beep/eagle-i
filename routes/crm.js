@@ -26,8 +26,9 @@ function fail(res, err, what) {
 router.get('/api/crm/me', requireAuth, async (req, res) => {
   try {
     const r = (await query(
-      `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.permissions, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
+      `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.permissions, u.disabled_at, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
     if (!r || r.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
+    if (r.disabled_at) return res.status(401).json({ error: { message: 'Your account has been turned off. Ask the owner or an admin.', code: 'disabled' } });
     res.json({
       userId: r.id, email: r.email, name: r.name, phone: r.phone, role: r.role, roleLabel: team.roleLabel(r.role), canManage: team.isManager(r.role), perms: team.permsOf(r), companyName: r.company_name,
       // Guided setup (crm.html #setup): the company's for its owner, a shorter one for everyone else.
@@ -83,6 +84,7 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
     const me = await team.getUser(req.userId);
     // A removed team member's old session stops working at once, and a marketing login never opens the CRM.
     if (!me || me.tenant_id !== req.tenantId || me.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
+    if (me.disabled_at) return res.status(401).json({ error: { message: 'Your account has been turned off. Ask the owner or an admin.', code: 'disabled' } });
     req.crmUser = me;
     // Money, estimates, invoices and subs follow each person's permissions checklist.
     // Lower case: Express matches routes whatever the capitals, so /API/CRM/INVOICES must be checked too.
@@ -122,6 +124,7 @@ router.patch('/api/crm/company', team.need('settings'), async (req, res) => {
   try {
     const before = (await query('SELECT email, address FROM business_profile WHERE tenant_id = $1', [req.tenantId])).rows[0] || {};
     if (b.companyName !== undefined) await query('UPDATE tenants SET company_name = $1 WHERE id = $2', [clean(b.companyName, 120), req.tenantId]);
+    require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'company', detail: Object.keys(b).filter(k => ['companyName', 'phone', 'email', 'address', 'founderName'].includes(k)).map(k => ({ companyName: 'name', founderName: 'signature name' }[k] || k)).join(', ') });
     const sets = []; const vals = [];
     for (const [k, col, max] of [['phone', 'phone', 40], ['email', 'email', 200], ['address', 'address', 200], ['founderName', 'founder_name', 120]]) {
       if (b[k] !== undefined) { vals.push(clean(b[k], max) || null); sets.push(`${col} = $${vals.length}`); }
@@ -152,12 +155,15 @@ router.get('/api/crm/pipeline', requireAuth, async (req, res) => {
     // Leads that arrived before the pipeline existed are brought in the first time it is opened.
     await crm.ensureBackfilled(req.tenantId);
     const [pipeline, inbox, settings] = await Promise.all([crm.listPipeline(req.tenantId), crm.listInbox(req.tenantId), crm.getSettings(req.tenantId)]);
-    res.json({ ...pipeline, needsYou: inbox.length, settings: { paused: settings.paused } });
+    const out = { ...pipeline, needsYou: inbox.length, settings: { paused: settings.paused } };
+    // Without "See money": no deal values or totals.
+    res.json(team.can(req.crmUser, 'money') ? out : { ...out, deals: team.hideMoney(out.deals), values: null, openValue: null, moneyHidden: true });
   } catch (err) { fail(res, err, 'Failed to load the pipeline'); }
 });
 
 // Download all my data (owners and admins): every record as spreadsheets in one .zip.
 router.get('/api/crm/export/all', requireAuth, team.need('data'), async (req, res) => {
+  require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'export' });
   try {
     const buf = await require('../lib/crmExport').exportAll(req.tenantId);
     res.set({ 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="eagle-i-data-${new Date().toISOString().slice(0, 10)}.zip"`, 'Cache-Control': 'no-store' });
@@ -188,6 +194,8 @@ router.get('/api/crm/me/devices', requireAuth, async (req, res) => {
 router.post('/api/crm/me/devices/sign-out-others', requireAuth, async (req, res) => {
   try {
     const r = await query(`DELETE FROM session WHERE sess->>'userId' = $1 AND sid <> $2`, [String(req.userId), req.sessionID]);
+    // Devices trusted for two-step sign-in have to ask for a code again.
+    await query('DELETE FROM crm_trusted_devices WHERE user_id = $1', [req.userId]);
     res.json({ ok: true, signedOut: r.rowCount });
   } catch (err) { fail(res, err, 'Failed to sign out'); }
 });
@@ -223,7 +231,7 @@ router.get('/api/crm/practice', requireAuth, async (req, res) => { try { res.jso
 router.post('/api/crm/practice', requireAuth, team.need('data'), async (req, res) => { try { res.json(await require('../lib/crmAssist').practiceStart({ tenantId: req.tenantId, userId: req.userId })); } catch (err) { fail(res, err, 'Failed to add them'); } });
 router.delete('/api/crm/practice', requireAuth, team.need('data'), async (req, res) => { try { res.json(await require('../lib/crmAssist').practiceRemove(req.tenantId)); } catch (err) { fail(res, err, 'Failed to remove them'); } });
 router.get('/api/crm/search', requireAuth, async (req, res) => {
-  try { res.json(await require('../lib/crmSearch').search({ tenantId: req.tenantId, userId: req.userId, manager: team.can(req.crmUser, 'see_all'), q: req.query.q })); } catch (err) { fail(res, err, 'Search failed'); }
+  try { res.json(await require('../lib/crmSearch').search({ tenantId: req.tenantId, userId: req.userId, manager: team.can(req.crmUser, 'see_all'), seeMoney: team.can(req.crmUser, 'money'), q: req.query.q })); } catch (err) { fail(res, err, 'Search failed'); }
 });
 router.post('/api/crm/deals/duplicates', requireAuth, async (req, res) => {
   try { res.json({ matches: await crm.findDuplicates({ tenantId: req.tenantId, ...(req.body || {}) }) }); } catch (err) { fail(res, err, 'Failed to check'); }
@@ -250,8 +258,9 @@ router.post('/api/crm/deals', requireAuth, async (req, res) => {
 
 router.get('/api/crm/deals/:id', requireAuth, async (req, res) => {
   try {
-    const deal = await crm.getDeal(req.tenantId, req.params.id);
+    let deal = await crm.getDeal(req.tenantId, req.params.id);
     if (!deal) return res.status(404).json({ error: { message: 'Deal not found.' } });
+    if (!team.can(req.crmUser, 'money')) deal = { ...deal, value: null };
     res.json({ deal, ...(await crm.dealTimeline(req.tenantId, req.params.id)), tasks: await tasks.listForDeal(req.tenantId, req.params.id), nextStep: await crm.nextStep(req.tenantId, req.params.id).catch(() => null) });
   } catch (err) {
     if (/invalid input syntax for type uuid/.test(err.message)) return res.status(404).json({ error: { message: 'Deal not found.' } });
@@ -313,11 +322,11 @@ router.post('/api/crm/playbooks/:id/spanish', requireAuth, team.need('emails'), 
 });
 
 router.post('/api/crm/playbooks/:id/approve', requireAuth, team.need('emails'), async (req, res) => {
-  try { await playbooks.approvePlaybook({ tenantId: req.tenantId, id: req.params.id }); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to approve the playbook'); }
+  try { await playbooks.approvePlaybook({ tenantId: req.tenantId, id: req.params.id }); require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'emails', detail: 'Approved and turned on an automatic email' }); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to approve the playbook'); }
 });
 
 router.post('/api/crm/playbooks/:id/enabled', requireAuth, team.need('emails'), async (req, res) => {
-  try { await playbooks.setEnabled({ tenantId: req.tenantId, id: req.params.id, enabled: !!(req.body || {}).enabled }); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to switch the playbook'); }
+  try { await playbooks.setEnabled({ tenantId: req.tenantId, id: req.params.id, enabled: !!(req.body || {}).enabled }); require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'emails', detail: (req.body || {}).enabled ? 'Turned on an automatic email' : 'Turned off an automatic email' }); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to switch the playbook'); }
 });
 
 router.post('/api/crm/playbooks/:id/reset', requireAuth, team.need('emails'), async (req, res) => {
@@ -363,7 +372,8 @@ router.get('/api/crm/summary', requireAuth, async (req, res) => {
   try {
     const end = new Date();
     const start = new Date(end.getTime() - 7 * 86400000);
-    res.json({ summary: await crm.buildWeeklySummary(req.tenantId, { start, end }) });
+    const summary = await crm.buildWeeklySummary(req.tenantId, { start, end });
+    res.json({ summary: team.can(req.crmUser, 'money') ? summary : team.hideMoney(summary) });
   } catch (err) { fail(res, err, 'Failed to load the summary'); }
 });
 
@@ -453,9 +463,24 @@ router.get('/api/crm/team', requireAuth, async (req, res) => {
   } catch (err) { fail(res, err, 'Failed to load your team'); }
 });
 
+// Turning someone off (or back on), and handing their open work to someone else.
+router.post('/api/crm/team/:userId/active', requireAuth, team.need('team'), async (req, res) => {
+  try { res.json({ ok: true, ...(await team.setActive({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId, on: !!(req.body || {}).on })) }); }
+  catch (err) { fail(res, err, 'Failed to change that'); }
+});
+router.post('/api/crm/team/:userId/handover', requireAuth, team.need('team'), async (req, res) => {
+  try { res.json({ ok: true, moved: await team.handover({ tenantId: req.tenantId, actor: req.crmUser, fromId: req.params.userId, toId: (req.body || {}).to }) }); }
+  catch (err) { fail(res, err, 'Failed to hand over the work'); }
+});
+// The owner's activity log: who changed what.
+router.get('/api/crm/activity-log', requireAuth, team.need('team'), async (req, res) => {
+  try { res.json({ items: await require('../lib/crmAudit').list(req.tenantId, { person: req.query.person, before: req.query.before }) }); }
+  catch (err) { fail(res, err, 'Failed to load the activity log'); }
+});
+
 // Whether schedules are seen up and down each person's line, or by everyone.
 router.patch('/api/crm/team-settings', requireAuth, team.need('team'), async (req, res) => {
-  try { await team.setVisibility({ tenantId: req.tenantId, visibility: (req.body || {}).visibility }); res.json({ ok: true }); }
+  try { await team.setVisibility({ tenantId: req.tenantId, visibility: (req.body || {}).visibility, actor: req.crmUser }); res.json({ ok: true }); }
   catch (err) { fail(res, err, 'Failed to save'); }
 });
 
@@ -469,6 +494,7 @@ router.post('/api/crm/team/invites', requireAuth, team.need('team'), async (req,
 router.delete('/api/crm/team/invites/:id', requireAuth, team.need('team'), async (req, res) => {
   try {
     if (!(await team.revokeInvite({ tenantId: req.tenantId, id: req.params.id }))) return res.status(404).json({ error: { message: 'Invitation not found.' } });
+    require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'invite_cancel' });
     res.json({ ok: true });
   } catch (err) { fail(res, err, 'Failed to cancel the invitation'); }
 });

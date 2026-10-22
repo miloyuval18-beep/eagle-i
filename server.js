@@ -134,6 +134,8 @@ app.use(sessionMiddleware());
 // Public, unauthenticated pages (login/signup/onboarding UI).
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Every server error a real person hits is kept and emailed (lib/crmErrors.js).
+app.use(require('./lib/crmErrors').middleware());
 registerAuthRoutes(app);
 // Team members invited to Eagle I CRM use only the CRM. The marketing product's
 // API is for the company owner, so everything outside /api/crm and /api/auth

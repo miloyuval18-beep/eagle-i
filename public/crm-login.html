@@ -86,6 +86,17 @@ details.manual summary{cursor:pointer;color:var(--accent);font-size:17px;font-we
     <a class="link" href="/forgot-password.html?app=crm">Forgot password?</a>
   </form>
 
+  <form id="form-code" onsubmit="sendCode(event)" hidden>
+    <h2>Check your email</h2>
+    <div class="sub" id="code-sub"></div>
+    <label for="in-code">6-digit code</label><input id="in-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" style="font-size:26px;letter-spacing:6px;text-align:center">
+    <div class="check"><input type="checkbox" id="in-remember" checked><label for="in-remember" style="margin:0;font-weight:400">This is my own phone or computer: don’t ask again here for 30 days</label></div>
+    <button class="btn" id="code-btn">Sign in</button>
+    <div class="err" id="code-err" role="alert"></div>
+    <button type="button" class="link" onclick="resendCode(this)">Send a new code</button>
+    <div class="hint" style="margin-top:10px">Owners and admins get a code when they sign in on a new device, because they can change everything. Not there? Check your spam folder.</div>
+  </form>
+
   <section id="pick" hidden>
     <h2>What brings you to Eagle I?</h2>
     <div class="sub">Pick the one that fits. You can make another kind of account later with the same email.</div>
@@ -163,9 +174,10 @@ const COPY={
 let TYPE=null,CODE_OK=null;
 const $=(id)=>document.getElementById(id);
 function show(which){
-  for(const id of ['form-in','pick','form-up','sent'])$(id).hidden=true;
+  for(const id of ['form-in','pick','form-up','sent','form-code'])$(id).hidden=true;
   if(which==='in')$('form-in').hidden=false;else if(which==='up')$('pick').hidden=false;else $(which).hidden=false;
-  for(const k of ['in','up']){const t=$('tab-'+k);const on=k===which||(k==='up'&&which!=='in');t.classList.toggle('active',on);t.setAttribute('aria-selected',on);}
+  const signingIn=which==='in'||which==='form-code';
+  for(const k of ['in','up']){const t=$('tab-'+k);const on=k==='in'?signingIn:!signingIn;t.classList.toggle('active',on);t.setAttribute('aria-selected',on);}
 }
 function pick(type){
   TYPE=type;const c=COPY[type];
@@ -191,6 +203,7 @@ async function signIn(e,as){
   b.disabled=true;err.textContent='';
   try{
     const d=await call('/api/crm-auth/login',{email:$('in-email').value,password:$('in-pw').value,as});
+    if(d.code){$('code-sub').textContent=`For your safety, we emailed a sign-in code to ${d.to}. Type it here.`;show('form-code');$('in-code').focus();b.disabled=false;return;}
     if(d.choose){$('in-choices').innerHTML=d.choose.map(c=>`<button type="button" class="btn o" onclick="signIn(null,'${c.as}')">${c.label.replace(/[<>&]/g,'')}</button>`).join('');$('in-choose').hidden=false;b.disabled=false;return;}
     location.href=d.go||'/crm';
   }catch(x){err.textContent=x.message;b.disabled=false;}
@@ -206,6 +219,17 @@ async function google(type,btn){
   btn.disabled=true;
   try{const d=await call('/api/crm-auth/google/start',{type,companyName:$('up-company').value,code:$('up-code').value,businessName:$('up-biz').value,trade:$('up-trade').value,phone:$('up-phone').value,acceptedTerms:type==='signin'||$('up-terms').checked});location.href=d.url;}
   catch(x){err.textContent=x.message;btn.disabled=false;}
+}
+async function sendCode(e){
+  e.preventDefault();const b=$('code-btn'),err=$('code-err');b.disabled=true;err.textContent='';
+  try{const d=await call('/api/crm-auth/login/code',{code:$('in-code').value,remember:$('in-remember').checked});location.href=d.go||'/crm';}
+  catch(x){err.textContent=x.message;b.disabled=false;}
+}
+async function resendCode(btn){
+  btn.disabled=true;$('code-err').textContent='';
+  try{const d=await call('/api/crm-auth/login/code',{resend:true});$('code-err').innerHTML='<span style="color:var(--ok)">Sent a new code to '+d.to.replace(/[<>&]/g,'')+'.</span>';}
+  catch(x){$('code-err').textContent=x.message;}
+  setTimeout(()=>btn.disabled=false,20000);
 }
 async function signUp(e){
   e.preventDefault();const b=$('up-btn'),err=$('up-err');
@@ -227,6 +251,8 @@ if(q.get('marketing'))$('mkt-note').hidden=false;
 if(q.get('google_error')){$('in-err').textContent=q.get('google_error');}
 if(q.get('pending')){$('sent-msg').textContent=q.get('confirmed')?`Thanks, your email is confirmed. We asked ${q.get('pending')} to let you in; you’ll get an email when they do, then sign in here.`:`We asked ${q.get('pending')} to let you in. You’ll get an email when they do, then tap “Sign in with Google” here.`;setTimeout(()=>show('sent'),0);}
 if(q.get('code')){pick('join');$('up-code').value=q.get('code');checkCode();}
+// From a builder's “Make my free account” email.
+else if(['homeowner','sub'].includes(q.get('type'))){pick(q.get('type'));if(q.get('email')){$('up-email').value=q.get('email');}}
 else if(location.hash==='#signup')show('up');
 </script>
 </body>
