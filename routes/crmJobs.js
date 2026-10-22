@@ -43,7 +43,7 @@ router.post('/api/crm/deals/:id/schedule/from-template', requireAuth, wrap('Fail
   res.json({ ok: true, ...(await jobs.createScheduleFromTemplate({ tenantId: req.tenantId, dealId: req.params.id, startDate: (req.body || {}).startDate })) });
 }));
 router.post('/api/crm/deals/:id/schedule/save-template', requireAuth, wrap('Failed to save the template', async (req, res) => {
-  if (!manager(req)) return res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+  if (!team.can(req.crmUser, 'settings')) return res.status(403).json({ error: { message: team.denyText('settings') } });
   res.json({ ok: true, ...(await jobs.saveTemplateFromJob({ tenantId: req.tenantId, dealId: req.params.id })) });
 }));
 router.post('/api/crm/deals/:id/schedule', requireAuth, wrap('Failed to add the phase', async (req, res) => {
@@ -70,7 +70,7 @@ router.get('/api/crm/vendors', requireAuth, wrap('Failed to load vendors', async
 router.post('/api/crm/vendors', requireAuth, wrap('Failed to save the vendor', async (req, res) => res.json({ ok: true, vendor: await jobs.saveVendor({ tenantId: req.tenantId, body: req.body }) })));
 router.patch('/api/crm/vendors/:vendorId', requireAuth, wrap('Failed to save the vendor', async (req, res) => res.json({ ok: true, vendor: await jobs.saveVendor({ tenantId: req.tenantId, id: req.params.vendorId, body: req.body }) })));
 router.delete('/api/crm/vendors/:vendorId', requireAuth, wrap('Failed to remove the vendor', async (req, res) => {
-  if (!manager(req)) return res.status(403).json({ error: { message: 'Only the owner or an admin can remove vendors.' } });
+  if (!team.can(req.crmUser, 'subs')) return res.status(403).json({ error: { message: team.denyText('subs') } });
   const r = await require('../lib/crmTrash').around({ tenantId: req.tenantId, kind: 'vendor', id: req.params.vendorId, userId: req.userId }, () => jobs.archiveVendor({ tenantId: req.tenantId, id: req.params.vendorId }));
   if (!r.ok) return res.status(404).json({ error: { message: 'Vendor not found.' } });
   res.json({ ok: true, undo: r.undo });

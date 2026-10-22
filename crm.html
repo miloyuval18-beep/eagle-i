@@ -335,6 +335,10 @@ input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-wid
 .pl-chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
 .pl-chip.active b{color:rgba(255,255,255,.7)}
 .pl-pill{font-size:14.5px;font-weight:600;padding:2px 9px;border:1px solid var(--bdr2);background:var(--bg4);color:var(--ink2)}
+.tm-perms{margin-top:10px;border-top:1px solid var(--bdr);padding-top:8px}
+.tm-perms summary{cursor:pointer;font-weight:700;font-size:17px;padding:6px 0}
+.tm-perm{align-items:flex-start;margin:8px 0;font-size:16.5px}
+.tm-perm input{width:22px;height:22px;flex:0 0 auto;margin-top:2px}
 .tm-tree ul{list-style:none;margin:0;padding-left:22px;border-left:2px solid var(--bdr2)}
 .tm-tree>ul{padding-left:0;border-left:0}
 .tm-tree li{margin:8px 0}
@@ -968,11 +972,13 @@ function showNotif(t,b){const el=document.getElementById('toast');el.innerHTML='
 /* ---------- app shell ---------- */
 const CR={me:null,view:'pipeline',team:[]};
 const crCanManage=()=>!!(CR.me&&CR.me.canManage);
+// What this person may do: their permissions checklist (Account → Team).
+const crCan=(k)=>!!(CR.me&&CR.me.perms&&CR.me.perms[k]);
 async function crLoadTeam(){try{const d=await plApi('/api/crm/team');CR.team=d.members||[];CR.teamInfo=d;return d;}catch(e){return null;}}
 // Whose schedule I can see (up and down my line), and who is under me.
 const crSees=()=>{const m=CR.teamInfo&&CR.teamInfo.me;return m?CR.team.filter(x=>x.id!==m.id&&m.sees.includes(x.id)):[];};
 const crBelow=()=>{const m=CR.teamInfo&&CR.teamInfo.me;return m?CR.team.filter(x=>m.below.includes(x.id)):[];};
-const crLeads=()=>crCanManage()||crBelow().length>0;
+const crLeads=()=>crCan('see_all')||crBelow().length>0;
 function crOwnerOptions(sel){return '<option value="">Unassigned</option>'+CR.team.map(m=>`<option value="${m.id}"${m.id===sel?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`).join('');}
 function crMenu(force){const m=document.getElementById('cr-menu');const open=force===undefined?!m.classList.contains('open'):force;m.classList.toggle('open',open);document.getElementById('cr-menu-btn').setAttribute('aria-expanded',open);}
 document.addEventListener('click',e=>{if(!e.target.closest('#cr-menu')&&!e.target.closest('#cr-menu-btn'))crMenu(false);});
@@ -1063,8 +1069,10 @@ async function crInit(){
   document.getElementById('cr-company').textContent=me.companyName||'';
   document.getElementById('cr-who').textContent=me.email||'';
   document.getElementById('cr-mkt').hidden=!me.hasMarketing;
-  document.getElementById('cr-reports-link').hidden=!me.canManage;
-  document.getElementById('cr-export').hidden=!me.canManage;
+  document.getElementById('cr-reports-link').hidden=!crCan('reports');
+  document.getElementById('cr-export').hidden=!crCan('data');
+  // Money (estimates, invoices, cash flow) only for people who may see or make them.
+  {const t=document.querySelector('.cr-tab[data-view="estimates"]');if(t)t.hidden=!crCan('money')&&!crCan('estimates');}
   if(!me.hasCrm){
     document.getElementById('cr-nav').style.display='none';
     document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
@@ -1091,7 +1099,7 @@ async function crInit(){
 // A red dot on Account when something needs fixing (Google access lost).
 async function crHealth(){
   try{const g=await plApi('/api/crm/google');
-    const bad=(g.connection&&g.connection.status==='error')||(g.mailboxes||[]).some(m=>m.status==='error'&&(m.mine||crCanManage()));
+    const bad=(g.connection&&g.connection.status==='error')||(g.mailboxes||[]).some(m=>m.status==='error'&&(m.mine||crCan('settings')));
     const b=document.getElementById('cr-menu-btn');b.classList.toggle('alert',!!bad);b.title=bad?'Google needs attention: see Company details':'';
     const c=[...document.querySelectorAll('#cr-menu button')].find(x=>/Company details/.test(x.textContent));if(c)c.textContent=bad?'⚠ Company details: Google needs attention':'Company details';
   }catch(e){}
@@ -1113,7 +1121,7 @@ async function plCheckSetup(){
     // Only one person can manage the account: if they leave or lose access, the company is locked out.
     if(crCanManage()&&CR.team.length>1&&CR.team.filter(m=>['owner','admin'].includes(m.role)).length===1){let hide=false;try{hide=!!localStorage.getItem('admin2-hide');}catch(e){}
       if(!hide)html+='<div class="pl-banner"><span>You’re the only one who can manage this account. Make a second person an admin, so the company is never locked out if you’re away or lose your phone.</span><button class="btn-xs p" onclick="crView(\'team\')">Choose someone</button><button class="btn-xs" onclick="try{localStorage.setItem(\'admin2-hide\',\'1\')}catch(e){};this.parentElement.remove()">Not now</button></div>';}
-    if(crCanManage()){try{const su=await plApi('/api/crm/setup');if(!su.done)html+='<div class="pl-banner"><span>New here? Answer a few quick questions and Eagle I sets itself up for how you work, and brings in your old contacts.</span><button class="btn-xs p" onclick="crView(\'setup\')">Set up</button></div>';}catch(e){}}
+    if(crCan('data')){try{const su=await plApi('/api/crm/setup');if(!su.done)html+='<div class="pl-banner"><span>New here? Answer a few quick questions and Eagle I sets itself up for how you work, and brings in your old contacts.</span><button class="btn-xs p" onclick="crView(\'setup\')">Set up</button></div>';}catch(e){}}
     el.innerHTML=html;
   }catch(e){}
 }
@@ -1181,9 +1189,9 @@ function cvRender(){
   // who
   const w=document.getElementById('cv-whowrap');
   // The owner and admins pick anyone; others pick the people above and below them.
-  const cvPeople=crCanManage()?CR.team.filter(m=>!CR.me||m.id!==CR.me.userId):crSees();
+  const cvPeople=crCan('see_all')?CR.team.filter(m=>!CR.me||m.id!==CR.me.userId):crSees();
   if(cvPeople.length){
-    w.innerHTML=`<select class="cred-input cv-who" aria-label="Whose calendar" onchange="CV.who=this.value;CV.data=null;cvLoad()"><option value="me"${CV.who==='me'?' selected':''}>My calendar</option><option value="all"${CV.who==='all'?' selected':''}>${crCanManage()?'Everyone':'Everyone I can see'}</option>${cvPeople.map(m=>`<option value="${m.id}"${CV.who===m.id?' selected':''}>${uxEsc(m.name||m.email)} · ${uxEsc(m.role_label||'')}</option>`).join('')}</select>`;
+    w.innerHTML=`<select class="cred-input cv-who" aria-label="Whose calendar" onchange="CV.who=this.value;CV.data=null;cvLoad()"><option value="me"${CV.who==='me'?' selected':''}>My calendar</option><option value="all"${CV.who==='all'?' selected':''}>${crCan('see_all')?'Everyone':'Everyone I can see'}</option>${cvPeople.map(m=>`<option value="${m.id}"${CV.who===m.id?' selected':''}>${uxEsc(m.name||m.email)} · ${uxEsc(m.role_label||'')}</option>`).join('')}</select>`;
   }else w.innerHTML='';
   // filters, with counts for what's in view
   const cnt={};for(const i of d.items)cnt[i.type]=(cnt[i.type]||0)+1;
@@ -1319,7 +1327,7 @@ async function cvEdit(key,day){
       <div class="full"><label style="display:flex;gap:8px;align-items:center;font-size:17px"><input type="checkbox" id="cv-e-ad"${allDay?' checked':''} onchange="document.getElementById('cv-e-times').style.display=this.checked?'none':''"> All day</label></div>
       <div class="full" id="cv-e-times" style="display:${allDay?'none':'grid'};grid-template-columns:1fr 1fr;gap:8px 10px"><div><label for="cv-e-s">Starts</label><input id="cv-e-s" type="time" class="cred-input" value="${st}"></div><div><label for="cv-e-e">Ends</label><input id="cv-e-e" type="time" class="cred-input" value="${en}"></div></div>
       <div class="full"><label for="cv-e-deal">Job or deal (optional)</label><select id="cv-e-deal" class="cred-input"><option value="">None</option>${CV.deals.map(x=>`<option value="${x.id}"${i&&i.dealId===x.id?' selected':''}>${uxEsc(x.title)}${x.contact_name?' · '+uxEsc(x.contact_name):''}</option>`).join('')}</select></div>
-      ${crLeads()?`<div class="full"><label for="cv-e-who">Whose calendar</label><select id="cv-e-who" class="cred-input">${crCanManage()?'<option value="">Everyone’s</option>':''}${(crCanManage()?CR.team:CR.team.filter(m=>(CR.me&&m.id===CR.me.userId)||crBelow().some(b=>b.id===m.id))).map(m=>`<option value="${m.id}"${who===m.id?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`).join('')}</select></div>`:''}
+      ${crLeads()?`<div class="full"><label for="cv-e-who">Whose calendar</label><select id="cv-e-who" class="cred-input">${crCan('see_all')?'<option value="">Everyone’s</option>':''}${(crCan('see_all')?CR.team:CR.team.filter(m=>(CR.me&&m.id===CR.me.userId)||crBelow().some(b=>b.id===m.id))).map(m=>`<option value="${m.id}"${who===m.id?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`).join('')}</select></div>`:''}
       <div class="full"><label for="cv-e-l">Where (optional)</label><input id="cv-e-l" class="cred-input" maxlength="300" value="${uxEsc(i&&i.location||'')}" placeholder="Address, or leave empty for the job’s"></div>
       <div class="full"><label for="cv-e-n">Notes (optional)</label><textarea id="cv-e-n" class="cred-input" rows="2" maxlength="2000">${uxEsc(i&&i.notes||'')}</textarea></div>
     </div>
@@ -1353,7 +1361,7 @@ async function clLoad(elId){
   let hidden=false;try{hidden=!!localStorage.getItem('cl-hide');}catch(e){}
   try{
     const c=await plApi('/api/crm/checklist');
-    const practice=crCanManage()?(c.practice.on?`<div class="sm" style="margin-top:8px">Practice customers are in your pipeline (marked “practice”). <button class="btn-xs" onclick="clPractice(false)">Remove the practice customers</button></div>`
+    const practice=crCan('data')?(c.practice.on?`<div class="sm" style="margin-top:8px">Practice customers are in your pipeline (marked “practice”). <button class="btn-xs" onclick="clPractice(false)">Remove the practice customers</button></div>`
       :c.done<c.total?`<div class="sm" style="margin-top:8px">Want to try things first? <button class="btn-xs" onclick="clPractice(true)">Add 4 practice customers</button> You can remove them with one tap.</div>`:''):'';
     if(c.done>=c.total){el.innerHTML=practice?`<div class="cl">${practice}</div>`:'';return;}
     if(hidden){el.innerHTML=`<div class="sm" style="margin:0 0 12px"><button class="btn-xs" onclick="try{localStorage.removeItem('cl-hide')}catch(e){};clLoad('${elId}')">Show the getting-started list (${c.done} of ${c.total} done)</button></div>`;return;}
@@ -1572,7 +1580,7 @@ async function esLoad(){
         <div class="pl-tags">${j.progressPct!=null?`<span class="pl-tag">${j.progressPct}% done</span>`:''}${j.spentPct!=null?`<span class="pl-tag${j.overPace?' warn':''}">${j.spentPct}% of budget spent</span>`:''}<span class="pl-tag">Collected ${esMoney(j.collected)}</span></div></button>`).join(''):'<div class="pl-empty">No signed jobs yet. A deal shows up here once its contract is signed.</div>';
     }).catch(()=>{});
     const y=new Date().getFullYear();
-    document.getElementById('ex-box').innerHTML=crCanManage()?`<details class="pl-pb" style="margin-top:10px"><summary style="cursor:pointer;font-weight:800">Export for your accountant</summary>
+    document.getElementById('ex-box').innerHTML=crCan('data')?`<details class="pl-pb" style="margin-top:10px"><summary style="cursor:pointer;font-weight:800">Export for your accountant</summary>
       <div class="sm">Spreadsheet files (CSV) that open in Excel or Google Sheets, or import into QuickBooks.</div>
       <div class="es-grid" style="grid-template-columns:1fr 1fr;margin-top:8px"><div><label for="ex-from">From</label><input id="ex-from" type="date" class="cred-input" value="${y}-01-01"></div><div><label for="ex-to">To</label><input id="ex-to" type="date" class="cred-input" value="${new Date().toLocaleDateString('en-CA')}"></div></div>
       <div class="vd-mbtns"><button class="btn-xs p" onclick="exGo('invoices')">⬇ Invoices &amp; payments</button><button class="btn-xs p" onclick="exGo('costs')">⬇ Job costs</button></div></details>`:'';
@@ -1583,7 +1591,7 @@ async function esLoad(){
   }catch(e){document.getElementById('es-list').innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
 }
 function esRenderCatalog(categories){
-  const manage=crCanManage();
+  const manage=crCan('settings');
   document.getElementById('cat-form').innerHTML=manage?`<div class="pl-pb"><div class="pl-item-t">Add an item</div><div class="es-grid" style="grid-template-columns:1fr">
     <div><label for="cat-name">Name</label><input id="cat-name" class="cred-input" placeholder="e.g. Quartz countertop, installed"></div></div>
     <div class="es-grid"><div><label for="cat-cat">Type</label><select id="cat-cat">${categories.map(c=>`<option>${c}</option>`).join('')}</select></div>
@@ -1748,7 +1756,7 @@ async function tmLoad(){
   const d=await crLoadTeam();
   const list=document.getElementById('tm-list');
   if(!d){list.innerHTML='<div class="pl-empty">Could not load your team.</div>';return;}
-  const manage=crCanManage();
+  const manage=crCan('team');
   const myName=CR.me&&CR.me.name;
   document.getElementById('tm-invite').innerHTML=(myName?'':`<div class="pl-banner"><span>Add your name so your team sees who did what.</span><span style="display:flex;gap:6px;flex:1;min-width:220px"><input id="tm-myname" class="cred-input" autocomplete="name" aria-label="Your name"><button class="btn-xs p" onclick="tmSaveName(this)">Save</button></span></div>`)+(manage?`<div class="pl-pb"><div class="pl-item-t">Invite someone</div>
     <div class="pl-form" style="margin-top:8px">
@@ -1778,12 +1786,41 @@ async function tmLoad(){
       ${canEdit?`<div class="pl-form" style="margin-top:8px">
         <div><label for="tm-r-${m.id}">Role</label><select id="tm-r-${m.id}" onchange="tmRole('${m.id}',this.value)">${tmRoleOpts(m.role)}</select></div>
         <div><label for="tm-b-${m.id}">Reports to</label><select id="tm-b-${m.id}" onchange="tmBoss('${m.id}',this.value)">${tmBossOpts(m.role,m.reports_to||'',m.id)}</select></div>
-      </div><div class="pl-acts"><button class="btn-xs" style="color:var(--red)" onclick="tmRemove('${m.id}')">Remove</button></div>`:''}</div>`;
+      </div>${tmPermsHtml(m)}<div class="pl-acts"><button class="btn-xs" style="color:var(--red)" onclick="tmRemove('${m.id}')">Remove</button></div>`:tmPermsSummary(m)}</div>`;
   }).join('');
   document.getElementById('tm-invites').innerHTML=d.invites.length?'<div class="pl-h">Waiting to join</div><div class="pl-list">'+d.invites.map(i=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(i.name||i.email)}</div><div class="pl-item-d">${uxEsc(i.email)} · ${uxEsc(tmLabel(i.role))}${i.reports_to?' · will report to '+uxEsc(tmName(i.reports_to)):''} · invited ${new Date(i.created_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}, link works until ${new Date(i.expires_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>${manage?`<div class="pl-acts"><button class="btn-xs" onclick="tmCancel('${i.id}')">Cancel invitation</button></div>`:''}</div>`).join('')+'</div>':'';
   tmTree(d.members);
   tmJoinLoad();
 }
+// The permissions checklist on a person's card. Ticks start from their role's
+// defaults; a box someone can't give (they don't have it themselves) is greyed out.
+function tmPermsHtml(m){
+  const P=(CR.teamInfo&&CR.teamInfo.perms)||[];if(!P.length)return '';
+  const role=tmLabel(m.role);
+  return `<details class="tm-perms"${TM_OPEN.has(m.id)?' open':''} ontoggle="this.open?TM_OPEN.add('${m.id}'):TM_OPEN.delete('${m.id}')"><summary>What ${uxEsc((m.name||m.email).split(' ')[0])} can do${m.custom?' <span class="pl-tag warn">Adjusted</span>':` <span class="pl-tag">${uxEsc(role)} defaults</span>`}</summary>
+    <div class="sm" style="margin:6px 0 4px">Everyone can work deals, notes, tasks, visits, the calendar and job schedules. Tick what else ${uxEsc((m.name||m.email).split(' ')[0])} may do. Changing their role starts these over from the new role’s defaults.</div>
+    ${P.map(p=>{const on=!!m.permissions[p.key],mine=crCan(p.key),lock=!on&&!mine;return `<label class="pl-switch tm-perm"${lock?' title="You can’t give this because you don’t have it yourself."':''}><input type="checkbox" ${on?'checked':''} ${lock?'disabled':''} onchange="tmPerm('${m.id}','${p.key}',this)"><span><b>${uxEsc(p.label)}</b><br><span class="sm">${uxEsc(p.help)}</span></span></label>`;}).join('')}
+    ${m.custom?`<div class="pl-acts"><button class="btn-xs" onclick="tmPermReset('${m.id}')">Back to the ${uxEsc(role.toLowerCase())} defaults</button></div>`:''}</details>`;
+}
+// For people who can't change it: a plain list of what this person can do.
+function tmPermsSummary(m){
+  const P=(CR.teamInfo&&CR.teamInfo.perms)||[];if(!P.length||!m.permissions||m.role==='owner')return '';
+  const on=P.filter(p=>m.permissions[p.key]).map(p=>p.label.toLowerCase());
+  return `<div class="pl-item-d" style="margin-top:4px">Can also: ${on.length?uxEsc(on.join(', ')):'only work deals, tasks and the calendar'}</div>`;
+}
+const TM_OPEN=new Set();
+async function tmPerm(id,key,box){
+  const name=TMN[id]||'them';const p=(CR.teamInfo.perms||[]).find(x=>x.key===key)||{label:key};
+  if(box.checked&&key==='team'&&!confirm('Let '+name+' manage the team? They’ll be able to invite people, let people in, and change roles and permissions.')){box.checked=false;return;}
+  box.disabled=true;
+  try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{permissions:{[key]:box.checked}}});showNotif('Saved',name+(box.checked?' can now: ':' can no longer: ')+p.label.toLowerCase()+'.');TM_OPEN.add(id);tmLoad();}
+  catch(e){box.checked=!box.checked;box.disabled=false;showNotif('Could not change that',e.message);}
+}
+async function tmPermReset(id){
+  try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{permissions:null}});showNotif('Back to the defaults',(TMN[id]||'They')+' has their role’s usual permissions again.');tmLoad();}
+  catch(e){showNotif('Could not change that',e.message);}
+}
+
 // Owner at the top; under them everyone who reports to no one; then each person's reports.
 function tmTree(ms){
   const kids=(id)=>ms.filter(m=>m.reports_to===id);
@@ -1811,7 +1848,10 @@ async function tmSaveName(btn){
   try{await plApi('/api/crm/me',{method:'PATCH',body:{name:v}});CR.me.name=v.trim();tmLoad();}catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
 }
 async function tmRole(id,role){
+  const cur=(CR.team.find(m=>m.id===id)||{});
   if(role==='admin'&&!confirm('Make '+(TMN[id]||'them')+' an admin? Admins can change the team, company details, automatic emails and billing, and see everyone’s schedule.')){tmLoad();return;}
+  if(role!=='admin'&&cur.custom&&!confirm('Change '+(TMN[id]||'their')+' role to '+tmLabel(role)+'? Their permissions start over from the '+tmLabel(role).toLowerCase()+' defaults, so the changes you made to their checklist are cleared.')){tmLoad();return;}
+  TM_OPEN.add(id);
   try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{role}});showNotif('Role changed',(TMN[id]||'They')+' is now '+(w=>(/^[aeiou]/.test(w)?'an ':'a ')+w)(tmLabel(role).toLowerCase())+'.');tmLoad();}catch(e){showNotif('Could not change the role',e.message);tmLoad();}}
 let TMN={};
 async function tmRemove(id){const name=TMN[id]||'this person';
@@ -1875,7 +1915,7 @@ async function stLoad(){
     if(k==='myteam'){const d=await crLoadTeam();const m=d.members.find(x=>x.id===me.userId)||{};const boss=m.reports_to?tmName(m.reports_to):'';const under=d.members.filter(x=>x.reports_to===me.userId);
       body=`<div class="ss">You’re ${(w=>(/^[aeiou]/i.test(w)?'an ':'a ')+w)(uxEsc((me.roleLabel||'team member').toLowerCase()))} at <b>${uxEsc(me.companyName||'')}</b>${boss?', reporting to <b>'+uxEsc(boss)+'</b>':''}.</div>
       <div class="sm">${uxEsc(tmAbout(me.role))}</div>
-      <div class="sm">You can see the schedules of: <b>${crCanManage()||d.visibility==='everyone'?'everyone on the team':crSees().map(x=>uxEsc(x.name||x.email)).join(', ')||'just your own for now'}</b>.${under.length?' '+under.map(x=>uxEsc(x.name||x.email)).join(', ')+(under.length===1?' reports':' report')+' to you.':''}</div>`;}
+      <div class="sm">You can see the schedules of: <b>${crCan('see_all')||d.visibility==='everyone'?'everyone on the team':crSees().map(x=>uxEsc(x.name||x.email)).join(', ')||'just your own for now'}</b>.${under.length?' '+under.map(x=>uxEsc(x.name||x.email)).join(', ')+(under.length===1?' reports':' report')+' to you.':''}</div>`;}
   }catch(e){body=`<div class="sm">${uxEsc(e.message)}</div>`;}
   const last=ST.step>=st.length-1;
   box.innerHTML=`<div class="sh"><div><div class="st">${stOwner()?'Let’s set up '+uxEsc(me.companyName||'your company'):'Welcome to '+uxEsc(me.companyName||'Eagle I')}</div>${bar}</div></div>
@@ -1910,7 +1950,7 @@ async function stPractice(btn){btn.disabled=true;try{await plApi('/api/crm/pract
 /* ---------- letting people join with the company code ---------- */
 async function tmJoinLoad(){
   const el=document.getElementById('tm-join');if(!el)return;
-  if(!crCanManage()){el.innerHTML='';return;}
+  if(!crCan('team')){el.innerHTML='';return;}
   let j;try{j=await plApi('/api/crm/join-code');}catch(e){el.innerHTML='';return;}
   ST.code=j.code;
   el.innerHTML=(j.requests.length?`<div class="pl-h">Asking to join (${j.requests.length})</div><div class="pl-list">${j.requests.map(r=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(r.name)}</div><div class="pl-item-d">${uxEsc(r.email)} · asked ${crWhen(r.created_at)}</div>${r.note?`<div class="pl-item-d">“${uxEsc(r.note)}”</div>`:''}
@@ -1939,7 +1979,7 @@ async function gwRemove(id){const email=GWM[id]||'this mailbox';if(!confirm(`Sto
 async function gwLoad(){
   const el=document.getElementById('gw');if(!el)return;
   let d;try{d=await plApi('/api/crm/google');}catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';return;}
-  const manage=crCanManage();
+  const manage=crCan('settings');
   if(!d.configured&&!d.signIn){el.innerHTML='<div class="pl-banner"><span>Google isn’t set up on the Eagle I server yet.</span></div>';return;}
   const c=d.connection;
   const workspaceSteps=`<div class="pl-item-t">Step 1: Allow Eagle I in your Google Admin console</div>
@@ -1993,7 +2033,7 @@ async function payLoad(){
     if(!st.available){el.innerHTML='<div class="pl-banner"><span>Online payments aren’t set up on the Eagle I server yet. Invoices still work: homeowners see how to pay, and you mark checks and cash as paid.</span></div>';return;}
     el.innerHTML=st.ready?'<div class="pl-pb"><div class="pl-card-top"><div><div class="pl-item-t">Stripe connected</div><div class="pl-item-d">Homeowners can pay invoices by card or bank transfer. Money goes straight to your Stripe account.</div></div><span class="pl-pill on">● On</span></div></div>'
       :`<div class="pl-pb"><div class="pl-item-t">${st.accountId?'Finish setting up Stripe':'Take payments online'}</div><div class="sm">Connect your company’s Stripe account so homeowners can pay deposits and invoices by card or bank transfer. Money goes straight to you; Stripe’s usual fees apply.</div>
-        ${crCanManage()?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="payConnect(this)">${st.accountId?'Continue with Stripe':'Connect Stripe'}</button>${st.accountId?'<button class="btn-xs" onclick="payRefresh()">I finished, check again</button>':''}</div>`:'<div class="sm">Ask your account owner or an admin to connect it.</div>'}</div>`;
+        ${crCan('settings')?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="payConnect(this)">${st.accountId?'Continue with Stripe':'Connect Stripe'}</button>${st.accountId?'<button class="btn-xs" onclick="payRefresh()">I finished, check again</button>':''}</div>`:'<div class="sm">Ask your account owner or an admin to connect it.</div>'}</div>`;
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
 async function payConnect(btn){btn.disabled=true;try{const r=await plApi('/api/crm/payments/connect',{body:{}});location.href=r.url;}catch(e){showNotif('Could not open Stripe',e.message);btn.disabled=false;}}
@@ -2002,8 +2042,8 @@ async function payRefresh(){try{await plApi('/api/crm/payments?refresh=1');}catc
 async function coLoad(){
   gwLoad();
   payLoad();
-  document.querySelectorAll('#view-company input').forEach(i=>i.disabled=!crCanManage());
-  document.querySelector('#view-company .btn-blue').hidden=!crCanManage();
+  document.querySelectorAll('#view-company input').forEach(i=>i.disabled=!crCan('settings'));
+  document.querySelector('#view-company .btn-blue').hidden=!crCan('settings');
   try{
     const {company:c}=await plApi('/api/crm/company');
     document.getElementById('co-name').value=c.company_name||'';
@@ -2215,7 +2255,7 @@ async function prLoad(){
   const el=document.getElementById('pr-list');if(!el)return;
   try{const {products}=await plApi('/api/crm/products');
     el.innerHTML=products.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">${products.map(p=>`<div class="pl-item" style="padding:8px">${p.hasPhoto?`<img src="/api/crm/products/${p.id}/photo" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px">`:'<div style="width:100%;aspect-ratio:4/3;border-radius:6px;background:var(--bg4);display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:15px">No photo</div>'}
-      <div class="pl-item-t" style="margin-top:6px;font-size:16px">${uxEsc(p.name)}</div><div class="pl-item-d">${uxEsc(p.category)}${p.brand?' · '+uxEsc(p.brand):''}<br><b>${esMoney(p.price)}</b>/${uxEsc(p.unit)}</div>${crCanManage()?`<button class="btn-xs" style="margin-top:4px" onclick="prDel('${p.id}')">Remove</button>`:''}</div>`).join('')}</div>`:'<div class="pl-empty">No products yet. Add the tile, fixtures and finishes you like to offer; Eagle I suggests them when you set up a homeowner’s selections.</div>';}
+      <div class="pl-item-t" style="margin-top:6px;font-size:16px">${uxEsc(p.name)}</div><div class="pl-item-d">${uxEsc(p.category)}${p.brand?' · '+uxEsc(p.brand):''}<br><b>${esMoney(p.price)}</b>/${uxEsc(p.unit)}</div>${crCan('settings')?`<button class="btn-xs" style="margin-top:4px" onclick="prDel('${p.id}')">Remove</button>`:''}</div>`).join('')}</div>`:'<div class="pl-empty">No products yet. Add the tile, fixtures and finishes you like to offer; Eagle I suggests them when you set up a homeowner’s selections.</div>';}
   catch(e){el.innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
 }
 async function prAdd(btn){
@@ -2331,7 +2371,7 @@ async function flDelete(id){const f=FL.files.find(x=>x.id===id);if(!confirm(`Del
 async function dvLoad(){
   const el=document.getElementById('gw-drive');if(!el)return;
   let d;try{d=await plApi('/api/crm/drive');}catch(e){el.innerHTML='';return;}
-  const manage=crCanManage();
+  const manage=crCan('settings');
   if(!d.on&&d.kind==='signin'){
     el.innerHTML=`<div class="pl-h" style="font-size:17px">Google Drive</div><div class="sm" style="margin-top:0">Keep every job’s files in ${d.account?uxEsc(d.account)+'’s':'your'} Google Drive: an “Eagle I Projects” folder with a folder per job (Plans, Permits, Contracts, Photos…), kept in step both ways. Files up to 50 MB of any kind.</div>
       ${manage?(d.needsSignIn?`<div class="vd-mbtns">${gBtn('Sign in and allow Google Drive','gwSignIn(true)',false)}</div>`:`<div class="vd-mbtns"><button class="btn-xs p" onclick="dvEnable(this)">Switch on Google Drive</button></div>`)+'<div class="sm" id="dv-msg"></div>':''}`;
@@ -2517,7 +2557,7 @@ async function plOpenDeal(id){
     ${x.stage==='lost'&&x.lost_reason?`<div class="sm">Lost because: ${uxEsc(x.lost_reason)}</div>`:''}
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="plSaveDeal('${x.id}',this)">Save changes</button>
       ${x.contact_phone?`<a class="btn-xs" href="tel:${uxEsc(x.contact_phone)}">📞 Call</a>`:''}${x.contact_email?`<a class="btn-xs" href="mailto:${uxEsc(x.contact_email)}">✉️ Email</a>`:''}
-      ${crCanManage()?`<button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="plDeleteDeal('${x.id}')">Delete</button>`:''}</div>
+      ${crCan('delete')?`<button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="plDeleteDeal('${x.id}')">Delete</button>`:''}</div>
     <div class="sm" id="pld-msg"></div>
     <div class="pl-h">✨ Coach</div>
     <div id="pld-coach"><div class="sm">Loading…</div></div>
@@ -2681,7 +2721,7 @@ async function lfAdd(dealId,btn){
 async function lfDel(id,dealId){if(!confirm('Remove this from the home file?'))return;try{await plApi('/api/crm/home/'+id,{method:'DELETE'});lfLoad(dealId);}catch(e){showNotif('Could not remove',e.message);}}
 async function rfLoad(){
   try{
-    const d=await plApi('/api/crm/referrals');const manage=crCanManage();const st=d.settings;
+    const d=await plApi('/api/crm/referrals');const manage=crCan('settings');const st=d.settings;
     const tile=(v,l)=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`;
     document.getElementById('rf-tot').innerHTML=tile(d.totals.leads,'Referred leads, 12 mo')+tile(d.totals.signed,'Signed')+tile(esMoney(d.totals.revenue),'Signed work');
     document.getElementById('rf-kind').innerHTML=Object.entries(d.kinds).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
@@ -2707,7 +2747,7 @@ async function rfArchive(id){if(!confirm('Remove this partner? Their link stops 
 /* ---------- import & setup ---------- */
 const IM={file:null,preview:null};
 async function suLoad(){
-  const box=document.getElementById('su-box');const manage=crCanManage();
+  const box=document.getElementById('su-box');const manage=crCan('data');
   try{
     const d=await plApi('/api/crm/setup');
     if(!manage){box.innerHTML='<div class="sm">Only the owner or an admin can change the setup.</div>';document.getElementById('im-box').innerHTML='';return;}
@@ -2742,7 +2782,7 @@ const BL={interval:'month',data:null};
 async function blLoad(){
   const el=document.getElementById('bl-box');
   try{
-    const d=BL.data=await plApi('/api/crm/billing');const manage=crCanManage();
+    const d=BL.data=await plApi('/api/crm/billing');const manage=crCan('billing');
     if(/billing=done/.test(location.search)){showNotif('Thank you!','Your plan is set. It can take a minute to show here.');try{history.replaceState(null,'','/crm#billing');}catch(e){}}
     const now=d.status==='active'?`<div class="big">${uxEsc(d.planName||'Your plan')}</div><div>Active. ${d.people} ${d.people===1?'person':'people'} on the team${d.seats&&d.seats<1000?` of ${d.seats}`:''}.</div>`
       :d.status==='trialing'?`<div class="big">${d.trialDaysLeft>0?`${d.trialDaysLeft} day${d.trialDaysLeft===1?'':'s'} left in your free trial`:'Your free trial has ended'}</div><div>Everything is on while you try it. Pick a plan any time; you’re only charged when the trial ends.</div>`
@@ -2768,7 +2808,7 @@ async function dupLoad(){
   const el=document.getElementById('dup-list');if(!el)return;
   try{const {groups}=await plApi('/api/crm/duplicates');
     el.innerHTML=groups.length?groups.map((g,gi)=>`<div class="pl-item"><div class="pl-item-d" style="margin-bottom:6px">Same ${uxEsc(g.why)}:</div>${g.people.map((p,i)=>`<label class="pl-switch" style="font-size:16px;margin:4px 0"><input type="radio" name="dup-${gi}" value="${p.id}"${i===0?' checked':''}><span><b>${uxEsc(p.name)}</b> · ${uxEsc([p.email,p.phone,p.address].filter(Boolean).join(' · '))} · ${p.deals} deal${p.deals===1?'':'s'}</span></label>`).join('')}
-      ${crCanManage()?`<div class="pl-acts"><button class="btn-xs p" onclick="dupMerge(${gi},this)">Merge into the one picked</button></div>`:''}</div>`).join(''):'<div class="pl-empty">No duplicates found.</div>';
+      ${crCan('data')?`<div class="pl-acts"><button class="btn-xs p" onclick="dupMerge(${gi},this)">Merge into the one picked</button></div>`:''}</div>`).join(''):'<div class="pl-empty">No duplicates found.</div>';
     el.dataset.groups=JSON.stringify(groups.map(g=>g.people.map(p=>p.id)));
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
@@ -2779,7 +2819,7 @@ async function dupMerge(gi,btn){
 }
 async function imLoad(){
   dupLoad();
-  if(!crCanManage())return;
+  if(!crCan('data'))return;
   const box=document.getElementById('im-box');
   box.innerHTML=`<div class="pl-pb">
     <div style="font-size:17px">Moving from <b>Buildertrend, JobTread, CoConstruct, Houzz Pro, QuickBooks</b> or a spreadsheet? Bring in your customers, subs and vendors, job schedules, tasks, cost catalog, past invoices and daily logs.</div>
@@ -2853,7 +2893,7 @@ async function imUndo(id,label){if(!confirm(`Undo this import (${label})? Everyt
 async function mkLoad(){
   try{
     const months=(document.getElementById('mk-months')||{}).value||12;
-    const d=await plApi('/api/crm/marketing?months='+months);const b=d.backlog;const manage=crCanManage();const dis=manage?'':' disabled';
+    const d=await plApi('/api/crm/marketing?months='+months);const b=d.backlog;const manage=crCan('settings');const dis=manage?'':' disabled';
     const tile=(v,l)=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`;
     const m0=n=>'$'+Math.round(n||0).toLocaleString();
     document.getElementById('mk-backlog').innerHTML=`<div class="pl-pb">
@@ -2893,7 +2933,7 @@ const BK_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 async function bkLoad(){
   const el=document.getElementById('pl-booking');if(!el)return;
   try{
-    const {minJobValue:m,booking:b}=await plApi('/api/crm/qualify/settings');const manage=crCanManage();const dis=manage?'':' disabled';
+    const {minJobValue:m,booking:b}=await plApi('/api/crm/qualify/settings');const manage=crCan('settings');const dis=manage?'':' disabled';
     el.innerHTML=`<div class="pl-pb">
       <div class="sm" style="margin-top:0">Every new lead gets a fit score (A, B or C) with the reasons. Leads who answer your questionnaire and score A or B move to Qualified on their own and can pick a site-visit time straight away. Booking sets the visit, starts its reminders, and emails a short brief to whoever is going.</div>
       <div class="pl-form" style="margin-top:8px">
@@ -2943,7 +2983,7 @@ function vdRender(){
   const soon=d=>d&&new Date(ymdOf(d)+'T12:00:00Z')<new Date(Date.now()+30*86400000);
   el.innerHTML=JB.vendors.length?JB.vendors.map(v=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(v.name)}</div><div class="pl-item-d">${uxEsc([v.trade,v.contact_name,v.phone,v.email].filter(Boolean).join(' · '))}</div>
     <div class="pl-tags">${v.license_no?`<span class="pl-tag">Lic. ${uxEsc(v.license_no)}</span>`:''}${v.insurance_expires?`<span class="pl-tag${soon(v.insurance_expires)?' warn':''}">Insurance to ${fdate(v.insurance_expires)}</span>`:'<span class="pl-tag warn">No insurance on file</span>'}</div></div>
-    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><button class="btn-xs p" onclick="vdPage('${v.id}')">🔗 Their page</button>${crCanManage()?`<button class="btn-xs" onclick="vdRemove('${v.id}')" aria-label="Remove ${uxEsc(v.name)}">Remove</button>`:''}</div></div></div>`).join(''):'<div class="pl-empty">No subs or suppliers yet. Add the trades you work with so you can put them on job schedules, send them bid requests and purchase orders, and give them their own page.</div>';
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><button class="btn-xs p" onclick="vdPage('${v.id}')">🔗 Their page</button>${crCan('subs')?`<button class="btn-xs" onclick="vdRemove('${v.id}')" aria-label="Remove ${uxEsc(v.name)}">Remove</button>`:''}</div></div></div>`).join(''):'<div class="pl-empty">No subs or suppliers yet. Add the trades you work with so you can put them on job schedules, send them bid requests and purchase orders, and give them their own page.</div>';
 }
 async function vdAdd(btn){
   const v=id=>document.getElementById(id).value;
@@ -2958,7 +2998,7 @@ async function vdPage(id){
     uxOpen(uxHead('🔗 '+uxEsc(v.name||'Sub')+'’s page','Their private page for every job they’re on with you. It opens on an assistant for questions about the job: dates, the address, the plans, what the homeowner picked. Anything it can’t answer comes to you in Today.')+`
       <label for="vp-url" style="font-size:15px;font-weight:700;display:block">Their link (keep it between you and them)</label>
       <div style="display:flex;gap:6px;margin-top:4px"><input id="vp-url" class="cred-input" readonly value="${uxEsc(r.url)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('vp-url')">Copy</button><a class="btn-xs" href="${uxEsc(r.url)}" target="_blank" rel="noopener">Open</a></div>
-      <div class="vd-mbtns">${r.email?`<button class="btn btn-blue" onclick="vdPageEmail('${id}',this)">Email it to ${uxEsc(r.email)}</button>`:'<span class="sm" style="margin:0">Add their email to send it to them.</span>'}${crCanManage()?`<button class="btn-xs" onclick="vdPageReset('${id}')">Make a new link</button>`:''}</div>
+      <div class="vd-mbtns">${r.email?`<button class="btn btn-blue" onclick="vdPageEmail('${id}',this)">Email it to ${uxEsc(r.email)}</button>`:'<span class="sm" style="margin:0">Add their email to send it to them.</span>'}${crCan('subs')?`<button class="btn-xs" onclick="vdPageReset('${id}')">Make a new link</button>`:''}</div>
       <div class="pl-h">What they can see</div>
       ${r.jobs.length?'<div class="pl-list">'+r.jobs.map(j=>`<div class="pl-item" style="padding:9px 12px"><div class="pl-card-top"><span class="pl-item-t">${uxEsc(j.title)}</span><span class="pl-pill ${j.status==='on'?'on':''}">${j.status==='on'?'On the job':'Bidding'}</span></div><div class="pl-item-d">${j.files} file${j.files===1?'':'s'} shared with subs</div></div>`).join('')+'</div>':'<div class="sm">No jobs yet. Put them on a schedule phase, a purchase order or a bid request and the job shows up on their page.</div>'}
       <div class="sm">On each job: the address, the schedule, their own phases and purchase orders, plans and selection sheets (switch any file on or off with “Subs see it” in its ⋯ menu), what the homeowner picked, and approved changes without prices. Never the homeowner’s phone or email, or anyone else’s prices.</div>
@@ -2997,7 +3037,7 @@ async function jbOpen(dealId){
     <div id="dw-box"><div class="sm">Loading…</div></div>
     <div class="pl-h">Schedule</div>
     ${d.schedule.length?sched:`<div class="sm">No schedule yet.</div><div class="vd-mbtns"><input type="date" id="jb-start" class="cred-input" style="width:auto" aria-label="Start date"><button class="btn-xs p" onclick="jbTemplate(this)">Lay it out from my template</button></div>`}
-    <div class="vd-mbtns"><button class="btn-xs" onclick="jbAddItem()">＋ Add a phase</button>${d.schedule.length&&crCanManage()?'<button class="btn-xs" onclick="jbSaveTpl()">Save as my template</button>':''}</div>
+    <div class="vd-mbtns"><button class="btn-xs" onclick="jbAddItem()">＋ Add a phase</button>${d.schedule.length&&crCan('settings')?'<button class="btn-xs" onclick="jbSaveTpl()">Save as my template</button>':''}</div>
     <div class="pl-h">Daily log</div>
     <textarea id="jb-log" class="cred-input" rows="3" placeholder="What happened on site today?"></textarea>
     <div class="es-grid" style="grid-template-columns:1fr auto;align-items:center"><input id="jb-crew" class="cred-input" placeholder="Who was on site (optional)"><label class="pl-switch" style="font-size:16px"><input type="checkbox" id="jb-share"> Share with homeowner</label></div>
@@ -3044,7 +3084,7 @@ async function bdLoad(dealId){
 async function bdAward(id,dealId){if(!confirm('Pick this bid?'))return;try{await plApi('/api/crm/bids/'+id+'/award',{body:{}});bdLoad(dealId);}catch(e){showNotif('Could not pick it',e.message);}}
 async function puSettings(){
   const el=document.getElementById('pl-pulse');if(!el)return;
-  try{const d=await plApi('/api/crm/pulse/settings');const manage=crCanManage();
+  try{const d=await plApi('/api/crm/pulse/settings');const manage=crCan('settings');
     el.innerHTML=`<div class="pl-pb"><div class="pl-card-top"><div class="pl-item-t">“How is it going?” every ${d.everyDays} days</div><span class="pl-pill ${d.on?'on':''}">${d.on?'● On':'Off'}</span></div>
       <div class="sm">While a job is under construction, the homeowner gets a short email (in their language) asking them to tap 1 to 5, with room for a comment. A 3 or lower lands in Needs you and emails whoever owns the deal, while there’s still time to fix it.</div>
       <div class="fit-brief" style="margin-top:8px">Hi Maria,
@@ -3060,7 +3100,7 @@ Every answer goes straight to the team, and if something isn’t right we want t
 }
 async function scSettings(){
   const el=document.getElementById('pl-subs');if(!el)return;
-  try{const d=await plApi('/api/crm/subs/settings');const manage=crCanManage();
+  try{const d=await plApi('/api/crm/subs/settings');const manage=crCan('settings');
     el.innerHTML=`<div class="pl-pb"><div class="pl-card-top"><div class="pl-item-t">Three days before a phase starts</div><span class="pl-pill ${d.on?'on':''}">${d.on?'● On':'Off'}</span></div>
       <div class="sm">The sub on the phase gets the job, the address and the dates, with “I’ll be there” and “Can’t make it” buttons. “Can’t make it”, or no answer by the day before, lands in Needs you. Moving the dates asks again.</div>
       <div class="fit-brief" style="margin-top:8px">Please confirm: Tile & flooring at 12 Oak Ln, Thursday, November 6
@@ -3087,7 +3127,7 @@ async function puLoad(dealId){
 async function dwLoad(dealId){
   const el=document.getElementById('dw-box');if(!el)return;
   try{
-    const d=await plApi('/api/crm/deals/'+dealId+'/draws');const manage=crCanManage();
+    const d=await plApi('/api/crm/deals/'+dealId+'/draws');const manage=crCan('settings');
     const trig=w=>w.on_complete?'when the job is marked Complete':w.phase_title?`when “${uxEsc(w.phase_title)}” is done`:'by hand';
     const st=w=>w.invoice_id?`<span class="pl-pill ${w.invoice_status==='paid'?'accepted':'sent'}">${w.invoice_status==='paid'?'Paid':w.invoice_status==='sent'?'Invoiced':'Invoice drafted'} #${w.invoice_number}</span>`:'<span class="pl-pill">Waiting</span>';
     const phaseOpts=sel=>`<option value="">By hand</option>${d.phases.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>When “${uxEsc(p.title)}” is done</option>`).join('')}<option value="complete"${sel==='complete'?' selected':''}>When the job is marked Complete</option>`;
@@ -3130,7 +3170,7 @@ async function jcLoad(dealId){
         <div><label for="jc-vendor">Paid to</label><input id="jc-vendor" class="cred-input"></div><div><label for="jc-date">Date</label><input id="jc-date" type="date" class="cred-input"></div>
         <div class="full"><label for="jc-desc">What for</label><input id="jc-desc" class="cred-input"></div></div>
         <div class="vd-mbtns"><button class="btn-xs p" onclick="jcAdd('${dealId}',this)">Add cost</button></div></details>
-      ${costs.length?'<div class="pl-list" style="margin-top:8px">'+costs.slice(0,30).map(c=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t" style="font-size:16px">${uxEsc(c.description||c.category)}</div><div class="pl-item-d">${fdate(c.cost_date)} · ${uxEsc(c.category)}${c.vendor_name?' · '+uxEsc(c.vendor_name):''}${c.hours?` · ${Number(c.hours)} h × ${esMoney(c.rate)}`:''}${c.source==='receipt'?' · from a receipt':c.source==='po'?' · from a PO':''}</div></div><div style="text-align:right"><div class="pl-card-val" style="font-size:17px">${esMoney(c.amount)}</div>${c.file_id?`<a class="sm" href="/api/crm/files/${c.file_id}" target="_blank" rel="noopener">photo</a>`:''}${crCanManage()?` <button class="btn-xs" onclick="jcDel('${c.id}','${dealId}')" aria-label="Delete cost">✕</button>`:''}</div></div></div>`).join('')+'</div>':''}`;
+      ${costs.length?'<div class="pl-list" style="margin-top:8px">'+costs.slice(0,30).map(c=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t" style="font-size:16px">${uxEsc(c.description||c.category)}</div><div class="pl-item-d">${fdate(c.cost_date)} · ${uxEsc(c.category)}${c.vendor_name?' · '+uxEsc(c.vendor_name):''}${c.hours?` · ${Number(c.hours)} h × ${esMoney(c.rate)}`:''}${c.source==='receipt'?' · from a receipt':c.source==='po'?' · from a PO':''}</div></div><div style="text-align:right"><div class="pl-card-val" style="font-size:17px">${esMoney(c.amount)}</div>${c.file_id?`<a class="sm" href="/api/crm/files/${c.file_id}" target="_blank" rel="noopener">photo</a>`:''}${crCan('money')?` <button class="btn-xs" onclick="jcDel('${c.id}','${dealId}')" aria-label="Delete cost">✕</button>`:''}</div></div></div>`).join('')+'</div>':''}`;
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
 async function jcReceipt(dealId,input){
@@ -3233,7 +3273,7 @@ function ivRow(i,withDeal){
   const due=i.due_date?' · due '+new Date(String(i.due_date).slice(0,10)+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric'}):'';
   const acts=i.status==='paid'||i.status==='void'?'':`<div class="pl-acts">${i.status==='draft'?`<button class="btn-xs p" onclick="ivSend('${i.id}','${i.deal_id}',this)">Send</button>`:`<button class="btn-xs" onclick="ivSend('${i.id}','${i.deal_id}',this)">Resend</button>`}
     <select onchange="if(this.value)ivPaid('${i.id}','${i.deal_id}',this.value)" aria-label="Record a payment"><option value="">Mark paid…</option><option value="check">By check</option><option value="cash">By cash</option><option value="bank">By bank transfer</option><option value="card">By card</option><option value="other">Other</option></select>
-    ${crCanManage()?`<button class="btn-xs" onclick="ivVoid('${i.id}','${i.deal_id}')">Cancel</button>`:''}</div>`;
+    ${crCan('delete')?`<button class="btn-xs" onclick="ivVoid('${i.id}','${i.deal_id}')">Cancel</button>`:''}</div>`;
   return `<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">#${i.number} ${uxEsc(i.title)}</div><div class="pl-item-d">${withDeal?uxEsc(i.contact_name)+' · ':''}${uxEsc(IV_KIND[i.kind]||i.kind)}${due}${i.paid_at?' · paid '+new Date(i.paid_at).toLocaleDateString()+(i.paid_via?' by '+uxEsc(i.paid_via):''):''}</div></div><div style="text-align:right"><div class="pl-card-val">${esMoney(i.amount)}</div>${st}</div></div>${i.status!=='draft'&&i.status!=='void'?`<div class="pl-acts"><button class="btn-xs" onclick="ivCopy('${i.public_token}')">Copy pay link</button></div>`:''}${acts}</div>`;
 }
 async function ivLoad(dealId){
@@ -3288,7 +3328,7 @@ async function ptLoad(dealId){
       <label for="pt-body" style="font-size:15px;font-weight:700;display:block;margin-top:10px">Post an update</label>
       ${d.draft?'<div class="sm" style="margin-top:2px">✨ Eagle I drafted this week’s update from the shared logs, the schedule and the photos. Read it over, then post.</div>':''}
       <textarea id="pt-body" class="cred-input" rows="${d.draft?6:3}" placeholder="e.g. Cabinets arrive Thursday; tile goes in next week.">${uxEsc(d.draft||'')}</textarea>
-      <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="ptPost('${dealId}',this)">Post</button><button class="btn-xs" onclick="ptDraft('${dealId}',this)">✨ Draft this week’s update</button><label class="pl-switch" style="font-size:16px"><input type="checkbox" id="pt-email" checked> Also email it to them</label>${crCanManage()?`<button class="btn-xs" onclick="ptReset('${dealId}')" style="margin-left:auto">New link</button>`:''}</div>
+      <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="ptPost('${dealId}',this)">Post</button><button class="btn-xs" onclick="ptDraft('${dealId}',this)">✨ Draft this week’s update</button><label class="pl-switch" style="font-size:16px"><input type="checkbox" id="pt-email" checked> Also email it to them</label>${crCan('settings')?`<button class="btn-xs" onclick="ptReset('${dealId}')" style="margin-left:auto">New link</button>`:''}</div>
       <div class="sm" id="pt-msg"></div>
       ${d.updates.length?'<ul class="pl-tl" style="margin-top:8px">'+d.updates.map(u=>`<li>${uxEsc(u.body)}<div class="pl-tl-meta">${uxEsc(u.author||'')} · ${new Date(u.created_at).toLocaleString()}${u.emailed_at?' · emailed':''}</div></li>`).join('')+'</ul>':''}`;
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
@@ -3389,7 +3429,7 @@ async function ewLoad(){
   const el=document.getElementById('ew-box');if(!el)return;
   try{
     const d=EW.data=await plApi('/api/crm/email-watch'+(EW.all?'?all=1':''));
-    const w=document.getElementById('ew-allwrap');if(w)w.innerHTML=crCanManage()?`<label class="pl-switch" style="font-size:16px"><input type="checkbox" ${EW.all?'checked':''} onchange="EW.all=this.checked;ewLoad()"> Everyone’s</label>`:'';
+    const w=document.getElementById('ew-allwrap');if(w)w.innerHTML=crCan('see_all')?`<label class="pl-switch" style="font-size:16px"><input type="checkbox" ${EW.all?'checked':''} onchange="EW.all=this.checked;ewLoad()"> Everyone’s</label>`:'';
     if(!d.mailboxes){el.innerHTML=`<div class="pl-pb"><div class="sm" style="margin-top:0">Connect Gmail and Eagle I keeps track of who owes whom an answer: a follow-up written for you when someone hasn’t replied in ${d.settings.followUpDays} business days, and a reminder when an important email is waiting on you.</div><div class="vd-mbtns"><button class="btn-xs p" onclick="crView('company')">Connect Gmail</button></div></div>`;return;}
     if(!d.settings.on){el.innerHTML=`<div class="pl-empty">Email watch is off (Automations → Email watch).</div>`;return;}
     const fu=d.waiting.filter(x=>x.days>=d.settings.followUpDays),rest=d.waiting.length-fu.length;
@@ -3419,7 +3459,7 @@ async function ewSend(id,btn){btn.disabled=true;
 async function ewAct(id,action,days){try{await plApi('/api/crm/email-watch/'+id+'/act',{body:{action,days}});plLoadNeeds();}catch(e){showNotif('Could not do that',e.message);}}
 async function ewSettings(){
   const el=document.getElementById('pl-ew');if(!el)return;
-  try{const d=await plApi('/api/crm/email-watch');const s=d.settings,m=crCanManage(),dis=m?'':'disabled';
+  try{const d=await plApi('/api/crm/email-watch');const s=d.settings,m=crCan('settings'),dis=m?'':'disabled';
     el.innerHTML=`<div class="pl-pb"><div class="pl-card-top"><div class="pl-item-t">Who owes whom an answer</div><span class="pl-pill ${s.on?'on':''}">${s.on?'● On':'Off'}</span></div>
       <div class="sm">Eagle I reads your team’s Gmail${d.mailboxes?` (${d.mailboxes} mailbox${d.mailboxes===1?'':'es'})`:' once it’s connected (Company → Google)'} and skips newsletters, notifications and no-reply senders.</div>
       <ul class="sm" style="margin:6px 0 0;padding-left:18px"><li>You emailed someone and asked for something; no reply after the days below: a follow-up is written for you, and you get an email. One tap sends it in the same conversation.</li><li>An important email is waiting on you: a reminder after 2 hours if urgent, the next business day for customers, subs and anything important, 2 business days otherwise.</li><li>A promise in your email (“I’ll send it Friday”) or a deadline someone gives you becomes a task on that day.</li><li>Each person’s 7am email lists what they owe and what’s overdue.</li></ul>
@@ -3450,7 +3490,7 @@ function tdRow(t,showDeal){
 }
 function tdRender(d){
   const wrap=document.getElementById('td-allwrap');
-  if(wrap)wrap.innerHTML=crLeads()&&CR.team.length>1?`<label class="pl-switch" style="font-size:16px;font-weight:400"><input type="checkbox" ${TD.all?'checked':''} onchange="TD.all=this.checked;plLoadNeeds()"> ${crCanManage()?'Whole team':'Me and the people under me'}</label>`:'';
+  if(wrap)wrap.innerHTML=crLeads()&&CR.team.length>1?`<label class="pl-switch" style="font-size:16px;font-weight:400"><input type="checkbox" ${TD.all?'checked':''} onchange="TD.all=this.checked;plLoadNeeds()"> ${crCan('see_all')?'Whole team':'Me and the people under me'}</label>`:'';
   document.getElementById('td-tasks').innerHTML=d.tasks.length?d.tasks.map(t=>tdRow(t,true)).join(''):'<div class="pl-empty">No open tasks.</div>';
   document.getElementById('td-visits').innerHTML=d.visits.length?d.visits.map(v=>`<button class="pl-card" onclick="plOpenDeal('${v.id}')"><div class="pl-card-title">📅 ${new Date(v.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div><div class="pl-card-sub">${uxEsc(v.contact_name)} · ${uxEsc(v.title)}${v.address?' · '+uxEsc(v.address):''}</div></button>`).join(''):'<div class="pl-empty">No site visits booked this week.</div>';
 }
@@ -3473,7 +3513,7 @@ async function plInboxAct(id,action,days){
 
 function plRenderStageNames(){
   const el=document.getElementById('pl-stagenames');if(!el)return;
-  if(!crCanManage()||!PL.data){el.innerHTML='';return;}
+  if(!crCan('emails')||!PL.data){el.innerHTML='';return;}
   const fixed=['new','signed','complete','lost'];
   el.innerHTML=`<details class="pl-pb"><summary style="cursor:pointer;font-weight:800">Your pipeline stages</summary>
     <div class="sm">Rename stages to match how you sell, and hide the ones you don't use. New, Contract signed, Complete and Lost always stay.</div>
@@ -3499,7 +3539,7 @@ async function plLoadIntake(){
       ${d.bookingUrl?copy('in-book','Your booking page: anyone can pick a site-visit time (put it on your website and Google profile)',d.bookingUrl):''}
       ${copy('in-embed','Or put the form right on your website (give this code to whoever runs your site)',d.embedCode)}
       ${d.forwardAddress?copy('in-fwd','Forward lead emails from Houzz, Angi, Thumbtack and others to this address',d.forwardAddress)+'<div class="sm">Tip: set up an automatic forward in your email for messages from those sites. Eagle I reads each one and ignores anything that isn’t a lead.</div>':'<div class="sm">Lead-email forwarding needs inbound email switched on for Eagle I. Ask your Eagle I admin.</div>'}
-      ${crCanManage()?'<div class="vd-mbtns"><button class="btn-xs" onclick="plRotate()">Make a new link</button><span class="sm" style="margin:0">Use this if the form is getting spam. The old link and address stop working.</span></div>':''}
+      ${crCan('settings')?'<div class="vd-mbtns"><button class="btn-xs" onclick="plRotate()">Make a new link</button><span class="sm" style="margin:0">Use this if the form is getting spam. The old link and address stop working.</span></div>':''}
     </div>`;
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
@@ -3508,7 +3548,7 @@ async function plRotate(){if(!confirm('Make a new link? The old form link and fo
 async function plUpcoming(){
   const el=document.getElementById('pl-upcoming');if(!el)return;
   try{const {sends}=await plApi('/api/crm/automations/upcoming');
-    el.innerHTML=sends.length?`<div class="sm" style="margin:0 0 8px">Every automatic email that will go out this week. Skip any you don’t want sent.</div>`+sends.map(x=>`<div class="bin-row"><div class="w"><div style="font-weight:600">${uxEsc(x.subject||x.playbook)}</div><div class="k">To ${uxEsc(x.to)}${x.email?' &lt;'+uxEsc(x.email)+'&gt;':''} · ${uxEsc(x.deal)} · ${crWhen(x.dueAt)}${x.held?' · held a day so they don’t get two at once':''}</div></div>${crCanManage()?`<button class="btn-xs" onclick="plSkipSend('${x.id}',this)">Skip this one</button>`:''}</div>`).join('')
+    el.innerHTML=sends.length?`<div class="sm" style="margin:0 0 8px">Every automatic email that will go out this week. Skip any you don’t want sent.</div>`+sends.map(x=>`<div class="bin-row"><div class="w"><div style="font-weight:600">${uxEsc(x.subject||x.playbook)}</div><div class="k">To ${uxEsc(x.to)}${x.email?' &lt;'+uxEsc(x.email)+'&gt;':''} · ${uxEsc(x.deal)} · ${crWhen(x.dueAt)}${x.held?' · held a day so they don’t get two at once':''}</div></div>${crCan('emails')?`<button class="btn-xs" onclick="plSkipSend('${x.id}',this)">Skip this one</button>`:''}</div>`).join('')
       :'<div class="pl-empty">Nothing is scheduled to go out in the next 7 days.</div>';}
   catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
@@ -3525,7 +3565,7 @@ async function plLoadAuto(){
     const [pb,sum]=await Promise.all([plApi('/api/crm/playbooks'),plApi('/api/crm/summary')]);
     PL.playbooks=pb.playbooks;PL.settings=pb.settings;PL.maxSteps=pb.maxSteps;
     const s=pb.settings;
-    if(!crCanManage()){document.getElementById('pl-auto-settings').innerHTML='<div class="pl-banner"><span>Only the owner or an admin can change automatic emails. You can read them here.</span></div>';}
+    if(!crCan('emails')){document.getElementById('pl-auto-settings').innerHTML='<div class="pl-banner"><span>Only the owner or an admin can change automatic emails. You can read them here.</span></div>';}
     else document.getElementById('pl-auto-settings').innerHTML=`
       <label class="pl-switch"><input type="checkbox" ${s.paused?'':'checked'} onchange="plSetting({paused:!this.checked})"><span>Automatic emails are <b>${s.paused?'paused':'on'}</b>. Turn this off to pause everything at once.</span></label>
       <label class="pl-switch" style="margin-top:8px"><input type="checkbox" ${s.weeklySummary?'checked':''} onchange="plSetting({weeklySummary:this.checked})"><span>Email the weekly report to the owner and admins every Monday</span></label>
@@ -3536,7 +3576,7 @@ async function plLoadAuto(){
     document.getElementById('pl-week').innerHTML=[[x.newLeads,'New leads'],[x.respondedCount?plFmtMin(x.medianResponseMinutes):'—','Median time to pick up a lead'],[x.automatedEmails,'Automatic emails sent'],[x.replies,'Replies to them']]
       .map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
     plRenderPlaybooks();
-    if(!crCanManage())document.querySelectorAll('#pl-playbooks input,#pl-playbooks textarea').forEach(f=>f.readOnly=true);
+    if(!crCan('emails'))document.querySelectorAll('#pl-playbooks input,#pl-playbooks textarea').forEach(f=>f.readOnly=true);
   }catch(e){document.getElementById('pl-playbooks').innerHTML='<div class="pl-empty">Could not load: '+uxEsc(e.message)+'</div>';}
 }
 function plFmtMin(m){if(m==null)return '—';if(m<60)return Math.round(m)+' min';if(m<2880)return (m/60).toFixed(1).replace(/\.0$/,'')+' h';return Math.round(m/1440)+' days';}
@@ -3551,7 +3591,7 @@ function plRenderPlaybooks(){
         <textarea class="cred-input" data-k="message" data-i="${i}" rows="6" aria-label="Message" style="font-size:16px;line-height:1.5">${uxEsc(s.message)}</textarea></div>`;}).join('')}
       <div class="sm">You can use ${(p.tokens||[]).map(t=>'{'+t+'}').join(', ')}. Emails get your address and an unsubscribe link at the bottom.</div>
       <div id="pbes-${p.id}">${pbEsHtml(p,p.stepsEs)}</div>
-      ${crCanManage()?`<div class="pl-acts">
+      ${crCan('emails')?`<div class="pl-acts">
         ${p.enabled&&p.approved?`<button class="btn-xs" onclick="plPbEnabled('${p.id}',false)">Switch off</button>`:`<button class="btn btn-blue" onclick="plPbApprove('${p.id}',this)">✓ Approve this wording &amp; switch on</button>`}
         <button class="btn-xs" onclick="plPbSave('${p.id}',this)">Save wording</button>
         <button class="btn-xs" onclick="plPbPreview('${p.id}',this)">Send me a preview</button>${p.stepsEs?`<button class="btn-xs" onclick="plPbPreview('${p.id}',this,'es')">Preview in Spanish</button>`:''}
@@ -3561,7 +3601,7 @@ function plRenderPlaybooks(){
 }
 // The Spanish version: same messages and timing as the English, only the words differ.
 function pbEsHtml(p,es){
-  const manage=crCanManage();
+  const manage=crCan('emails');
   if(!es||!es.length)return manage?`<div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs" onclick="pbEsDraft('${p.id}',this)">＋ Add a Spanish version</button><span class="sm" style="margin:0">For homeowners who read Spanish.</span></div>`:'';
   return `<details class="pl-pb" style="margin-top:8px" data-es-on="1"${es&&!p.stepsEs?' open':''}><summary style="cursor:pointer;font-weight:800">Español <span class="sm" style="font-weight:400">· for contacts who read Spanish (approved together with the English)</span></summary>
     ${es.map((x,i)=>`<div class="pl-step"><div class="pl-step-row">${i+1}:</div>
@@ -3626,7 +3666,7 @@ async function crPauseAll(){
   if(!confirm(paused?'Turn automatic emails back on? Anything that was waiting goes out at the next chance.':'Pause ALL automatic emails? Nothing is sent until you turn them back on. Nothing is lost; emails wait.'))return;
   await plSetting({paused:!paused});showNotif(paused?'Automatic emails are on':'Automatic emails are paused',paused?'':'Turn them back on from Account at any time.');
 }
-function crPauseLabel(){const b=document.getElementById('cr-pause-btn');if(!b)return;b.hidden=!crCanManage();const p=!!(PL.data&&PL.data.settings&&PL.data.settings.paused);b.textContent=p?'▶ Turn automatic emails back on':'⏸ Pause all automatic emails';}
+function crPauseLabel(){const b=document.getElementById('cr-pause-btn');if(!b)return;b.hidden=!crCan('emails');const p=!!(PL.data&&PL.data.settings&&PL.data.settings.paused);b.textContent=p?'▶ Turn automatic emails back on':'⏸ Pause all automatic emails';}
 async function plSetting(patch){
   try{await plApi('/api/crm/settings',{method:'PATCH',body:patch});if(CR.view==='auto')plLoadAuto();plLoad();}
   catch(e){showNotif('Could not save',e.message);}

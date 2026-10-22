@@ -17,8 +17,8 @@ function fail(res, err, what) {
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }
 function managersOnly(req, res, next) {
-  if (team.isManager(req.crmUser && req.crmUser.role)) return next();
-  res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+  if (team.can(req.crmUser, 'settings')) return next();
+  res.status(403).json({ error: { message: team.denyText('settings') } });
 }
 
 router.get('/api/crm/google', requireAuth, async (req, res) => {
@@ -51,7 +51,7 @@ const redirectUri = (req) => process.env.GOOGLE_CRM_REDIRECT_URI || `${req.proto
 router.get('/api/crm/google/oauth/start', requireAuth, async (req, res) => {
   try {
     const wantDrive = req.query.drive === '1';
-    if (wantDrive && !team.isManager(req.crmUser && req.crmUser.role)) return res.redirect('/crm?google_error=' + encodeURIComponent('Only the owner or an admin can connect Google Drive.') + '#company');
+    if (wantDrive && !team.can(req.crmUser, 'settings')) return res.redirect('/crm?google_error=' + encodeURIComponent(team.denyText('settings')) + '#company');
     const wantCalendar = req.query.calendar === '1';
     res.redirect(await google.signInUrl({ tenantId: req.tenantId, userId: req.userId, wantDrive, wantCalendar, redirectUri: redirectUri(req) }));
   } catch (err) { res.redirect('/crm?google_error=' + encodeURIComponent(err.message) + (req.query.calendar === '1' ? '#calendar' : '#company')); }
@@ -74,7 +74,7 @@ router.delete('/api/crm/google/mailboxes/:id', requireAuth, async (req, res) => 
   try {
     const own = (await query('SELECT connected_by FROM crm_mailboxes WHERE id = $1 AND tenant_id = $2', [req.params.id, req.tenantId]).catch(() => ({ rows: [] }))).rows[0];
     if (!own) return res.status(404).json({ error: { message: 'Mailbox not found.' } });
-    if (own.connected_by !== req.userId && !team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the person who connected it, the owner or an admin can remove it.' } });
+    if (own.connected_by !== req.userId && !team.can(req.crmUser, 'settings')) return res.status(403).json({ error: { message: 'Only the person who connected it, the owner or an admin can remove it.' } });
     await google.removeMailbox({ tenantId: req.tenantId, id: req.params.id });
     res.json({ ok: true });
   } catch (err) { fail(res, err, 'Failed to remove it'); }
@@ -103,12 +103,12 @@ router.post('/api/crm/drive/sync', requireAuth, managersOnly, async (req, res) =
 const watch = require('../lib/crmEmailWatch');
 async function ownThread(req, res) {
   const t = await watch.getThread(req.tenantId, req.params.id);
-  if (!t || !(team.isManager(req.crmUser && req.crmUser.role) || t.user_id === req.userId)) { res.status(404).json({ error: { message: 'Not found.' } }); return null; }
+  if (!t || !(team.can(req.crmUser, 'see_all') || t.user_id === req.userId)) { res.status(404).json({ error: { message: 'Not found.' } }); return null; }
   return t;
 }
 router.get('/api/crm/email-watch', requireAuth, async (req, res) => {
   try {
-    const all = req.query.all === '1' && team.isManager(req.crmUser && req.crmUser.role);
+    const all = req.query.all === '1' && team.can(req.crmUser, 'see_all');
     const conn = (await query(`SELECT COUNT(*)::int AS n FROM crm_mailboxes m JOIN crm_google_connections c ON c.tenant_id = m.tenant_id WHERE m.tenant_id = $1 AND m.included = true AND c.status = 'connected'`, [req.tenantId])).rows[0].n;
     res.json({ settings: await watch.settings(req.tenantId), mailboxes: conn, all, ...(await watch.list(req.tenantId, { userId: req.userId, all })) });
   } catch (err) { fail(res, err, 'Failed to load'); }

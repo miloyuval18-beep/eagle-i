@@ -39,7 +39,7 @@ async function ownEstimate(req, res) {
   if (!e) res.status(404).json({ error: { message: 'Estimate not found.' } });
   return e;
 }
-const viewer = (req) => ({ userId: req.userId, manager: team.isManager(req.crmUser && req.crmUser.role) });
+const viewer = (req) => ({ userId: req.userId, manager: team.can(req.crmUser, 'reports') });
 
 // ---------- proposals and estimate checks ----------
 router.get('/api/crm/estimates/:id/ai', requireAuth, wrap('Failed to load', async (req, res) => {
@@ -134,7 +134,7 @@ async function coachingForSafe(req, userId) {
   return coaching.coachingFor({ tenantId: req.tenantId, userId, viewer: viewer(req), refresh: req.query.refresh === '1' });
 }
 router.get('/api/crm/win-loss', requireAuth, wrap('Failed to load', async (req, res) => {
-  if (!viewer(req).manager) return res.status(403).json({ error: { message: 'Only the owner or an admin can see this.' } });
+  if (!viewer(req).manager) return res.status(403).json({ error: { message: team.denyText('reports') } });
   res.json(await coaching.winLoss(req.tenantId));
 }));
 

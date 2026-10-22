@@ -17,7 +17,7 @@ const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } cat
 
 router.get('/api/crm/subs/settings', requireAuth, wrap('Failed to load', async (req, res) => res.json({ on: await subs.subConfirmOn(req.tenantId) })));
 router.patch('/api/crm/subs/settings', requireAuth, wrap('Failed to save', async (req, res) => {
-  if (!team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+  if (!team.can(req.crmUser, 'settings')) return res.status(403).json({ error: { message: team.denyText('settings') } });
   res.json(await subs.setSubConfirm(req.tenantId, !!(req.body || {}).on));
 }));
 router.get('/api/crm/cashflow', requireAuth, wrap('Failed to load the cash flow', async (req, res) => res.json(await subs.cashflow(req.tenantId))));

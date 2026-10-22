@@ -16,8 +16,8 @@ function fail(res, err, what) {
 }
 const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } catch (err) { fail(res, err, what); } };
 const managersOnly = (req, res) => {
-  if (team.isManager(req.crmUser && req.crmUser.role)) return false;
-  res.status(403).json({ error: { message: 'Only the owner or an admin can do this.' } });
+  if (team.can(req.crmUser, 'data')) return false;
+  res.status(403).json({ error: { message: team.denyText('data') } });
   return true;
 };
 

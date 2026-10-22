@@ -112,7 +112,7 @@ router.post('/api/crm-account/password', account, wrap('Couldn’t change it', a
 // ---------- for the owner and admins: the company code and join requests ----------
 // (/api/crm/* sits behind routes/crm.js's sign-in and company check.)
 
-const managersOnly = (req, res, next) => team.isManager(req.crmUser && req.crmUser.role) ? next() : res.status(403).json({ error: { message: 'Only the owner or an admin can do this.' } });
+const managersOnly = team.need('team');
 router.get('/api/crm/join-code', requireAuth, managersOnly, wrap('Couldn’t load the code', async (req, res) => {
   res.json({ code: await acc.joinCode(req.tenantId), requests: await acc.listJoinRequests(req.tenantId) });
 }));

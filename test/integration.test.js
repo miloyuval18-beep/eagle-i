@@ -1494,6 +1494,55 @@ describe('CRM team', () => {
     assert.equal((await sales.patch('/api/crm/team-settings', { visibility: 'chain' })).status, 403);
   });
 
+  test('each role starts with default permissions, the owner adjusts them per person, and a new role starts over', async () => {
+    const o = await owner();
+    const sales = await inviteAndJoin(o, 'sales');
+    const sMe = await (await sales.get('/api/crm/me')).json();
+    assert.equal(sMe.perms.estimates, true); assert.equal(sMe.perms.money, false); assert.equal(sMe.perms.team, false);
+    const { deal } = await (await sales.post('/api/crm/deals', { name: 'Perm Lead' })).json();
+    // Sales defaults: estimates yes; money, invoices and subs no.
+    assert.equal((await sales.post(`/api/crm/deals/${deal.id}/estimates`, {})).status, 200);
+    const noMoney = await sales.get('/api/crm/invoices');
+    assert.equal(noMoney.status, 403); assert.match((await noMoney.json()).error.message, /see money/);
+    assert.equal((await sales.post('/api/crm/vendors', { name: 'Nope Framing' })).status, 403);
+    assert.equal((await sales.post(`/api/crm/deals/${deal.id}/invoices`, { title: 'Deposit', amount: 100 })).status, 403);
+
+    // The owner adjusts the checklist: no estimates, but money.
+    const t = await (await o.get('/api/crm/team')).json();
+    assert.ok(t.perms.length >= 10 && t.defaults.sales.estimates === true);
+    const row = t.members.find(m => m.id === sMe.userId);
+    assert.equal(row.custom, false); assert.equal(row.permissions.estimates, true);
+    assert.equal((await o.patch(`/api/crm/team/${sMe.userId}`, { permissions: { estimates: false, money: true } })).status, 200);
+    assert.equal((await sales.post(`/api/crm/deals/${deal.id}/estimates`, {})).status, 403, 'takes effect at once');
+    assert.equal((await sales.get('/api/crm/invoices')).status, 200);
+    assert.equal((await (await o.get('/api/crm/team')).json()).members.find(m => m.id === sMe.userId).custom, true);
+    // Changing the role starts over from the new role's defaults.
+    assert.equal((await o.patch(`/api/crm/team/${sMe.userId}`, { role: 'office' })).status, 200);
+    const after = (await (await o.get('/api/crm/team')).json()).members.find(m => m.id === sMe.userId);
+    assert.equal(after.custom, false); assert.equal(after.permissions.estimates, false); assert.equal(after.permissions.invoices, true); assert.equal(after.permissions.data, true);
+    // Back to the defaults.
+    await o.patch(`/api/crm/team/${sMe.userId}`, { permissions: { billing: true } });
+    assert.equal((await o.patch(`/api/crm/team/${sMe.userId}`, { permissions: null })).status, 200);
+    assert.equal((await (await o.get('/api/crm/team')).json()).members.find(m => m.id === sMe.userId).custom, false);
+
+    // Someone given "manage the team" can't give what they don't have, can't make admins, can't change their own.
+    const ownerId = (await (await o.get('/api/crm/me')).json()).userId;
+    await o.patch(`/api/crm/team/${sMe.userId}`, { permissions: { team: true } });
+    const member = await inviteAndJoin(o, 'member');
+    const mId = (await (await member.get('/api/crm/me')).json()).userId;
+    assert.equal((await sales.patch(`/api/crm/team/${mId}`, { permissions: { billing: true } })).status, 403);
+    assert.equal((await sales.patch(`/api/crm/team/${mId}`, { permissions: { money: false } })).status, 200, 'but can take away');
+    assert.equal((await sales.patch(`/api/crm/team/${mId}`, { role: 'admin' })).status, 403);
+    assert.equal((await sales.post('/api/crm/team/invites', { email: uniqueEmail('x'), role: 'admin' })).status, 403);
+    assert.equal((await sales.patch(`/api/crm/team/${sMe.userId}`, { permissions: { billing: true } })).status, 400, 'not their own');
+    assert.equal((await o.patch(`/api/crm/team/${ownerId}`, { permissions: { money: false } })).status, 400, 'the owner always has everything');
+    // A team member keeps what members could always do.
+    const mm = await (await member.get('/api/crm/me')).json();
+    assert.equal(mm.perms.estimates && mm.perms.invoices && mm.perms.subs, true);
+    assert.equal(mm.perms.money, false, 'taken away above');
+    assert.equal(mm.perms.delete, false); assert.equal(mm.perms.emails, false);
+  });
+
   test('an invite to someone who already has an account is refused', async () => {
     const o = await owner();
     const me = await (await o.get('/api/crm/me')).json();

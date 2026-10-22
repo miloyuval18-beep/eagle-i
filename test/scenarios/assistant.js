@@ -55,7 +55,7 @@ const use = (name, input, id = 'tu_' + Math.random().toString(36).slice(2, 8)) =
 
     // 2. A member can't see someone else's day; the error goes back to the model.
     const th2 = await A.createThread(actx);
-    script = [use('team_activity', { person: 'Moran' }), (m) => { const b = lastToolResult(m); assert.equal(b.is_error, true); assert.match(b.content, /Only the owner/); return say('Only the owner or an admin can see that.')(); }];
+    script = [use('team_activity', { person: 'Moran' }), (m) => { const b = lastToolResult(m); assert.equal(b.is_error, true); assert.match(b.content, /permission/); return say('Only the owner or an admin can see that.')(); }];
     r = await A.runTurn(actx, { threadId: th2.id, text: 'What did Moran do today?' });
     assert.match(r.steps[0], /couldn’t/);
     await assert.rejects(A.threadView(actx, th.id), /not found/, 'someone else’s conversation');

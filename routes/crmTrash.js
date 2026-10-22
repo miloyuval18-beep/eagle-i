@@ -13,7 +13,7 @@ function fail(res, err, what) {
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }
 const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } catch (err) { fail(res, err, what); } };
-const manager = (req) => team.isManager(req.crmUser && req.crmUser.role);
+const manager = (req) => team.can(req.crmUser, 'delete');
 // Members restore what they deleted; the owner and admins anything.
 async function allowed(req) {
   const e = await trash.entry(req.tenantId, req.params.id);
@@ -30,7 +30,7 @@ router.post('/api/crm/trash/:id/restore', requireAuth, wrap('Failed to restore i
   res.json({ ok: true, restored: await trash.restore({ tenantId: req.tenantId, id: req.params.id }) });
 }));
 router.delete('/api/crm/trash/:id', requireAuth, wrap('Failed to delete it', async (req, res) => {
-  if (!manager(req)) return res.status(403).json({ error: { message: 'Only the owner or an admin can delete things for good.' } });
+  if (!manager(req)) return res.status(403).json({ error: { message: team.denyText('delete') } });
   await allowed(req);
   res.json({ ok: (await trash.purge({ tenantId: req.tenantId, id: req.params.id })) > 0 });
 }));

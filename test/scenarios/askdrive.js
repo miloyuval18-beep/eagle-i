@@ -99,7 +99,7 @@ const use = (name, input) => () => ({ content: [{ type: 'tool_use', id: 'tu_' + 
 
     // 3. A team member can't browse the owner's Drive through the assistant.
     const at = await A.createThread(actx);
-    script = [use('drive_search', { query: 'Garcia' }), (m) => { assert.match(result(m).content, /Only the owner or an admin/); return say('Only the owner or an admin can search Drive.')(); }];
+    script = [use('drive_search', { query: 'Garcia' }), (m) => { assert.match(result(m).content, /permission/); return say('Only the owner or an admin can search Drive.')(); }];
     await A.runTurn(actx, { threadId: at.id, text: 'search drive for Garcia' });
 
     // 4. The home screen's numbers and suggestions.

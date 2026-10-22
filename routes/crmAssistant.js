@@ -19,11 +19,11 @@ function fail(res, err, what) {
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }
 const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } catch (err) { fail(res, err, what); } };
-const ctxOf = (req) => ({ tenantId: req.tenantId, userId: req.userId, name: (req.crmUser && (req.crmUser.name || req.crmUser.email)) || 'someone', role: (req.crmUser && req.crmUser.role) || 'member', manager: team.isManager(req.crmUser && req.crmUser.role), baseUrl: baseUrlOf(req) });
+const ctxOf = (req) => ({ tenantId: req.tenantId, userId: req.userId, name: (req.crmUser && (req.crmUser.name || req.crmUser.email)) || 'someone', role: (req.crmUser && req.crmUser.role) || 'member', manager: team.isManager(req.crmUser && req.crmUser.role), perms: team.permsOf(req.crmUser), baseUrl: baseUrlOf(req) });
 
 // Owners and admins can check the AI key and which model answers.
 router.post('/api/crm/assistant/test', requireAuth, wrap('The AI didn’t answer', async (req, res) => {
-  if (!team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the owner or an admin can do this.' } });
+  if (!team.can(req.crmUser, 'settings')) return res.status(403).json({ error: { message: team.denyText('settings') } });
   res.json(await require('../lib/anthropic').checkConnection());
 }));
 router.get('/api/crm/assistant/home', requireAuth, wrap('Failed to load', async (req, res) => res.json(await assistant.home(ctxOf(req)))));

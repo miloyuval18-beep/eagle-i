@@ -36,7 +36,7 @@ router.get('/cal/:token', wrap('Failed to build the calendar', async (req, res) 
 
 router.get('/api/crm/duplicates', requireAuth, wrap('Failed to look for duplicates', async (req, res) => res.json({ groups: await assist.findDuplicates(req.tenantId) })));
 router.post('/api/crm/duplicates/merge', requireAuth, wrap('Failed to merge', async (req, res) => {
-  if (!team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the owner or an admin can merge contacts.' } });
+  if (!team.can(req.crmUser, 'data')) return res.status(403).json({ error: { message: team.denyText('data') } });
   const b = req.body || {};
   res.json({ ok: true, ...(await assist.mergeContacts({ tenantId: req.tenantId, keepId: b.keepId, mergeIds: b.mergeIds, userId: req.userId })) });
 }));

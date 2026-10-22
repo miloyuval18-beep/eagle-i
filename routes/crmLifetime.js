@@ -16,8 +16,8 @@ function fail(res, err, what) {
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }
 const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } catch (err) { fail(res, err, what); } };
-const manager = (req) => team.isManager(req.crmUser && req.crmUser.role);
-const managersOnly = (res) => res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+const manager = (req) => team.can(req.crmUser, 'settings');
+const managersOnly = (res) => res.status(403).json({ error: { message: team.denyText('settings') } });
 async function ownDeal(req, res) {
   const r = await query('SELECT * FROM crm_deals WHERE id = $1 AND tenant_id = $2', [req.params.id, req.tenantId]).catch(() => ({ rows: [] }));
   if (!r.rows.length) { res.status(404).json({ error: { message: 'Deal not found.' } }); return null; }

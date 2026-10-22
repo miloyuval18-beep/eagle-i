@@ -23,7 +23,7 @@ const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } cat
 
 router.get('/api/crm/qualify/settings', requireAuth, wrap('Failed to load settings', async (req, res) => res.json(await q.qualifySettings(req.tenantId))));
 router.patch('/api/crm/qualify/settings', requireAuth, wrap('Failed to save settings', async (req, res) => {
-  if (!team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+  if (!team.can(req.crmUser, 'settings')) return res.status(403).json({ error: { message: team.denyText('settings') } });
   const b = req.body || {};
   res.json(await q.saveQualifySettings(req.tenantId, { minJobValue: b.minJobValue, booking: b.booking }));
 }));

@@ -20,8 +20,8 @@ function fail(res, err, what) {
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }
 function managersOnly(req, res, next) {
-  if (team.isManager(req.crmUser && req.crmUser.role)) return next();
-  res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+  if (team.can(req.crmUser, 'settings')) return next();
+  res.status(403).json({ error: { message: team.denyText('settings') } });
 }
 
 // ---------- cost catalog ----------

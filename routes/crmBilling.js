@@ -11,7 +11,7 @@ const baseUrlOf = (req) => `${req.protocol}://${req.get('host')}`;
 const wrap = (what, fn) => async (req, res) => {
   try { await fn(req, res); } catch (err) { const st = err.status || 500; res.status(st).json({ error: { message: st === 500 ? `${what}: ${err.message}` : err.message } }); }
 };
-const managersOnly = (req, res) => { if (team.isManager(req.crmUser && req.crmUser.role)) return false; res.status(403).json({ error: { message: 'Only the owner or an admin can change the plan.' } }); return true; };
+const managersOnly = (req, res) => { if (team.can(req.crmUser, 'billing')) return false; res.status(403).json({ error: { message: team.denyText('billing') } }); return true; };
 
 router.get('/api/crm/billing', requireAuth, wrap('Failed to load your plan', async (req, res) => res.json(await billing.overview(req.tenantId))));
 router.post('/api/crm/billing/checkout', requireAuth, wrap('Failed to open checkout', async (req, res) => {

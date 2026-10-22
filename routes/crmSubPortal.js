@@ -70,7 +70,7 @@ router.post('/api/crm/vendors/:id/portal/email', requireAuth, wrap('Failed to se
   res.json(await sp.emailLink({ tenantId: req.tenantId, vendorId: v.id, baseUrl: baseUrlOf(req), userId: req.userId }));
 }));
 router.post('/api/crm/vendors/:id/portal/reset', requireAuth, wrap('Failed', async (req, res) => {
-  if (!team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the owner or an admin can do this.' } });
+  if (!team.can(req.crmUser, 'subs')) return res.status(403).json({ error: { message: team.denyText('subs') } });
   const v = await ownVendor(req, res); if (!v) return;
   res.json({ url: `${baseUrlOf(req)}/s/${await sp.resetToken(req.tenantId, v.id)}` });
 }));

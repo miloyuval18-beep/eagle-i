@@ -21,8 +21,8 @@ function fail(res, err, what) {
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }
 function managersOnly(req, res, next) {
-  if (team.isManager(req.crmUser && req.crmUser.role)) return next();
-  res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+  if (team.can(req.crmUser, 'settings')) return next();
+  res.status(403).json({ error: { message: team.denyText('settings') } });
 }
 
 // ---------- the company's Stripe account ----------
@@ -70,7 +70,7 @@ router.post('/api/crm/invoices/:id/paid', requireAuth, async (req, res) => {
   try { res.json({ ok: true, invoice: await pay.markPaid({ tenantId: req.tenantId, id: req.params.id, via: b.via, amount: b.amount, userId: req.userId }) }); } catch (err) { fail(res, err, 'Failed to record the payment'); }
 });
 
-router.post('/api/crm/invoices/:id/void', requireAuth, managersOnly, async (req, res) => {
+router.post('/api/crm/invoices/:id/void', requireAuth, team.need('delete'), async (req, res) => {
   try { await pay.voidInvoice({ tenantId: req.tenantId, id: req.params.id, userId: req.userId }); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed to cancel the invoice'); }
 });
 

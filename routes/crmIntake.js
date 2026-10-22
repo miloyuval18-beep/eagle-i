@@ -22,7 +22,7 @@ router.get('/api/crm/intake', requireAuth, async (req, res) => {
 });
 
 router.post('/api/crm/intake/rotate', requireAuth, async (req, res) => {
-  if (!team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+  if (!team.can(req.crmUser, 'settings')) return res.status(403).json({ error: { message: team.denyText('settings') } });
   try { res.json(intake.intakeInfo(await intake.rotateIntakeKey(req.tenantId), baseUrlOf(req))); } catch (err) { fail(res, err, 'Failed to make a new link'); }
 });
 

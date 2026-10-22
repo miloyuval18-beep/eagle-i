@@ -126,7 +126,7 @@ router.post('/api/crm/deals/:id/portal/email', requireAuth, async (req, res) => 
 });
 
 router.post('/api/crm/deals/:id/portal/reset', requireAuth, async (req, res) => {
-  if (!team.isManager(req.crmUser && req.crmUser.role)) return res.status(403).json({ error: { message: 'Only the owner or an admin can change this.' } });
+  if (!team.can(req.crmUser, 'settings')) return res.status(403).json({ error: { message: team.denyText('settings') } });
   try { res.json({ ok: true, url: `${baseUrlOf(req)}/p/${await portal.resetPortalToken(req.tenantId, req.params.id)}` }); } catch (err) { fail(res, err, 'Failed to make a new link'); }
 });
 

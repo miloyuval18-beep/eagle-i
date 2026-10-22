@@ -13,7 +13,7 @@ function fail(res, err, what) {
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }
 function managersOnly(req, res, next) {
-  if (team.isManager(req.crmUser && req.crmUser.role)) return next();
+  if (team.can(req.crmUser, 'reports')) return next();
   res.status(403).json({ error: { message: 'Weekly reports are for the owner and admins.' } });
 }
 
