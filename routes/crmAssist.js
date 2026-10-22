@@ -21,6 +21,28 @@ const managersOnly = (req, res) => {
   return true;
 };
 
+// Bringing data in from another system (lib/crmImport.js): look, check, then do it.
+const imp = require('../lib/crmImport');
+router.get('/api/crm/imports', requireAuth, wrap('Failed to load', async (req, res) => res.json({ imports: await imp.list(req.tenantId), kinds: Object.fromEntries(Object.entries(imp.KINDS).map(([k, v]) => [k, v.label])) })));
+router.post('/api/crm/imports/preview', requireAuth, wrap('Failed to read the file', async (req, res) => {
+  if (managersOnly(req, res)) return;
+  const b = req.body || {};
+  res.json(await imp.preview({ filename: b.filename, dataBase64: b.dataBase64, kind: b.kind || null }));
+}));
+router.post('/api/crm/imports/check', requireAuth, wrap('Failed to check the file', async (req, res) => {
+  if (managersOnly(req, res)) return;
+  const b = req.body || {};
+  res.json(await imp.check({ tenantId: req.tenantId, userId: req.userId, filename: b.filename, dataBase64: b.dataBase64, kind: b.kind, mapping: b.mapping, headerRow: b.headerRow }));
+}));
+router.post('/api/crm/imports', requireAuth, wrap('Failed to bring it in', async (req, res) => {
+  if (managersOnly(req, res)) return;
+  const b = req.body || {};
+  res.json({ ok: true, ...(await imp.run({ tenantId: req.tenantId, userId: req.userId, filename: b.filename, dataBase64: b.dataBase64, kind: b.kind, mapping: b.mapping, headerRow: b.headerRow, platform: b.platform || null })) });
+}));
+router.post('/api/crm/imports/:importId/undo', requireAuth, wrap('Failed to undo it', async (req, res) => {
+  if (managersOnly(req, res)) return;
+  res.json({ ok: true, ...(await imp.undo({ tenantId: req.tenantId, id: req.params.importId })) });
+}));
 router.get('/api/crm/import', requireAuth, wrap('Failed to load', async (req, res) => res.json({ imports: await assist.listImports(req.tenantId), fields: assist.FIELDS })));
 router.post('/api/crm/import/preview', requireAuth, wrap('Failed to read the file', async (req, res) => {
   if (managersOnly(req, res)) return;

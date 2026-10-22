@@ -812,7 +812,7 @@ select{max-width:100%;text-overflow:ellipsis}
     <div class="sh"><div><div class="st">Import &amp; setup</div><div class="ss">Answer a few questions and Eagle I sets itself up for how you work. Bring in your contacts and jobs from Buildertrend, JobTread, another CRM or a spreadsheet.</div></div></div>
     <div class="pl-h">Set Eagle I up for your business</div>
     <div id="su-box"><div class="sm">Loading…</div></div>
-    <div class="pl-h">Import from your old system</div>
+    <div class="pl-h">Bring in your data from another system</div>
     <div id="im-box"></div>
     <div class="pl-list" id="im-list"></div>
     <div class="pl-h">Possible duplicates</div>
@@ -2602,36 +2602,74 @@ async function imLoad(){
   dupLoad();
   if(!crCanManage())return;
   const box=document.getElementById('im-box');
-  box.innerHTML=`<div class="pl-pb"><div class="sm" style="margin-top:0">Export your contacts or jobs as a spreadsheet (CSV or .xlsx) and choose it here. Nobody gets an email from the import, people already in Eagle I are joined up, and you can undo it.</div>
-    <div class="vd-mbtns"><label class="btn btn-blue" style="cursor:pointer">Choose a file<input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv" style="display:none" onchange="imPick(this)"></label></div><div id="im-prev"></div><div class="sm" id="im-msg"></div></div>`;
+  box.innerHTML=`<div class="pl-pb">
+    <div style="font-size:17px">Moving from <b>Buildertrend, JobTread, CoConstruct, Houzz Pro, QuickBooks</b> or a spreadsheet? Bring in your customers, subs and vendors, job schedules, tasks, cost catalog, past invoices and daily logs.</div>
+    <ol style="margin:10px 0 0 20px;font-size:17px;line-height:1.6"><li>In your old system, export the list to Excel or CSV (look for <b>Export</b> or <b>Download</b>).</li><li>Choose the file below. Eagle I works out what it is.</li><li>Check what will happen, then bring it in. You can undo it with one tap.</li></ol>
+    <details style="margin-top:8px"><summary style="cursor:pointer;font-weight:600">Where to find Export in each system</summary>
+      <div class="sm" style="font-size:16px;line-height:1.6">
+      <b>Buildertrend:</b> open the list you want (Subs/Vendors, Customer Contacts, or a job’s Schedule switched to the List view), then <b>More Actions → Export to Excel</b> or the download icon.<br>
+      <b>JobTread:</b> open Contacts, Jobs or a job’s Schedule or To-Dos and use the export or download option on that list.<br>
+      <b>CoConstruct / Houzz Pro / Procore:</b> most lists have an <b>Export</b> or <b>Download</b> button that gives an Excel or CSV file.<br>
+      <b>QuickBooks:</b> Vendors or Customers list → the export icon → Export to Excel. Products and Services also exports.<br>
+      If a list won’t export, copy the table into Excel or Google Sheets and save it as a CSV file.</div></details>
+    <div class="vd-mbtns"><label class="btn btn-blue" style="cursor:pointer">Choose a file<input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv" style="display:none" onchange="imPick(this)"></label></div>
+    <div id="im-prev"></div><div class="sm" id="im-msg"></div></div>`;
   try{
-    const {imports}=await plApi('/api/crm/import');
-    document.getElementById('im-list').innerHTML=imports.map(i=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(i.filename||'Spreadsheet')}</div><div class="pl-item-d">${new Date(i.created_at).toLocaleDateString()} · ${i.deals_created} added · ${i.skipped} skipped${i.undone_at?' · undone':''}</div></div>${i.undone_at?'':`<button class="btn-xs" onclick="imUndo('${i.id}')">Undo</button>`}</div></div>`).join('');
+    const {imports}=await plApi('/api/crm/imports');
+    document.getElementById('im-list').innerHTML=imports.length?'<div class="pl-h" style="margin-top:14px">What you brought in</div>'+imports.map(i=>`<div class="bin-row"><div class="w"><div style="font-weight:600">${uxEsc(i.kindLabel)}${i.platform?' from '+uxEsc(i.platform):''}</div><div class="k">${uxEsc(i.filename||'Spreadsheet')} · ${crWhen(i.created_at)} · ${i.added} added${i.updated?`, ${i.updated} filled in`:''}${i.skipped?`, ${i.skipped} skipped`:''}${i.undone_at?' · <b>undone</b>':''}</div></div>${i.undone_at?'':`<button class="btn-xs" onclick="imUndo('${i.id}','${uxEsc(i.kindLabel).replace(/'/g,'&#39;')}')">Undo</button>`}</div>`).join(''):'';
   }catch(e){}
 }
 async function imPick(input){
   const f=input.files[0];if(!f)return;const m=document.getElementById('im-msg');m.textContent='';
   if(f.size>8*1024*1024){m.textContent='That file is over 8 MB. Split it into smaller files.';return;}
-  m.textContent='Reading…';
-  try{
-    IM.file={filename:f.name,dataBase64:await flRead(f)};
-    const p=IM.preview=await plApi('/api/crm/import/preview',{body:IM.file});m.textContent='';
-    const opt=(i)=>`<select data-imcol="${i}" aria-label="Column ${i+1}"><option value="">Skip</option>${Object.entries(p.fields).map(([k,v])=>`<option value="${k}"${p.mapping[i]===k?' selected':''}>${uxEsc(v)}</option>`).join('')}</select>`;
-    document.getElementById('im-prev').innerHTML=`<div class="sm"><b>${p.rows}</b> rows. Check what each column is:</div>
-      <div class="pl-list" style="margin-top:6px">${p.headers.map((h,i)=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t" style="font-size:16px">${uxEsc(h||'(no header)')}</div><div class="pl-item-d">${uxEsc(p.sample.map(r=>r[i]).filter(Boolean).slice(0,2).join(' · ').slice(0,80))}</div></div>${opt(i)}</div></div>`).join('')}</div>
-      <div class="sm">Stages are read from words like “sold”, “in progress” or “lost”; anything else comes in as New.</div>
-      <div class="vd-mbtns"><button class="btn btn-blue" onclick="imRun(this)">Import ${p.rows} row${p.rows===1?'':'s'}</button></div>`;
-  }catch(e){m.textContent=e.message;}
+  m.textContent='Reading '+f.name+'…';
+  try{IM.file={filename:f.name,dataBase64:await flRead(f)};await imPreview();}catch(e){m.textContent=e.message;}
   input.value='';
 }
-async function imRun(btn){
-  const mapping={};document.querySelectorAll('[data-imcol]').forEach(s=>{if(s.value)mapping[s.dataset.imcol]=s.value;});
-  btn.disabled=true;btn.textContent='Importing…';const m=document.getElementById('im-msg');
-  try{const r=await plApi('/api/crm/import',{body:{...IM.file,mapping}});await imLoad();plLoad();
-    document.getElementById('im-msg').textContent=`Added ${r.created} deal${r.created===1?'':'s'}${r.skipped?`, skipped ${r.skipped} (no name, or already here)`:''}${r.truncated?'. Only the first 3,000 rows were read; import the rest as a second file':''}.`;}
-  catch(e){m.textContent=e.message;btn.disabled=false;btn.textContent='Import';}
+async function imPreview(kind){
+  const m=document.getElementById('im-msg');
+  const p=IM.preview=await plApi('/api/crm/imports/preview',{body:{...IM.file,kind:kind||null}});m.textContent='';
+  const opt=(i)=>`<select data-imcol="${i}" aria-label="Column ${uxEsc(p.headers[i]||i+1)}" onchange="imDirty()"><option value="">Don’t bring in</option>${Object.entries(p.fields).map(([k,v])=>`<option value="${k}"${p.mapping[i]===k?' selected':''}>${uxEsc(v)}</option>`).join('')}</select>`;
+  document.getElementById('im-prev').innerHTML=`<div class="nx nx-ok" style="margin-top:14px"><div class="nx-l">What this is</div>
+      <div class="nx-t">${p.rows} row${p.rows===1?'':'s'}${p.platform?' from '+uxEsc(p.platform):''}. It looks like:</div>
+      <select id="im-kind" class="cred-input" style="margin-top:6px" onchange="imPreview(this.value)">${Object.entries(p.kinds).map(([k,v])=>`<option value="${k}"${k===p.kind?' selected':''}>${uxEsc(v)}</option>`).join('')}</select>
+      <div class="sm">Not right? Pick what it is and Eagle I looks again.</div></div>
+    <div class="pl-h">Check each column</div><div class="sm" style="margin-top:-4px">Under each column name are a couple of values from your file.</div>
+    <div class="pl-list" style="margin-top:6px">${p.headers.map((h,i)=>h||p.sample.some(r=>r[i])?`<div class="pl-item" style="padding:9px 11px"><div class="pl-card-top" style="flex-wrap:wrap;gap:8px"><div style="min-width:0;flex:1"><div class="pl-item-t" style="font-size:17px">${uxEsc(h||'(no name)')}</div><div class="pl-item-d">${uxEsc(p.sample.map(r=>r[i]).filter(Boolean).slice(0,2).join(' · ').slice(0,90)||'(empty)')}</div></div>${opt(i)}</div></div>`:'').join('')}</div>
+    <div class="vd-mbtns"><button class="btn btn-blue" id="im-check" onclick="imCheck(this)">Check it first</button><span class="sm" style="margin:0">Nothing changes until you say so.</span></div>
+    <div id="im-result"></div>`;
 }
-async function imUndo(id){if(!confirm('Undo this import? Every deal it added is removed, along with people who have nothing else.'))return;try{const r=await plApi('/api/crm/import/'+id+'/undo',{body:{}});showNotif('Import undone',r.removed+' deals removed');imLoad();plLoad();}catch(e){showNotif('Could not undo',e.message);}}
+function imDirty(){const r=document.getElementById('im-result');if(r)r.innerHTML='';}
+function imMapping(){const mapping={};document.querySelectorAll('[data-imcol]').forEach(s=>{if(s.value)mapping[s.dataset.imcol]=s.value;});return mapping;}
+function imSummary(r,done){
+  const what={customers:['customer','customers'],vendors:['sub/vendor','subs and vendors'],schedule:['phase','phases'],tasks:['task','tasks'],catalog:['catalog item','catalog items'],invoices:['invoice','invoices'],logs:['daily log','daily logs']}[IM.preview.kind]||['row','rows'];
+  const n=(c)=>`${c} ${c===1?what[0]:what[1]}`;
+  const parts=[`<b>${done?'Added':'Will add'} ${n(r.added)}</b>`];
+  if(r.updated)parts.push(`${r.updated} already here: ${done?'their':'only their'} empty fields ${done?'were':'get'} filled in`);
+  if(r.skipped)parts.push(`${r.skipped} skipped (${Object.entries(r.reasons||{}).map(([k,v])=>`${uxEsc(k)}: ${v}`).join(', ')})`);
+  return `<div style="font-size:17px;line-height:1.6">${parts.join('<br>')}</div>
+    ${(r.newJobs||[]).length?`<div style="margin-top:8px;font-size:16px">${done?'Jobs created':'These jobs aren’t in Eagle I yet and will be created (as jobs underway)'}: <b>${r.newJobs.slice(0,12).map(uxEsc).join(', ')}${r.newJobs.length>12?` and ${r.newJobs.length-12} more`:''}</b></div>`:''}
+    ${(r.examples||[]).length&&!done?`<div class="sm" style="margin-top:8px">For example: ${r.examples.map(uxEsc).join(' · ')}</div>`:''}
+    ${r.truncated?`<div class="sm">Only the first rows were read; bring in the other ${r.truncated} as a second file.</div>`:''}`;
+}
+async function imCheck(btn){
+  btn.disabled=true;btn.textContent='Checking…';const out=document.getElementById('im-result');
+  try{const r=await plApi('/api/crm/imports/check',{body:{...IM.file,kind:IM.preview.kind,mapping:imMapping(),headerRow:IM.preview.headerRow}});
+    out.innerHTML=`<div class="nx ${r.added||r.updated?'nx-ok':'nx-warn'}" style="margin-top:12px"><div class="nx-l">What will happen</div>${imSummary(r,false)}
+      ${r.added||r.updated?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="imRun(this)">Bring them in</button><span class="sm" style="margin:0">Nobody is emailed. You can undo it.</span></div>`:'<div class="sm">Nothing new to bring in from this file.</div>'}</div>`;
+    out.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  catch(e){out.innerHTML=`<div class="cv-note w" style="margin-top:12px">⚠ ${uxEsc(e.message)}</div>`;}
+  btn.disabled=false;btn.textContent='Check it again';
+}
+async function imRun(btn){
+  btn.disabled=true;btn.textContent='Bringing them in…';
+  try{const r=await plApi('/api/crm/imports',{body:{...IM.file,kind:IM.preview.kind,mapping:imMapping(),headerRow:IM.preview.headerRow,platform:IM.preview.platform}});
+    const done=`<div class="nx nx-ok" style="margin-top:12px"><div class="nx-l">Done</div>${imSummary(r,true)}<div class="sm">Changed your mind? Tap Undo next to it below.</div></div>`;
+    showNotif('Brought in',`${r.added} added${r.updated?`, ${r.updated} filled in`:''}`);
+    await imLoad();document.getElementById('im-prev').innerHTML=done;plLoad();}
+  catch(e){btn.disabled=false;btn.textContent='Bring them in';showNotif('Could not bring it in',e.message);}
+}
+async function imUndo(id,label){if(!confirm(`Undo this import (${label})? Everything it added is taken back out. Things that were already in Eagle I stay.`))return;try{const r=await plApi('/api/crm/imports/'+id+'/undo',{body:{}});showNotif('Import undone',`${r.removed} removed`);imLoad();plLoad();}catch(e){showNotif('Could not undo',e.message);}}
 /* ---------- marketing & backlog ---------- */
 async function mkLoad(){
   try{
