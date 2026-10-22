@@ -148,6 +148,12 @@ function registerAuthRoutes(app) {
     if (!email || !password) {
       return res.status(400).json({ error: { message: 'Email and password are required.' } });
     }
+    // Too many tries from one address or at one email: wait (stops password guessing).
+    if (process.env.CRM_RATE_LIMITS !== 'off') {
+      const { hit } = require('./lib/rateLimit');
+      const em = String(email).trim().toLowerCase();
+      if (hit(`mlogin:ip:${req.ip}`, 20, 15 * 60000) || hit(`mlogin:email:${em}`, 10, 15 * 60000)) return res.status(429).json({ error: { message: 'Too many tries. Wait about 15 minutes and try again, or use “Forgot password”.' } });
+    }
     // Eagle I CRM has its own sign-in (/api/crm-auth/login); this one is for marketing.
     if ((req.body || {}).app === 'crm') {
       return require('./routes/crmAccounts').crmLogin(req, res);

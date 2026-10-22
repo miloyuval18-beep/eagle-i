@@ -131,7 +131,7 @@ details.manual summary{cursor:pointer;color:var(--accent);font-size:17px;font-we
   </form>
 
   <section id="sent" hidden>
-    <h2>Request sent</h2>
+    <h2 id="sent-title">Request sent</h2>
     <div class="note ok" id="sent-msg"></div>
     <button class="btn o" onclick="show('in')">Back to sign in</button>
   </section>
@@ -216,7 +216,7 @@ async function signUp(e){
   try{
     const d=await call('/api/crm-auth/signup',{type:TYPE,code:$('up-code').value,companyName:$('up-company').value,businessName:$('up-biz').value,trade:$('up-trade').value,
       name:$('up-name').value,phone:$('up-phone').value,email:$('up-email').value,password:$('up-pw').value,note:$('up-note').value,acceptedTerms:$('up-terms').checked});
-    if(d.pending){$('sent-msg').textContent=`We asked ${d.companyName} to let you in. You’ll get an email when they do, then sign in here with the email and password you just picked.`;show('sent');return;}
+    if(d.pending){$('sent-msg').textContent=d.confirm?(d.emailed?`One more step: we sent a link to ${$('up-email').value}. Tap it to confirm it’s your email, and then ${d.companyName} can let you in. (Not there? Check your spam folder.)`:`We couldn’t send the confirmation email just now. Wait a few minutes and try again.`):`We asked ${d.companyName} to let you in. You’ll get an email when they do, then sign in here with the email and password you just picked.`;$('sent-title').textContent=d.confirm?'Check your email':'Request sent';show('sent');return;}
     location.href=d.go||'/crm';
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
@@ -225,7 +225,7 @@ const q=new URLSearchParams(location.search);
 if(q.get('marketing'))$('mkt-note').hidden=false;
 // Back from Google.
 if(q.get('google_error')){$('in-err').textContent=q.get('google_error');}
-if(q.get('pending')){$('sent-msg').textContent=`We asked ${q.get('pending')} to let you in. You’ll get an email when they do, then tap “Sign in with Google” here.`;setTimeout(()=>show('sent'),0);}
+if(q.get('pending')){$('sent-msg').textContent=q.get('confirmed')?`Thanks, your email is confirmed. We asked ${q.get('pending')} to let you in; you’ll get an email when they do, then sign in here.`:`We asked ${q.get('pending')} to let you in. You’ll get an email when they do, then tap “Sign in with Google” here.`;setTimeout(()=>show('sent'),0);}
 if(q.get('code')){pick('join');$('up-code').value=q.get('code');checkCode();}
 else if(location.hash==='#signup')show('up');
 </script>

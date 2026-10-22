@@ -8,6 +8,10 @@ const acc = require('../lib/crmAccounts');
 const team = require('../lib/crmTeam');
 
 const router = express.Router();
+const { limit } = require('../lib/rateLimit');
+const FIFTEEN = 15 * 60000;
+// Tests make many accounts from one address; the limits only apply outside them.
+const lim = (...a) => process.env.CRM_RATE_LIMITS === 'off' ? (req, res, next) => next() : limit(...a);
 const baseUrlOf = (req) => `${req.protocol}://${req.get('host')}`;
 function fail(res, err, what) {
   if (/invalid input syntax for type uuid/.test(err.message || '')) return res.status(404).json({ error: { message: 'Not found.' } });
@@ -23,7 +27,9 @@ function start(req, who) {
     if (who.as === 'staff') { req.session.userId = who.id; req.session.tenantId = who.tenantId; }
     else { req.session.accountId = who.id; req.session.accountKind = who.as; }
     req.session.device = deviceOf(req);
-    resolve();
+    // Saved before replying: after Google, the browser follows the redirect as
+    // soon as it arrives, which could beat a save made at the end of the reply.
+    req.session.save((e2) => (e2 ? reject(e2) : resolve()));
   }));
 }
 const whereTo = (as) => as === 'staff' ? '/crm' : '/crm/home';
@@ -39,10 +45,10 @@ async function crmLogin(req, res) {
     res.json({ ok: true, go: whereTo(r.as) });
   } catch (err) { fail(res, err, 'Sign-in failed'); }
 }
-router.post('/api/crm-auth/login', crmLogin);
+router.post('/api/crm-auth/login', lim('login', 20, FIFTEEN, { byEmail: true }), crmLogin);
 
 // { type: 'company' | 'join' | 'homeowner' | 'sub', ... }
-router.post('/api/crm-auth/signup', wrap('Couldn’t create the account', async (req, res) => {
+router.post('/api/crm-auth/signup', lim('signup', 10, FIFTEEN), wrap('Couldn’t create the account', async (req, res) => {
   const b = req.body || {};
   if (!b.acceptedTerms) return res.status(400).json({ error: { message: 'Tick the box to agree to the Terms of Service and Privacy Policy.' } });
   const baseUrl = baseUrlOf(req);
@@ -53,7 +59,7 @@ router.post('/api/crm-auth/signup', wrap('Couldn’t create the account', async 
   }
   if (b.type === 'join') {
     const r = await acc.requestJoin({ code: b.code, name: b.name, email: b.email, password: b.password, note: b.note, baseUrl });
-    if (r.pending) return res.json({ ok: true, pending: true, companyName: r.companyName });
+    if (r.pending) return res.json({ ok: true, pending: true, confirm: !!r.confirm, emailed: r.emailed !== false, companyName: r.companyName });
     await start(req, { as: 'staff', id: r.user.id, tenantId: r.user.tenant_id });
     return res.json({ ok: true, go: '/crm', companyName: r.companyName });
   }
@@ -68,7 +74,7 @@ router.post('/api/crm-auth/signup', wrap('Couldn’t create the account', async 
 // "Continue with Google": the same Google sign-in Eagle I already uses for Gmail
 // (same return address), so nothing new has to be set up at Google.
 const redirectUri = (req) => process.env.GOOGLE_CRM_REDIRECT_URI || `${baseUrlOf(req)}/api/crm/google/oauth/callback`;
-router.post('/api/crm-auth/google/start', wrap('Couldn’t start Google sign-in', async (req, res) => {
+router.post('/api/crm-auth/google/start', lim('google', 30, FIFTEEN), wrap('Couldn’t start Google sign-in', async (req, res) => {
   const b = req.body || {};
   if (b.type !== 'signin' && !b.acceptedTerms) return res.status(400).json({ error: { message: 'Tick the box to agree to the Terms of Service and Privacy Policy.' } });
   res.json({ url: await acc.googleStart({ type: b.type, companyName: b.companyName, code: b.code, businessName: b.businessName, trade: b.trade, phone: b.phone, redirectUri: redirectUri(req) }) });
@@ -87,11 +93,23 @@ async function googleCallback(req, res, next) {
 }
 
 // "Join Levi Homes?" before they fill everything in.
-router.get('/api/crm-auth/company-code', wrap('Couldn’t check the code', async (req, res) => {
+router.get('/api/crm-auth/company-code', lim('code', 30, FIFTEEN), wrap('Couldn’t check the code', async (req, res) => {
   const t = await acc.companyForCode(req.query.code);
   if (!t) return res.status(404).json({ error: { message: 'That code doesn’t match a company. It looks like ABCD-2345; check it with whoever gave it to you.' } });
   res.json({ companyName: t.company_name, code: acc.tidyCode(req.query.code) });
 }));
+
+// The link in the "confirm your email" message for a join request: an
+// invitation lets them in now; otherwise the owner and admins are asked.
+router.get('/crm/join-confirm', async (req, res) => {
+  try {
+    const r = await acc.confirmJoin({ token: req.query.token, baseUrl: baseUrlOf(req) });
+    if (!r) return res.redirect('/crm/login?google_error=' + encodeURIComponent('That link is old or was already used. Ask to join again with the company code.'));
+    if (r.pending) return res.redirect('/crm/login?pending=' + encodeURIComponent(r.companyName) + '&confirmed=1');
+    await start(req, { as: 'staff', id: r.user.id, tenantId: r.user.tenant_id });
+    res.redirect('/crm');
+  } catch (err) { res.redirect('/crm/login?google_error=' + encodeURIComponent(err.message)); }
+});
 
 // The link in the "confirm your email" message for homeowners and subs.
 router.get('/crm/verify', wrap('Couldn’t confirm', async (req, res) => {
@@ -168,5 +186,5 @@ router.get('/api/crm/setup/emails', requireAuth, team.need('emails'), wrap('Coul
 router.post('/api/crm/setup/emails', requireAuth, team.need('emails'), wrap('Couldn’t turn them on', async (req, res) => res.json(await quick.turnOn({ tenantId: req.tenantId, ids: (req.body || {}).ids }))));
 
 module.exports = router;
-module.exports.crmLogin = crmLogin;
+module.exports.crmLogin = (req, res) => lim('login', 20, FIFTEEN, { byEmail: true })(req, res, () => crmLogin(req, res));
 module.exports.googleCallback = googleCallback;

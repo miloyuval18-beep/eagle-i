@@ -1420,3 +1420,16 @@ describe('CRM project files: types, folders, plan versions, Drive uploads', () =
     assert.ok(body.includes(bytes));
   });
 });
+
+describe('sign-in limits (lib/rateLimit.js)', () => {
+  test('the 21st try in 15 minutes is refused, and the window moves on', () => {
+    const { hit, reset } = require('../lib/rateLimit');
+    reset();
+    const t0 = Date.now();
+    for (let i = 0; i < 20; i++) assert.equal(hit('t:ip:1', 20, 900000, t0 + i), false);
+    assert.equal(hit('t:ip:1', 20, 900000, t0 + 21), true);
+    assert.equal(hit('t:ip:2', 20, 900000, t0 + 22), false, 'someone else is fine');
+    assert.equal(hit('t:ip:1', 20, 900000, t0 + 900000 + 100), false, 'after 15 minutes they can try again');
+    reset();
+  });
+});

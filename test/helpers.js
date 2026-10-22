@@ -71,7 +71,9 @@ async function startServer() {
       // though RESEND_API_KEY staying unset still caps how far a "valid"
       // webhook call can be processed (same not-configured-boundary as
       // every other external-key-gated route in this suite).
-      RESEND_WEBHOOK_SECRET: TEST_WEBHOOK_SECRET
+      RESEND_WEBHOOK_SECRET: TEST_WEBHOOK_SECRET,
+      // Tests sign up and sign in many times from one address.
+      CRM_RATE_LIMITS: 'off'
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
@@ -109,7 +111,12 @@ function makeClient() {
     const r = await fetch(`${BASE_URL}${path}`, { ...opts, headers, redirect: 'manual' });
     const setCookie = r.headers.get('set-cookie');
     if (setCookie) cookie = setCookie.split(';')[0];
-    return r;
+    // Read the whole reply before handing it back, like a browser does. The
+    // server only finishes saving a new session as the reply ends, so a test
+    // that checked just the status and fired the next request at once could
+    // arrive before the session existed (an occasional 401).
+    const body = [101, 204, 205, 304].includes(r.status) ? null : await r.arrayBuffer();
+    return new Response(body, { status: r.status, statusText: r.statusText, headers: r.headers });
   }
   return {
     get: (path) => req(path, { method: 'GET' }),

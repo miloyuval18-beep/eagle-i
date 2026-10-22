@@ -85,7 +85,8 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
     if (!me || me.tenant_id !== req.tenantId || me.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
     req.crmUser = me;
     // Money, estimates, invoices and subs follow each person's permissions checklist.
-    const p = (req.baseUrl + req.path).replace(/\/+$/, '');
+    // Lower case: Express matches routes whatever the capitals, so /API/CRM/INVOICES must be checked too.
+    const p = (req.baseUrl + req.path).toLowerCase().replace(/\/+$/, '');
     const rule = PERM_ROUTES.find(([, m, re]) => m.test(req.method) && re.test(p));
     if (rule && !team.can(me, rule[0])) return res.status(403).json({ error: { message: team.denyText(rule[0]), code: 'permission' } });
     if (await crm.hasCrm(req.tenantId)) {

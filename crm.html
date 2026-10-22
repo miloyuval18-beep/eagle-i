@@ -777,7 +777,7 @@ select{max-width:100%;text-overflow:ellipsis}
     <div class="sh"><div><div class="st">Jobs</div><div class="ss">Every signed job: where it stands, what's next, and what's waiting on the homeowner. A signed contract gets its schedule laid out on its own.</div></div></div>
     <div class="pl-list" id="jb-list"><div class="pl-empty">Loading…</div></div>
     <div class="pl-h">Subs &amp; vendors</div>
-    <details class="pl-pb"><summary style="cursor:pointer;font-weight:800">＋ Add a sub or vendor</summary>
+    <details class="pl-pb" id="vd-add"><summary style="cursor:pointer;font-weight:800">＋ Add a sub or vendor</summary>
       <div class="pl-form" style="margin-top:8px">
         <div><label for="vd-name">Company</label><input id="vd-name" class="cred-input"></div><div><label for="vd-trade">Trade</label><input id="vd-trade" class="cred-input" placeholder="e.g. Electrician"></div>
         <div><label for="vd-contact">Contact</label><input id="vd-contact" class="cred-input"></div><div><label for="vd-phone">Phone</label><input id="vd-phone" class="cred-input" type="tel" inputmode="tel"></div>
@@ -791,6 +791,7 @@ select{max-width:100%;text-overflow:ellipsis}
   <section class="view" id="view-estimates">
     <div class="sh"><div><div class="st">Money</div><div class="ss">Estimates, invoices and your cost catalog. Design agreements and construction estimates. Start one from a deal. Sending it moves the deal along and starts that stage's follow-ups; when the homeowner accepts online, the deal moves to the next stage on its own.</div></div></div>
     <div class="pl-list" id="es-list"><div class="pl-empty">Loading…</div></div>
+    <div id="es-money">
     <div class="pl-h">Cash flow, next 8 weeks</div>
     <div id="cf-box"><div class="sm">Loading…</div></div>
     <div class="pl-h">Invoices</div>
@@ -798,6 +799,7 @@ select{max-width:100%;text-overflow:ellipsis}
     <div class="pl-list" id="iv-list"></div>
     <div class="pl-h">Job costing</div>
     <div class="pl-list" id="jc-all"></div>
+    </div>
     <div id="ex-box"></div>
     <div class="pl-h">Cost catalog</div>
     <div class="ss" style="margin-bottom:10px">Your own items with cost and markup, ready to drop into any estimate. Homeowners only ever see prices.</div>
@@ -1080,6 +1082,7 @@ async function crInit(){
   document.getElementById('cr-export').hidden=!crCan('data');
   // Money (estimates, invoices, cash flow) only for people who may see or make them.
   {const t=document.querySelector('.cr-tab[data-view="estimates"]');if(t)t.hidden=!crCan('money')&&!crCan('estimates');}
+  {const a=document.getElementById('vd-add');if(a)a.hidden=!crCan('subs');}
   if(!me.hasCrm){
     document.getElementById('cr-nav').style.display='none';
     document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
@@ -1579,18 +1582,20 @@ async function esLoad(){
     ES.catalog=cat.items;ES.units=cat.units;
     document.getElementById('es-list').innerHTML=estimates.length?estimates.map(esRow).join(''):'<div class="pl-empty">No estimates yet. Open a deal and tap “Construction estimate” or “Design agreement”.</div>';
     esRenderCatalog(cat.categories);
-    cfLoad();
+    // Cash flow, invoices and job costs only for people who may see money (their permissions).
+    const money=crCan('money');document.getElementById('es-money').hidden=!money;
     prLoad();
-    plApi('/api/crm/costing').then(({jobs})=>{
+    if(money){cfLoad();plApi('/api/crm/costing').then(({jobs})=>{
       document.getElementById('jc-all').innerHTML=jobs.length?jobs.map(j=>`<button class="pl-card" onclick="jbOpen('${j.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${j.marginPct==null?'—':j.marginPct+'%'}</div></div>
         <div class="pl-card-sub">Contract ${esMoney(j.contract)} · spent ${esMoney(j.actual)}${j.hasBudget?' of '+esMoney(j.budget)+' budget':''}</div>
         <div class="pl-tags">${j.progressPct!=null?`<span class="pl-tag">${j.progressPct}% done</span>`:''}${j.spentPct!=null?`<span class="pl-tag${j.overPace?' warn':''}">${j.spentPct}% of budget spent</span>`:''}<span class="pl-tag">Collected ${esMoney(j.collected)}</span></div></button>`).join(''):'<div class="pl-empty">No signed jobs yet. A deal shows up here once its contract is signed.</div>';
-    }).catch(()=>{});
+    }).catch(()=>{});}
     const y=new Date().getFullYear();
     document.getElementById('ex-box').innerHTML=crCan('data')?`<details class="pl-pb" style="margin-top:10px"><summary style="cursor:pointer;font-weight:800">Export for your accountant</summary>
       <div class="sm">Spreadsheet files (CSV) that open in Excel or Google Sheets, or import into QuickBooks.</div>
       <div class="es-grid" style="grid-template-columns:1fr 1fr;margin-top:8px"><div><label for="ex-from">From</label><input id="ex-from" type="date" class="cred-input" value="${y}-01-01"></div><div><label for="ex-to">To</label><input id="ex-to" type="date" class="cred-input" value="${new Date().toLocaleDateString('en-CA')}"></div></div>
       <div class="vd-mbtns"><button class="btn-xs p" onclick="exGo('invoices')">⬇ Invoices &amp; payments</button><button class="btn-xs p" onclick="exGo('costs')">⬇ Job costs</button></div></details>`:'';
+    if(!money)return;
     const {invoices}=await plApi('/api/crm/invoices');
     const open=invoices.filter(i=>i.status==='sent'),month=new Date();month.setDate(1);month.setHours(0,0,0,0);
     document.getElementById('iv-strip').innerHTML=[[esMoney(open.reduce((n,i)=>n+Number(i.amount),0)),`Waiting for payment (${open.length})`],[esMoney(invoices.filter(i=>i.status==='paid'&&new Date(i.paid_at)>=month).reduce((n,i)=>n+Number(i.paid_amount||i.amount),0)),'Collected this month']].map(([v,l])=>`<div class="pl-tile"><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`).join('');
@@ -2689,11 +2694,11 @@ async function plOpenDeal(id){
     <div id="pld-fit"><div class="sm">Loading…</div></div>
     <div class="pl-h">Estimates</div>
     <div id="pld-est"><div class="sm">Loading…</div></div>
-    <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button><button class="btn-xs" onclick="tkOpen('${x.id}')">📐 Takeoff from plans</button></div>
+    <div class="vd-mbtns" style="margin-top:6px"${crCan('estimates')?'':' hidden'}><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button><button class="btn-xs" onclick="tkOpen('${x.id}')">📐 Takeoff from plans</button></div>
     ${['signed','production','complete'].includes(x.stage)?`<div class="vd-mbtns" style="margin-top:14px"><button class="btn btn-blue" onclick="jbOpen('${x.id}')">🛠 Open the job: schedule, logs, change orders, selections</button></div>`:''}
     <div class="pl-h">Invoices</div>
     <div id="pld-inv"><div class="sm">Loading…</div></div>
-    <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New invoice</summary>
+    <details style="margin-top:6px"${crCan('invoices')?'':' hidden'}><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New invoice</summary>
       <div class="pl-form" style="margin-top:8px">
         <div><label for="iv-kind">Type</label><select id="iv-kind"><option value="deposit">Deposit</option><option value="progress" selected>Progress payment</option><option value="final">Final payment</option><option value="other">Other</option></select></div>
         <div><label for="iv-amt">Amount</label><input id="iv-amt" class="cred-input" inputmode="decimal" placeholder="e.g. 12500"></div>
@@ -3172,7 +3177,7 @@ async function jbOpen(dealId){
     <div id="jc-catch"></div>
     <div class="pl-h">Change orders</div>
     <div class="pl-list">${d.cos.map(coRow).join('')||'<div class="sm">No change orders yet. When the homeowner asks for something extra, add it below and send it for their approval.</div>'}</div>
-    <details style="margin-top:6px"><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New change order</summary>
+    <details style="margin-top:6px"${crCan('estimates')?'':' hidden'}><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New change order</summary>
       <div class="pl-form" style="margin-top:8px"><div class="full"><label for="co-title">What's changing</label><input id="co-title" class="cred-input"></div>
       <div><label for="co-amt">Price change ($, minus for a credit)</label><input id="co-amt" class="cred-input" inputmode="decimal"></div><div><label for="co-cost">Your cost ($)</label><input id="co-cost" class="cred-input" inputmode="decimal"></div>
       <div><label for="co-days">Extra working days</label><input id="co-days" class="cred-input" inputmode="numeric" value="0"></div><div class="full"><label for="co-desc">Details for the homeowner</label><textarea id="co-desc" class="cred-input" rows="3"></textarea></div></div>
@@ -3248,8 +3253,9 @@ async function puLoad(dealId){
   catch(e){el.innerHTML='';}
 }
 /* ---------- payment schedule (draws) ---------- */
+const crNoMoney=(el)=>{el.innerHTML='<div class="sm">Money for this job isn’t shown for your role. Ask the owner or an admin if you need it.</div>';};
 async function dwLoad(dealId){
-  const el=document.getElementById('dw-box');if(!el)return;
+  const el=document.getElementById('dw-box');if(!el)return;if(!crCan('money'))return crNoMoney(el);
   try{
     const d=await plApi('/api/crm/deals/'+dealId+'/draws');const manage=crCan('settings');
     const trig=w=>w.on_complete?'when the job is marked Complete':w.phase_title?`when “${uxEsc(w.phase_title)}” is done`:'by hand';
@@ -3277,7 +3283,7 @@ async function dwInvoice(id,dealId,btn){btn.disabled=true;try{const r=await plAp
 async function dwAuto(on,dealId){try{await plApi('/api/crm/draws/settings',{method:'PATCH',body:{autoSend:on}});dwLoad(dealId);}catch(e){showNotif('Could not save',e.message);}}
 async function dwSaveTpl(dealId){try{const r=await plApi('/api/crm/deals/'+dealId+'/draws/save-template',{body:{}});showNotif('Saved as your standard',r.draws+' payments, used for every new signed job');}catch(e){showNotif('Could not save',e.message);}}
 async function jcLoad(dealId){
-  const el=document.getElementById('jc-box');if(!el)return;
+  const el=document.getElementById('jc-box');if(!el)return;if(!crCan('money'))return crNoMoney(el);
   try{
     const {summary:s,costs,categories}=await plApi('/api/crm/deals/'+dealId+'/costs');
     const tile=(v,l,warn)=>`<div class="pl-tile"${warn?' style="border-color:var(--red)"':''}><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`;
@@ -3401,7 +3407,7 @@ function ivRow(i,withDeal){
   return `<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">#${i.number} ${uxEsc(i.title)}</div><div class="pl-item-d">${withDeal?uxEsc(i.contact_name)+' · ':''}${uxEsc(IV_KIND[i.kind]||i.kind)}${due}${i.paid_at?' · paid '+new Date(i.paid_at).toLocaleDateString()+(i.paid_via?' by '+uxEsc(i.paid_via):''):''}</div></div><div style="text-align:right"><div class="pl-card-val">${esMoney(i.amount)}</div>${st}</div></div>${i.status!=='draft'&&i.status!=='void'?`<div class="pl-acts"><button class="btn-xs" onclick="ivCopy('${i.public_token}')">Copy pay link</button></div>`:''}${acts}</div>`;
 }
 async function ivLoad(dealId){
-  const el=document.getElementById('pld-inv');if(!el)return;
+  const el=document.getElementById('pld-inv');if(!el)return;if(!crCan('money'))return crNoMoney(el);
   try{const {invoices}=await plApi('/api/crm/invoices?dealId='+dealId);el.innerHTML=invoices.length?'<div class="pl-list">'+invoices.map(i=>ivRow(i,false)).join('')+'</div>':'<div class="sm">None yet. Accepting an estimate with money due at signing creates the deposit invoice on its own.</div>';}
   catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
 }
