@@ -74,6 +74,9 @@ const PERM_ROUTES = [
   ['subs', WRITE, /^\/api\/crm\/vendors(\/.*)?$|^\/api\/crm\/deals\/[^/]+\/pos$|^\/api\/crm\/pos\/|^\/api\/crm\/bids\//]
 ];
 
+// Back from "Continue with Google" on the create-account page (no session yet).
+router.get('/api/crm/google/oauth/callback', (req, res, next) => require('./crmAccounts').googleCallback(req, res, next));
+
 // Everything else under /api/crm is for signed-in people at companies that use the CRM.
 router.use('/api/crm', requireAuth, async (req, res, next) => {
   try {

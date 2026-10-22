@@ -18,7 +18,7 @@ function fail(res, err, what) {
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }
 const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } catch (err) { fail(res, err, what); } };
-const links = (req, token) => { const url = `${baseUrlOf(req)}/cal/${token}.ics`; return { calendarUrl: url, webcalUrl: url.replace(/^https?:/, 'webcal:') }; };
+const links = (req, token) => { const url = `${baseUrlOf(req)}/cal/${token}.ics`; return { calendarUrl: url, webcalUrl: url.replace(/^https?:/, 'webcal:'), phoneUrl: `${baseUrlOf(req)}/cal/${token}/add` }; };
 
 router.get('/api/crm/me/daily', requireAuth, wrap('Failed to load', async (req, res) => {
   const u = (await query('SELECT crm_digest_off FROM users WHERE id = $1', [req.userId])).rows[0];
@@ -27,6 +27,15 @@ router.get('/api/crm/me/daily', requireAuth, wrap('Failed to load', async (req, 
 router.post('/api/crm/me/calendar/reset', requireAuth, wrap('Failed to make a new link', async (req, res) => res.json(links(req, await daily.resetCalendarToken(req.userId)))));
 router.patch('/api/crm/me/digest', requireAuth, wrap('Failed to save', async (req, res) => res.json(await daily.setDigest(req.userId, !!(req.body || {}).on))));
 
+// The QR code on a computer opens this on the phone: an iPhone subscribes in
+// its own Calendar app, anything else goes to Google Calendar.
+router.get('/cal/:token/add', (req, res) => {
+  const t = String(req.params.token);
+  if (!/^[0-9a-f]{48}$/.test(t)) return res.status(404).type('text/plain').send('This calendar link is no longer active.');
+  const ics = `${baseUrlOf(req)}/cal/${t}.ics`;
+  const apple = /iPhone|iPad|iPod|Macintosh/.test(String(req.get('user-agent') || ''));
+  res.redirect(apple ? ics.replace(/^https?:/, 'webcal:') : 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(ics.replace(/^https?:/, 'webcal:')));
+});
 router.get('/cal/:token', wrap('Failed to build the calendar', async (req, res) => {
   const ics = await daily.calendarFor(String(req.params.token).replace(/\.ics$/, ''));
   if (!ics) return res.status(404).type('text/plain').send('This calendar link is no longer active.');

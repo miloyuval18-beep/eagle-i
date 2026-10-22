@@ -65,6 +65,27 @@ router.post('/api/crm-auth/signup', wrap('Couldn’t create the account', async 
   res.status(400).json({ error: { message: 'Pick what kind of account you need.' } });
 }));
 
+// "Continue with Google": the same Google sign-in Eagle I already uses for Gmail
+// (same return address), so nothing new has to be set up at Google.
+const redirectUri = (req) => process.env.GOOGLE_CRM_REDIRECT_URI || `${baseUrlOf(req)}/api/crm/google/oauth/callback`;
+router.post('/api/crm-auth/google/start', wrap('Couldn’t start Google sign-in', async (req, res) => {
+  const b = req.body || {};
+  if (b.type !== 'signin' && !b.acceptedTerms) return res.status(400).json({ error: { message: 'Tick the box to agree to the Terms of Service and Privacy Policy.' } });
+  res.json({ url: await acc.googleStart({ type: b.type, companyName: b.companyName, code: b.code, businessName: b.businessName, trade: b.trade, phone: b.phone, redirectUri: redirectUri(req) }) });
+}));
+// Mounted ahead of the CRM's sign-in check (routes/crm.js): a sign-up has no session yet.
+async function googleCallback(req, res, next) {
+  try { if (!(await acc.isSignupState(req.query.state))) return next(); } catch (e) { return next(); }
+  try {
+    const r = await acc.googleFinish({ code: req.query.code, state: req.query.state, error: req.query.error, redirectUri: redirectUri(req), baseUrl: baseUrlOf(req) });
+    if (r.pending) return res.redirect('/crm/login?pending=' + encodeURIComponent(r.companyName));
+    await start(req, r);
+    res.redirect(whereTo(r.as));
+  } catch (err) {
+    res.redirect('/crm/login?google_error=' + encodeURIComponent(err.message));
+  }
+}
+
 // "Join Levi Homes?" before they fill everything in.
 router.get('/api/crm-auth/company-code', wrap('Couldn’t check the code', async (req, res) => {
   const t = await acc.companyForCode(req.query.code);
@@ -124,5 +145,28 @@ router.post('/api/crm/join-requests/:id', requireAuth, managersOnly, wrap('Could
   res.json(await acc.decideJoin({ tenantId: req.tenantId, actor: req.crmUser, id: req.params.id, approve: !!b.approve, role: b.role || 'member', reportsTo: b.reportsTo || null, baseUrl: baseUrlOf(req) }));
 }));
 
+// ---------- the quick way through setup (lib/crmQuickSetup.js) ----------
+const quick = require('../lib/crmQuickSetup');
+router.get('/api/crm/setup/company-lookup', requireAuth, team.need('settings'), wrap('Couldn’t look it up', async (req, res) => {
+  res.json(await quick.lookup({ tenantId: req.tenantId, userId: req.userId }));
+}));
+router.get('/api/crm/setup/from-email', requireAuth, wrap('Couldn’t read your email', async (req, res) => {
+  res.json({ ...(await quick.scan({ tenantId: req.tenantId, userId: req.userId, fresh: req.query.fresh === '1' })), canAddSubs: team.can(req.crmUser, 'subs') });
+}));
+router.post('/api/crm/setup/from-email', requireAuth, wrap('Couldn’t add them', async (req, res) => {
+  const b = req.body || {};
+  if ((b.subs || []).length && !team.can(req.crmUser, 'subs')) return res.status(403).json({ error: { message: team.denyText('subs') } });
+  res.json(await quick.addFound({ tenantId: req.tenantId, userId: req.userId, customers: b.customers, subs: b.subs }));
+}));
+// { people: [{ name, email, role }] } or { text: 'one per line' }
+router.post('/api/crm/team/invites/bulk', requireAuth, team.need('team'), wrap('Couldn’t send the invitations', async (req, res) => {
+  const b = req.body || {};
+  const people = Array.isArray(b.people) ? b.people : quick.parseList(b.text).map(p => ({ ...p, role: b.role || 'member' }));
+  res.json(await quick.inviteMany({ tenantId: req.tenantId, actor: req.crmUser, people, baseUrl: baseUrlOf(req) }));
+}));
+router.get('/api/crm/setup/emails', requireAuth, team.need('emails'), wrap('Couldn’t load them', async (req, res) => res.json({ emails: await quick.recommended(req.tenantId) })));
+router.post('/api/crm/setup/emails', requireAuth, team.need('emails'), wrap('Couldn’t turn them on', async (req, res) => res.json(await quick.turnOn({ tenantId: req.tenantId, ids: (req.body || {}).ids }))));
+
 module.exports = router;
 module.exports.crmLogin = crmLogin;
+module.exports.googleCallback = googleCallback;

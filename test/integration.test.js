@@ -1270,6 +1270,43 @@ describe('CRM accounts: create a company, join one, homeowners and subs', () => 
     assert.equal((await (await j.get('/api/crm/me')).json()).role, 'office');
   });
 
+  test('the quick setup routes: Google sign-up, the whole team at once, one-tap emails, and who may use them', async () => {
+    const c = await company();
+    // Without Google set up on this server, the Google button says so plainly.
+    const g = await makeClient().post('/api/crm-auth/google/start', { type: 'homeowner', acceptedTerms: true });
+    assert.ok([200, 503].includes(g.status));
+    assert.equal((await makeClient().post('/api/crm-auth/google/start', { type: 'homeowner' })).status, 400, 'terms first');
+    // A Google return that isn't a sign-up still needs a session.
+    assert.equal((await makeClient().get('/api/crm/google/oauth/callback?state=' + 'a'.repeat(48) + '&code=x')).status, 401);
+    // The whole team at once.
+    const bulk = await (await c.post('/api/crm/team/invites/bulk', { text: `Pat P, ${uniqueEmail('bulk1')}\n${uniqueEmail('bulk2')}`, role: 'sales' })).json();
+    assert.equal(bulk.sent, 2);
+    const t = await (await c.get('/api/crm/team')).json();
+    assert.equal(t.invites.length, 2); assert.ok(t.invites.every(i => i.role === 'sales'));
+    // One-tap emails.
+    const { emails } = await (await c.get('/api/crm/setup/emails')).json();
+    assert.ok(emails.length >= 6);
+    const on = await (await c.post('/api/crm/setup/emails', { ids: emails.map(e => e.id) })).json();
+    assert.equal(on.on, emails.length); assert.equal(on.waitingForAddress, true);
+    // Without Gmail connected, nothing is scanned.
+    assert.equal((await (await c.get('/api/crm/setup/from-email')).json()).connected, false);
+    // The phone-calendar link a QR code points to.
+    const daily = await (await c.get('/api/crm/me/daily')).json();
+    assert.match(daily.phoneUrl, /\/cal\/[0-9a-f]{48}\/add$/);
+    const iphone = await makeClient().raw(new URL(daily.phoneUrl).pathname, { method: 'GET', headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' } });
+    assert.match(iphone.headers.get('location'), /^webcal:\/\/.+\.ics$/);
+    const android = await makeClient().raw(new URL(daily.phoneUrl).pathname, { method: 'GET', headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14)' } });
+    assert.match(android.headers.get('location'), /^https:\/\/calendar\.google\.com\/calendar\/r\?cid=webcal/);
+    // A sales person can't invite the team or switch emails on.
+    const email = uniqueEmail('quick-sales');
+    const inv = await (await c.post('/api/crm/team/invites', { email, name: 'S', role: 'sales' })).json();
+    const s = makeClient();
+    await s.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'S', password: pw });
+    assert.equal((await s.post('/api/crm/team/invites/bulk', { text: uniqueEmail('x') })).status, 403);
+    assert.equal((await s.get('/api/crm/setup/emails')).status, 403);
+    assert.equal((await s.post('/api/crm/setup/from-email', { subs: [{ email: 'a@b.test', name: 'A' }] })).status, 403, 'adding subs needs that permission');
+  });
+
   test('saying no to a join request', async () => {
     const c = await company();
     const { code } = await (await c.get('/api/crm/join-code')).json();

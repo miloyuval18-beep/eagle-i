@@ -335,6 +335,9 @@ input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-wid
 .pl-chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
 .pl-chip.active b{color:rgba(255,255,255,.7)}
 .pl-pill{font-size:14.5px;font-weight:600;padding:2px 9px;border:1px solid var(--bdr2);background:var(--bg4);color:var(--ink2)}
+.st-qr-wrap{display:flex;gap:16px;align-items:center;margin-top:8px}
+.st-qr{width:170px;height:170px;flex:0 0 auto;background:#fff;border:1px solid var(--bdr);border-radius:10px;padding:4px}
+.st-qr svg{width:100%;height:100%}
 .tm-perms{margin-top:10px;border-top:1px solid var(--bdr);padding-top:8px}
 .tm-perms summary{cursor:pointer;font-weight:700;font-size:17px;padding:6px 0}
 .tm-perm{align-items:flex-start;margin:8px 0;font-size:16.5px}
@@ -1043,6 +1046,7 @@ async function dyOpen(){
       <div class="pl-h">Your calendar</div>
       <div class="sm" style="margin-top:0">Your site visits (with the address and brief), the job phases you’re on and your tasks show up in your phone’s calendar and stay up to date on their own.</div>
       <div class="vd-mbtns"><a class="btn btn-blue" style="text-decoration:none" href="${uxEsc(g)}" target="_blank" rel="noopener">Add to Google Calendar</a><a class="btn-xs" href="${uxEsc(d.webcalUrl)}">Add to Apple Calendar</a></div>
+      ${d.phoneUrl?(innerWidth>=760?`<div class="st-qr-wrap"><div id="dy-qr" class="st-qr"></div><div class="sm">On a computer? Point your phone’s camera at this square and tap the link that pops up.</div></div>`:`<div class="vd-mbtns"><a class="btn-xs p" style="text-decoration:none" href="${uxEsc(d.phoneUrl)}">Add to this phone’s calendar</a></div>`):''}
       <label for="dy-url" style="font-size:15px;font-weight:700;display:block;margin-top:10px">Or paste this link into any calendar app (keep it private)</label>
       <div style="display:flex;gap:6px"><input id="dy-url" class="cred-input" readonly value="${uxEsc(d.calendarUrl)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('dy-url')">Copy</button></div>
       <div class="vd-mbtns"><button class="btn-xs" onclick="dyReset()">Make a new link</button><span class="sm" style="margin:0">The old one stops working.</span></div>
@@ -1052,6 +1056,7 @@ async function dyOpen(){
       <div class="pl-h">End-of-day check-in</div>
       <label class="pl-switch"><input type="checkbox" id="dy-ci" onchange="dyCheckin(this.checked)"><span>Weekdays at 5pm: “What did you get done today?” Reply in your own words and Eagle I files it on the right jobs, so nobody has to type it up twice.</span></label>`);
     plApi('/api/crm/me/checkin').then(c=>{const i=document.getElementById('dy-ci');if(i)i.checked=c.on;}).catch(()=>{});
+    if(d.phoneUrl)crQr(d.phoneUrl,'dy-qr');
     plApi('/api/crm/google').then(g=>{const el=document.getElementById('dy-gmail');if(!el)return;const c=g.connection;const mine=g.mailboxes.find(m=>m.mine&&m.signed_in);g.mailboxes.forEach(m=>GWM[m.id]=m.email);
       if(c&&c.kind==='workspace'){el.innerHTML='<div class="pl-h">Your email</div><div class="sm" style="margin-top:0">Your company’s Google Workspace is connected, so your customer emails already land on their deals.</div>';return;}
       if(!g.signIn)return;
@@ -1867,7 +1872,7 @@ async function tmCancel(id){try{await plApi('/api/crm/team/invites/'+id,{method:
    your team, email and calendar. Each step saves as it goes; Skip is always there. */
 const ST={step:0};
 const stOwner=()=>CR.me&&CR.me.role==='owner';
-const stSteps=()=>stOwner()?['you','company','team','google','data','emails']:['you','myteam','google'];
+const stSteps=()=>stOwner()?['you','google','company','team','data','emails']:['you','myteam','google'];
 const ST_TITLE={you:'About you',company:'Your company',team:'Your team',google:'Your email and calendar',data:'Your customers and subs',emails:'Automatic emails',myteam:'Your team'};
 function stGetStep(){try{const n=parseInt(localStorage.getItem('stStep')||'0',10);return isNaN(n)?0:n;}catch(e){return 0;}}
 function stSetStep(n){ST.step=n;try{localStorage.setItem('stStep',String(n));}catch(e){}}
@@ -1883,35 +1888,54 @@ async function stLoad(){
   const box=document.getElementById('st-box');box.innerHTML='<div class="sm">Loading…</div>';
   const st=stSteps(),k=st[ST.step],me=CR.me;
   const bar=`<div style="display:flex;gap:6px;margin:10px 0 4px" aria-hidden="true">${st.map((_,i)=>`<i style="flex:1;height:7px;border-radius:4px;background:${i<=ST.step?'var(--blue)':'var(--bdr2)'}"></i>`).join('')}</div><div class="sm" style="margin-top:0">Step ${ST.step+1} of ${st.length}: ${uxEsc(ST_TITLE[k])}</div>`;
-  let body='';
+  let body='',after=null;
   try{
     if(k==='you')body=`<div class="ss">So your team knows who did what, and customers know who to call.</div><div class="pl-form" style="margin-top:10px"><div><label for="st-name">Your name</label><input id="st-name" class="cred-input" value="${uxEsc(me.name||'')}" autocomplete="name"></div><div><label for="st-phone">Your phone <span class="sm">(optional)</span></label><input id="st-phone" class="cred-input" type="tel" inputmode="tel" placeholder="713-555-0100" autocomplete="tel" value="${uxEsc(me.phone||'')}"></div></div>`;
-    if(k==='company'){const {company}=await plApi('/api/crm/company');body=`<div class="ss">These go on every email Eagle I sends for you: your name and phone in the signature, your address at the bottom (the law requires it on marketing email, so automatic emails wait until it’s filled in).</div><div class="pl-form" style="margin-top:10px">
+    if(k==='company'){const {company}=await plApi('/api/crm/company');body=`<div class="ss">These go on every email Eagle I sends for you: your name and phone in the signature, your address at the bottom (the law requires it on marketing email, so automatic emails wait until it’s filled in).</div>
+      <div id="st-found" class="sm" style="margin-top:8px">${crCan('settings')?'🔎 Looking up '+uxEsc(company.company_name||'your company')+' on Google…':''}</div>
+      <div class="pl-form" style="margin-top:10px">
       <div class="full"><label for="st-co">Company name</label><input id="st-co" class="cred-input" value="${uxEsc(company.company_name||'')}" autocomplete="organization"></div>
       <div><label for="st-cphone">Company phone</label><input id="st-cphone" class="cred-input" type="tel" inputmode="tel" value="${uxEsc(company.phone||'')}" placeholder="713-555-0100"></div>
       <div><label for="st-cemail">Company email <span class="sm">(where customer replies go)</span></label><input id="st-cemail" class="cred-input" type="email" inputmode="email" value="${uxEsc(company.email||'')}"></div>
-      <div class="full"><label for="st-addr">Business address</label><input id="st-addr" class="cred-input" value="${uxEsc(company.address||'')}" placeholder="1001 S Dairy Ashford, Houston TX 77077" autocomplete="street-address"></div></div>`;}
-    if(k==='team'){const d=await crLoadTeam();const j=await plApi('/api/crm/join-code');ST.code=j.code;
-      body=`<div class="ss">Add the people who work with you. Each gets an email with a link to join, already set up with their role and who they report to. You can change these any time under Account → Team.</div>
+      <div class="full"><label for="st-addr">Business address</label><input id="st-addr" class="cred-input" value="${uxEsc(company.address||'')}" placeholder="1001 S Dairy Ashford, Houston TX 77077" autocomplete="street-address"></div></div>`;
+      after=stFillCompany;}
+    if(k==='team'){const d=await crLoadTeam();const j=await plApi('/api/crm/join-code');ST.code=j.code;ST.links=null;
+      body=`<div class="ss">Invite the people who work with you. Each gets an email with a link to join. Everyone starts as a team member; you can change roles and who they report to any time under Account → Team.</div>
+      <div id="st-cow" class="sm" style="margin-top:8px"></div>
+      <label for="st-list" style="display:block;font-weight:700;margin-top:12px">Paste names and emails, one person per line</label>
+      <textarea id="st-list" class="cred-input" rows="4" placeholder="Pat Smith, pat@yourcompany.com&#10;sam@yourcompany.com" oninput="stLabel()"></textarea>
+      <div class="pl-form" style="margin-top:6px"><div><label for="st-list-role">Their role</label><select id="st-list-role">${tmRoleOpts('member')}</select></div></div>
+      <div id="st-links"></div>
+      <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Add one person with their own role and manager</summary>
       <div class="pl-form" style="margin-top:10px"><div><label for="tm-name">Name</label><input id="tm-name" class="cred-input" autocomplete="off"></div><div><label for="tm-email">Email</label><input id="tm-email" class="cred-input" type="email" inputmode="email" autocomplete="off"></div>
       <div><label for="tm-role">Role</label><select id="tm-role" onchange="tmInviteRole()">${tmRoleOpts('member')}</select><div class="sm" id="tm-role-about" style="margin-top:4px">${tmAbout('member')}</div></div><div><label for="tm-boss">Reports to</label><select id="tm-boss">${tmBossOpts('member','',null)}</select></div></div>
-      <div class="vd-mbtns"><button class="btn btn-blue" onclick="stInvite(this)">Send invitation</button></div><div class="sm" id="tm-msg"></div>
+      <div class="vd-mbtns"><button class="btn-xs p" onclick="stInvite(this)">Send this invitation</button></div><div class="sm" id="tm-msg"></div></details>
       ${(d&&(d.members.length>1||d.invites.length))?`<div class="pl-h">On your team so far</div><div class="sm" style="margin-top:0">${d.members.map(m=>uxEsc((m.name||m.email)+' ('+(m.role_label||m.role)+')')).join(', ')}${d.invites.length?'<br>Invited: '+d.invites.map(i=>uxEsc(i.name||i.email)).join(', '):''}</div>`:''}
-      <div class="pl-pb" style="margin-top:14px"><div class="pl-item-t">Or share your company code</div><div class="sm" style="margin-top:2px">People pick “Join my company” when they create an account and type this code. You let each one in and pick their role.</div><div style="font-size:30px;font-weight:800;letter-spacing:.08em;margin:8px 0">${uxEsc(j.code)}</div><button class="btn-xs" onclick="stCopy()">Copy a sign-up link to send them</button></div>`;}
+      <div class="pl-pb" style="margin-top:14px"><div class="pl-item-t">Or share your company code</div><div class="sm" style="margin-top:2px">People pick “Join my company” when they create an account and type this code. You let each one in and pick their role.</div><div style="font-size:30px;font-weight:800;letter-spacing:.08em;margin:8px 0">${uxEsc(j.code)}</div><button class="btn-xs" onclick="stCopy()">Copy a sign-up link to send them</button></div>`;
+      after=stCoworkers;}
     if(k==='google'){const g=await plApi('/api/crm/google').catch(()=>({mailboxes:[]}));const mine=(g.mailboxes||[]).find(m=>m.mine&&m.signed_in);const ws=g.connection&&g.connection.kind==='workspace';
-      body=`<div class="ss">Connect your Gmail and every email with a customer or sub lands on the right job by itself. Replies stop the follow-ups, and meetings in your email show up on the calendar. Eagle I only reads; it never sends from your Gmail.</div>
-      <div style="margin-top:12px">${ws?'<div class="sm">✓ Your company’s Google Workspace is connected.</div>':mine?'<div class="sm">✓ Connected as '+uxEsc(mine.email)+'.</div>':g.signIn===false?'<div class="sm">Google sign-in isn’t switched on for Eagle I yet. You can do this later from Company details.</div>':gBtn('Connect my Gmail','stGoogle()')}</div>
-      <div class="pl-h">The calendar on your phone</div><div class="sm" style="margin-top:0">Your visits, job schedule and tasks on your phone’s own calendar, updated by themselves.</div><div class="vd-mbtns"><button class="btn-xs p" onclick="dyOpen()">Put it on my phone</button></div>`;}
-    if(k==='data'){const pr=await plApi('/api/crm/practice').catch(()=>({}));body=`<div class="ss">Bring in what you already have, so Eagle I starts with your real customers, jobs and subs. Nothing gets emailed while it’s brought in.</div>
+      const dl=await plApi('/api/crm/me/daily').catch(()=>null);ST.phoneUrl=dl&&dl.phoneUrl;
+      body=`<div class="ss">Connect your Gmail and every email with a customer or sub lands on the right job by itself. Replies stop the follow-ups, and Eagle I can find your customers and subs in it for you. Eagle I only reads; it never sends from your Gmail.</div>
+      <div style="margin-top:12px">${ws?'<div class="sm">✓ Your company’s Google Workspace is connected.</div>':mine?'<div class="sm" style="font-size:18px">✓ Your Gmail is connected ('+uxEsc(mine.email)+').</div>':g.signIn===false?'<div class="sm">Google sign-in isn’t switched on for Eagle I yet. You can do this later from Company details.</div>':gBtn('Connect my Gmail','stGoogle()')}</div>
+      <div class="pl-h">The calendar on your phone</div><div class="sm" style="margin-top:0">Your visits, job schedule and tasks on your phone’s own calendar, updated by themselves.</div>
+      ${ST.phoneUrl?(innerWidth>=760?`<div class="st-qr-wrap"><div id="st-qr" class="st-qr"></div><div class="sm">Point your phone’s camera at this square and tap the link that pops up. iPhones add it to Calendar; other phones open Google Calendar.</div></div>`:`<div class="vd-mbtns"><a class="btn btn-blue" style="text-decoration:none" href="${uxEsc(ST.phoneUrl)}">Add to this phone’s calendar</a></div>`):''}
+      <div class="vd-mbtns"><button class="btn-xs" onclick="dyOpen()">Other ways to add it</button></div>`;
+      after=()=>{if(ST.phoneUrl)crQr(ST.phoneUrl,'st-qr');};}
+    if(k==='data'){const pr=await plApi('/api/crm/practice').catch(()=>({}));ST.found=null;body=`<div class="ss">Start with your real customers and subs. Eagle I looks through the last six months of your email for the people you work with; untick anyone who isn’t. Nobody gets emailed.</div>
+      <div id="st-people" style="margin-top:10px"><div class="sm">🔎 Looking through your email… this can take half a minute.</div></div>
+      <details style="margin-top:14px"${ST.noMail?' open':''}><summary style="cursor:pointer;font-weight:700">Other ways to bring them in</summary>
       <div class="pl-list" style="margin-top:10px">
         <button class="pl-card" onclick="crView('setup')"><div class="pl-card-title">📄 Bring in a spreadsheet</div><div class="pl-card-sub">From Buildertrend, JobTread, CoConstruct, Houzz Pro, QuickBooks, Excel or Google Sheets: customers, subs and vendors, schedules, past invoices and more.</div></button>
         <button class="pl-card" onclick="crView('pipeline');plNewDeal()"><div class="pl-card-title">＋ Add a customer by hand</div><div class="pl-card-sub">One at a time.</div></button>
-        <button class="pl-card" onclick="crView('jobs')"><div class="pl-card-title">🔨 Add your subs and suppliers</div><div class="pl-card-sub">Subs with an Eagle I account who use the same email are linked to you by themselves.</div></button>
+        <button class="pl-card" onclick="crView('jobs')"><div class="pl-card-title">🔨 Add your subs and suppliers by hand</div><div class="pl-card-sub">Subs with an Eagle I account who use the same email are linked to you by themselves.</div></button>
         ${pr&&pr.on?'':`<button class="pl-card" onclick="stPractice(this)"><div class="pl-card-title">🧪 Try it out with practice customers</div><div class="pl-card-sub">Made-up customers you can click around with. Never emailed; removed with one tap.</div></button>`}
-      </div><div class="sm">When you’re done, come back with “Continue setup” at the top.</div>`;}
-    if(k==='emails')body=`<div class="ss">Eagle I can follow up with leads, remind homeowners about visits and nudge unpaid invoices on its own. Nothing goes out until you read each one and turn it on.</div>
-      <div class="vd-mbtns"><button class="btn-xs p" onclick="crView('auto')">Read the automatic emails</button></div>
-      <div class="pl-h">Homeowners and subs</div><div class="sm" style="margin-top:0">Homeowners and subs can make their own free Eagle I account with the email you have for them. Their projects and jobs with you show up there by themselves, the same pages you already share.</div>`;
+      </div><div class="sm">When you’re done, come back with “Continue setup” at the top.</div></details>`;
+      after=stPeople;}
+    if(k==='emails'){const r=await plApi('/api/crm/setup/emails').catch(()=>({emails:[]}));ST.emails=r.emails||[];
+      body=`<div class="ss">These go out on their own at the right moment, from your company, with your name and phone. Each one is ticked; untick any you don’t want. You can read and change the wording any time under Account → Automations.</div>
+      <div style="margin-top:10px">${ST.emails.map(e=>`<label class="pl-switch tm-perm"><input type="checkbox" class="st-em" value="${e.id}" ${e.on?'checked disabled':'checked'} onchange="stLabel()"><span><b>${uxEsc(e.name)}</b>${e.on?' <span class="pl-tag gB">On</span>':''}<br><span class="sm">${uxEsc(e.what||'')}${e.emails>1?' ('+e.emails+' emails)':''}</span></span></label>`).join('')}</div>
+      <div class="vd-mbtns"><button class="btn-xs" onclick="crView('auto')">Read each one first</button></div>
+      <div class="pl-h">Homeowners and subs</div><div class="sm" style="margin-top:0">Homeowners and subs can make their own free Eagle I account with the email you have for them. Their projects and jobs with you show up there by themselves, the same pages you already share.</div>`;}
     if(k==='myteam'){const d=await crLoadTeam();const m=d.members.find(x=>x.id===me.userId)||{};const boss=m.reports_to?tmName(m.reports_to):'';const under=d.members.filter(x=>x.reports_to===me.userId);
       body=`<div class="ss">You’re ${(w=>(/^[aeiou]/i.test(w)?'an ':'a ')+w)(uxEsc((me.roleLabel||'team member').toLowerCase()))} at <b>${uxEsc(me.companyName||'')}</b>${boss?', reporting to <b>'+uxEsc(boss)+'</b>':''}.</div>
       <div class="sm">${uxEsc(tmAbout(me.role))}</div>
@@ -1920,9 +1944,64 @@ async function stLoad(){
   const last=ST.step>=st.length-1;
   box.innerHTML=`<div class="sh"><div><div class="st">${stOwner()?'Let’s set up '+uxEsc(me.companyName||'your company'):'Welcome to '+uxEsc(me.companyName||'Eagle I')}</div>${bar}</div></div>
     <div class="pl-pb"><div class="pl-item-t" style="font-size:21px">${uxEsc(ST_TITLE[k])}</div>${body}
-    <div class="vd-mbtns" style="margin-top:16px;align-items:center"><button class="btn btn-blue" onclick="stNext(this)">${last?'Finish':'Save and continue'}</button>${ST.step>0?'<button class="btn-xs" onclick="stSetStep(ST.step-1);stLoad()">← Back</button>':''}${last?'':'<button class="btn-xs" onclick="stSetStep(ST.step+1);stLoad()">Skip this step</button>'}</div><div class="sm" id="st-err" style="color:var(--red)"></div></div>
+    <div class="vd-mbtns" style="margin-top:16px;align-items:center"><button class="btn btn-blue" id="st-go" onclick="stNext(this)">${last?'Finish':'Save and continue'}</button>${ST.step>0?'<button class="btn-xs" onclick="stSetStep(ST.step-1);stLoad()">← Back</button>':''}${last?'':'<button class="btn-xs" onclick="stSetStep(ST.step+1);stLoad()">Skip this step</button>'}</div><div class="sm" id="st-err" style="color:var(--red)"></div></div>
     <div class="sm" style="margin-top:14px">Want to do this later? <button class="btn-xs" onclick="stFinish(true)">Skip setup for now</button> You can come back to it from Account → Guided setup.</div>`;
   window.scrollTo(0,0);
+  stLabel();
+  if(after)after();
+}
+// The big button says what it will do: "Invite 3 people and continue", "Add 12 and continue", "Turn on 7 emails and finish".
+function stLabel(){
+  const b=document.getElementById('st-go');if(!b)return;
+  const st=stSteps(),k=st[ST.step],last=ST.step>=st.length-1,tail=last?' and finish':' and continue';
+  let n=0,what='';
+  if(k==='team'){n=document.querySelectorAll('.st-cw:checked').length+((document.getElementById('st-list')||{}).value||'').split(/\n/).filter(l=>/@/.test(l)).length;what=n===1?'Invite 1 person':'Invite '+n+' people';}
+  if(k==='data'){n=document.querySelectorAll('.st-pp:checked').length;what='Add '+n+(n===1?' person':' people');}
+  if(k==='emails'){n=document.querySelectorAll('.st-em:checked:not(:disabled)').length;what='Turn on '+n+(n===1?' email':' emails');}
+  b.textContent=n?what+tail:(last?'Finish':'Save and continue');
+}
+// "Your company": fill what's empty from the Google listing and their signature; they check it.
+async function stFillCompany(){
+  const el=document.getElementById('st-found');if(!el||!crCan('settings'))return;
+  let d;try{d=await plApi('/api/crm/setup/company-lookup');}catch(e){el.textContent='';return;}
+  if(!document.getElementById('st-co'))return;
+  const filled=[];const fill=(id,v,label)=>{const i=document.getElementById(id);if(i&&v&&!i.value.trim()){i.value=v;filled.push(label);i.style.background='#fffbe6';}};
+  fill('st-cphone',d.suggest.phone,'phone');fill('st-addr',d.suggest.address,'address');fill('st-cemail',d.suggest.email,'email');
+  const L=d.listings||[];ST.listings=L;
+  el.innerHTML=(filled.length?`<div class="pl-banner" style="margin:0"><span>✓ Filled in the ${filled.join(', ')} from ${L.length?'your Google listing':'your email signature'}. Check ${filled.length===1?'it’s':'they’re'} right; you can change anything.</span></div>`:L.length?'':'')+
+    (L.length>1||(L.length&&!filled.length)?`<div class="sm" style="margin-top:8px">${L.length>1?'Found more than one; tap yours:':'Is this you?'}</div>`+L.map((x,i)=>`<button class="pl-card" style="margin-top:6px" onclick="stUseListing(${i})"><div class="pl-card-title">${uxEsc(x.name)}${x.match?' <span class="pl-tag gB">Matches your email</span>':''}</div><div class="pl-card-sub">${uxEsc([x.address,x.phone,x.website].filter(Boolean).join(' · '))}</div></button>`).join(''):'');
+}
+function stUseListing(i){const x=(ST.listings||[])[i];if(!x)return;const set=(id,v)=>{const e=document.getElementById(id);if(e&&v){e.value=v;e.style.background='#fffbe6';}};set('st-cphone',x.phone);set('st-addr',x.address);showNotif('Filled in',x.name);}
+// "Your team": coworkers at the same email domain, ticked.
+async function stCoworkers(){
+  const el=document.getElementById('st-cow');if(!el)return;
+  el.textContent='🔎 Looking for coworkers in your email…';
+  let d;try{d=await plApi('/api/crm/setup/from-email');}catch(e){el.textContent='';return;}
+  if(!document.getElementById('st-cow'))return;
+  if(!d.connected||!d.coworkers.length){el.textContent='';return;}
+  el.innerHTML=`<div class="sm" style="font-weight:700">People at your company you email (ticked ones get invited):</div>`+d.coworkers.map(c=>`<label class="pl-switch tm-perm"><input type="checkbox" class="st-cw" data-name="${uxEsc(c.name||'')}" value="${uxEsc(c.email)}" ${c.tick?'checked':''} onchange="stLabel()"><span><b>${uxEsc(c.name||c.email)}</b><br><span class="sm">${uxEsc(c.email)}</span></span></label>`).join('');
+  stLabel();
+}
+// "Your customers and subs": who they email, ticked when it clearly looks like one.
+async function stPeople(){
+  const el=document.getElementById('st-people');if(!el)return;
+  let d;try{d=await plApi('/api/crm/setup/from-email');}catch(e){el.innerHTML='<div class="sm">Couldn’t read your email just now ('+uxEsc(e.message)+'). Use one of the other ways below.</div>';return;}
+  if(!document.getElementById('st-people'))return;
+  if(!d.connected){ST.noMail=true;{const det=el.parentElement.querySelector('details');if(det)det.open=true;}el.innerHTML=`<div class="sm">Connect your Gmail and Eagle I finds your customers and subs in it for you.</div><div class="vd-mbtns">${gBtn('Connect my Gmail','stGoogle()')}</div>`;return;}
+  const row=(p)=>`<label class="pl-switch tm-perm"><input type="checkbox" class="st-pp" data-i="${d.people.indexOf(p)}" ${p.tick?'checked':''} ${p.kind==='sub'&&!d.canAddSubs?'disabled':''} onchange="stLabel()"><span><b>${uxEsc(p.name)}</b>${p.trade?' <span class="pl-tag">'+uxEsc(p.trade)+'</span>':''}<br><span class="sm">${uxEsc(p.email)} · ${p.emails} email${p.emails===1?'':'s'}${p.last?', last '+new Date(p.last).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}${p.about?' · “'+uxEsc(p.about.slice(0,60))+'”':''}</span></span></label>`;
+  ST.found=d.people;
+  const cs=d.people.filter(p=>p.kind==='customer'),ss=d.people.filter(p=>p.kind==='sub');
+  const group=(title,list)=>list.length?`<div class="pl-h" style="display:flex;justify-content:space-between;align-items:center">${title} (${list.length})<button class="btn-xs" onclick="stTickAll('${title}',this)">Tick all</button></div><div data-g="${title}">${list.map(row).join('')}</div>`:'';
+  el.innerHTML=d.people.length?group('Customers',cs)+group('Subs and suppliers',ss):'<div class="sm">Didn’t find anyone new in your recent email. Use one of the other ways below.</div>';
+  stLabel();
+}
+function stTickAll(g,btn){const boxes=[...document.querySelectorAll(`[data-g="${g}"] .st-pp:not(:disabled)`)];const on=!boxes.every(b=>b.checked);boxes.forEach(b=>b.checked=on);btn.textContent=on?'Untick all':'Tick all';stLabel();}
+// A QR code (drawn in the browser; the link never leaves this page).
+let QR_LIB=null;
+function crQr(text,id){
+  const el=document.getElementById(id);if(!el)return;
+  QR_LIB=QR_LIB||new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s);});
+  QR_LIB.then(()=>{const q=qrcode(0,'M');q.addData(text);q.make();el.innerHTML=q.createSvgTag({cellSize:5,margin:3,scalable:true});}).catch(()=>{el.innerHTML='<div class="sm">Couldn’t draw the code. Use “Other ways to add it”.</div>';});
 }
 async function stNext(btn){
   const st=stSteps(),k=st[ST.step],v=(id)=>{const e=document.getElementById(id);return e?e.value:'';};btn.disabled=true;
@@ -1931,6 +2010,29 @@ async function stNext(btn){
     if(k==='company'){
       if(v('st-addr').trim()&&v('st-addr').trim().length<8)throw new Error('Add your full business address, with the city and ZIP.');
       await plApi('/api/crm/company',{method:'PATCH',body:{companyName:v('st-co'),phone:v('st-cphone'),email:v('st-cemail'),address:v('st-addr')}});CR.me.companyName=v('st-co').trim();document.getElementById('cr-company').textContent=CR.me.companyName;}
+    if(k==='team'&&!ST.links){
+      const lines=[...document.querySelectorAll('.st-cw:checked')].map(c=>(c.dataset.name?c.dataset.name+', ':'')+c.value);
+      const text=[...lines,(v('st-list')||'')].join('\n');
+      if(/@/.test(text)){
+        const r=await plApi('/api/crm/team/invites/bulk',{body:{text,role:v('st-list-role')||'member'}});
+        const bad=r.results.filter(x=>!x.ok),links=r.results.filter(x=>x.ok&&x.link);
+        const emailed=r.results.filter(x=>x.ok&&x.emailed).length;
+        if(emailed)showNotif(emailed===1?'Invitation sent':emailed+' invitations sent','They’ll get an email with a link to join.'+(bad.length||links.length?' See below for the rest.':''));
+        else if(links.length)showNotif('Invitations made','The emails couldn’t be sent, so pass the links below on yourself.');
+        if(bad.length||links.length){ST.links=true;document.getElementById('st-links').innerHTML=(bad.length?`<div class="pl-banner" style="border-color:var(--red)"><span>${bad.map(x=>uxEsc(x.email)+': '+uxEsc(x.error)).join('<br>')}</span></div>`:'')+(links.length?`<div class="sm">The email couldn’t be sent, so pass these links on yourself (each works once, for 7 days):</div>`+links.map(x=>`<div class="sm" style="margin-top:4px">${uxEsc(x.email)}<input class="cred-input" readonly value="${uxEsc(x.link)}" onclick="this.select()"></div>`).join(''):'');
+          const list=document.getElementById('st-list');if(list)list.value='';document.querySelectorAll('.st-cw:checked').forEach(c=>{c.checked=false;c.disabled=true;});btn.disabled=false;btn.textContent='Continue';return;}
+      }
+    }
+    if(k==='data'){
+      const picked=[...document.querySelectorAll('.st-pp:checked')].map(c=>(ST.found||[])[+c.dataset.i]).filter(Boolean);
+      if(picked.length){const r=await plApi('/api/crm/setup/from-email',{body:{customers:picked.filter(p=>p.kind==='customer'),subs:picked.filter(p=>p.kind==='sub')}});
+        showNotif('Added '+r.added,'Undo it any time from Account → Import & setup.');}
+    }
+    if(k==='emails'){
+      const ids=[...document.querySelectorAll('.st-em:checked:not(:disabled)')].map(c=>c.value);
+      if(ids.length){const r=await plApi('/api/crm/setup/emails',{body:{ids}});showNotif(r.on+' automatic email'+(r.on===1?'':'s')+' on',r.waitingForAddress?'They start once your business address is filled in (Company details).':'They go out on their own from now on.');}
+    }
+    ST.links=null;
     if(ST.step>=st.length-1)return stFinish(false);
     stSetStep(ST.step+1);stLoad();
   }catch(e){document.getElementById('st-err').textContent=e.message;btn.disabled=false;}

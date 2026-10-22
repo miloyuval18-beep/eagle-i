@@ -50,6 +50,13 @@ input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(
 .row .btn{width:auto;margin-top:0;padding:12px 16px;white-space:nowrap}
 .foot{font-size:16px;color:var(--ink3);text-align:center;margin-top:18px}
 .foot a{color:var(--ink2)}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:16px;padding:13px;border:1.5px solid var(--bdr2);border-radius:8px;background:#fff;color:var(--ink);font-family:var(--f);font-size:18.5px;font-weight:800;cursor:pointer}
+.gbtn:hover{background:#f6f9fc;border-color:var(--accent)}
+.gbtn svg{width:22px;height:22px;flex:0 0 auto}
+.or{display:flex;align-items:center;gap:10px;color:var(--ink3);font-size:16px;margin:16px 0 4px}
+.or:before,.or:after{content:'';flex:1;height:1px;background:var(--bdr)}
+details.manual{margin-top:14px;border-top:1px solid var(--bdr);padding-top:10px}
+details.manual summary{cursor:pointer;color:var(--accent);font-size:17px;font-weight:700;padding:4px 0}
 [hidden]{display:none!important}
 </style>
 <link rel="stylesheet" href="/eaglei-theme.css">
@@ -65,6 +72,8 @@ input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(
   </div>
 
   <form id="form-in" onsubmit="signIn(event)">
+    <button type="button" class="gbtn" style="margin-top:0" onclick="google('signin',this)"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 38.2 44 33 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Sign in with Google</button>
+    <div class="or">or with your email</div>
     <label for="in-email">Email</label><input id="in-email" type="email" autocomplete="email" inputmode="email" required>
     <label for="in-pw">Password</label><input id="in-pw" type="password" autocomplete="current-password" required>
     <button class="btn" id="in-btn">Sign in</button>
@@ -101,14 +110,18 @@ input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(
       <div class="hint">If you work for yourself, your own name is fine.</div>
       <label for="up-trade">Trade <span class="opt">(optional)</span></label><input id="up-trade" placeholder="Framing, electrical, tile, lumber…" autocomplete="off">
     </div>
-    <label for="up-name">Your name</label><input id="up-name" autocomplete="name" required>
+    <div class="check"><input type="checkbox" id="up-terms"><label for="up-terms" style="margin:0;font-weight:400">I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></label></div>
+    <button type="button" class="gbtn" id="up-google" onclick="google(TYPE,this)"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 38.2 44 33 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg><span id="up-google-t">Continue with Google</span></button>
+    <div class="hint" id="up-google-hint" style="text-align:center"></div>
+    <details class="manual" id="up-manual"><summary>Use my email and a password instead</summary>
+    <label for="up-name">Your name</label><input id="up-name" autocomplete="name">
     <label for="up-phone">Phone <span class="opt">(optional)</span></label><input id="up-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="713-555-0100">
-    <label for="up-email">Email</label><input id="up-email" type="email" inputmode="email" autocomplete="email" required>
+    <label for="up-email">Email</label><input id="up-email" type="email" inputmode="email" autocomplete="email">
     <div class="hint" id="up-email-hint"></div>
-    <label for="up-pw">Password <span class="opt">(at least 8 characters)</span></label><input id="up-pw" type="password" autocomplete="new-password" minlength="8" required>
+    <label for="up-pw">Password <span class="opt">(at least 8 characters)</span></label><input id="up-pw" type="password" autocomplete="new-password" minlength="8">
     <div id="f-note" hidden><label for="up-note">Note for the owner <span class="opt">(optional)</span></label><input id="up-note" placeholder="Hi, it’s Sam, the new superintendent" maxlength="300"></div>
-    <div class="check"><input type="checkbox" id="up-terms" required><label for="up-terms" style="margin:0;font-weight:400">I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></label></div>
     <button class="btn" id="up-btn">Create account</button>
+    </details>
     <div class="err" id="up-err" role="alert"></div>
   </form>
 
@@ -121,6 +134,13 @@ input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(
   <div class="foot">Looking for Eagle I marketing? It has separate logins: <a href="/login.html">sign in here</a></div>
 </main>
 <script>
+// What "Continue with Google" does for each kind of account.
+const GHINT={
+  company:'Fastest: your name and email come from Google, and your Gmail is connected in the same step, so customer emails land on the right jobs.',
+  join:'Fastest: your name and email come from Google, and your Gmail is connected too.',
+  homeowner:'Fastest: no password to remember, and your projects show up straight away.',
+  sub:'Fastest: no password to remember, and your builders show up straight away.'
+};
 const COPY={
   company:{t:'Start my company',s:'You’ll be the owner. Next, Eagle I walks you through setting everything up: your company details, your team, your email and your customers.',e:'Use your work email.',b:'Create my company'},
   join:{t:'Join my company',s:'Enter the code from your company. The owner or an admin lets you in and picks your role.',e:'Use the email you use for work.',b:'Ask to join'},
@@ -138,6 +158,7 @@ function pick(type){
   TYPE=type;const c=COPY[type];
   $('up-title').textContent=c.t;$('up-sub').textContent=c.s;$('up-email-hint').textContent=c.e;$('up-btn').textContent=c.b;
   $('f-code').hidden=type!=='join';$('f-company').hidden=type!=='company';$('f-biz').hidden=type!=='sub';$('f-note').hidden=type!=='join';
+  $('up-google-hint').textContent=GHINT[type];$('up-manual').open=false;
   $('up-err').textContent='';show('form-up');
   (type==='join'?$('up-code'):type==='company'?$('up-company'):type==='sub'?$('up-biz'):$('up-name')).focus();
 }
@@ -161,8 +182,22 @@ async function signIn(e,as){
     location.href=d.go||'/crm';
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
+// "Continue with Google": what they've typed so far goes along, then Google, then back here signed in.
+async function google(type,btn){
+  const err=type==='signin'?$('in-err'):$('up-err');err.textContent='';
+  if(type!=='signin'){
+    if(type==='company'&&!$('up-company').value.trim()){err.textContent='Add your company’s name first.';$('up-company').focus();return;}
+    if(type==='join'&&!CODE_OK){await checkCode();if(!CODE_OK)return;}
+    if(!$('up-terms').checked){err.textContent='Tick the box to agree to the Terms of Service and Privacy Policy.';return;}
+  }
+  btn.disabled=true;
+  try{const d=await call('/api/crm-auth/google/start',{type,companyName:$('up-company').value,code:$('up-code').value,businessName:$('up-biz').value,trade:$('up-trade').value,phone:$('up-phone').value,acceptedTerms:type==='signin'||$('up-terms').checked});location.href=d.url;}
+  catch(x){err.textContent=x.message;btn.disabled=false;}
+}
 async function signUp(e){
   e.preventDefault();const b=$('up-btn'),err=$('up-err');
+  if(!$('up-terms').checked){err.textContent='Tick the box to agree to the Terms of Service and Privacy Policy.';return;}
+  for(const [id,msg] of [['up-name','Add your name.'],['up-email','Add your email.'],['up-pw','Pick a password of at least 8 characters.']])if(!$(id).value.trim()){err.textContent=msg;$(id).focus();return;}
   if(TYPE==='join'&&!CODE_OK){await checkCode();if(!CODE_OK)return;}
   b.disabled=true;err.textContent='';
   try{
@@ -175,6 +210,9 @@ async function signUp(e){
 // Links: /crm/login#signup, ?code=ABCD-2345 (from the Team screen), ?marketing=1.
 const q=new URLSearchParams(location.search);
 if(q.get('marketing'))$('mkt-note').hidden=false;
+// Back from Google.
+if(q.get('google_error')){$('in-err').textContent=q.get('google_error');}
+if(q.get('pending')){$('sent-msg').textContent=`We asked ${q.get('pending')} to let you in. You’ll get an email when they do, then tap “Sign in with Google” here.`;setTimeout(()=>show('sent'),0);}
 if(q.get('code')){pick('join');$('up-code').value=q.get('code');checkCode();}
 else if(location.hash==='#signup')show('up');
 </script>
