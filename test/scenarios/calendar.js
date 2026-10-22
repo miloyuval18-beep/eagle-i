@@ -93,8 +93,10 @@ async function fakeGoogle(url, opts = {}) {
     const ra = await cal.range({ tenantId: t, viewer: alex, ...span });
     assert.ok(find(ra, /^Site visit: Ana Ruiz/) && find(ra, /^Framing$/) && find(ra, /Bring tile samples/));
     for (const re of [/Payment due/, /Deck framing/, /Call the city/, /Insurance runs out/, /Delivery/]) assert.ok(!find(ra, re), `Alex doesn't see ${re}`);
-    await assert.rejects(cal.range({ tenantId: t, viewer: alex, ...span, who: 'all' }), /owner or an admin/);
-    await assert.rejects(cal.range({ tenantId: t, viewer: alex, ...span, who: ownerId }), /owner or an admin/);
+    // Up the line works too: Alex reports to no one, so he's under the owner and can see Moran's.
+    const up = await cal.range({ tenantId: t, viewer: alex, ...span, who: ownerId });
+    assert.ok(!up.items.some(i => /Bring tile samples/.test(i.title)), 'only Moran’s, not Alex’s own');
+    await cal.range({ tenantId: t, viewer: alex, ...span, who: 'all' });
 
     // 2. Moran sees everyone's: every kind of date, with the details that matter.
     const ro = await cal.range({ tenantId: t, viewer: owner, ...span, who: 'all' });
@@ -223,7 +225,7 @@ async function fakeGoogle(url, opts = {}) {
     const ctx = { tenantId: t, userId: alexId, manager: false, baseUrl: 'https://app.test' };
     const ar = await A.TOOLS.calendar.run(ctx, { from: today, to: add(today, 6) });
     assert.ok(ar.items.some(i => /Site visit: Ana/.test(i.title)) && !ar.items.some(i => /Payment due/.test(i.title)));
-    await assert.rejects(A.TOOLS.calendar.run(ctx, { person: 'Moran' }), /owner or an admin/);
+    assert.ok(Array.isArray((await A.TOOLS.calendar.run(ctx, { person: 'Moran' })).items), 'Alex can look up to Moran’s');
     const added = await A.TOOLS.add_to_calendar.run(ctx, { title: 'Walkthrough with Ana', kind: 'walkthrough', date: D3, time: '16:00', deal_id: sale.id });
     assert.equal(added.done, true);
     assert.equal((await query('SELECT source, user_id FROM crm_events WHERE id = $1', [added.event_id])).rows[0].source, 'assistant');

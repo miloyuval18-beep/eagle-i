@@ -1279,6 +1279,67 @@ describe('CRM team', () => {
     assert.equal(deal.owner_user_id, memberId);
   });
 
+  test('roles and who reports to whom decide whose schedule people see, both ways', async () => {
+    const o = await owner();
+    const pm = await inviteAndJoin(o, 'project_manager');
+    const pmId = (await (await pm.get('/api/crm/me')).json()).userId;
+    // Invited straight under the project manager.
+    const email = uniqueEmail('team-super');
+    const inv = await (await o.post('/api/crm/team/invites', { email, name: 'Sam Super', role: 'superintendent', reportsTo: pmId })).json();
+    const sup = makeClient();
+    assert.equal((await sup.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: 'Sam Super', password: 'MemberPass123!' })).status, 200);
+    const sales = await inviteAndJoin(o, 'sales');
+    const me = async (c) => (await c.get('/api/crm/me')).json();
+    const [ownerMe, supMe, salesMe] = [await me(o), await me(sup), await me(sales)];
+    assert.equal(supMe.role, 'superintendent'); assert.equal(supMe.roleLabel, 'Superintendent'); assert.equal(supMe.canManage, false);
+
+    const t = await (await pm.get('/api/crm/team')).json();
+    assert.equal(t.members.find(m => m.id === supMe.userId).reports_to, pmId, 'joined reporting to the project manager');
+    assert.deepEqual(t.me.below, [supMe.userId], 'the project manager has the superintendent under them');
+    assert.ok(t.me.sees.includes(ownerMe.userId), 'and sees up to the owner');
+    assert.ok(!t.me.sees.includes(salesMe.userId), 'but not someone outside their line');
+    assert.ok(t.roles.some(r => r.key === 'office'));
+
+    // Calendars: down the line, up the line, never sideways.
+    const evOn = async (c, userId, title) => c.post('/api/crm/calendar/events', { title, date: '2031-03-04', time: '09:00', userId });
+    assert.equal((await evOn(pm, supMe.userId, 'Walk the framing')).status, 200, 'a project manager plans for the people under them');
+    assert.equal((await evOn(sup, pmId, 'Plan the boss’s day')).status, 403, 'but not the other way');
+    assert.equal((await evOn(sales, supMe.userId, 'Sideways')).status, 403);
+    await evOn(o, pmId, 'PM meeting with owner');
+    const cal = async (c, who) => c.get(`/api/crm/calendar?from=2031-03-03&to=2031-03-05&who=${who}`);
+    const titles = async (c, who) => (await (await cal(c, who)).json()).items.map(i => i.title);
+    assert.ok((await titles(pm, supMe.userId)).includes('Walk the framing'), 'the project manager sees the superintendent’s calendar');
+    assert.ok((await titles(sup, pmId)).includes('PM meeting with owner'), 'the superintendent sees the project manager’s, both ways');
+    assert.equal((await cal(sales, supMe.userId)).status, 403, 'someone outside the line doesn’t');
+    assert.equal((await cal(sales, pmId)).status, 403);
+    const team = await titles(sup, 'all');
+    assert.ok(team.includes('Walk the framing') && team.includes('PM meeting with owner'));
+    assert.ok((await titles(o, supMe.userId)).includes('Walk the framing'), 'the owner sees everyone');
+
+    // Today: the project manager's team tasks include the superintendent's.
+    await o.post('/api/crm/tasks', { title: 'Order trusses', assigneeUserId: supMe.userId });
+    const today = await (await pm.get('/api/crm/today?all=1')).json();
+    assert.ok(today.tasks.some(x => x.title === 'Order trusses'));
+    assert.ok(!(await (await sales.get('/api/crm/today?all=1')).json()).tasks.some(x => x.title === 'Order trusses'));
+
+    // Reporting lines go up only; changing a role tidies lines that no longer make sense.
+    assert.equal((await o.patch(`/api/crm/team/${pmId}`, { reportsTo: supMe.userId })).status, 400, 'can’t report to someone below you');
+    assert.equal((await o.patch(`/api/crm/team/${salesMe.userId}`, { reportsTo: pmId })).status, 200);
+    assert.ok((await (await sales.get('/api/crm/team')).json()).me.sees.includes(pmId));
+    assert.equal((await o.patch(`/api/crm/team/${pmId}`, { role: 'sales' })).status, 200);
+    const after = await (await o.get('/api/crm/team')).json();
+    assert.equal(after.members.find(m => m.id === supMe.userId).reports_to, null, 'a superintendent can’t report to sales');
+    assert.equal(after.members.find(m => m.id === salesMe.userId).reports_to, null);
+    assert.equal((await pm.patch(`/api/crm/team/${salesMe.userId}`, { reportsTo: null })).status, 403, 'only the owner or an admin changes the team');
+    assert.equal((await o.patch(`/api/crm/team/${salesMe.userId}`, { role: 'boss' })).status, 400);
+
+    // The owner can let everyone see everyone's.
+    assert.equal((await cal(sales, supMe.userId)).status, 403);
+    assert.equal((await o.patch('/api/crm/team-settings', { visibility: 'everyone' })).status, 200);
+    assert.equal((await cal(sales, supMe.userId)).status, 200);
+    assert.equal((await sales.patch('/api/crm/team-settings', { visibility: 'chain' })).status, 403);
+  });
+
   test('an invite to someone who already has an account is refused', async () => {
     const o = await owner();
     const me = await (await o.get('/api/crm/me')).json();

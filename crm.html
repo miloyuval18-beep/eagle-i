@@ -334,6 +334,12 @@ input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-wid
 .pl-chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
 .pl-chip.active b{color:rgba(255,255,255,.7)}
 .pl-pill{font-size:14.5px;font-weight:600;padding:2px 9px;border:1px solid var(--bdr2);background:var(--bg4);color:var(--ink2)}
+.tm-tree ul{list-style:none;margin:0;padding-left:22px;border-left:2px solid var(--bdr2)}
+.tm-tree>ul{padding-left:0;border-left:0}
+.tm-tree li{margin:8px 0}
+.tm-node{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:baseline;background:var(--bg2,#fff);border:1px solid var(--bdr2);border-radius:10px;padding:8px 12px;font-size:17px;max-width:100%}
+.tm-node.me{border-color:var(--blue,#2563eb)}
+.tm-role{font-size:15px;color:var(--ink3)}
 .pl-pill.on,.pl-pill.accepted{color:var(--green);border-color:var(--green-line);background:var(--green-soft)}
 .pl-pill.need{color:var(--amber);border-color:var(--amber-line);background:var(--amber-soft)}
 .pl-pill.sent{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
@@ -859,11 +865,14 @@ select{max-width:100%;text-overflow:ellipsis}
     <div class="pl-list" id="rp-list"><div class="pl-empty">Loading…</div></div>
   </section>
   <section class="view" id="view-team">
-    <div class="sh"><div><div class="st">Team</div><div class="ss">Everyone at your company who uses Eagle I CRM. Members work deals; the owner and admins also manage the team, company details and automatic emails.</div></div></div>
+    <div class="sh"><div><div class="st">Team</div><div class="ss">Everyone at your company who uses Eagle I CRM, what each person does, and who they report to. People see the schedules of those above and below them.</div></div></div>
     <div id="tm-invite"></div>
+    <div id="tm-sees"></div>
     <div class="pl-h">People</div>
     <div class="pl-list" id="tm-list"><div class="pl-empty">Loading…</div></div>
     <div id="tm-invites"></div>
+    <div class="pl-h">How your team fits together</div>
+    <div id="tm-tree" class="tm-tree"></div>
   </section>
   <section class="view" id="view-company">
     <div class="sh"><div><div class="st">Company</div><div class="ss">These details go on every automatic email: your name and phone in the signature, and your business address at the bottom (required by law for marketing email, so emails wait until it's filled in).</div></div></div>
@@ -953,7 +962,11 @@ function showNotif(t,b){const el=document.getElementById('toast');el.innerHTML='
 /* ---------- app shell ---------- */
 const CR={me:null,view:'pipeline',team:[]};
 const crCanManage=()=>!!(CR.me&&CR.me.canManage);
-async function crLoadTeam(){try{const d=await plApi('/api/crm/team');CR.team=d.members||[];return d;}catch(e){return null;}}
+async function crLoadTeam(){try{const d=await plApi('/api/crm/team');CR.team=d.members||[];CR.teamInfo=d;return d;}catch(e){return null;}}
+// Whose schedule I can see (up and down my line), and who is under me.
+const crSees=()=>{const m=CR.teamInfo&&CR.teamInfo.me;return m?CR.team.filter(x=>x.id!==m.id&&m.sees.includes(x.id)):[];};
+const crBelow=()=>{const m=CR.teamInfo&&CR.teamInfo.me;return m?CR.team.filter(x=>m.below.includes(x.id)):[];};
+const crLeads=()=>crCanManage()||crBelow().length>0;
 function crOwnerOptions(sel){return '<option value="">Unassigned</option>'+CR.team.map(m=>`<option value="${m.id}"${m.id===sel?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`).join('');}
 function crMenu(force){const m=document.getElementById('cr-menu');const open=force===undefined?!m.classList.contains('open'):force;m.classList.toggle('open',open);document.getElementById('cr-menu-btn').setAttribute('aria-expanded',open);}
 document.addEventListener('click',e=>{if(!e.target.closest('#cr-menu')&&!e.target.closest('#cr-menu-btn'))crMenu(false);});
@@ -1156,8 +1169,10 @@ function cvRender(){
   document.querySelectorAll('#cv-seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===CV.view));
   // who
   const w=document.getElementById('cv-whowrap');
-  if(crCanManage()){
-    w.innerHTML=`<select class="cred-input cv-who" aria-label="Whose calendar" onchange="CV.who=this.value;CV.data=null;cvLoad()"><option value="me"${CV.who==='me'?' selected':''}>My calendar</option><option value="all"${CV.who==='all'?' selected':''}>Everyone</option>${CR.team.filter(m=>!CR.me||m.id!==CR.me.userId).map(m=>`<option value="${m.id}"${CV.who===m.id?' selected':''}>${uxEsc(m.name||m.email)}</option>`).join('')}</select>`;
+  // The owner and admins pick anyone; others pick the people above and below them.
+  const cvPeople=crCanManage()?CR.team.filter(m=>!CR.me||m.id!==CR.me.userId):crSees();
+  if(cvPeople.length){
+    w.innerHTML=`<select class="cred-input cv-who" aria-label="Whose calendar" onchange="CV.who=this.value;CV.data=null;cvLoad()"><option value="me"${CV.who==='me'?' selected':''}>My calendar</option><option value="all"${CV.who==='all'?' selected':''}>${crCanManage()?'Everyone':'Everyone I can see'}</option>${cvPeople.map(m=>`<option value="${m.id}"${CV.who===m.id?' selected':''}>${uxEsc(m.name||m.email)} · ${uxEsc(m.role_label||'')}</option>`).join('')}</select>`;
   }else w.innerHTML='';
   // filters, with counts for what's in view
   const cnt={};for(const i of d.items)cnt[i.type]=(cnt[i.type]||0)+1;
@@ -1293,7 +1308,7 @@ async function cvEdit(key,day){
       <div class="full"><label style="display:flex;gap:8px;align-items:center;font-size:17px"><input type="checkbox" id="cv-e-ad"${allDay?' checked':''} onchange="document.getElementById('cv-e-times').style.display=this.checked?'none':''"> All day</label></div>
       <div class="full" id="cv-e-times" style="display:${allDay?'none':'grid'};grid-template-columns:1fr 1fr;gap:8px 10px"><div><label for="cv-e-s">Starts</label><input id="cv-e-s" type="time" class="cred-input" value="${st}"></div><div><label for="cv-e-e">Ends</label><input id="cv-e-e" type="time" class="cred-input" value="${en}"></div></div>
       <div class="full"><label for="cv-e-deal">Job or deal (optional)</label><select id="cv-e-deal" class="cred-input"><option value="">None</option>${CV.deals.map(x=>`<option value="${x.id}"${i&&i.dealId===x.id?' selected':''}>${uxEsc(x.title)}${x.contact_name?' · '+uxEsc(x.contact_name):''}</option>`).join('')}</select></div>
-      ${crCanManage()?`<div class="full"><label for="cv-e-who">Whose calendar</label><select id="cv-e-who" class="cred-input"><option value="">Everyone’s</option>${CR.team.map(m=>`<option value="${m.id}"${who===m.id?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`).join('')}</select></div>`:''}
+      ${crLeads()?`<div class="full"><label for="cv-e-who">Whose calendar</label><select id="cv-e-who" class="cred-input">${crCanManage()?'<option value="">Everyone’s</option>':''}${(crCanManage()?CR.team:CR.team.filter(m=>(CR.me&&m.id===CR.me.userId)||crBelow().some(b=>b.id===m.id))).map(m=>`<option value="${m.id}"${who===m.id?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`).join('')}</select></div>`:''}
       <div class="full"><label for="cv-e-l">Where (optional)</label><input id="cv-e-l" class="cred-input" maxlength="300" value="${uxEsc(i&&i.location||'')}" placeholder="Address, or leave empty for the job’s"></div>
       <div class="full"><label for="cv-e-n">Notes (optional)</label><textarea id="cv-e-n" class="cred-input" rows="2" maxlength="2000">${uxEsc(i&&i.notes||'')}</textarea></div>
     </div>
@@ -1307,7 +1322,7 @@ async function cvSave(btn,id){
   const dealId=v('cv-e-deal')||null;
   const loc=(v('cv-e-l')||'').trim();
   const body={title:v('cv-e-t'),kind:v('cv-e-k'),date:v('cv-e-d'),allDay:ad,time:ad?null:v('cv-e-s'),endTime:ad?null:v('cv-e-e'),dealId,location:loc,notes:v('cv-e-n')};
-  if(crCanManage())body.userId=v('cv-e-who')||null;
+  if(crLeads()&&document.getElementById('cv-e-who'))body.userId=v('cv-e-who')||null;
   btn.disabled=true;
   try{
     if(id)await plApi('/api/crm/calendar/events/'+id,{method:'PATCH',body});else await plApi('/api/crm/calendar/events',{body});
@@ -1707,7 +1722,17 @@ async function esCopy(){try{const {estimate}=await plApi('/api/crm/deals/'+ES.cu
 async function esDelete(){if(!confirm('Delete this draft? (It stays in the recycle bin for 30 days.)'))return;try{await plApi('/api/crm/estimates/'+ES.cur.id,{method:'DELETE'});uxClose();if(CR.view==='estimates')esLoad();}catch(e){showNotif('Could not delete',e.message);}}
 
 /* ---------- team ---------- */
-const TM_ROLE={owner:'Owner',admin:'Admin',member:'Member'};
+const TM_ROLE={owner:'Owner',admin:'Admin',member:'Team member'};
+const tmRoles=()=>((CR.teamInfo&&CR.teamInfo.roles)||[]);
+const tmRank=(r)=>{const x=tmRoles().find(o=>o.key===r);return x?x.rank:40;};
+const tmLabel=(r)=>{const x=tmRoles().find(o=>o.key===r);return x?x.label:(TM_ROLE[r]||r);};
+const tmName=(id)=>{const m=CR.team.find(x=>x.id===id);return m?(m.name||m.email):'';};
+function tmRoleOpts(cur){return tmRoles().filter(o=>o.key!=='owner').map(o=>`<option value="${o.key}"${cur===o.key?' selected':''}>${uxEsc(o.label)}</option>`).join('');}
+// People someone in this role may report to: anyone in a higher role.
+function tmBossOpts(role,cur,selfId){
+  return `<option value="">The owner and admins</option>`+CR.team.filter(m=>m.id!==selfId&&tmRank(m.role)>tmRank(role)).map(m=>`<option value="${m.id}"${cur===m.id?' selected':''}>${uxEsc(m.name||m.email)} · ${uxEsc(m.role_label||tmLabel(m.role))}</option>`).join('');
+}
+function tmAbout(role){const x=tmRoles().find(o=>o.key===role);return x?uxEsc(x.about):'';}
 async function tmLoad(){
   const d=await crLoadTeam();
   const list=document.getElementById('tm-list');
@@ -1718,22 +1743,52 @@ async function tmLoad(){
     <div class="pl-form" style="margin-top:8px">
       <div><label for="tm-name">Name</label><input id="tm-name" class="cred-input" autocomplete="off"></div>
       <div><label for="tm-email">Email</label><input id="tm-email" class="cred-input" type="email" inputmode="email" autocomplete="off"></div>
-      <div class="full"><label for="tm-role">Role</label><select id="tm-role"><option value="member">Member: works deals</option><option value="admin">Admin: also manages the team, company and automatic emails</option></select></div>
+      <div><label for="tm-role">Role</label><select id="tm-role" onchange="tmInviteRole()">${tmRoleOpts('member')}</select><div class="sm" id="tm-role-about" style="margin-top:4px">${tmAbout('member')}</div></div>
+      <div><label for="tm-boss">Reports to</label><select id="tm-boss">${tmBossOpts('member','',null)}</select></div>
     </div>
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="tmInvite(this)">Send invitation</button></div><div class="sm" id="tm-msg"></div></div>`:'');
+  // Who can see whose schedule.
+  const me=d.me,others=crSees();
+  const seeTxt=manage||d.visibility==='everyone'?'everyone on the team':others.length?others.map(m=>uxEsc(m.name||m.email)).join(', '):'only your own (no one is above or below you yet)';
+  document.getElementById('tm-sees').innerHTML=`<div class="pl-pb"><div class="pl-item-t">Who sees whose schedule</div>
+    <div class="sm" style="margin-top:4px">Calendars, tasks and site visits. You can see the schedule of <b>${seeTxt}</b>.${!manage&&crBelow().length?` You can also put tasks and appointments on the calendars of ${crBelow().map(m=>uxEsc(m.name||m.email)).join(', ')}.`:''}</div>
+    ${manage?`<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+      <label class="pl-switch" style="align-items:flex-start"><input type="radio" name="tm-vis" value="chain" ${d.visibility!=='everyone'?'checked':''} onchange="tmVis('chain')"><span><b>Up and down the line</b> (recommended)<br><span class="sm">Each person sees the people they report to and the people who report to them. The owner and admins see everyone.</span></span></label>
+      <label class="pl-switch" style="align-items:flex-start"><input type="radio" name="tm-vis" value="everyone" ${d.visibility==='everyone'?'checked':''} onchange="tmVis('everyone')"><span><b>Everyone sees everyone’s</b><br><span class="sm">Good for a small team that all works together.</span></span></label>
+    </div>`:''}</div>`;
   TMN={};d.members.forEach(m=>TMN[m.id]=m.name||m.email);
   list.innerHTML=d.members.map(m=>{
-    const me=CR.me&&m.id===CR.me.userId;
-    const canEdit=manage&&m.role!=='owner'&&!me;
-    return `<div class="pl-item"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(m.name||m.email)}${me?' (you)':''}</div><div class="pl-item-d">${uxEsc(m.email)} · ${m.open_deals} open deal${m.open_deals===1?'':'s'}</div></div><span class="pl-pill${m.role==='owner'?' on':''}">${TM_ROLE[m.role]||m.role}</span></div>
-      ${canEdit?`<div class="pl-acts"><select onchange="tmRole('${m.id}',this.value)" aria-label="Role for ${uxEsc(m.name||m.email)}"><option value="member"${m.role==='member'?' selected':''}>Member</option><option value="admin"${m.role==='admin'?' selected':''}>Admin</option></select><button class="btn-xs" style="color:var(--red)" onclick="tmRemove('${m.id}')">Remove</button></div>`:''}</div>`;
+    const isMe=CR.me&&m.id===CR.me.userId;
+    const canEdit=manage&&m.role!=='owner'&&!isMe;
+    const boss=m.reports_to?tmName(m.reports_to):'';
+    const under=d.members.filter(x=>x.reports_to===m.id);
+    const line=m.role==='owner'?'Runs the company':boss?'Reports to '+uxEsc(boss):m.role==='admin'?'Reports to the owner':'Reports to the owner and admins';
+    return `<div class="pl-item"><div class="pl-card-top"><div><div class="pl-item-t">${uxEsc(m.name||m.email)}${isMe?' (you)':''}</div><div class="pl-item-d">${uxEsc(m.email)} · ${m.open_deals} open deal${m.open_deals===1?'':'s'}</div><div class="pl-item-d">${line}${under.length?' · '+(under.length===1?'1 person reports':under.length+' people report')+' to them':''}</div></div><span class="pl-pill${m.role==='owner'?' on':''}">${uxEsc(m.role_label||tmLabel(m.role))}</span></div>
+      ${canEdit?`<div class="pl-form" style="margin-top:8px">
+        <div><label for="tm-r-${m.id}">Role</label><select id="tm-r-${m.id}" onchange="tmRole('${m.id}',this.value)">${tmRoleOpts(m.role)}</select></div>
+        <div><label for="tm-b-${m.id}">Reports to</label><select id="tm-b-${m.id}" onchange="tmBoss('${m.id}',this.value)">${tmBossOpts(m.role,m.reports_to||'',m.id)}</select></div>
+      </div><div class="pl-acts"><button class="btn-xs" style="color:var(--red)" onclick="tmRemove('${m.id}')">Remove</button></div>`:''}</div>`;
   }).join('');
-  document.getElementById('tm-invites').innerHTML=d.invites.length?'<div class="pl-h">Waiting to join</div><div class="pl-list">'+d.invites.map(i=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(i.name||i.email)}</div><div class="pl-item-d">${uxEsc(i.email)} · ${TM_ROLE[i.role]} · invited ${new Date(i.created_at).toLocaleDateString()}, link works until ${new Date(i.expires_at).toLocaleDateString()}</div>${manage?`<div class="pl-acts"><button class="btn-xs" onclick="tmCancel('${i.id}')">Cancel invitation</button></div>`:''}</div>`).join('')+'</div>':'';
+  document.getElementById('tm-invites').innerHTML=d.invites.length?'<div class="pl-h">Waiting to join</div><div class="pl-list">'+d.invites.map(i=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(i.name||i.email)}</div><div class="pl-item-d">${uxEsc(i.email)} · ${uxEsc(tmLabel(i.role))}${i.reports_to?' · will report to '+uxEsc(tmName(i.reports_to)):''} · invited ${new Date(i.created_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}, link works until ${new Date(i.expires_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>${manage?`<div class="pl-acts"><button class="btn-xs" onclick="tmCancel('${i.id}')">Cancel invitation</button></div>`:''}</div>`).join('')+'</div>':'';
+  tmTree(d.members);
 }
+// Owner at the top; under them everyone who reports to no one; then each person's reports.
+function tmTree(ms){
+  const kids=(id)=>ms.filter(m=>m.reports_to===id);
+  const node=(m,depth)=>`<li><span class="tm-node${CR.me&&m.id===CR.me.userId?' me':''}"><b>${uxEsc(m.name||m.email)}</b> <span class="tm-role">${uxEsc(m.role_label||tmLabel(m.role))}</span></span>${depth<8&&kids(m.id).length?`<ul>${kids(m.id).map(k=>node(k,depth+1)).join('')}</ul>`:''}</li>`;
+  const owners=ms.filter(m=>m.role==='owner');
+  const loose=ms.filter(m=>m.role!=='owner'&&(!m.reports_to||!ms.some(x=>x.id===m.reports_to)));
+  const el=document.getElementById('tm-tree');
+  if(ms.length<2){el.innerHTML='<div class="pl-empty">When you invite people, this shows who reports to whom.</div>';return;}
+  el.innerHTML=`<ul>${owners.map(o=>`<li><span class="tm-node${CR.me&&o.id===CR.me.userId?' me':''}"><b>${uxEsc(o.name||o.email)}</b> <span class="tm-role">Owner</span></span><ul>${[...loose,...kids(o.id)].map(k=>node(k,1)).join('')}</ul></li>`).join('')}</ul>`;
+}
+function tmInviteRole(){const r=document.getElementById('tm-role').value;document.getElementById('tm-role-about').textContent=(tmRoles().find(o=>o.key===r)||{}).about||'';const b=document.getElementById('tm-boss');const cur=b.value;b.innerHTML=tmBossOpts(r,cur,null);}
+async function tmBoss(id,boss){try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{reportsTo:boss||null}});showNotif('Saved',boss?TMN[id]+' now reports to '+tmName(boss)+'.':TMN[id]+' reports to the owner and admins.');tmLoad();}catch(e){showNotif('Could not change that',e.message);tmLoad();}}
+async function tmVis(v){try{await plApi('/api/crm/team-settings',{method:'PATCH',body:{visibility:v}});showNotif('Saved',v==='everyone'?'Everyone can now see everyone’s schedule.':'People now see the schedules of those above and below them.');tmLoad();}catch(e){showNotif('Could not save',e.message);tmLoad();}}
 async function tmInvite(btn){
   const msg=document.getElementById('tm-msg');btn.disabled=true;msg.textContent='';
   try{
-    const r=await plApi('/api/crm/team/invites',{body:{name:document.getElementById('tm-name').value,email:document.getElementById('tm-email').value,role:document.getElementById('tm-role').value}});
+    const r=await plApi('/api/crm/team/invites',{body:{name:document.getElementById('tm-name').value,email:document.getElementById('tm-email').value,role:document.getElementById('tm-role').value,reportsTo:document.getElementById('tm-boss').value||null}});
     await tmLoad();
     const m=document.getElementById('tm-msg');
     m.innerHTML=r.emailed?'Invitation sent.':'The email could not be sent, so pass this link on yourself (it works once, for 7 days):<br><input class="cred-input" readonly value="'+uxEsc(r.inviteUrl)+'" onclick="this.select()" style="margin-top:6px">';
@@ -1743,7 +1798,9 @@ async function tmSaveName(btn){
   const v=document.getElementById('tm-myname').value;btn.disabled=true;
   try{await plApi('/api/crm/me',{method:'PATCH',body:{name:v}});CR.me.name=v.trim();tmLoad();}catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
 }
-async function tmRole(id,role){try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{role}});showNotif('Role changed','');tmLoad();}catch(e){showNotif('Could not change the role',e.message);tmLoad();}}
+async function tmRole(id,role){
+  if(role==='admin'&&!confirm('Make '+(TMN[id]||'them')+' an admin? Admins can change the team, company details, automatic emails and billing, and see everyone’s schedule.')){tmLoad();return;}
+  try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{role}});showNotif('Role changed',(TMN[id]||'They')+' is now '+(w=>(/^[aeiou]/.test(w)?'an ':'a ')+w)(tmLabel(role).toLowerCase())+'.');tmLoad();}catch(e){showNotif('Could not change the role',e.message);tmLoad();}}
 let TMN={};
 async function tmRemove(id){const name=TMN[id]||'this person';
   if(!confirm('Remove '+name+'? Their login stops working right away. Their deals become unassigned and their history stays.'))return;
@@ -3271,7 +3328,7 @@ function tdRow(t,showDeal){
 }
 function tdRender(d){
   const wrap=document.getElementById('td-allwrap');
-  if(wrap)wrap.innerHTML=crCanManage()&&CR.team.length>1?`<label class="pl-switch" style="font-size:16px;font-weight:400"><input type="checkbox" ${TD.all?'checked':''} onchange="TD.all=this.checked;plLoadNeeds()"> Whole team</label>`:'';
+  if(wrap)wrap.innerHTML=crLeads()&&CR.team.length>1?`<label class="pl-switch" style="font-size:16px;font-weight:400"><input type="checkbox" ${TD.all?'checked':''} onchange="TD.all=this.checked;plLoadNeeds()"> ${crCanManage()?'Whole team':'Me and the people under me'}</label>`:'';
   document.getElementById('td-tasks').innerHTML=d.tasks.length?d.tasks.map(t=>tdRow(t,true)).join(''):'<div class="pl-empty">No open tasks.</div>';
   document.getElementById('td-visits').innerHTML=d.visits.length?d.visits.map(v=>`<button class="pl-card" onclick="plOpenDeal('${v.id}')"><div class="pl-card-title">📅 ${new Date(v.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div><div class="pl-card-sub">${uxEsc(v.contact_name)} · ${uxEsc(v.title)}${v.address?' · '+uxEsc(v.address):''}</div></button>`).join(''):'<div class="pl-empty">No site visits booked this week.</div>';
 }

@@ -2,7 +2,7 @@ process.env.ANTHROPIC_API_KEY = 'test-only';
 const assert = require('assert/strict');
 const { R } = require('./_local');
 // Stand-in for the AI: answers like the real model would for this note.
-require.cache[require.resolve(R + '/lib/anthropic')] = { exports: { generateJSON: async (prompt) => { assert.match(prompt, /about 150k/); return { value: 150000, next_step: 'Send the design agreement', next_step_due: '2026-10-20', site_visit: '2026-10-22T10:30' }; } } };
+require.cache[require.resolve(R + '/lib/anthropic')] = { exports: { generateJSON: async (prompt) => { assert.match(prompt, /about 150k/); return { value: 150000, next_step: 'Send the design agreement', next_step_due: '2026-10-20', site_visit: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) + 'T10:30' }; } } };
 const { query, pool } = require(R + '/db');
 const crm = require(R + '/lib/crm');
 (async () => {
@@ -14,7 +14,7 @@ const crm = require(R + '/lib/crm');
     const d = await crm.getDeal(t, deal.id);
     assert.equal(Number(d.value), 150000);
     assert.equal(d.stage, 'site_visit', 'booking the visit moved the deal');
-    assert.equal(new Date(d.site_visit_at).toISOString(), '2026-10-22T15:30:00.000Z', '10:30 Central');
+    assert.equal(new Date(d.site_visit_at).toLocaleString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' }), '10:30 AM', '10:30 Central');
     const tasks = (await query('SELECT title, source, due_at FROM crm_tasks WHERE deal_id = $1 ORDER BY created_at', [deal.id])).rows;
     assert.ok(tasks.some(x => x.title === 'Send the design agreement' && x.source === 'voice'));
     // A second note never overwrites a value that's already there.

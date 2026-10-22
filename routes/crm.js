@@ -29,7 +29,7 @@ router.get('/api/crm/me', requireAuth, async (req, res) => {
       `SELECT u.id, u.email, u.name, u.role, t.company_name, t.products FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
     if (!r) return res.status(401).json({ error: { message: 'Not logged in.' } });
     res.json({
-      userId: r.id, email: r.email, name: r.name, role: r.role, canManage: team.isManager(r.role), companyName: r.company_name,
+      userId: r.id, email: r.email, name: r.name, role: r.role, roleLabel: team.roleLabel(r.role), canManage: team.isManager(r.role), companyName: r.company_name,
       products: r.products || [], hasCrm: (r.products || []).includes('crm'),
       // Team members invited to the CRM only see the CRM; the marketing dashboard is the owner's.
       hasMarketing: (r.products || []).includes('marketing') && r.role === 'owner'
@@ -362,18 +362,24 @@ router.get('/api/crm/summary', requireAuth, async (req, res) => {
 // unassigned ones), and site visits coming up this week.
 router.get('/api/crm/today', requireAuth, async (req, res) => {
   try {
-    const everyone = req.query.all === '1' && team.isManager(req.crmUser.role);
+    // "My team": the owner and admins see everyone's; a project manager or
+    // superintendent sees their own and the people under them.
+    let ids = [req.userId];
+    if (req.query.all === '1') {
+      const r = await team.reach(req.tenantId, req.crmUser);
+      ids = team.isManager(req.crmUser.role) ? null : [req.userId, ...r.below];
+    }
     const [inbox, open, visits] = await Promise.all([
       crm.listInbox(req.tenantId),
-      tasks.listOpen(req.tenantId, { userId: everyone ? null : req.userId }),
+      tasks.listOpen(req.tenantId, { userIds: ids }),
       query(
         `SELECT d.id, d.title, d.site_visit_at, c.name AS contact_name, p.address FROM crm_deals d JOIN crm_contacts c ON c.id = d.contact_id
          LEFT JOIN crm_properties p ON p.id = d.property_id
          WHERE d.tenant_id = $1 AND d.site_visit_at BETWEEN now() - interval '2 hours' AND now() + interval '7 days' AND d.stage NOT IN ('lost', 'complete')
-           AND ($2::uuid IS NULL OR d.owner_user_id = $2::uuid OR d.owner_user_id IS NULL)
-         ORDER BY d.site_visit_at LIMIT 50`, [req.tenantId, everyone ? null : req.userId]).then(r => r.rows)
+           AND ($2::uuid[] IS NULL OR COALESCE(d.site_visit_user_id, d.owner_user_id) = ANY($2::uuid[]) OR COALESCE(d.site_visit_user_id, d.owner_user_id) IS NULL)
+         ORDER BY d.site_visit_at LIMIT 50`, [req.tenantId, ids]).then(r => r.rows)
     ]);
-    res.json({ inbox, tasks: open, visits });
+    res.json({ inbox, tasks: open, visits, team: ids === null || ids.length > 1 });
   } catch (err) { fail(res, err, 'Failed to load Today'); }
 });
 
@@ -412,12 +418,23 @@ router.patch('/api/crm/me', requireAuth, async (req, res) => {
 });
 
 router.get('/api/crm/team', requireAuth, async (req, res) => {
-  try { res.json({ ...(await team.listTeam(req.tenantId)), me: { id: req.crmUser.id, role: req.crmUser.role } }); } catch (err) { fail(res, err, 'Failed to load your team'); }
+  try {
+    const r = await team.reach(req.tenantId, req.crmUser);
+    const roles = Object.entries(team.ROLE_INFO).map(([key, v]) => ({ key, ...v }));
+    res.json({ ...(await team.listTeam(req.tenantId)), roles,
+      me: { id: req.crmUser.id, role: req.crmUser.role, sees: [...r.ids], canAssign: [...r.assign], below: [...r.below], above: [...r.above] } });
+  } catch (err) { fail(res, err, 'Failed to load your team'); }
+});
+
+// Whether schedules are seen up and down each person's line, or by everyone.
+router.patch('/api/crm/team-settings', requireAuth, managersOnly, async (req, res) => {
+  try { await team.setVisibility({ tenantId: req.tenantId, visibility: (req.body || {}).visibility }); res.json({ ok: true }); }
+  catch (err) { fail(res, err, 'Failed to save'); }
 });
 
 router.post('/api/crm/team/invites', requireAuth, managersOnly, async (req, res) => {
-  const { email, name, role } = req.body || {};
-  try { await require('../lib/crmBilling').checkSeat(req.tenantId); res.json({ ok: true, ...(await team.createInvite({ tenantId: req.tenantId, invitedBy: req.userId, email, name, role: role || 'member', baseUrl: baseUrlOf(req) })) }); }
+  const { email, name, role, reportsTo } = req.body || {};
+  try { await require('../lib/crmBilling').checkSeat(req.tenantId); res.json({ ok: true, ...(await team.createInvite({ tenantId: req.tenantId, invitedBy: req.userId, email, name, role: role || 'member', reportsTo: reportsTo || null, baseUrl: baseUrlOf(req) })) }); }
   catch (err) { fail(res, err, 'Failed to send the invitation'); }
 });
 
@@ -428,9 +445,14 @@ router.delete('/api/crm/team/invites/:id', requireAuth, managersOnly, async (req
   } catch (err) { fail(res, err, 'Failed to cancel the invitation'); }
 });
 
+// { role } and/or { reportsTo } (a user id, or null for no one).
 router.patch('/api/crm/team/:userId', requireAuth, managersOnly, async (req, res) => {
-  try { await team.setRole({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId, role: (req.body || {}).role }); res.json({ ok: true }); }
-  catch (err) { fail(res, err, 'Failed to change the role'); }
+  const b = req.body || {};
+  try {
+    if (b.role !== undefined) await team.setRole({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId, role: b.role });
+    if (b.reportsTo !== undefined) await team.setReportsTo({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId, reportsTo: b.reportsTo || null });
+    res.json({ ok: true });
+  } catch (err) { fail(res, err, 'Failed to change the role'); }
 });
 
 router.delete('/api/crm/team/:userId', requireAuth, managersOnly, async (req, res) => {
