@@ -1132,7 +1132,19 @@ function crGuide(key){
   if(GD.on){if(!GD.q.includes(key))GD.q.push(key);return;}
   const steps=g.steps.filter(s=>!s[3]||s[3]());if(!steps.length)return;
   GD.on=true;GD.key=key;GD.steps=steps;GD.i=0;GD.icon=g.icon;
-  setTimeout(gdRender,350);
+  setTimeout(()=>{
+    // Only on its own screen or window: if they've already moved on, it waits for next time
+    // (it only counts as seen once they've tapped through it).
+    if(!gdStillThere(key)){GD.on=false;const next=GD.q.shift();if(next)crGuide(next);return;}
+    gdRender();
+  },350);
+}
+const GD_WINDOWS={deal:'plOpenDeal',job:'jbOpen',estimate:'esOpen',newdeal:'plNewDeal',caladd:'cvEdit',sub:'vdPage',search:'srOpen',bin:'binOpen',mycal:'dyOpen',activity:'alOpen'};
+function gdStillThere(key){
+  if(GD_WINDOWS[key]){const m=document.getElementById('ux-modal');return !!(m&&m.style.display!=='none')||key==='search';}
+  // A screen's tip: that screen is the one showing, with no window open over it.
+  const m=document.getElementById('ux-modal');
+  return CR.view===key&&!(m&&m.style.display!=='none');
 }
 function gdRender(){
   let el=document.getElementById('gd');
