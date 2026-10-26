@@ -1586,6 +1586,25 @@ describe('CRM team safety, money, homeowner and sub extras, help and errors', ()
     assert.equal((await (await o.get(`/api/crm/vendors/${v.id}/insurance`)).json()).certificate, null);
   });
 
+  test('the pop-up tips remember what each person has seen, on any device, and can be turned off or back on', async () => {
+    const o = await company('tips');
+    assert.deepEqual((await (await o.get('/api/crm/me')).json()).tips, { seen: [], off: false });
+    await o.post('/api/crm/me/tips', { seen: 'pipeline' });
+    await o.post('/api/crm/me/tips', { seen: 'pipeline' });
+    await o.post('/api/crm/me/tips', { seen: 'deal' });
+    assert.equal((await o.post('/api/crm/me/tips', { seen: '<script>' })).status, 200);
+    assert.deepEqual((await (await o.get('/api/crm/me')).json()).tips, { seen: ['pipeline', 'deal'], off: false }, 'once each, junk ignored');
+    await o.post('/api/crm/me/tips', { off: true });
+    assert.equal((await (await o.get('/api/crm/me')).json()).tips.off, true);
+    await o.post('/api/crm/me/tips', { reset: true });
+    assert.deepEqual((await (await o.get('/api/crm/me')).json()).tips, { seen: [], off: false });
+    const h = makeClient();
+    await h.post('/api/crm-auth/signup', { type: 'homeowner', name: 'Tia', email: uniqueEmail('tips-home'), password: pw, acceptedTerms: true });
+    assert.equal((await h.post('/api/crm-account/tips', { seen: 'home' })).status, 200);
+    assert.deepEqual((await (await h.get('/api/crm-account')).json()).account.tips, { seen: ['home'], off: false });
+    assert.equal((await makeClient().post('/api/crm/me/tips', { seen: 'x' })).status, 401);
+  });
+
   test('help requests, and errors from people’s screens are kept', async () => {
     const o = await company('help');
     assert.equal((await o.post('/api/crm/help-request', {})).status, 400);

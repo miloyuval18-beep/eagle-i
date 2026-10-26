@@ -58,7 +58,8 @@ const ymd = (d) => d.toISOString().slice(0, 10);
     const mbKim = (await query(`INSERT INTO crm_mailboxes (tenant_id, email, name) VALUES ($1, 'kim@levi.test', 'Kim') RETURNING *`, [t])).rows[0];
     const deal = await crm.createDeal({ tenantId: t, name: 'Dana Ruiz', email: 'dana@owner.test', title: 'Ruiz addition', userId: sam, ownerUserId: sam });
     const gulf = await jobs.saveVendor({ tenantId: t, body: { name: 'Gulf Framing', trade: 'Framing', email: 'bids@gulfframing.test' } });
-    DEADLINE = ymd(new Date(NOW.getTime() + 1 * 86400000)); PROMISE = ymd(new Date(NOW.getTime() + 2 * 86400000));
+    // Dates still ahead of the real today (past-due promises are rightly skipped), whatever day this runs.
+    DEADLINE = ymd(new Date(Date.now() + 1 * 86400000)); PROMISE = ymd(new Date(Date.now() + 2 * 86400000));
 
     // Sam's mailbox.
     const M = (id, thread, { from, to, cc = '', subject, at, body = '', extra = {}, labels = ['INBOX'] }) => ({ id, threadId: thread, labelIds: labels, internalDate: String(at.getTime()), snippet: body.slice(0, 120),

@@ -13,7 +13,8 @@ const flush = async (dealId) => {
   const r = await pb.processDueSends({ now: WED_NOON, send, onlyDealId: dealId });
   const next = new Date(WED_NOON.getTime() + 86400000);
   if ((await query(`UPDATE crm_playbook_sends SET due_at = $2, sent_at = NULL WHERE deal_id = $1 AND status = 'pending' AND cancel_reason = 'one_a_day' RETURNING id`, [dealId, new Date(next.getTime() - 60000)])).rowCount) {
-    await query(`UPDATE crm_playbook_sends SET sent_at = sent_at - interval '2 days' WHERE deal_id = $1 AND status = 'sent'`, [dealId]);
+    // Yesterday's sends, measured against the pretend clock (not the real one), so this works any day it runs.
+    await query(`UPDATE crm_playbook_sends SET sent_at = $2 WHERE deal_id = $1 AND status = 'sent'`, [dealId, new Date(WED_NOON.getTime() - 86400000)]);
     const r2 = await pb.processDueSends({ now: next, send, onlyDealId: dealId });
     r.sent += r2.sent;
   }

@@ -170,6 +170,9 @@ router.patch('/api/crm-account', account, wrap('Couldn’t save', async (req, re
 router.post('/api/crm-account/link', account, wrap('Couldn’t add it', async (req, res) => {
   res.json(await acc.linkByUrl(req.accountId, (req.body || {}).url));
 }));
+router.post('/api/crm-account/tips', account, wrap('Couldn’t save', async (req, res) => {
+  res.json({ tips: await require('../lib/crmTips').update('crm_accounts', req.accountId, req.body || {}) });
+}));
 router.post('/api/crm-account/resend', account, wrap('Couldn’t send it', async (req, res) => {
   res.json(await acc.sendAccountVerify(req.accountId, baseUrlOf(req)));
 }));

@@ -50,6 +50,13 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
 .wait.late{border-color:#fda29b;background:#fff8f7}
 .wait b{font-size:18.5px;display:block}
 .wait .d{font-size:16.5px;color:var(--ink3);margin-top:2px}
+.gd{position:fixed;left:0;right:0;bottom:16px;z-index:50;display:flex;justify-content:center;padding:0 12px}
+.gd-card{width:100%;max-width:460px;background:#fff;border:2px solid var(--accent);border-radius:16px;box-shadow:0 18px 50px rgba(16,24,40,.28);padding:16px 18px 12px}
+.gd-n{font-size:14.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.gd-t{font-size:21px;font-weight:800;margin-top:6px}
+.gd-b{font-size:17.5px;color:var(--ink2);margin-top:6px}
+.gd-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+.gd-off{display:block;margin:8px auto 0;background:none;border:0;color:var(--ink3);font-family:var(--f);font-size:14.5px;text-decoration:underline;cursor:pointer}
 [hidden]{display:none!important}
 </style>
 <link rel="stylesheet" href="/eaglei-theme.css">
@@ -70,7 +77,7 @@ async function call(url,body,method){
   return d;
 }
 let FIRST=true;
-async function load(){D=await call('/api/crm-account');
+async function load(){D=await call('/api/crm-account');setTimeout(guide,400);
   // Back from the confirmation link: carry on where they were (the list).
   if(FIRST&&q.get('confirmed')==='1'&&!D.account.setup_done_at)STEP=steps().indexOf('list');FIRST=false;
   $('kind-label').textContent=D.account.kind==='sub'?'for subs':'for homeowners';render();}
@@ -171,6 +178,32 @@ async function addLink(btn){btn.disabled=true;try{const r=await call('/api/crm-a
 async function resend(btn){btn.disabled=true;try{const r=await call('/api/crm-account/resend',{});const m=$('rs-msg');if(m)m.textContent=r.sent?'Sent. Check your inbox (and spam folder).':'The email couldn’t be sent right now. Try again in a few minutes.';else alert(r.sent?'Sent. Check your inbox (and spam folder).':'The email couldn’t be sent right now.');}catch(x){alert(x.message);}btn.disabled=false;}
 async function saveDetails(btn){btn.disabled=true;$('det-err').textContent='';try{const r=await call('/api/crm-account',detailsBody(),'PATCH');D.account=r.account;$('det-err').innerHTML='<span style="color:var(--ok)">Saved.</span>';}catch(x){$('det-err').textContent=x.message;}btn.disabled=false;}
 async function changePw(btn){btn.disabled=true;$('pw-err').textContent='';try{await call('/api/crm-account/password',{current:$('pw-cur').value,password:$('pw-new').value});$('pw-err').innerHTML='<span style="color:var(--ok)">Password changed.</span>';$('pw-cur').value=$('pw-new').value='';}catch(x){$('pw-err').textContent=x.message;}btn.disabled=false;}
+// Step-by-step tips the first time they land on their page (kept with their account).
+const GUIDES={
+  homeowner:[['Your Eagle I','Everything from your builder in one place. If you work with more than one builder who uses Eagle I, they all show up here.'],
+    ['Waiting for you','Anything your builder needs from you is at the top: an estimate to sign, a change to approve, a choice to make, or an invoice to pay. Tap the button on each one.'],
+    ['Your projects','Tap “Open my project” for updates, visits, photos, files and messages with your builder.'],
+    ['A link from your builder?','If your builder emailed you a project link, you can add it under your projects so it’s here too.']],
+  sub:[['Your Eagle I','Every builder you work with who uses Eagle I shows up here, with your jobs for each.'],
+    ['Your page with each builder','Tap “Open my page” for that builder’s jobs: dates, addresses, plans and bid requests. You can ask questions there too.'],
+    ['Keep your details current','Your phone, trade, license and insurance date fill in anything a builder is missing.']]
+};
+let GI=0;
+function guide(){
+  const a=D&&D.account;if(!a||!a.setup_done_at)return;
+  const t=a.tips||{};if(t.off||(t.seen||[]).includes('home'))return;
+  const steps=GUIDES[a.kind]||[];if(!steps.length)return;
+  let el=$('gd');if(!el){el=document.createElement('div');el.id='gd';el.className='gd';el.setAttribute('role','dialog');document.body.appendChild(el);}
+  const [title,body]=steps[GI],last=GI===steps.length-1;
+  el.innerHTML=`<div class="gd-card"><div class="gd-n">Step ${GI+1} of ${steps.length}</div><div class="gd-t">${esc(title)}</div><div class="gd-b">${esc(body)}</div>
+    <div class="gd-btns">${GI?'<button class="btn o sm" onclick="GI--;guide()">← Back</button>':''}<button class="btn sm" onclick="${last?'guideDone(false)':'GI++;guide()'}">${last?'OK, got it':'Next →'}</button></div>
+    <button class="gd-off" onclick="guideDone(true)">Don’t show tips anymore</button></div>`;
+}
+function guideDone(off){
+  const el=$('gd');if(el)el.remove();
+  D.account.tips={...(D.account.tips||{}),seen:[...((D.account.tips||{}).seen||[]),'home'],off:!!off||!!(D.account.tips||{}).off};
+  fetch('/api/crm-account/tips',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(off?{off:true,seen:'home'}:{seen:'home'})}).catch(()=>{});
+}
 async function signOut(){await fetch('/api/auth/logout',{method:'POST'});location.href='/crm/login';}
 load().catch(e=>{$('app').innerHTML='<div class="note warn">'+esc(e.message)+'</div>';});
 </script>

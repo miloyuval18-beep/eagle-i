@@ -335,6 +335,23 @@ input[type=date],input[type=datetime-local],input[type=time]{min-width:0;max-wid
 .pl-chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
 .pl-chip.active b{color:rgba(255,255,255,.7)}
 .pl-pill{font-size:14.5px;font-weight:600;padding:2px 9px;border:1px solid var(--bdr2);background:var(--bg4);color:var(--ink2)}
+.gd{position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom));z-index:1050;display:flex;justify-content:center;padding:0 12px;pointer-events:none}
+.gd-card{pointer-events:auto;width:100%;max-width:460px;background:#fff;border:2px solid var(--blue);border-radius:16px;box-shadow:0 18px 50px rgba(16,24,40,.28);padding:16px 18px 12px;animation:gdIn .25s ease-out}
+@keyframes gdIn{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.gd-top{display:flex;align-items:center;gap:10px}
+.gd-i{font-size:24px;line-height:1}
+.gd-n{font-size:14.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.gd-t{font-size:21px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.25}
+.gd-b{font-size:17.5px;color:var(--ink2);margin-top:6px;line-height:1.5}
+.gd-dots{display:flex;gap:6px;margin-top:12px}
+.gd-dots i{width:9px;height:9px;border-radius:50%;background:var(--bdr2)}
+.gd-dots i.on{background:var(--blue)}
+.gd-btns{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:12px}
+.gd-off{display:block;margin:8px auto 0;background:none;border:0;color:var(--ink3);font:inherit;font-size:14.5px;text-decoration:underline;cursor:pointer}
+body.gd-on .ai-fab{display:none}
+.gd-hl{outline:3px solid var(--blue)!important;outline-offset:3px;border-radius:8px;animation:gdPulse 1.6s ease-in-out infinite}
+@keyframes gdPulse{50%{outline-color:#8fb5e8}}
+@media (min-width:900px){.gd{bottom:24px;justify-content:flex-end;padding-right:24px}}
 .st-warn{background:#fffaeb;border:1px solid #fedf89;border-radius:10px;padding:10px 12px;font-size:16.5px;color:var(--ink2);margin-top:10px}
 .st-warn b{color:var(--ink)}
 .st-qr-wrap{display:flex;gap:16px;align-items:center;margin-top:8px}
@@ -686,6 +703,7 @@ select{max-width:100%;text-overflow:ellipsis}
       <button onclick="crMenu(false);crView('team')">Team</button>
       <button onclick="crMenu(false);alOpen()" id="cr-activity-btn" hidden>📋 Activity log</button>
       <button onclick="crMenu(false);hpOpen()">🙋 Help me set up</button>
+      <button onclick="crMenu(false);gdReset()">💡 Show the tips again</button>
       <button onclick="crMenu(false);crView('start')">✓ Guided setup</button>
       <button onclick="crMenu(false);binOpen()">🗑 Recycle bin</button>
       <button onclick="crMenu(false);crPauseAll()" id="cr-pause-btn" hidden>⏸ Pause all automatic emails</button>
@@ -1021,24 +1039,146 @@ function crMenu(force){const m=document.getElementById('cr-menu');const open=for
 document.addEventListener('click',e=>{if(!e.target.closest('#cr-menu')&&!e.target.closest('#cr-menu-btn'))crMenu(false);});
 async function crSignOut(){try{await fetch('/api/auth/logout',{method:'POST'});}catch(e){}location.href='/crm/login';}
 // A short tip the first time someone opens each screen; "Got it" hides it for good.
-const CR_TIPS={
-  ask:['✦','Ask Eagle I anything about your jobs, customers and money, in plain words, by typing or tapping 🎤. It can also do things for you, and always asks before sending anything to anyone.'],
-  pipeline:['🏠','Every customer you’re selling to. Tap one to see everything about it. To move it along, change its stage; Eagle I sends that stage’s emails for you once you’ve approved them.'],
-  needs:['✅','Start your day here: only what needs a person. Tap ✓ Done when something is handled, or Snooze it for later. You can always Undo.'],
-  calendar:['📅','This calendar fills itself: visits, job schedules, deliveries, payments due and more. Tap anything to see it or move it. ＋ Add is for anything else, like an inspection.'],
-  jobs:['🛠','Your jobs underway, and your subs and suppliers. Open a job for its schedule, daily logs, change orders and selections.'],
-  estimates:['💵','Estimates, invoices and money coming in and going out. A signed estimate is locked; make a revision to change it.']
+/* ---------- step-by-step tips ----------
+   The first time someone opens a screen or a window, a short card walks them
+   through it: a few steps, Back / Next / OK. It points at the button it talks
+   about when that's on screen. What they've seen is kept with their login
+   (lib/crmTips.js), so it doesn't come back on another phone. Account →
+   "Show the tips again" brings them all back. */
+const CR_GUIDES={
+  ask:{icon:'✦',steps:[
+    ['This is your assistant','Ask anything about your jobs, customers, schedule or money, in plain words. For example: “What’s on this week?” or “Who owes us money?”'],
+    ['Type or talk','Type in the box at the bottom, or tap 🎤 and just talk. Not sure what to ask? Tap one of the suggestions.','#ai-mic'],
+    ['It can do things for you','It can book visits, add tasks, write emails and estimates, and read plans you attach with 📎. Before anything goes to anyone, it shows you a card and waits for you to tap Send.'],
+    ['Your chats are saved','Tap ☰ at the top to see your past chats, or start a new one.']]},
+  pipeline:{icon:'🏠',steps:[
+    ['Everyone you’re selling to','Each card is one customer and project, grouped by where it stands: new lead, site visit, proposal, signed and so on.','#pl-list'],
+    ['Add a customer','Tap “＋ Add a deal” and fill in the name and how to reach them. Eagle I warns you if they’re already in here.','[onclick="plNewDeal()"]'],
+    ['Open one to see everything','Tap a card for the whole story: contact details, notes, emails, estimates, files and what to do next.'],
+    ['Move it along','When something changes, change its stage on the deal. That stage’s automatic emails start by themselves (only the ones you’ve turned on). If a move looks wrong, Eagle I asks first.']]},
+  needs:{icon:'✅',steps:[
+    ['Start your day here','Today shows only what needs a person: things Eagle I noticed, your tasks, and this week’s site visits. Everything else runs on its own.'],
+    ['Handle it, or snooze it','When something is taken care of, tap ✓ Done. Not now? Tap Snooze and it comes back later. Tapped by mistake? Undo.'],
+    ['Your to-do list','Your tasks are below. Type a new one in the box and tap Add. Tick the box when it’s done.','#td-new']]},
+  calendar:{icon:'📅',steps:[
+    ['It fills itself','Site visits, job schedules, tasks, deliveries, payments due and more appear here on their own. You don’t have to type them in.'],
+    ['Look at it your way','Choose Month, Week or List. Use ‹ and › to move, and “Today” to come back.','#cv-seg'],
+    ['Tap anything','Tap an item to see the details, or to move it to another day. If a sub is on it, they’re asked to confirm the new dates.'],
+    ['Add your own','“＋ Add” is for anything else, like an inspection or a meeting. “Add to my phone” puts this calendar on your phone’s own calendar.'],
+    ['Other people’s calendars','Use the menu next to the views to see someone else’s calendar: the people you report to, and the people who report to you.','#cv-whowrap',()=>crCanManage()||crSees().length>0]]},
+  jobs:{icon:'🛠',steps:[
+    ['Your jobs underway','Every signed job, where it stands, and what’s next.','#jb-list'],
+    ['Open a job','Tap a job for its schedule, daily logs and photos, change orders, selections and purchase orders.'],
+    ['Your subs and suppliers','Below the jobs is your list of subs and suppliers. Tap “🔗 Their page” to send a sub their private page with their dates and plans.']]},
+  estimates:{icon:'💵',steps:[
+    ['Estimates and money','Your estimates are here, along with invoices, cash flow and job costs if your role can see money.','#es-list'],
+    ['Start an estimate from a deal','Open the customer’s deal (in Pipeline) and tap “＋ Construction estimate”. Add lines from your cost catalog, then send it.'],
+    ['A signed estimate is locked','Once the homeowner signs, it can’t be changed by accident. To change it, make a revision.'],
+    ['Invoices','Open a deal and use “＋ New invoice”. You’ll see who owes what here, with overdue ones flagged.',null,()=>crCan('money')]]},
+  team:{icon:'👥',steps:[
+    ['Your team','Everyone at your company who uses Eagle I, what each person does, and who they report to.'],
+    ['Add people','Invite someone with their name, email, role and who they report to. Or share your company code and let people ask to join.','#tm-invite',()=>crCan('team')],
+    ['What each person can do','Each person’s card has their role and a “What they can do” checklist. A role starts with sensible ticks; change any of them.',null,()=>crCan('team')],
+    ['When someone leaves','“Turn off” stops them signing in but keeps their history. “Hand over their work” gives their open jobs and tasks to someone else.',null,()=>crCan('team')],
+    ['Whose schedule you see','You can see the calendars of the people above and below you. It says whose at the top of this page.']]},
+  company:{icon:'🏢',steps:[
+    ['Your company details','Your name, phone and address go on every email Eagle I sends. Automatic emails wait until the address is filled in.'],
+    ['Connect Google','Connect your Gmail so customer emails land on the right job by themselves.'],
+    ['Online payments','Let homeowners pay invoices online by card or bank.',null,()=>crCan('settings')],
+    ['Homeowners and subs','At the bottom: extras for homeowners and subs who make their own Eagle I accounts. They’re off until you switch them on.']]},
+  auto:{icon:'✉',steps:[
+    ['Emails that send themselves','Follow-ups, visit reminders, invoice reminders and thank-yous go out on their own at the right time.'],
+    ['Nothing goes out until you say so','Read each one. When you’re happy with the wording, approve it to switch it on. You can change the wording any time.','#pl-playbooks'],
+    ['See what’s coming up','The list shows every automatic email due this week. Tap Skip on any you don’t want sent.','#pl-upcoming'],
+    ['Need a break?','Account → “Pause all automatic emails” stops everything until you turn it back on.']]},
+  reports:{icon:'📈',steps:[['Weekly reports','A short summary of each week: new leads, how fast you answered, what you signed. It’s emailed to the owner and admins every Monday.']]},
+  refs:{icon:'🤝',steps:[['Referrals and partners','Keep track of who sends you customers, and thank them. Happy homeowners get a link to refer friends.']]},
+  growth:{icon:'📣',steps:[['Marketing and backlog','Where your leads come from, what each one cost, and how many weeks of work you have booked, so you know when to market harder.']]},
+  setup:{icon:'📄',steps:[
+    ['Bring in your data','Bring in customers, subs, schedules or past invoices from Buildertrend, JobTread, QuickBooks or any spreadsheet.'],
+    ['It checks first','Eagle I shows you what will happen before anything changes, and nobody is emailed. Changed your mind? Undo the whole import in one tap.']]},
+  billing:{icon:'💳',steps:[['Your plan','See your plan and change it here. Only the owner or someone allowed to handle billing can change it.']]},
+  deal:{icon:'🏠',steps:[
+    ['Everything about one customer','Contact details, the project, notes, emails and files are all here. Tap the phone number to call them.'],
+    ['Its stage','Change the stage as things move along. Eagle I sends that stage’s emails (only the ones you turned on) and asks first if a move looks wrong.'],
+    ['Notes and tasks','Add a note after a call or visit (🎤 to talk it), and tasks for what’s next.'],
+    ['Estimates and invoices','Start an estimate or an invoice from here. They’re sent from your company, and you always see who it goes to first.',null,()=>crCan('estimates')||crCan('invoices')],
+    ['The homeowner’s page','Further down: a private page for the homeowner with updates, visits, estimates and photos. Post an update there to keep them in the loop.']]},
+  job:{icon:'🛠',steps:[
+    ['The job','Everything for one signed job, top to bottom.'],
+    ['The schedule','Each phase has dates and who’s doing it. Change the dates and the sub is asked to confirm them.'],
+    ['Daily logs and photos','Write what happened today, or say it with 🎤, and add photos. You choose what the homeowner can see.'],
+    ['Changes and selections','Change orders go to the homeowner to approve online. Selections are things they need to choose, like tile or fixtures.'],
+    ['Purchase orders','Order materials from a supplier and track deliveries.',null,()=>crCan('subs')]]},
+  estimate:{icon:'🧾',steps:[
+    ['Your estimate','Add a line for each part of the work, or pick from your cost catalog. Totals add up as you go.'],
+    ['Check it','Tap “Check” and Eagle I looks for missing items and prices that seem off.'],
+    ['Send it','Send it to the homeowner when it’s ready. They read and sign it online, and the deal moves along by itself. A signed estimate is locked.']]},
+  newdeal:{icon:'＋',steps:[['Add a customer','Fill in their name and at least a phone number or email. Eagle I checks the email for typos and warns you if they’re already in here.']]},
+  caladd:{icon:'📅',steps:[['Add to the calendar','Give it a name, a day and a time. Pick whose calendar it goes on. Nothing is sent to anyone outside your company.']]},
+  sub:{icon:'🔗',steps:[
+    ['A sub’s private page','This sub has a private page with their jobs with you: dates, addresses, plans and what the homeowner picked. It never shows prices or the homeowner’s phone or email.'],
+    ['Send it to them','Copy the link, or tap “Email it to” and Eagle I sends it from your company.']]},
+  search:{icon:'🔍',steps:[['Search everything','Type at least two letters: a name, an address, an invoice number, a sub. Tap a result to open it.']]},
+  bin:{icon:'🗑',steps:[['Nothing is gone for good','Anything deleted in the last 30 days is here. Tap “Put back” to bring it back exactly as it was.']]},
+  mycal:{icon:'📱',steps:[['Your calendar on your phone','Add Eagle I to your phone’s calendar so your visits and job dates are there. The link is private to you: don’t share it.']]},
+  activity:{icon:'📋',steps:[['Who changed what','Every change to the team, deletes, imports and settings, newest first. Pick a person to see only theirs.']]}
 };
-function crTip(v){
-  const sec=document.getElementById('view-'+v);if(!sec||!CR_TIPS[v])return;
-  let seen=false;try{seen=!!localStorage.getItem('tip:'+v);}catch(e){}
-  const old=sec.querySelector(':scope > .tip');if(seen){if(old)old.remove();return;}
-  if(old)return;
-  const t=document.createElement('div');t.className='tip';t.setAttribute('role','note');
-  t.innerHTML=`<span class="i" aria-hidden="true">${CR_TIPS[v][0]}</span><span class="b">${uxEsc(CR_TIPS[v][1])}</span><button class="btn-xs" onclick="try{localStorage.setItem('tip:${v}','1')}catch(e){};this.parentElement.remove()">Got it</button>`;
-  if(v==='ask'){const h=document.getElementById('ask-host');sec.insertBefore(t,h);return;}
-  const sh=sec.querySelector(':scope > .sh');if(sh)sh.insertAdjacentElement('afterend',t);else sec.prepend(t);
+const GD={q:[],on:false};
+function crTip(v){crGuide(v);}
+function crGuide(key){
+  const g=CR_GUIDES[key];const tips=(CR.me&&CR.me.tips)||{seen:[],off:false};
+  if(!g||tips.off||tips.seen.includes(key))return;
+  if(GD.on){if(!GD.q.includes(key))GD.q.push(key);return;}
+  const steps=g.steps.filter(s=>!s[3]||s[3]());if(!steps.length)return;
+  GD.on=true;GD.key=key;GD.steps=steps;GD.i=0;GD.icon=g.icon;
+  setTimeout(gdRender,350);
 }
+function gdRender(){
+  let el=document.getElementById('gd');
+  if(!el){el=document.createElement('div');el.id='gd';el.className='gd';el.setAttribute('role','dialog');el.setAttribute('aria-modal','false');el.setAttribute('aria-labelledby','gd-t');document.body.appendChild(el);}
+  document.querySelectorAll('.gd-hl').forEach(x=>x.classList.remove('gd-hl'));
+  const [t,b,target]=GD.steps[GD.i],n=GD.steps.length,last=GD.i===n-1;
+  const tg=target&&document.querySelector(target);
+  // Point at what this step talks about: scrolled near the top, clear of the card below.
+  if(tg&&tg.offsetParent!==null){tg.classList.add('gd-hl');try{const box=tg.closest('.vd-modal-box');const y=tg.getBoundingClientRect().top;
+    if(box)box.scrollBy({top:y-box.getBoundingClientRect().top-80,behavior:'smooth'});else window.scrollBy({top:y-90,behavior:'smooth'});}catch(e){}}
+  document.body.classList.add('gd-on');
+  el.innerHTML=`<div class="gd-card"><div class="gd-top"><span class="gd-i" aria-hidden="true">${GD.icon}</span><span class="gd-n">${n>1?'Step '+(GD.i+1)+' of '+n:'Tip'}</span></div>
+    <div class="gd-t" id="gd-t">${uxEsc(t)}</div><div class="gd-b">${uxEsc(b)}</div>
+    ${n>1?`<div class="gd-dots" aria-hidden="true">${GD.steps.map((_,j)=>`<i class="${j===GD.i?'on':''}"></i>`).join('')}</div>`:''}
+    <div class="gd-btns">${GD.i>0?'<button class="btn-xs" onclick="gdStep(-1)">← Back</button>':''}<button class="btn btn-blue" onclick="gdStep(1)" id="gd-ok">${last?'OK, got it':'Next →'}</button></div>
+    <button class="gd-off" onclick="gdOff()">Don’t show tips anymore</button></div>`;
+  setTimeout(()=>{const ok=document.getElementById('gd-ok');if(ok)ok.focus({preventScroll:true});},50);
+}
+function gdStep(d){
+  if(d>0&&GD.i>=GD.steps.length-1)return gdDone(false);
+  GD.i=Math.max(0,Math.min(GD.steps.length-1,GD.i+d));gdRender();
+}
+function gdClose(){document.body.classList.remove('gd-on');document.querySelectorAll('.gd-hl').forEach(x=>x.classList.remove('gd-hl'));const el=document.getElementById('gd');if(el)el.remove();GD.on=false;}
+function gdDone(){
+  const key=GD.key;gdClose();
+  if(CR.me){CR.me.tips=CR.me.tips||{seen:[],off:false};if(!CR.me.tips.seen.includes(key))CR.me.tips.seen.push(key);}
+  fetch('/api/crm/me/tips',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({seen:key})}).catch(()=>{});
+  const next=GD.q.shift();if(next)crGuide(next);
+}
+function gdOff(){
+  if(!confirm('Stop showing tips? You can turn them back on any time from Account → “Show the tips again”.'))return;
+  gdClose();GD.q=[];if(CR.me)CR.me.tips={...(CR.me.tips||{seen:[]}),off:true};
+  fetch('/api/crm/me/tips',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({off:true,seen:GD.key})}).catch(()=>{});
+  showNotif('Tips are off','Turn them back on from Account → “Show the tips again”.');
+}
+async function gdReset(){
+  try{const r=await plApi('/api/crm/me/tips',{body:{reset:true}});CR.me.tips=r.tips;showNotif('Tips are back on','Each screen shows its tips again the next time you open it.');crGuide(CR.view);}catch(e){showNotif('Could not do that',e.message);}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&GD.on)gdDone();});
+// The windows that open over a screen get their tips once they've opened.
+window.addEventListener('load',()=>{
+  for(const [fn,key] of [['plOpenDeal','deal'],['jbOpen','job'],['esOpen','estimate'],['plNewDeal','newdeal'],['cvEdit','caladd'],['vdPage','sub'],['srOpen','search'],['binOpen','bin'],['dyOpen','mycal'],['alOpen','activity']]){
+    const orig=window[fn];if(typeof orig!=='function')continue;
+    window[fn]=function(...a){const r=orig.apply(this,a);Promise.resolve(r).then(()=>crGuide(key)).catch(()=>{});return r;};
+  }
+});
 // Simple view: only Ask, Today, Calendar and Jobs in the menu bar.
 function crSimpleApply(){let on=false;try{on=localStorage.getItem('simple')==='1';}catch(e){}document.body.classList.toggle('simple',on);const b=document.getElementById('cr-simple-btn');if(b)b.textContent=on?'Full view: all tabs':'Simple view: fewer tabs';return on;}
 function crSimple(){let on=false;try{on=localStorage.getItem('simple')==='1';localStorage.setItem('simple',on?'':'1');}catch(e){}const now=crSimpleApply();showNotif(now?'Simple view':'Full view',now?'Pipeline and Money are hidden from the menu bar. Switch back any time from Account.':'All tabs are back.');if(now&&['pipeline','estimates'].includes(CR.view))crView('needs');}

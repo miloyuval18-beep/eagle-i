@@ -26,13 +26,14 @@ function fail(res, err, what) {
 router.get('/api/crm/me', requireAuth, async (req, res) => {
   try {
     const r = (await query(
-      `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.permissions, u.disabled_at, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
+      `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.permissions, u.disabled_at, u.tips, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
     if (!r || r.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
     if (r.disabled_at) return res.status(401).json({ error: { message: 'Your account has been turned off. Ask the owner or an admin.', code: 'disabled' } });
     res.json({
       userId: r.id, email: r.email, name: r.name, phone: r.phone, role: r.role, roleLabel: team.roleLabel(r.role), canManage: team.isManager(r.role), perms: team.permsOf(r), companyName: r.company_name,
       // Guided setup (crm.html #setup): the company's for its owner, a shorter one for everyone else.
       needsSetup: r.role === 'owner' ? !r.company_setup_done : !r.setup_done_at,
+      tips: require('../lib/crmTips').clean(r.tips),
       products: r.products || [], hasCrm: (r.products || []).includes('crm'),
       // Team members invited to the CRM only see the CRM; the marketing dashboard is the owner's.
       hasMarketing: (r.products || []).includes('marketing') && r.role === 'owner'
@@ -458,6 +459,11 @@ router.patch('/api/crm/me', requireAuth, async (req, res) => {
     res.json({ ok: true });
   }
   catch (err) { fail(res, err, 'Failed to save your name'); }
+});
+
+// The pop-up tips: one seen, all off, or all back on (lib/crmTips.js).
+router.post('/api/crm/me/tips', requireAuth, async (req, res) => {
+  try { res.json({ tips: await require('../lib/crmTips').update('users', req.userId, req.body || {}) }); } catch (err) { fail(res, err, 'Failed to save'); }
 });
 
 // Guided setup finished (or skipped): the company's for the owner, their own for anyone else.
