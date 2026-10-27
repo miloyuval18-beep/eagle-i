@@ -143,6 +143,28 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null, at 
     const rd = await daily.digestFor(await fresh(ray), new Date(NOW.getTime() + 3600000));
     assert.equal(rd.loop.count, 1); assert.ok(!/4,500/.test(JSON.stringify(rd.loop)), 'amount hidden');
 
+    // 11. Emails from before the rule: looked at once more.
+    const old = async (subject, gid) => (await query(`INSERT INTO crm_mail_threads (tenant_id, mailbox_email, user_id, thread_id, counterpart_email, subject, last_dir, last_at, state, status, expects, last_gmail_id, last_snippet)
+      VALUES ($1, $2, $3, $4, 'rita@home.test', $5, 'in', now() - interval '2 days', 'to_reply', 'open', true, $6, 'Older email') RETURNING *`, [t, levi.email, levi.id, 'old-' + gid, subject, gid])).rows[0];
+    const oCopied = await old('Old copied', 'gA'), oMine = await old('Old mine', 'gB'), oJoe = await old('Old for Joe', 'gC');
+    await query(`INSERT INTO crm_inbox (tenant_id, kind, title, dedupe_key) VALUES ($1, 'email_reply', 'Rita is waiting', $2)`, [t, `mw:re:${oCopied.id}:1`]);
+    await query(`INSERT INTO crm_events (tenant_id, user_id, title, kind, starts_at, ends_at, source, source_key, mail_thread_id) VALUES ($1, $2, 'Walkthrough', 'meeting', now() + interval '2 days', now() + interval '2 days 1 hour', 'email', $3, $4)`, [t, levi.id, 'mail:' + oCopied.id, oCopied.id]);
+    await query(`INSERT INTO crm_events (tenant_id, user_id, title, kind, starts_at, ends_at, source, source_key, mail_thread_id) VALUES ($1, $2, 'Gate', 'meeting', now() + interval '2 days', now() + interval '2 days 1 hour', 'email', $3, $4)`, [t, levi.id, 'mail:' + oJoe.id, oJoe.id]);
+    const HEAD = { gA: { to: [dana.email], cc: [levi.email] }, gB: { to: [levi.email], cc: [] }, gC: { to: [joe.email], cc: [levi.email] } };
+    const head = (id) => HEAD[id] || { to: [levi.email], cc: [] }; // the others in his inbox were sent to him
+    const getMsg = async (id) => ({ id, snippet: 'Older email', payload: { headers: [{ name: 'From', value: 'Rita Ruiz <rita@home.test>' }, { name: 'To', value: head(id).to.join(', ') }, { name: 'Cc', value: head(id).cc.join(', ') }, { name: 'Subject', value: 'Old' }] } });
+    const rc = await w.recheckCopied({ tenantId: t, mailbox: { email: levi.email }, isCompany, mailboxes, userId: levi.id, getMsg, readBody: async () => 'Nothing addressed to anyone here.' });
+    assert.ok(rc.checked >= 3); assert.equal(rc.kept, 1); assert.equal(rc.handedOn, 1);
+    const after2 = async (x) => (await query('SELECT * FROM crm_mail_threads WHERE id = $1', [x.id])).rows[0];
+    assert.equal((await after2(oCopied)).state, 'closed', 'copied only: no longer waiting on Levi');
+    assert.equal((await query(`SELECT status FROM crm_inbox WHERE dedupe_key = $1`, [`mw:re:${oCopied.id}:1`])).rows[0].status, 'done', 'its reminder cleared');
+    assert.equal((await query('SELECT 1 FROM crm_events WHERE mail_thread_id = $1', [oCopied.id])).rows.length, 0, 'off his calendar');
+    assert.ok((await loop(levi)).some(x => x.thread_id === oCopied.thread_id), 'kept in the loop instead');
+    assert.equal((await after2(oMine)).state, 'to_reply', 'sent to him: still his');
+    assert.equal((await after2(oJoe)).user_id, joe.id, 'for Joe: his reminder');
+    assert.equal((await query('SELECT user_id FROM crm_events WHERE mail_thread_id = $1', [oJoe.id])).rows[0].user_id, joe.id, 'and his calendar');
+    assert.deepEqual(await w.recheckCopied({ tenantId: t, mailbox: { email: levi.email }, isCompany, mailboxes, userId: levi.id, getMsg }), { checked: 0, kept: 0, handedOn: 0 }, 'only once');
+
     // 10. A role change puts it back to the new role's default.
     await team.setRole({ tenantId: t, actor: levi, userId: ray.id, role: 'project_manager' });
     assert.equal(team.oversightOf(await fresh(ray)), false);
