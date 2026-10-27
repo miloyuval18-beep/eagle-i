@@ -111,6 +111,7 @@ function switchTab(which){
   document.getElementById('form-signup').classList.toggle('hidden', which!=='signup');
   document.getElementById('err').style.display='none';
 }
+if(location.hash==='#signup')switchTab('signup');
 function showErr(msg){
   const el=document.getElementById('err');
   el.textContent=msg;
@@ -139,7 +140,7 @@ document.getElementById('form-login').addEventListener('submit', async (e)=>{
     const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
     const d=await r.json();
     if(!r.ok) return showErr(d.error?.message||'Login failed');
-    window.location.href='/';
+    window.location.href='/marketing';
   }catch(err){showErr('Network error: '+err.message);}
 });
 document.getElementById('form-signup').addEventListener('submit', async (e)=>{

@@ -175,10 +175,10 @@ document.getElementById('proceedBtn').addEventListener('click', async ()=>{
     }
     if (d.partial) {
       status.textContent = "Most of your dashboard is ready. A couple of sections didn't finish — don't worry, you can just click each one's \"Refresh\" button once you're in. Taking you there now...";
-      setTimeout(() => { window.location.href = '/'; }, 2200);
+      setTimeout(() => { window.location.href = '/marketing'; }, 2200);
     } else {
       status.textContent = 'All done! Taking you to your new dashboard...';
-      window.location.href = '/';
+      window.location.href = '/marketing';
     }
   }catch(e){
     err.textContent='Network error: '+e.message;

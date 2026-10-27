@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eagle I</title>
+<meta name="description" content="Eagle I: a CRM for construction companies, and an AI marketing command center.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6f8;--card:#ffffff;--soft:#eef1f4;
+  --ink:#14202b;--ink2:#3a4855;--ink3:#55636f;
+  --bdr:#c3ccd4;--accent:#1f4e79;--accent2:#173b5c;--mk:#201e1a;--mk2:#423d37;
+  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:18.5px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
+main{max-width:960px;margin:0 auto;padding:40px 16px 32px}
+.brand{display:flex;align-items:center;justify-content:center;gap:10px;font-size:30px;font-weight:800}
+.brand img{width:38px;height:38px}
+.lead{text-align:center;color:var(--ink3);font-size:19px;margin:6px auto 30px;max-width:560px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:26px 22px;display:flex;flex-direction:column;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
+.icon{font-size:34px;line-height:1}
+.card h2{font-size:25px;font-weight:800;margin:10px 0 4px}
+.card .sub{font-size:17px;font-weight:700;color:var(--ink3);margin-bottom:12px}
+.card ul{list-style:none;margin:0 0 22px;flex:1}
+.card li{padding:5px 0 5px 28px;position:relative;color:var(--ink2)}
+.card li::before{content:'✓';position:absolute;left:4px;font-weight:800;color:var(--accent)}
+.go{display:block;text-align:center;text-decoration:none;color:#fff;background:var(--accent);border-radius:10px;padding:16px;font-size:19px;font-weight:800;min-height:56px}
+.go:hover,.go:focus-visible{background:var(--accent2)}
+.go:focus-visible,.new a:focus-visible{outline:3px solid #f0b429;outline-offset:2px}
+.mk .go{background:var(--mk)}
+.mk .go:hover,.mk .go:focus-visible{background:var(--mk2)}
+.mk li::before{color:var(--mk)}
+.new{text-align:center;margin-top:12px;font-size:17px;color:var(--ink3)}
+.new a{color:var(--accent);font-weight:700}
+.mk .new a{color:var(--mk)}
+footer{text-align:center;color:var(--ink3);font-size:15px;margin-top:30px}
+footer a{color:var(--ink3)}
+@media (max-width:720px){.grid{grid-template-columns:1fr;gap:16px}main{padding-top:28px}.brand{font-size:27px}.lead{margin-bottom:20px}.card{padding:20px 18px}.card ul{display:none}.icon{font-size:28px}.card h2{margin-top:6px;font-size:24px}.card .sub{margin-bottom:14px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><img src="/favicon.svg" alt="">Eagle I</div>
+  <p class="lead">Where would you like to go?</p>
+  <div class="grid">
+    <section class="card crm" aria-labelledby="crm-h">
+      <div class="icon" aria-hidden="true">🏗️</div>
+      <h2 id="crm-h">Eagle I CRM</h2>
+      <div class="sub">Run your construction company</div>
+      <ul>
+        <li>Leads, estimates and signed jobs</li>
+        <li>Schedules, subs and the homeowner’s page</li>
+        <li>Invoices and payments</li>
+        <li>Email follow-ups so nothing slips</li>
+      </ul>
+      <a class="go" href="/crm">Go to the CRM</a>
+      <div class="new">New here? <a href="/crm/login#signup">Create an account</a></div>
+    </section>
+    <section class="card mk" aria-labelledby="mk-h">
+      <div class="icon" aria-hidden="true">🦅</div>
+      <h2 id="mk-h">Eagle I Marketing</h2>
+      <div class="sub">Your AI marketing command center</div>
+      <ul>
+        <li>Watch your competitors</li>
+        <li>Posts, ads and landing pages written for you</li>
+        <li>Reviews and new leads in one place</li>
+        <li>A plan to win more of your market</li>
+      </ul>
+      <a class="go" href="/marketing">Go to Eagle I Marketing</a>
+      <div class="new">New here? <a href="/login.html#signup">Create an account</a></div>
+    </section>
+  </div>
+  <footer>The CRM and Eagle I Marketing have separate logins. · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></footer>
+</main>
+</body>
+</html>

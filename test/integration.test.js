@@ -1091,7 +1091,7 @@ describe('pipeline (CRM)', () => {
     const client = await signup('crm-only');
     const me = await (await client.get('/api/crm/me')).json();
     assert.deepEqual(me.products, ['crm']);
-    const home = await client.get('/');
+    const home = await client.get('/marketing');
     assert.equal(home.status, 302);
     assert.equal(home.headers.get('location'), '/crm');
     assert.equal((await client.get('/crm')).status, 200);
@@ -1666,7 +1666,7 @@ describe('CRM team', () => {
     assert.equal((await m.delete(`/api/crm/deals/${deal.id}`)).status, 403);
     // The marketing product is the owner's only.
     assert.equal((await m.get('/api/leads')).status, 403);
-    const home = await m.get('/');
+    const home = await m.get('/marketing');
     assert.equal(home.headers.get('location'), '/crm');
   });
 
@@ -2536,5 +2536,17 @@ describe('the real address: Render’s own name and www go to myeaglei.com', () 
     assert.notEqual((await get('/api/crm/me', 'eagle-i-abc1.onrender.com')).status, 301);
     assert.notEqual((await get('/crm', 'eagle-i-abc1.onrender.com', 'POST')).status, 301);
     assert.notEqual((await get('/crm', 'localhost')).status, 301);
+  });
+});
+
+describe('the homepage: choose the CRM or Eagle I Marketing', () => {
+  test('everyone gets the choice; the marketing dashboard lives at /marketing', async () => {
+    const page = await makeClient().get('/');
+    assert.equal(page.status, 200);
+    const html = await page.text();
+    assert.match(html, /href="\/crm"/); assert.match(html, /href="\/marketing"/);
+    assert.equal((await makeClient().get('/marketing')).headers.get('location'), '/login.html');
+    // Coming back from connecting an account still lands on the dashboard.
+    assert.equal((await makeClient().get('/?ads_connected=meta')).headers.get('location'), '/marketing?ads_connected=meta');
   });
 });

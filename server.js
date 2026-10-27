@@ -260,9 +260,15 @@ app.get(['/crm', '/crm/'], async (req, res) => {
 app.get('/crm/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm-login.html')));
 app.get('/crm/join', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm-join.html')));
 
-// The dashboard itself: not logged in -> /login.html; logged in but never
+// The homepage: pick Eagle I CRM or Eagle I Marketing (public/home.html).
+// Coming back from connecting Facebook, Google Ads and the rest (/?ads_connected=…): that's the marketing dashboard.
+app.get('/', (req, res) => {
+  if (Object.keys(req.query || {}).length) return res.redirect('/marketing' + req.originalUrl.slice(1));
+  res.sendFile(path.join(__dirname, 'public', 'home.html'));
+});
+// Eagle I Marketing's dashboard: not logged in -> /login.html; logged in but never
 // finished onboarding -> /onboarding.html; otherwise serve the app.
-app.get(['/', '/index.html'], async (req, res) => {
+app.get(['/marketing', '/marketing/', '/index.html'], async (req, res) => {
   if (!req.session || !req.session.userId) {
     return res.redirect('/login.html');
   }
