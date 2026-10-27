@@ -26,6 +26,11 @@ router.get('/api/crm/me/daily', requireAuth, wrap('Failed to load', async (req, 
 }));
 // Emails I'm only copied on keep me in the loop (lib/crmEmailWatch.js).
 router.patch('/api/crm/me/oversight', requireAuth, wrap('Failed to save', async (req, res) => res.json(await team.setOversight({ tenantId: req.tenantId, actor: req.crmUser, userId: req.userId, on: !!(req.body || {}).on }))));
+// Everything I was copied on this week (Today).
+router.get('/api/crm/me/loop', requireAuth, wrap('Failed to load', async (req, res) => {
+  const items = await require('../lib/crmEmailWatch').loopRecent({ tenantId: req.tenantId, userId: req.userId, days: 7 });
+  res.json({ items: team.can(req.crmUser, 'money') ? items : team.hideMoney(items), on: team.oversightOf(req.crmUser) });
+}));
 // What I was copied on for this project. Mine only: it came from my mailbox.
 router.get('/api/crm/deals/:id/loop', requireAuth, wrap('Failed to load', async (req, res) => {
   const items = await require('../lib/crmEmailWatch').loopFor({ tenantId: req.tenantId, userId: req.userId, dealId: req.params.id });

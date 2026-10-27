@@ -127,21 +127,24 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null, at 
     assert.ok((await w.loopFor({ tenantId: t, userId: levi.id, dealId: deal.id })).length >= 2);
     assert.equal((await w.loopFor({ tenantId: t, userId: dana.id, dealId: deal.id })).length, 0);
 
-    // 8. The morning email: grouped by project, every line "No action needed"; not repeated the next day.
+    // 8. No email about what needs no action: copied emails aren't in the morning email, and alone don't send one.
     const u = await fresh(levi);
     const d = await daily.digestFor(u, new Date(NOW.getTime() + 2 * 3600000));
-    assert.ok(d.loop.count >= 3);
+    assert.equal(d.loop, undefined);
     const r = daily.renderDigest({ name: 'Levi Stone', company: 'Levi Homes', d, appUrl: 'https://app.test', now: NOW });
-    assert.match(r.html, /Kept in the loop: no action needed/); assert.match(r.html, /Ruiz kitchen/); assert.match(r.text, /Not on a project:/);
-    assert.equal((r.html.match(/No action needed<\/span>/g) || []).length, d.loop.count, 'every line says no action needed');
-    assert.match(r.text, /- Rita Ruiz to Dana Cruz: “Re: Cabinet color” \(2 emails\) · No action needed/);
-    await w.loopDigested(levi.id, new Date(NOW.getTime() + 2 * 3600000));
-    assert.equal((await daily.digestFor(await fresh(levi), new Date(NOW.getTime() + 3 * 3600000))).loop.count, 0);
+    assert.ok(!/Kept in the loop|Cabinet color|Lumber/.test(r.html + r.text), 'nothing about copied emails');
+    sent.length = 0;
+    await query(`UPDATE users SET crm_digest_sent_on = NULL WHERE tenant_id = $1`, [t]);
+    await query(`UPDATE crm_mail_threads SET status = 'done' WHERE tenant_id = $1`, [t]);
+    await query(`UPDATE crm_inbox SET status = 'done' WHERE tenant_id = $1`, [t]);
+    const morning = new Date(NOW.getTime() - 3 * 3600000); // 7am Central that Wednesday
+    await daily.processDigests({ now: morning, send: async (m) => { sent.push(m); } });
+    assert.ok(!sent.some(m => m.to === levi.email), 'only copied emails: no morning email at all');
 
-    // 9. No dollar figures for someone without "See money".
+    // 9. No dollar figures for someone without "See money" (Today's list is hidden the same way).
     await see(ray, msg({ from: 'rita@home.test', to: [dana.email], cc: [ray.email], subject: 'Deposit', snippet: 'I sent the $4,500 deposit today.' }));
-    const rd = await daily.digestFor(await fresh(ray), new Date(NOW.getTime() + 3600000));
-    assert.equal(rd.loop.count, 1); assert.ok(!/4,500/.test(JSON.stringify(rd.loop)), 'amount hidden');
+    const rl = team.hideMoney(await w.loopRecent({ tenantId: t, userId: ray.id, days: 30 }));
+    assert.equal(rl.length, 1); assert.ok(!/4,500/.test(JSON.stringify(rl)), 'amount hidden');
 
     // 11. Emails from before the rule: looked at once more.
     const old = async (subject, gid) => (await query(`INSERT INTO crm_mail_threads (tenant_id, mailbox_email, user_id, thread_id, counterpart_email, subject, last_dir, last_at, state, status, expects, last_gmail_id, last_snippet)
