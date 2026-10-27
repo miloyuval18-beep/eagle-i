@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const { Webhook } = require('svix');
 
 const {
-  startServer, stopServer, makeClient, trackTenant, cleanupTenants, uniqueEmail, getTestPool, TEST_WEBHOOK_SECRET
+  BASE_URL, startServer, stopServer, makeClient, trackTenant, cleanupTenants, uniqueEmail, getTestPool, TEST_WEBHOOK_SECRET
 } = require('./helpers');
 const { checkAndIncrementCounter } = require('../lib/usage');
 
@@ -2517,5 +2517,24 @@ describe('CRM coach', () => {
     assert.equal((await o.post(`/api/crm/deals/${deal.id}/voice-log`, { text: '' })).status, 400);
     assert.equal((await o.post(`/api/crm/deals/${deal.id}/voice-log`, { text: 'Measured the bathroom.' })).status, 200);
     assert.equal((await o.get('/api/crm/nudges/00000000-0000-0000-0000-000000000000')).status, 404);
+  });
+});
+
+describe('the real address: Render’s own name and www go to myeaglei.com', () => {
+  const http = require('http');
+  const get = (path, host, method = 'GET') => new Promise((resolve, reject) => {
+    const u = new URL(BASE_URL + path);
+    const r = http.request({ hostname: u.hostname, port: u.port, path, method, headers: { Host: host } }, (res) => { res.resume(); res.on('end', () => resolve({ status: res.statusCode, location: res.headers.location })); });
+    r.on('error', reject); r.end();
+  });
+  test('pages redirect, keeping the path; health checks and API calls do not', async () => {
+    let r = await get('/crm', 'eagle-i-abc1.onrender.com');
+    assert.equal(r.status, 301); assert.equal(r.location, 'https://myeaglei.com/crm');
+    r = await get('/crm/login?next=%2Fcrm', 'www.myeaglei.com');
+    assert.equal(r.status, 301); assert.equal(r.location, 'https://myeaglei.com/crm/login?next=%2Fcrm');
+    assert.equal((await get('/healthz', 'eagle-i-abc1.onrender.com')).status, 200);
+    assert.notEqual((await get('/api/crm/me', 'eagle-i-abc1.onrender.com')).status, 301);
+    assert.notEqual((await get('/crm', 'eagle-i-abc1.onrender.com', 'POST')).status, 301);
+    assert.notEqual((await get('/crm', 'localhost')).status, 301);
   });
 });

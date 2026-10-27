@@ -106,6 +106,16 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 app.set('trust proxy', true); // Render sits behind a proxy; needed for real client IPs + secure cookies
 
+// Pages opened on Render's own name (*.onrender.com, from older emails) or www
+// go to https://myeaglei.com: Google sign-in only works there, and that's where
+// people are signed in. Health checks, webhooks and API calls are left alone.
+app.use((req, res, next) => {
+  const host = String(req.hostname || '').toLowerCase();
+  const { RENDER_HOST, CANONICAL } = require('./lib/appUrl');
+  if ((RENDER_HOST.test(host) || host === 'www.myeaglei.com') && ['GET', 'HEAD'].includes(req.method) && !/^\/(api|healthz)(\/|$)/.test(req.path)) return res.redirect(301, CANONICAL + req.originalUrl);
+  next();
+});
+
 // Stripe requires the RAW body to verify webhook signatures, so this route
 // must be mounted before express.json() parses (and consumes) the body.
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), handleWebhook);
