@@ -73,7 +73,7 @@ async function join(e){
     const r=await fetch('/api/crm/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,name:document.getElementById('j-name').value,password:document.getElementById('j-pw').value})});
     const d=await r.json();
     if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
-    location.href='/crm';
+    location.href='/crm/app';
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
 </script>

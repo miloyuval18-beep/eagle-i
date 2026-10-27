@@ -1281,7 +1281,7 @@ async function crInit(){
   {const q=new URLSearchParams(location.search);if(q.get('google')||q.get('google_error')||q.get('gcal')){
     const toCal=q.get('gcal')||location.hash==='#calendar';
     setTimeout(()=>{if(q.get('google_error'))showNotif('Google',q.get('google_error'));else if(q.get('gcal'))showNotif('Google Calendar on','Your meetings show on the calendar now.');else showNotif('Google connected',q.get('google')+(q.get('drive')==='on'?' · project files now go to Google Drive':' · reading recent customer email now'));},300);
-    try{history.replaceState(null,'',toCal?'/crm#calendar':'/crm#company');}catch(e){}}}
+    try{history.replaceState(null,'',toCal?'/crm/app#calendar':'/crm/app#company');}catch(e){}}}
   const hashParts=(location.hash||'').slice(1).split('/');const start=hashParts[0];crSimpleApply();
   await crLoadTeam();
   // A link to one chat (#ask/<id>) opens that chat.
@@ -3201,7 +3201,7 @@ async function blLoad(){
   const el=document.getElementById('bl-box');
   try{
     const d=BL.data=await plApi('/api/crm/billing');const manage=crCan('billing');
-    if(/billing=done/.test(location.search)){showNotif('Thank you!','Your plan is set. It can take a minute to show here.');try{history.replaceState(null,'','/crm#billing');}catch(e){}}
+    if(/billing=done/.test(location.search)){showNotif('Thank you!','Your plan is set. It can take a minute to show here.');try{history.replaceState(null,'','/crm/app#billing');}catch(e){}}
     const now=d.status==='active'?`<div class="big">${uxEsc(d.planName||'Your plan')}</div><div>Active. ${d.people} ${d.people===1?'person':'people'} on the team${d.seats&&d.seats<1000?` of ${d.seats}`:''}.</div>`
       :d.status==='trialing'?`<div class="big">${d.trialDaysLeft>0?`${d.trialDaysLeft} day${d.trialDaysLeft===1?'':'s'} left in your free trial`:'Your free trial has ended'}</div><div>Everything is on while you try it. Pick a plan any time; you’re only charged when the trial ends.</div>`
       :d.status==='past_due'?`<div class="big">Payment didn’t go through</div><div>Update your card to keep things running.</div>`:`<div class="big">No plan</div><div>Choose one below to keep making changes.</div>`;

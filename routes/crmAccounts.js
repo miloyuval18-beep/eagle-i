@@ -32,7 +32,7 @@ function start(req, who) {
     req.session.save((e2) => (e2 ? reject(e2) : resolve()));
   }));
 }
-const whereTo = (as) => as === 'staff' ? '/crm' : '/crm/home';
+const whereTo = (as) => as === 'staff' ? '/crm/app' : '/crm/home';
 
 // Signing in (also reached from /api/auth/login with app: 'crm').
 async function crmLogin(req, res) {
@@ -73,7 +73,7 @@ router.post('/api/crm-auth/login/code', lim('code2', 20, FIFTEEN), wrap('Couldnâ
     res.cookie(TRUST_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 30 * 86400000, path: '/' });
   }
   require('../lib/crmAudit').log({ tenantId: p.tenantId, actor: { id: p.userId }, action: 'signed_in_new', detail: `${deviceOf(req).name}${fresh ? '' : ' (trusted for 30 days)'}` });
-  res.json({ ok: true, go: '/crm' });
+  res.json({ ok: true, go: '/crm/app' });
 }));
 router.post('/api/crm-auth/login', lim('login', 20, FIFTEEN, { byEmail: true }), crmLogin);
 
@@ -85,13 +85,13 @@ router.post('/api/crm-auth/signup', lim('signup', 10, FIFTEEN), wrap('Couldnâ€™t
   if (b.type === 'company') {
     const r = await acc.createCompany({ companyName: b.companyName, name: b.name, email: b.email, password: b.password, phone: b.phone, baseUrl });
     await start(req, { as: 'staff', id: r.user.id, tenantId: r.user.tenant_id });
-    return res.json({ ok: true, go: '/crm' });
+    return res.json({ ok: true, go: '/crm/app' });
   }
   if (b.type === 'join') {
     const r = await acc.requestJoin({ code: b.code, name: b.name, email: b.email, password: b.password, note: b.note, baseUrl });
     if (r.pending) return res.json({ ok: true, pending: true, confirm: !!r.confirm, emailed: r.emailed !== false, companyName: r.companyName });
     await start(req, { as: 'staff', id: r.user.id, tenantId: r.user.tenant_id });
-    return res.json({ ok: true, go: '/crm', companyName: r.companyName });
+    return res.json({ ok: true, go: '/crm/app', companyName: r.companyName });
   }
   if (acc.KINDS.includes(b.type)) {
     const r = await acc.createAccount({ kind: b.type, name: b.name, email: b.email, password: b.password, phone: b.phone, businessName: b.businessName, trade: b.trade, baseUrl });
@@ -137,7 +137,7 @@ router.get('/crm/join-confirm', async (req, res) => {
     if (!r) return res.redirect('/crm/login?google_error=' + encodeURIComponent('That link is old or was already used. Ask to join again with the company code.'));
     if (r.pending) return res.redirect('/crm/login?pending=' + encodeURIComponent(r.companyName) + '&confirmed=1');
     await start(req, { as: 'staff', id: r.user.id, tenantId: r.user.tenant_id });
-    res.redirect('/crm');
+    res.redirect('/crm/app');
   } catch (err) { res.redirect('/crm/login?google_error=' + encodeURIComponent(err.message)); }
 });
 
@@ -155,7 +155,7 @@ function account(req, res, next) {
   next();
 }
 router.get('/crm/home', (req, res) => {
-  if (!req.session || !req.session.accountId) return res.redirect(req.session && req.session.userId ? '/crm' : '/crm/login');
+  if (!req.session || !req.session.accountId) return res.redirect(req.session && req.session.userId ? '/crm/app' : '/crm/login');
   res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, '..', 'public', 'crm-home.html'));
 });

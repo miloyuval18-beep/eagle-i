@@ -244,7 +244,33 @@ app.use(stripeRoutes);
 app.get('/healthz', (req, res) => res.json({ ok: true, version: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null }));
 
 // Eagle I CRM: a separate product with its own app, login and signup.
-app.get(['/crm', '/crm/'], async (req, res) => {
+// /crm is Levi Construction Group's portfolio (public/crm-portfolio.html): each
+// company in the group, with a button into that company's CRM. The CRM itself is
+// /crm/app. Older links (/crm#needs, /crm?google=…) still open the app: the page
+// forwards anything after # and the server forwards anything after ?.
+app.get(['/crm', '/crm/'], (req, res) => {
+  if (Object.keys(req.query || {}).length) return res.redirect('/crm/app' + req.originalUrl.slice(req.originalUrl.indexOf('?')));
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, 'public', 'crm-portfolio.html'));
+});
+// One company's CRM: signed in to it already, straight in; otherwise its sign-in page.
+app.get('/crm/c/:slug', async (req, res) => {
+  try {
+    const t = (await query(`SELECT id, company_name FROM tenants WHERE slug = $1`, [String(req.params.slug).toLowerCase().slice(0, 60)])).rows[0];
+    if (!t) return res.redirect('/crm');
+    if (req.session && req.session.userId && req.session.tenantId === t.id) return res.redirect('/crm/app');
+    let other = '';
+    if (req.session && req.session.userId) other = ((await query(`SELECT t.company_name FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1 AND u.app <> 'marketing'`, [req.session.userId])).rows[0] || {}).company_name || '';
+    res.redirect(`/crm/login?co=${encodeURIComponent(req.params.slug)}${other ? '&other=' + encodeURIComponent(other) : ''}`);
+  } catch (err) { console.error('CRM company link failed:', err.message); res.redirect('/crm/login'); }
+});
+// The company's name for its sign-in page.
+app.get('/api/crm-portfolio/:slug', async (req, res) => {
+  const t = (await query(`SELECT company_name FROM tenants WHERE slug = $1`, [String(req.params.slug).toLowerCase().slice(0, 60)]).catch(() => ({ rows: [] }))).rows[0];
+  if (!t) return res.status(404).json({ error: { message: 'Not found.' } });
+  res.json({ name: t.company_name });
+});
+app.get(['/crm/app', '/crm/app/'], async (req, res) => {
   // Homeowners and subs have their own page; marketing logins are separate from the CRM's.
   if (req.session && !req.session.userId && req.session.accountId) return res.redirect('/crm/home');
   if (!req.session || !req.session.userId) return res.redirect('/crm/login');
@@ -281,7 +307,7 @@ app.get(['/marketing', '/marketing/', '/index.html'], async (req, res) => {
     // A CRM-only company has no marketing dashboard, and team members invited
     // to the CRM only use the CRM: send them to its own app.
     if (result.rows.length && ((Array.isArray(result.rows[0].products) && !result.rows[0].products.includes('marketing')) || (result.rows[0].role && result.rows[0].role !== 'owner') || result.rows[0].app === 'crm')) {
-      return res.redirect('/crm');
+      return res.redirect('/crm/app');
     }
     const onboarded = result.rows.length && Object.keys(result.rows[0].generated_content || {}).length > 0;
     if (!onboarded) return res.redirect('/onboarding.html');

@@ -2,7 +2,7 @@
   "name": "Eagle I CRM",
   "short_name": "Eagle I",
   "description": "Leads, estimates, jobs and payments for design-build and remodeling companies.",
-  "start_url": "/crm",
+  "start_url": "/crm/app",
   "scope": "/crm",
   "display": "standalone",
   "background_color": "#f4f6f8",

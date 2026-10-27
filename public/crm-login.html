@@ -66,8 +66,10 @@ details.manual summary{cursor:pointer;color:var(--accent);font-size:17px;font-we
 </head>
 <body>
 <main class="card">
+  <a class="link" href="/crm" style="display:inline-block;margin-bottom:10px;font-size:17px;font-weight:700;color:var(--accent);text-decoration:none">← Levi Construction Group</a>
   <div class="brand">Eagle I <span>CRM</span></div>
   <div class="tag">For builders, their teams, homeowners and subs</div>
+  <div class="note" id="co-note" hidden></div>
   <div class="note" id="mkt-note" hidden>You’re signed in to Eagle I marketing. Eagle I CRM has its own accounts: sign in below, or create one.</div>
   <div class="tabs" role="tablist">
     <button class="tab active" id="tab-in" role="tab" aria-selected="true" onclick="show('in')">Sign in</button>
@@ -101,7 +103,7 @@ details.manual summary{cursor:pointer;color:var(--accent);font-size:17px;font-we
     <h2>What brings you to Eagle I?</h2>
     <div class="sub">Pick the one that fits. You can make another kind of account later with the same email.</div>
     <div class="choices">
-      <button class="choice" onclick="pick('company')"><span class="ic" aria-hidden="true">🏢</span><span><b>Start my company</b><span>I own or run a building or remodeling company and want to set it up on Eagle I.</span></span></button>
+      <button class="choice" id="choice-company" hidden onclick="pick('company')"><span class="ic" aria-hidden="true">🏢</span><span><b>Start my company</b><span>I own or run a building or remodeling company and want to set it up on Eagle I.</span></span></button>
       <button class="choice" onclick="pick('join')"><span class="ic" aria-hidden="true">👷</span><span><b>Join my company</b><span>My company already uses Eagle I and I work there.</span></span></button>
       <button class="choice" onclick="pick('homeowner')"><span class="ic" aria-hidden="true">🏠</span><span><b>I’m a homeowner</b><span>See my project, updates, visits, estimates and invoices from my builder.</span></span></button>
       <button class="choice" onclick="pick('sub')"><span class="ic" aria-hidden="true">🔨</span><span><b>I’m a sub or supplier</b><span>See the jobs, dates, plans and bid requests from the builders I work with.</span></span></button>
@@ -205,7 +207,7 @@ async function signIn(e,as){
     const d=await call('/api/crm-auth/login',{email:$('in-email').value,password:$('in-pw').value,as});
     if(d.code){$('code-sub').textContent=`For your safety, we emailed a sign-in code to ${d.to}. Type it here.`;show('form-code');$('in-code').focus();b.disabled=false;return;}
     if(d.choose){$('in-choices').innerHTML=d.choose.map(c=>`<button type="button" class="btn o" onclick="signIn(null,'${c.as}')">${c.label.replace(/[<>&]/g,'')}</button>`).join('');$('in-choose').hidden=false;b.disabled=false;return;}
-    location.href=d.go||'/crm';
+    location.href=d.go||'/crm/app';
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
 // "Continue with Google": what they've typed so far goes along, then Google, then back here signed in.
@@ -222,7 +224,7 @@ async function google(type,btn){
 }
 async function sendCode(e){
   e.preventDefault();const b=$('code-btn'),err=$('code-err');b.disabled=true;err.textContent='';
-  try{const d=await call('/api/crm-auth/login/code',{code:$('in-code').value,remember:$('in-remember').checked});location.href=d.go||'/crm';}
+  try{const d=await call('/api/crm-auth/login/code',{code:$('in-code').value,remember:$('in-remember').checked});location.href=d.go||'/crm/app';}
   catch(x){err.textContent=x.message;b.disabled=false;}
 }
 async function resendCode(btn){
@@ -241,12 +243,19 @@ async function signUp(e){
     const d=await call('/api/crm-auth/signup',{type:TYPE,code:$('up-code').value,companyName:$('up-company').value,businessName:$('up-biz').value,trade:$('up-trade').value,
       name:$('up-name').value,phone:$('up-phone').value,email:$('up-email').value,password:$('up-pw').value,note:$('up-note').value,acceptedTerms:$('up-terms').checked});
     if(d.pending){$('sent-msg').textContent=d.confirm?(d.emailed?`One more step: we sent a link to ${$('up-email').value}. Tap it to confirm it’s your email, and then ${d.companyName} can let you in. (Not there? Check your spam folder.)`:`We couldn’t send the confirmation email just now. Wait a few minutes and try again.`):`We asked ${d.companyName} to let you in. You’ll get an email when they do, then sign in here with the email and password you just picked.`;$('sent-title').textContent=d.confirm?'Check your email':'Request sent';show('sent');return;}
-    location.href=d.go||'/crm';
+    location.href=d.go||'/crm/app';
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
 // Links: /crm/login#signup, ?code=ABCD-2345 (from the Team screen), ?marketing=1.
 const q=new URLSearchParams(location.search);
 if(q.get('marketing'))$('mkt-note').hidden=false;
+// Starting a new company is only for setting up another Levi Construction Group company (?new=1).
+if(q.get('new'))$('choice-company').hidden=false;
+// From the portfolio: which company this sign-in is for (?co=levi-homes), and whether they're signed in to another.
+if(q.get('co'))fetch('/api/crm-portfolio/'+encodeURIComponent(q.get('co'))).then(r=>r.ok?r.json():null).then(c=>{if(!c)return;const n=$('co-note');
+  const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  n.innerHTML=q.get('other')?`You’re signed in to <b>${esc(q.get('other'))}</b>. To open <b>${esc(c.name)}</b>, sign in below with your ${esc(c.name)} login.`:`Sign in to <b>${esc(c.name)}</b>’s CRM.`;
+  n.hidden=false;document.title=c.name+' · Eagle I CRM';}).catch(()=>{});
 // Back from Google.
 if(q.get('google_error')){$('in-err').textContent=q.get('google_error');}
 if(q.get('pending')){$('sent-msg').textContent=q.get('confirmed')?`Thanks, your email is confirmed. We asked ${q.get('pending')} to let you in; you’ll get an email when they do, then sign in here.`:`We asked ${q.get('pending')} to let you in. You’ll get an email when they do, then tap “Sign in with Google” here.`;setTimeout(()=>show('sent'),0);}

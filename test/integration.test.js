@@ -1093,15 +1093,15 @@ describe('pipeline (CRM)', () => {
     assert.deepEqual(me.products, ['crm']);
     const home = await client.get('/marketing');
     assert.equal(home.status, 302);
-    assert.equal(home.headers.get('location'), '/crm');
-    assert.equal((await client.get('/crm')).status, 200);
-    assert.equal((await makeClient().get('/crm')).headers.get('location'), '/crm/login');
+    assert.equal(home.headers.get('location'), '/crm/app');
+    assert.equal((await client.get('/crm/app')).status, 200);
+    assert.equal((await makeClient().get('/crm/app')).headers.get('location'), '/crm/login');
   });
 
   test('marketing logins and CRM logins are separate', async () => {
     const mkt = await signup('mkt-only', 'marketing');
     assert.equal((await mkt.get('/api/crm/pipeline')).status, 401, 'a marketing login never opens the CRM');
-    assert.equal((await mkt.get('/crm')).headers.get('location'), '/crm/login?marketing=1');
+    assert.equal((await mkt.get('/crm/app')).headers.get('location'), '/crm/login?marketing=1');
     assert.equal((await mkt.post('/api/crm/activate', {})).status, 410);
     // The same email can have its own CRM account, with its own password.
     const pool = getTestPool();
@@ -1217,7 +1217,7 @@ describe('CRM accounts: create a company, join one, homeowners and subs', () => 
     const email = uniqueEmail('acct-owner');
     const r = await c.post('/api/crm-auth/signup', { type: 'company', companyName: 'Acct Builders', name: 'Olga Owner', phone: '713-555-0100', email, password: pw, acceptedTerms: true });
     assert.equal(r.status, 200);
-    assert.equal((await r.json()).go, '/crm');
+    assert.equal((await r.json()).go, '/crm/app');
     c.tenantId = await getTenantOf(email, 'crm'); trackTenant(c.tenantId);
     c.email = email;
     return c;
@@ -1263,7 +1263,7 @@ describe('CRM accounts: create a company, join one, homeowners and subs', () => 
     assert.equal((await c.post('/api/crm/join-requests/' + reqs[0].id, { approve: true, role: 'superintendent', reportsTo: ownerId })).status, 200);
     const s = makeClient();
     const ok = await (await s.post('/api/crm-auth/login', { email, password: pw })).json();
-    assert.equal(ok.go, '/crm');
+    assert.equal(ok.go, '/crm/app');
     const me = await (await s.get('/api/crm/me')).json();
     assert.equal(me.role, 'superintendent'); assert.equal(me.needsSetup, true, 'their own short setup');
     assert.equal((await s.get('/api/crm/join-code')).status, 403, 'only the owner or an admin sees the code');
@@ -1288,7 +1288,7 @@ describe('CRM accounts: create a company, join one, homeowners and subs', () => 
     await makeClient().post('/api/crm-auth/signup', { type: 'join', code, name: 'Ivy Invited', email, password: pw, acceptedTerms: true });
     const j = makeClient();
     const conf = await confirmJoin(j, email);
-    assert.equal(conf.headers.get('location'), '/crm');
+    assert.equal(conf.headers.get('location'), '/crm/app');
     assert.equal((await (await j.get('/api/crm/me')).json()).role, 'office');
     assert.equal((await makeClient().post('/api/crm-auth/login', { email, password: 'ThiefPass123!' })).status, 401, 'the thief’s password never worked');
     assert.equal((await makeClient().post('/api/crm-auth/login', { email, password: pw })).status, 200);
@@ -1351,7 +1351,7 @@ describe('CRM accounts: create a company, join one, homeowners and subs', () => 
     const r = await (await h.post('/api/crm-auth/signup', { type: 'homeowner', name: 'Hana Home', email, password: pw, acceptedTerms: true })).json();
     assert.equal(r.go, '/crm/home');
     assert.equal((await h.get('/api/crm/me')).status, 401, 'a homeowner never gets into a company’s CRM');
-    assert.equal((await h.get('/crm')).headers.get('location'), '/crm/home');
+    assert.equal((await h.get('/crm/app')).headers.get('location'), '/crm/home');
     let home = await (await h.get('/api/crm-account')).json();
     assert.equal(home.account.kind, 'homeowner'); assert.equal(home.projects.length, 0, 'nothing until the email is confirmed');
     // Confirm the email (the token from the database stands in for the emailed link).
@@ -1452,10 +1452,10 @@ describe('CRM team safety, money, homeowner and sub extras, help and errors', ()
     // The trusted device skips the code next time.
     const again = makeClient();
     const r2 = await again.raw('/api/crm-auth/login', { method: 'POST', body: JSON.stringify({ email: o.email, password: pw }), headers: { Cookie: 'eagle_trust=' + trust[1] } });
-    assert.equal((await r2.json()).go, '/crm');
+    assert.equal((await r2.json()).go, '/crm/app');
     // Team members don't get a code.
     const m = await member(o, 'member');
-    assert.equal((await (await makeClient().post('/api/crm-auth/login', { email: m.email, password: pw })).json()).go, '/crm');
+    assert.equal((await (await makeClient().post('/api/crm-auth/login', { email: m.email, password: pw })).json()).go, '/crm/app');
     // Five wrong codes and that code is done.
     const d = makeClient(); await d.post('/api/crm-auth/login', { email: o.email, password: pw });
     for (let i = 0; i < 5; i++) await d.post('/api/crm-auth/login/code', { code: '111111' });
@@ -1667,7 +1667,7 @@ describe('CRM team', () => {
     // The marketing product is the owner's only.
     assert.equal((await m.get('/api/leads')).status, 403);
     const home = await m.get('/marketing');
-    assert.equal(home.headers.get('location'), '/crm');
+    assert.equal(home.headers.get('location'), '/crm/app');
   });
 
   test('an admin can manage the team; nobody can remove the owner; a removed member is signed out', async () => {
@@ -2425,7 +2425,7 @@ describe('CRM calendar link, morning email, duplicates and the home-screen app',
     const merge = await m.post('/api/crm/duplicates/merge', { keepId: 'x', mergeIds: ['y'] });
     assert.equal(merge.status, 403, await merge.text());
     const man = await makeClient().get('/crm-manifest.webmanifest');
-    assert.equal(man.status, 200); assert.equal(JSON.parse(await man.text()).start_url, '/crm');
+    assert.equal(man.status, 200); assert.equal(JSON.parse(await man.text()).start_url, '/crm/app');
     assert.equal((await makeClient().get('/crm-sw.js')).status, 200);
   });
 });
@@ -2548,5 +2548,25 @@ describe('the homepage: choose the CRM or Eagle I Marketing', () => {
     assert.equal((await makeClient().get('/marketing')).headers.get('location'), '/login.html');
     // Coming back from connecting an account still lands on the dashboard.
     assert.equal((await makeClient().get('/?ads_connected=meta')).headers.get('location'), '/marketing?ads_connected=meta');
+  });
+});
+
+describe('the CRM portfolio: Levi Construction Group, and a way into each company', () => {
+  test('/crm is the portfolio; old links still open the CRM; each company has its own way in', async () => {
+    const page = await makeClient().get('/crm');
+    assert.equal(page.status, 200);
+    const html = await page.text();
+    assert.match(html, /Levi Construction Group/); assert.match(html, /href="\/crm\/c\/levi-homes"/);
+    assert.match(html, /location\.replace\('\/crm\/app' \+ location\.hash\)/, 'old /crm#… links forward to the app');
+    assert.equal((await makeClient().get('/crm?google=x')).headers.get('location'), '/crm/app?google=x');
+    // A company: signed out, its sign-in page; signed in to it, straight in; signed in elsewhere, told so.
+    const pool = getTestPool();
+    const t = (await pool.query(`INSERT INTO tenants (company_name, industry, products, slug) VALUES ('Portfolio Test Co', 'home_services', '{crm}', $1) RETURNING id`, ['pt-' + Date.now().toString(36)])).rows[0];
+    trackTenant(t.id);
+    const slug = (await pool.query('SELECT slug FROM tenants WHERE id = $1', [t.id])).rows[0].slug;
+    assert.equal((await makeClient().get('/crm/c/' + slug)).headers.get('location'), `/crm/login?co=${slug}`);
+    assert.equal((await makeClient().get('/crm/c/nope-nothing')).headers.get('location'), '/crm');
+    assert.deepEqual(await (await makeClient().get('/api/crm-portfolio/' + slug)).json(), { name: 'Portfolio Test Co' });
+    assert.equal((await makeClient().get('/api/crm-portfolio/nope-nothing')).status, 404);
   });
 });
