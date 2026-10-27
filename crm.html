@@ -688,9 +688,9 @@ select{max-width:100%;text-overflow:ellipsis}
 }
 
 /* ---------- Levi Construction Group colors ----------
-   More color and contrast: a charcoal bar with gold (the logo's colors), a vivid
-   cobalt for everything you can act on, a color of its own for each stage, and
-   bolder cards. Every text color clears WCAG AA on what it sits on. */
+   Three colors that belong together: the logo's charcoal and gold, and one cobalt
+   for everything you can act on. Green, amber and red only ever mean done, needs a
+   look, and urgent. Every text color clears WCAG AA on what it sits on. */
 :root{
   --bg:#eceff4;--bg4:#e6eaf1;
   --bdr:#cdd4df;--bdr2:#aab4c3;--bdr3:#7d8899;--ctl:#8e99ab;
@@ -700,7 +700,7 @@ select{max-width:100%;text-overflow:ellipsis}
   --green:#05823f;--green-soft:#dcf7e7;--green-line:#7fdba6;
   --amber:#b4530a;--amber-soft:#fff1d6;--amber-line:#f5be6b;
   --red:#c01b1b;--red-soft:#ffe3e1;--red-line:#f5a3a0;
-  --ai:linear-gradient(135deg,#1b4fd8 0%,#5b3be0 55%,#0e9f9a 100%);
+  --ai:linear-gradient(135deg,#1438a8 0%,#1b4fd8 60%,#3b6cf0 100%);
   --glow:rgba(27,79,216,.22);
   --sh2:0 1px 3px rgba(11,18,32,.10),0 1px 2px rgba(11,18,32,.06);
   --sh3:0 14px 28px -10px rgba(11,18,32,.28),0 4px 10px -4px rgba(11,18,32,.12);
@@ -722,7 +722,7 @@ body{background:var(--bg) linear-gradient(180deg,#e3e8f1 0,#eceff4 340px) no-rep
 .st{color:var(--ink);font-weight:800}
 .sh .st::after{content:'';display:block;width:54px;height:4px;border-radius:4px;margin-top:8px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
 .pl-h{color:var(--ink2);font-weight:800;display:flex;align-items:center;gap:8px}
-.pl-h::before{content:'';width:4px;height:16px;border-radius:3px;background:var(--accent)}
+.pl-h::before{content:'';width:4px;height:16px;border-radius:3px;background:var(--gold)}
 /* buttons */
 .btn-blue{background:linear-gradient(135deg,#2a5ff0 0%,#1b4fd8 55%,#1438a8 100%);box-shadow:0 6px 14px -6px rgba(27,79,216,.65),inset 0 1px 0 rgba(255,255,255,.18)}
 .btn-blue:hover{background:linear-gradient(135deg,#1f52e0,#1438a8);box-shadow:0 8px 18px -6px rgba(27,79,216,.7)}
@@ -734,15 +734,17 @@ body{background:var(--bg) linear-gradient(180deg,#e3e8f1 0,#eceff4 340px) no-rep
 .pl-card{border-left:4px solid var(--accent-line)}
 .pl-card:hover{border-color:var(--bdr2);border-left-color:var(--accent);box-shadow:var(--sh3)}
 .pl-card-title,.pl-item-t{font-weight:700;color:var(--ink)}
-.pl-card-val{color:var(--green);font-weight:800}
-/* summary tiles: each its own color */
+.pl-card-val{color:var(--ink);font-weight:800}
+/* summary tiles: cobalt, charcoal and gold */
 .pl-tile{border:0;color:#fff;box-shadow:0 8px 18px -10px rgba(11,18,32,.55)}
 .pl-tile .pl-tile-v,.pl-tile .pl-tile-l{color:#fff}
 .pl-tile-l{opacity:.92;font-weight:700}
-.pl-tile:nth-child(4n+1){background:linear-gradient(135deg,#1b4fd8,#3b7bff)}
-.pl-tile:nth-child(4n+2){background:linear-gradient(135deg,#047a3f,#16a35b)}
-.pl-tile:nth-child(4n+3){background:linear-gradient(135deg,#6b2fd6,#8f5cf7)}
-.pl-tile:nth-child(4n+4){background:linear-gradient(135deg,#c2410c,#ea7a1a)}
+.pl-tile:nth-child(4n+1){background:linear-gradient(135deg,#1b4fd8,#3b6cf0)}
+.pl-tile:nth-child(4n+2){background:linear-gradient(135deg,#14161c,#2c313d)}
+.pl-tile:nth-child(4n+2) .pl-tile-v{color:var(--gold2)}
+.pl-tile:nth-child(4n+3){background:linear-gradient(135deg,#1438a8,#1b4fd8)}
+.pl-tile:nth-child(4n+4){background:linear-gradient(135deg,#c9a24a,#e2c178)}
+.pl-tile:nth-child(4n+4) .pl-tile-v,.pl-tile:nth-child(4n+4) .pl-tile-l{color:var(--char)}
 /* stage chips and tags */
 .pl-chip{border-color:var(--bdr2);color:var(--ink2);font-weight:600}
 .pl-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 10px -4px rgba(27,79,216,.6)}
@@ -753,14 +755,14 @@ body{background:var(--bg) linear-gradient(180deg,#e3e8f1 0,#eceff4 340px) no-rep
 .pl-tag.gB{background:var(--accent-soft);border-color:var(--accent-line);color:#1438a8}
 .pl-tag.gC{background:#fbf3df;border-color:#e6cf93;color:var(--gold-ink)}
 .pl-tag.co{background:var(--char);border-color:var(--char);color:var(--gold2);font-weight:700}
-.pl-tag.st-new{background:#e3ebff;border-color:#9db5f5;color:#1438a8}
-.pl-tag.st-qualified{background:#e9e4ff;border-color:#b6a6f7;color:#4a24b8}
-.pl-tag.st-site_visit{background:#dcf5f3;border-color:#7fd4cd;color:#06655f}
-.pl-tag.st-design_agreement,.pl-tag.st-in_design{background:#fde7f3;border-color:#f1a8cf;color:#9b1c5c}
-.pl-tag.st-proposal{background:#fff1d6;border-color:#f5be6b;color:#8a3c05}
-.pl-tag.st-signed{background:#dcf7e7;border-color:#7fdba6;color:#035c2c}
-.pl-tag.st-production{background:#ffe6d5;border-color:#f7a873;color:#9a3412}
-.pl-tag.st-complete{background:#d9f2e4;border-color:#5cc08a;color:#045227}
+.pl-tag.st-new{background:#eef3ff;border-color:#c3d3fb;color:#1438a8}
+.pl-tag.st-qualified{background:#e3ebff;border-color:#a9c0f8;color:#1438a8}
+.pl-tag.st-site_visit{background:#d6e2ff;border-color:#8eabf5;color:#123293}
+.pl-tag.st-design_agreement,.pl-tag.st-in_design{background:#c7d7ff;border-color:#7397f2;color:#102c82}
+.pl-tag.st-proposal{background:#1b4fd8;border-color:#1b4fd8;color:#fff}
+.pl-tag.st-signed{background:#fbf3df;border-color:#e2c178;color:var(--gold-ink)}
+.pl-tag.st-production{background:var(--char);border-color:var(--char);color:var(--gold2)}
+.pl-tag.st-complete{background:var(--green-soft);border-color:var(--green-line);color:#035c2c}
 .pl-tag.st-lost{background:#eceef2;border-color:#b5bcc8;color:#3d4657}
 /* banners and next step: stronger fills */
 .pl-banner{background:var(--amber-soft);border-color:var(--amber-line);border-left:5px solid var(--amber);color:#5c2a03}
@@ -771,16 +773,18 @@ body{background:var(--bg) linear-gradient(180deg,#e3e8f1 0,#eceff4 340px) no-rep
 /* the company bar and profiles */
 .sb-bar{background:#fff;border:1px solid var(--bdr);border-left:5px solid var(--gold);box-shadow:var(--sh2)}
 .cp-head{border-top-color:var(--gold);box-shadow:var(--sh2);background:linear-gradient(180deg,#fffaf0 0%,#ffffff 60%)}
-/* Ask: a bright greeting and colored counts */
-.ai-hello .g{background:linear-gradient(90deg,#1b4fd8,#6b2fd6 55%,#0e9f9a);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* Ask: the greeting and counts in the same three colors */
+.ai-hello .g{background:linear-gradient(90deg,#14161c,#1b4fd8);-webkit-background-clip:text;background-clip:text;color:transparent}
 .ai-glance-t{border-width:0;color:#fff;font-weight:600;box-shadow:0 6px 14px -8px rgba(11,18,32,.6)}
 .ai-glance-t b{color:#fff}
-.ai-glance-t:nth-child(5n+1){background:linear-gradient(135deg,#c2410c,#ea7a1a)}
-.ai-glance-t:nth-child(5n+2){background:linear-gradient(135deg,#0e7c78,#14a8a1)}
-.ai-glance-t:nth-child(5n+3){background:linear-gradient(135deg,#1b4fd8,#3b7bff)}
-.ai-glance-t:nth-child(5n+4){background:linear-gradient(135deg,#047a3f,#16a35b)}
-.ai-glance-t:nth-child(5n+5){background:linear-gradient(135deg,#6b2fd6,#8f5cf7)}
+.ai-glance-t:nth-child(3n+1){background:linear-gradient(135deg,#1b4fd8,#3b6cf0)}
+.ai-glance-t:nth-child(3n+2){background:linear-gradient(135deg,#14161c,#2c313d)}
+.ai-glance-t:nth-child(3n+2) b{color:var(--gold2)}
+.ai-glance-t:nth-child(3n+3){background:linear-gradient(135deg,#c9a24a,#e2c178);color:var(--char)}
+.ai-glance-t:nth-child(3n+3) b{color:var(--char)}
 .ai-panel.inline .ai-head{border-bottom:2px solid var(--gold-line,#e6cf93)}
+.ai-send{background:var(--ai)}
+.ai-comp:focus-within{border-color:var(--accent)}
 /* windows */
 .vd-modal-box{border-color:var(--bdr2);box-shadow:0 30px 60px -18px rgba(11,18,32,.45)}
 @media (max-width:640px){
@@ -789,10 +793,10 @@ body{background:var(--bg) linear-gradient(180deg,#e3e8f1 0,#eceff4 340px) no-rep
   .cr-tab{color:#c4cad6}
   .cr-tab.active{color:var(--char);background:linear-gradient(135deg,var(--gold2),var(--gold))}
 }
-.vo-bar{position:sticky;top:0;z-index:70;background:#7a1fd1;color:#fff;font-weight:700;font-size:15.5px;line-height:1.3;padding:6px 12px;display:flex;align-items:center;gap:10px;justify-content:space-between}
+.vo-bar{position:sticky;top:0;z-index:70;background:linear-gradient(90deg,#c9a24a,#e2c178);color:#14161c;font-weight:700;font-size:15.5px;line-height:1.3;padding:6px 12px;display:flex;align-items:center;gap:10px;justify-content:space-between}
 .vo-bar span{flex:1;min-width:0}
 .vo-bar button{flex:0 0 auto}
-.vo-bar button{font:inherit;font-weight:800;background:#fff;color:#4a1394;border:0;border-radius:8px;padding:5px 12px;min-height:38px;cursor:pointer}
+.vo-bar button{font:inherit;font-weight:800;background:#14161c;color:#e2c178;border:0;border-radius:8px;padding:5px 12px;min-height:38px;cursor:pointer}
 body.view-only .cr-top{top:0}
 </style>
 </head>
