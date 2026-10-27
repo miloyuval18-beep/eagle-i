@@ -1109,7 +1109,7 @@ const CR_GUIDES={
     ['The homeowner’s page','Further down: a private page for the homeowner with updates, visits, estimates and photos. Post an update there to keep them in the loop.']]},
   loop:{icon:'📨',steps:[
     ['Kept in the loop','These are emails about this project you were only copied on. No action needed: nobody is waiting on you, so there are no reminders and nothing goes on your calendar.','#pld-loop .lp-item,#jb-loop .lp-item'],
-    ['When it is for you','If an email is sent to your address or uses your name, it counts as yours like any other: reminders, calendar and all.'],
+    ['When it is for you','If an email is sent to your address or uses your first or last name, it counts as yours like any other: reminders, calendar and all.'],
     ['Every morning','Your morning email lists what you were copied on since the day before, by project, each marked “No action needed”. Switch this off in Account → My calendar & morning email.']]},
   job:{icon:'🛠',steps:[
     ['The job','Everything for one signed job, top to bottom.'],
@@ -1247,7 +1247,7 @@ async function dyOpen(){
       <div class="pl-h">Morning email</div>
       <label class="pl-switch"><input type="checkbox" ${d.digestOn?'checked':''} onchange="dyDigest(this.checked)"><span>At 7am, Monday to Saturday: today’s visits, tasks due, phases starting, and what’s waiting for you. Nothing on? No email.</span></label>
       <div class="pl-h">Emails I’m copied on</div>
-      <label class="pl-switch"><input type="checkbox" ${d.oversight?'checked':''} onchange="dyOversight(this.checked)"><span>Just keep me in the loop. When I’m only copied on an email, don’t remind me to answer it or put it on my calendar; list it on the project and in my morning email as “no action needed”. If it’s sent to me or uses my name, it’s mine like any other.</span></label>
+      <label class="pl-switch"><input type="checkbox" ${d.oversight?'checked':''} onchange="dyOversight(this.checked)"><span>Just keep me in the loop. When I’m only copied on an email, don’t remind me to answer it or put it on my calendar; list it on the project and in my morning email as “no action needed”. If it’s sent to me or uses my first or last name, it’s mine like any other.</span></label>
       <div class="pl-h">End-of-day check-in</div>
       <label class="pl-switch"><input type="checkbox" id="dy-ci" onchange="dyCheckin(this.checked)"><span>Weekdays at 5pm: “What did you get done today?” Reply in your own words and Eagle I files it on the right jobs, so nobody has to type it up twice.</span></label>`);
     plApi('/api/crm/me/checkin').then(c=>{const i=document.getElementById('dy-ci');if(i)i.checked=c.on;}).catch(()=>{});
@@ -2011,7 +2011,7 @@ function tmPermsHtml(m){
     <div class="sm" style="margin:6px 0 4px">Everyone can work deals, notes, tasks, visits, the calendar and job schedules. Tick what else ${uxEsc((m.name||m.email).split(' ')[0])} may do. Changing their role starts these over from the new role’s defaults.</div>
     ${P.map(p=>{const on=!!m.permissions[p.key],mine=crCan(p.key),lock=!on&&!mine;return `<label class="pl-switch tm-perm"${lock?' title="You can’t give this because you don’t have it yourself."':''}><input type="checkbox" ${on?'checked':''} ${lock?'disabled':''} onchange="tmPerm('${m.id}','${p.key}',this)"><span><b>${uxEsc(p.label)}</b><br><span class="sm">${uxEsc(p.help)}</span></span></label>`;}).join('')}
     <div class="pl-h" style="font-size:16px;margin-top:10px">Emails they’re copied on</div>
-    <label class="pl-switch tm-perm"><input type="checkbox" ${m.oversight?'checked':''} onchange="tmOversight('${m.id}',this)"><span><b>Just keep them in the loop</b><br><span class="sm">When ${uxEsc((m.name||m.email).split(' ')[0])} is only copied on an email, there are no reminders to answer it and nothing goes on their calendar. It’s listed on the project and in their morning email as “no action needed”. Sent to them, or uses their name, and it counts as theirs.</span></span></label>
+    <label class="pl-switch tm-perm"><input type="checkbox" ${m.oversight?'checked':''} onchange="tmOversight('${m.id}',this)"><span><b>Just keep them in the loop</b><br><span class="sm">When ${uxEsc((m.name||m.email).split(' ')[0])} is only copied on an email, there are no reminders to answer it and nothing goes on their calendar. It’s listed on the project and in their morning email as “no action needed”. Sent to them, or uses their first or last name, and it counts as theirs.</span></span></label>
     ${m.custom?`<div class="pl-acts"><button class="btn-xs" onclick="tmPermReset('${m.id}')">Back to the ${uxEsc(role.toLowerCase())} defaults</button></div>`:''}</details>`;
 }
 // For people who can't change it: a plain list of what this person can do.
@@ -3028,7 +3028,7 @@ async function lpLoad(dealId,elId){
   try{
     const {items}=await plApi('/api/crm/deals/'+dealId+'/loop');
     if(!items.length){el.innerHTML='';return;}
-    el.innerHTML=`<div class="pl-h">Kept in the loop</div><div class="sm" style="margin-top:0">Emails you were copied on for this project. They weren’t sent to you and don’t use your name: <b>no action needed</b>. Only you see these.</div>
+    el.innerHTML=`<div class="pl-h">Kept in the loop</div><div class="sm" style="margin-top:0">Emails you were copied on for this project. They weren’t sent to you and don’t use your first or last name: <b>no action needed</b>. Only you see these.</div>
       <div class="pl-list">${items.map(i=>`<div class="pl-item lp-item"><div class="pl-item-t">${uxEsc(i.subject||'(no subject)')}</div>
         <div class="pl-item-d">${uxEsc(i.from)}${i.to?' to '+uxEsc(i.to):''} · ${crWhen(i.lastAt)}${i.messages>1?' · '+i.messages+' emails':''}</div>
         ${i.snippet?`<div class="pl-item-d" style="color:var(--ink)">${uxEsc(i.snippet)}</div>`:''}

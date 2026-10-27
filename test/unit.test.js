@@ -1459,3 +1459,18 @@ describe('copied emails: does it name them? (lib/crmEmailWatch.js)', () => {
     assert.equal(mentions('Levi Stone wants it', levi, [{ name: 'Levi Grant' }]), true);
   });
 });
+
+describe('copied emails: last names count too (lib/crmEmailWatch.js)', () => {
+  const { mentions } = require('../lib/crmEmailWatch');
+  const ann = { name: 'Ann Ramirez', company: 'Levi Homes' }, levi = { name: 'Levi Stone', company: 'Levi Homes' };
+  test('by last name: on its own, with a title, as a greeting or call-out', () => {
+    for (const t of ['Ramirez, can you approve?', 'Ask Ramirez about the permit', 'Ramirez approved it', 'Thanks Ramirez', 'cc Ramirez']) assert.equal(mentions(t, ann), true, t);
+    for (const t of ['Mr. Stone signed off', 'Stone, can you call me', 'Hi Stone']) assert.equal(mentions(t, levi), true, t);
+  });
+  test('not someone else with that last name, a company on the email, or an everyday word', () => {
+    for (const t of ['Joe Ramirez will be there', 'Talk soon, Carlos Ramirez', 'ramirez@x.com sent it']) assert.equal(mentions(t, ann), false, t);
+    assert.equal(mentions('Ramirez will do it', ann, [{ name: 'Carlos Ramirez' }]), false);
+    assert.equal(mentions('Ramirez Plumbing sent the bid', ann, [{ name: 'Ramirez Plumbing' }]), false);
+    for (const t of ['Stone countertops arrive Friday', 'The stone arrives Friday']) assert.equal(mentions(t, levi), false, t);
+  });
+});
