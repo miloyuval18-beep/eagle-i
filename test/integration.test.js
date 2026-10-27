@@ -2658,3 +2658,25 @@ describe('the Eagle I admin: every CRM company, view only', () => {
     assert.equal((await a.get('/api/crm/me')).status, 401, 'back to their own (marketing) login');
   });
 });
+
+describe('the Eagle I admin signs in on either side', () => {
+  test('a marketing-and-CRM admin login: the CRM side goes to the admin page; portfolio buttons open view only', async () => {
+    const pool = getTestPool();
+    const email = uniqueEmail('both-adm');
+    const s = await (await makeClient().post('/api/auth/signup', { email, password: 'TestPass1234!', companyName: 'Admin', industry: 'home_services', acceptedTerms: true })).json();
+    trackTenant(s.tenantId);
+    await pool.query(`UPDATE users SET is_admin = true, app = 'both', role = 'member' WHERE LOWER(email) = $1`, [email.toLowerCase()]);
+    // Marketing side still signs in.
+    assert.equal((await makeClient().post('/api/auth/login', { email, password: 'TestPass1234!' })).status, 200);
+    // CRM side signs in too, and lands on the admin page.
+    const c = makeClient();
+    const r = await (await c.post('/api/crm-auth/login', { email, password: 'TestPass1234!' })).json();
+    assert.equal(r.go, '/admin');
+    assert.equal((await c.get('/crm/app')).headers.get('location'), '/admin');
+    assert.equal((await c.get('/admin')).status, 200);
+    // Someone else's marketing login still can't use the CRM side.
+    const other = uniqueEmail('mkt-only');
+    trackTenant((await (await makeClient().post('/api/auth/signup', { email: other, password: 'TestPass1234!', companyName: 'M', industry: 'home_services', acceptedTerms: true })).json()).tenantId);
+    assert.equal((await makeClient().post('/api/crm-auth/login', { email: other, password: 'TestPass1234!' })).status >= 400, true);
+  });
+});

@@ -261,6 +261,13 @@ app.get('/crm/c/:slug', async (req, res) => {
     const slug = String(req.params.slug).toLowerCase().slice(0, 60);
     if (!p.group || !p.companies.some(c => c.slug === slug)) return res.redirect('/crm');
     if (req.session && req.session.userId && req.session.tenantId === p.tenantId) return res.redirect('/crm/app#co/' + slug);
+    if (req.session && req.session.userId && ((await query('SELECT is_admin FROM users WHERE id = $1', [req.session.userId])).rows[0] || {}).is_admin) {
+      if (req.session.viewAs !== p.tenantId) {
+        req.session.viewAs = p.tenantId;
+        await require('./lib/crmAudit').log({ tenantId: p.tenantId, actor: null, action: 'settings', detail: 'The Eagle I admin looked at the CRM (view only)' }).catch(() => {});
+      }
+      return res.redirect('/crm/app#co/' + slug);
+    }
     let other = '';
     if (req.session && req.session.userId) other = ((await query(`SELECT t.company_name FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1 AND u.app <> 'marketing'`, [req.session.userId])).rows[0] || {}).company_name || '';
     res.redirect(`/crm/login?co=${encodeURIComponent(slug)}${other ? '&other=' + encodeURIComponent(other) : ''}`);
@@ -283,8 +290,10 @@ app.get(['/crm/app', '/crm/app/'], async (req, res) => {
   if (req.session && !req.session.userId && req.session.accountId) return res.redirect('/crm/home');
   if (!req.session || !req.session.userId) return res.redirect('/crm/login');
   try {
-    const u = (await query('SELECT app, is_admin FROM users WHERE id = $1', [req.session.userId])).rows[0];
+    const u = (await query(`SELECT u.app, u.is_admin, ('crm' = ANY(t.products)) AS crm FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.session.userId])).rows[0];
     if (!u) return res.redirect('/crm/login');
+    // The Eagle I admin has no CRM company of their own: they pick one to look at.
+    if (u.is_admin && !req.session.viewAs && !u.crm) return res.redirect('/admin');
     if (u.app === 'marketing' && !(req.session.viewAs && u.is_admin)) return res.redirect('/crm/login?marketing=1');
   } catch (err) { console.error('CRM login check failed:', err.message); }
   // Always check for a newer copy, so a deploy's page never runs against an older or newer server.

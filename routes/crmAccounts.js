@@ -51,8 +51,15 @@ async function crmLogin(req, res) {
       }
     }
     await start(req, r);
-    res.json({ ok: true, go: whereTo(r.as) });
+    res.json({ ok: true, go: await goFor(r) });
   } catch (err) { fail(res, err, 'Sign-in failed'); }
+}
+// Where a CRM sign-in lands: the CRM, or for the Eagle I admin (whose own company
+// doesn't use the CRM) the admin page, to look at any company (routes/admin.js).
+async function goFor(r) {
+  if (r.as !== 'staff') return whereTo(r.as);
+  const u = (await require('../db').query(`SELECT u.is_admin, ('crm' = ANY(t.products)) AS crm FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [r.id])).rows[0];
+  return u && u.is_admin && !u.crm ? '/admin' : whereTo(r.as);
 }
 // The code from the email (two-step sign-in); `remember` trusts this device for 30 days.
 const TRUST_COOKIE = 'eagle_trust';
@@ -73,7 +80,7 @@ router.post('/api/crm-auth/login/code', lim('code2', 20, FIFTEEN), wrap('Couldnâ
     res.cookie(TRUST_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 30 * 86400000, path: '/' });
   }
   require('../lib/crmAudit').log({ tenantId: p.tenantId, actor: { id: p.userId }, action: 'signed_in_new', detail: `${deviceOf(req).name}${fresh ? '' : ' (trusted for 30 days)'}` });
-  res.json({ ok: true, go: '/crm/app' });
+  res.json({ ok: true, go: await goFor({ as: 'staff', id: p.userId }) });
 }));
 router.post('/api/crm-auth/login', lim('login', 20, FIFTEEN, { byEmail: true }), crmLogin);
 
