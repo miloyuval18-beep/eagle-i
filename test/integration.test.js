@@ -2613,3 +2613,48 @@ describe('Levi Construction Group: one team, its companies each with their own p
     await pool.query(`UPDATE tenants SET slug = NULL WHERE id = $1`, [tenantId]);
   });
 });
+
+describe('the Eagle I admin: every CRM company, view only', () => {
+  test('lists CRM companies, opens one read-only, logs it, and stops', async () => {
+    const pool = getTestPool();
+    // A company with a deal.
+    const o = makeClient();
+    const co = await (await o.post('/api/auth/signup', { email: uniqueEmail('adm-co'), password: 'TestPass1234!', companyName: 'Looked At Co', industry: 'home_services', acceptedTerms: true, product: 'crm' })).json();
+    trackTenant(co.tenantId);
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Pat Doe', title: 'Doe kitchen' })).json();
+    // The admin (an Eagle I Marketing login with is_admin) and someone who isn't.
+    const a = makeClient(); const aEmail = uniqueEmail('adm');
+    const ad = await (await a.post('/api/auth/signup', { email: aEmail, password: 'TestPass1234!', companyName: 'Admin', industry: 'home_services', acceptedTerms: true })).json();
+    trackTenant(ad.tenantId);
+    await pool.query('UPDATE users SET is_admin = true WHERE LOWER(email) = $1', [aEmail.toLowerCase()]);
+    assert.equal((await o.get('/api/admin/crm')).status, 403);
+    assert.equal((await o.post('/api/admin/view-as', { tenantId: co.tenantId })).status, 403, 'only the admin');
+    assert.equal((await a.get('/admin')).status, 200);
+    assert.notEqual((await o.get('/admin')).status, 200);
+    const list = await (await a.get('/api/admin/crm')).json();
+    assert.ok(list.companies.some(c => c.id === co.tenantId && c.deals === 1));
+    // Looking: their CRM, as its owner sees it.
+    const v = await (await a.post('/api/admin/view-as', { tenantId: co.tenantId })).json();
+    assert.equal(v.go, '/crm/app');
+    assert.equal((await a.get('/crm/app')).status, 200);
+    const me = await (await a.get('/api/crm/me')).json();
+    assert.equal(me.viewOnly, true); assert.equal(me.companyName, 'Looked At Co');
+    const pl = await (await a.get('/api/crm/pipeline')).json();
+    assert.ok(pl.deals.some(d => d.id === deal.id));
+    assert.equal((await (await a.get(`/api/crm/deals/${deal.id}`)).json()).deal.title, 'Doe kitchen');
+    // Nothing can be changed, sent or connected.
+    for (const [m, path, body] of [['post', '/api/crm/deals', { name: 'X' }], ['patch', `/api/crm/deals/${deal.id}`, { title: 'Hacked' }], ['delete', `/api/crm/deals/${deal.id}`]]) {
+      const r = await a[m](path, body || {});
+      assert.equal(r.status, 403, `${m} ${path}`); assert.equal((await r.json()).error.code, 'view_only');
+    }
+    assert.equal((await a.get('/api/crm/google/oauth/start')).status, 403);
+    assert.equal((await (await o.get(`/api/crm/deals/${deal.id}`)).json()).deal.title, 'Doe kitchen', 'unchanged');
+    const log = (await pool.query(`SELECT detail FROM crm_audit WHERE tenant_id = $1`, [co.tenantId])).rows;
+    assert.ok(log.some(l => /Eagle I admin .* looked at the CRM \(view only\)/.test(l.detail)));
+    // The admin's own Eagle I Marketing still works as itself.
+    assert.notEqual((await a.get('/api/leads')).status, 403);
+    // Stopping.
+    await a.post('/api/admin/view-as/exit', {});
+    assert.equal((await a.get('/api/crm/me')).status, 401, 'back to their own (marketing) login');
+  });
+});

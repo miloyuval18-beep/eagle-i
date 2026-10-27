@@ -60,4 +60,40 @@ router.get('/api/admin/tenants/:id', requireAuth, requireAdmin, async (req, res)
   }
 });
 
+// ---------- Eagle I CRM: every company, and a view-only look inside ----------
+// Opening one puts its CRM in this admin's browser exactly as its owner sees it,
+// but read only (auth.js blocks every change while looking). Each look is written
+// in that company's activity log.
+router.get('/api/admin/crm', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const rows = (await query(
+      `SELECT t.id, t.company_name, t.created_at, t.slug,
+              (SELECT email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS owner_email,
+              (SELECT COUNT(*)::int FROM users u WHERE u.tenant_id = t.id AND u.disabled_at IS NULL) AS people,
+              (SELECT COUNT(*)::int FROM crm_deals d WHERE d.tenant_id = t.id AND d.stage NOT IN ('signed', 'production', 'complete', 'lost')) AS selling,
+              (SELECT COUNT(*)::int FROM crm_deals d WHERE d.tenant_id = t.id AND d.stage IN ('signed', 'production')) AS jobs,
+              (SELECT COUNT(*)::int FROM crm_deals d WHERE d.tenant_id = t.id) AS deals,
+              (SELECT COUNT(*)::int FROM crm_subsidiaries s WHERE s.tenant_id = t.id AND s.archived_at IS NULL) AS companies,
+              (SELECT MAX(a.created_at) FROM crm_activities a WHERE a.tenant_id = t.id) AS last_activity
+       FROM tenants t WHERE 'crm' = ANY(t.products) ORDER BY (t.slug IS NOT NULL) DESC, t.created_at DESC`)).rows;
+    res.json({ companies: rows, viewing: req.session.viewAs || null });
+  } catch (err) { res.status(500).json({ error: { message: 'Failed to load the CRM companies: ' + err.message } }); }
+});
+router.post('/api/admin/view-as', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const t = (await query(`SELECT id, company_name FROM tenants WHERE id::text = $1 AND 'crm' = ANY(products)`, [String((req.body || {}).tenantId || '')])).rows[0];
+    if (!t) return res.status(404).json({ error: { message: 'Company not found.' } });
+    req.session.viewAs = t.id;
+    await new Promise((ok) => req.session.save(() => ok()));
+    const me = (await query('SELECT email FROM users WHERE id = $1', [req.userId])).rows[0] || {};
+    await require('../lib/crmAudit').log({ tenantId: t.id, actor: null, action: 'settings', detail: `The Eagle I admin (${me.email || 'Eagle I'}) looked at the CRM (view only)` }).catch(() => {});
+    res.json({ ok: true, go: '/crm/app', company: t.company_name });
+  } catch (err) { res.status(500).json({ error: { message: 'Failed to open it: ' + err.message } }); }
+});
+router.post('/api/admin/view-as/exit', requireAuth, async (req, res) => {
+  delete req.session.viewAs;
+  await new Promise((ok) => req.session.save(() => ok()));
+  res.json({ ok: true, go: '/admin' });
+});
+
 module.exports = router;

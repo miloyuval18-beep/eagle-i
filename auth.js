@@ -53,6 +53,15 @@ function requireAuth(req, res, next) {
   }
   req.userId = req.session.userId;
   req.tenantId = req.session.tenantId;
+  // An Eagle I admin looking at a company's CRM (routes/admin.js): that company's
+  // data, read only. Nothing can be changed, sent or connected while looking.
+  if (req.session.viewAs && /^\/(api\/crm|crm)(\/|$)/.test(req.originalUrl.split('?')[0])) {
+    req.tenantId = req.session.viewAs;
+    req.viewOnly = true;
+    const path = req.originalUrl.split('?')[0];
+    const reading = ['GET', 'HEAD'].includes(req.method) && !/\/(oauth|google\/start|drive\/(on|connect))(\/|$)/.test(path);
+    if (!reading && path !== '/api/crm/client-error') return res.status(403).json({ error: { message: 'You’re looking at this company as the Eagle I admin, so nothing can be changed here. Exit the admin view to make changes.', code: 'view_only' } });
+  }
   next();
 }
 

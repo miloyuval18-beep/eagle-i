@@ -283,13 +283,21 @@ app.get(['/crm/app', '/crm/app/'], async (req, res) => {
   if (req.session && !req.session.userId && req.session.accountId) return res.redirect('/crm/home');
   if (!req.session || !req.session.userId) return res.redirect('/crm/login');
   try {
-    const u = (await query('SELECT app FROM users WHERE id = $1', [req.session.userId])).rows[0];
+    const u = (await query('SELECT app, is_admin FROM users WHERE id = $1', [req.session.userId])).rows[0];
     if (!u) return res.redirect('/crm/login');
-    if (u.app === 'marketing') return res.redirect('/crm/login?marketing=1');
+    if (u.app === 'marketing' && !(req.session.viewAs && u.is_admin)) return res.redirect('/crm/login?marketing=1');
   } catch (err) { console.error('CRM login check failed:', err.message); }
   // Always check for a newer copy, so a deploy's page never runs against an older or newer server.
   res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'crm.html'));
+});
+// The Eagle I admin's page (routes/admin.js): every CRM company, each viewable read-only.
+app.get(['/admin', '/admin/'], async (req, res) => {
+  if (!req.session || !req.session.userId) return res.redirect('/login.html');
+  const u = (await query('SELECT is_admin FROM users WHERE id = $1', [req.session.userId]).catch(() => ({ rows: [] }))).rows[0];
+  if (!u || !u.is_admin) return res.redirect('/');
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 app.get('/crm/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm-login.html')));
 app.get('/crm/join', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm-join.html')));

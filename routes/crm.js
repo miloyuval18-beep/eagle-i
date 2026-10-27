@@ -23,8 +23,16 @@ function fail(res, err, what) {
 
 // Who is signed in and whether their company uses the CRM. Open to any
 // logged-in user so the app can offer to switch the CRM on.
+const isPlatformAdmin = async (userId) => !!((await query('SELECT is_admin FROM users WHERE id = $1', [userId])).rows[0] || {}).is_admin;
 router.get('/api/crm/me', requireAuth, async (req, res) => {
   try {
+    if (req.viewOnly) {
+      if (!(await isPlatformAdmin(req.userId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
+      const t = (await query('SELECT company_name, products FROM tenants WHERE id = $1', [req.tenantId])).rows[0];
+      if (!t) return res.status(401).json({ error: { message: 'Not logged in.' } });
+      return res.json({ userId: req.userId, email: 'Eagle I admin', name: 'Eagle I admin', role: 'owner', roleLabel: 'Eagle I admin (view only)', canManage: true, perms: team.permsOf({ role: 'owner' }), oversight: false,
+        companyName: t.company_name, needsSetup: false, tips: { seen: [], off: true }, products: t.products || [], hasCrm: true, hasMarketing: false, viewOnly: true });
+    }
     const r = (await query(
       `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.permissions, u.oversight, u.disabled_at, u.tips, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
     if (!r || r.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
@@ -91,7 +99,12 @@ const MONEY_FILTERS = [
 // Everything else under /api/crm is for signed-in people at companies that use the CRM.
 router.use('/api/crm', requireAuth, async (req, res, next) => {
   try {
-    const me = await team.getUser(req.userId);
+    let me = await team.getUser(req.userId);
+    // The Eagle I admin looking at a company (routes/admin.js): sees it as its owner would, read only (auth.js).
+    if (req.viewOnly) {
+      if (!me || !(await isPlatformAdmin(req.userId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
+      me = { ...me, tenant_id: req.tenantId, role: 'owner', permissions: null, app: 'crm', disabled_at: null, viewOnly: true };
+    }
     // A removed team member's old session stops working at once, and a marketing login never opens the CRM.
     if (!me || me.tenant_id !== req.tenantId || me.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
     if (me.disabled_at) return res.status(401).json({ error: { message: 'Your account has been turned off. Ask the owner or an admin.', code: 'disabled' } });
