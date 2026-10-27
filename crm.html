@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Eagle I CRM</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/svg+xml" href="/lcg-mark.svg">
 <link rel="manifest" href="/crm-manifest.webmanifest">
 <meta name="theme-color" content="#ffffff">
 <link rel="apple-touch-icon" href="/crm-apple-touch.png">
@@ -149,6 +149,10 @@ select{width:auto;cursor:pointer}
 .pl-tag.gA{color:var(--green);border-color:rgba(60,110,70,.45);font-weight:800}
 .pl-tag.gB{color:var(--accent);border-color:var(--accent);font-weight:800}
 .lp-item .pl-tag{display:inline-flex;align-items:center;font-size:15px}
+.sb-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg2,#fff);border:1px solid var(--bdr);border-radius:12px;padding:10px 12px;margin:0 0 12px}
+.sb-bar label{font-weight:800;font-size:17px;margin:0}
+.sb-bar select{flex:1;min-width:180px;font-size:17px;padding:10px;border-radius:8px}
+.cp-head{background:var(--bg2,#fff);border:1px solid var(--bdr);border-top:5px solid #a8925f;border-radius:14px;padding:18px;margin-bottom:6px}
 .pl-tag.gC{color:var(--ink2);font-weight:800}
 .fit-r{font-size:16px;display:flex;gap:8px;padding:2px 0}.fit-r b{min-width:34px;text-align:right}
 .fit-brief{white-space:pre-wrap;font-size:16.5px;line-height:1.5;background:var(--bg2,rgba(0,0,0,.03));border:1px solid var(--bdr2);border-radius:10px;padding:10px 12px;margin-top:6px}
@@ -258,8 +262,7 @@ a{color:var(--accent);text-underline-offset:2px}
 .cr-top{background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(1.6) blur(12px);backdrop-filter:saturate(1.6) blur(12px);border-bottom:1px solid var(--bdr);box-shadow:none}
 .cr-bar{padding:10px 16px}
 .cr-brand{font-weight:700;font-size:20.5px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;color:var(--ink)}
-.cr-brand::before{content:'';width:26px;height:26px;border-radius:8px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),var(--sh2);
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23f6c453' d='M12 3.2l2.1 5.6 5.9.3-4.6 3.7 1.6 5.7L12 15.3l-5 3.2 1.6-5.7L4 9.1l5.9-.3z'/%3E%3C/svg%3E") center/16px 16px no-repeat,var(--ai)}
+.cr-brand::before{content:'';width:30px;height:30px;border-radius:7px;flex:0 0 auto;box-shadow:var(--sh2);background:#0b0b0b url('/lcg-mark.svg') center/30px 30px no-repeat}
 .cr-brand span{background:none;-webkit-background-clip:initial;background-clip:initial;color:var(--accent)}
 .cr-company{font-size:16px;color:var(--ink3);font-weight:500}
 .cr-menu-btn{margin-left:auto;border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 12px;font-weight:500;box-shadow:var(--sh1);min-height:36px}
@@ -713,6 +716,7 @@ select{max-width:100%;text-overflow:ellipsis}
       <a href="/api/crm/export/all" id="cr-export" hidden onclick="crMenu(false);showNotif('Preparing your download','Your browser saves a .zip of spreadsheets in a moment.')">⬇ Download all my data</a>
       <button onclick="crMenu(false);rpOpenProblem()">🆘 Report a problem</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
+      <button onclick="crMenu(false);cpOpen('')">🏢 Our companies</button>
       <a href="/marketing" id="cr-mkt" hidden>Open Eagle I marketing</a>
       <a href="/forgot-password.html">Change password</a>
       <button onclick="crSignOut()">Sign out</button>
@@ -737,6 +741,7 @@ select{max-width:100%;text-overflow:ellipsis}
   <section class="view" id="view-pipeline">
     <div class="sh"><div><div class="st">Pipeline</div><div class="ss">Every job you're selling, from first contact to finished project. Move a deal to a new stage and Eagle I sends that stage's emails for you, once you've approved them in Automations.</div></div>
       <button class="btn btn-blue" onclick="plNewDeal()">＋ Add a deal</button></div>
+    <div id="pl-subbar"></div>
     <div id="pl-setup-banner"></div>
     <div id="pl-paused-banner"></div>
     <div class="pl-strip" id="pl-strip"></div>
@@ -794,8 +799,10 @@ select{max-width:100%;text-overflow:ellipsis}
     <div class="cv-g" id="cv-google"></div>
     <div id="cv-body"></div>
   </section>
+  <section class="view" id="view-co"><div id="co-box"><div class="pl-empty">Loading…</div></div></section>
   <section class="view" id="view-jobs">
     <div class="sh"><div><div class="st">Jobs</div><div class="ss">Every signed job: where it stands, what's next, and what's waiting on the homeowner. A signed contract gets its schedule laid out on its own.</div></div></div>
+    <div id="jb-subbar"></div>
     <div class="pl-list" id="jb-list"><div class="pl-empty">Loading…</div></div>
     <div class="pl-h">Subs &amp; vendors</div>
     <details class="pl-pb" id="vd-add"><summary style="cursor:pointer;font-weight:800">＋ Add a sub or vendor</summary>
@@ -1107,6 +1114,10 @@ const CR_GUIDES={
     ['Notes and tasks','Add a note after a call or visit (🎤 to talk it), and tasks for what’s next.'],
     ['Estimates and invoices','Start an estimate or an invoice from here. They’re sent from your company, and you always see who it goes to first.',null,()=>crCan('estimates')||crCan('invoices')],
     ['The homeowner’s page','Further down: a private page for the homeowner with updates, visits, estimates and photos. Post an update there to keep them in the loop.']]},
+  co:{icon:'🏢',steps:[
+    ['Each company in the group','Every company has its own profile: what it does, how to reach it, and its own projects and files. The team, roles and permissions are the same for all of them.'],
+    ['Its projects','Jobs going, deals being sold and finished projects for this company. Tap one to open it. “Add a deal” here puts the new deal under this company.'],
+    ['Pick a company anywhere','On Pipeline and Jobs, the Company box at the top shows just one company’s projects, or all of them.']]},
   loop:{icon:'📨',steps:[
     ['Kept in the loop','These are emails about this project you were only copied on. No action needed: nobody is waiting on you, so there are no reminders and nothing goes on your calendar.','#pld-loop .lp-item,#jb-loop .lp-item'],
     ['When it is for you','If an email is sent to your address or uses your first or last name, it counts as yours like any other: reminders, calendar and all.'],
@@ -1220,11 +1231,12 @@ function crView(v){
   if(v==='estimates')esLoad();
   if(v==='reports')rpLoad();
   if(v==='jobs')jbList();
+  if(v==='co')cpLoad();
   if(v==='refs')rfLoad();
   if(v==='growth')mkLoad();
   if(v==='setup')suLoad();
   if(v==='billing')blLoad();
-  try{history.replaceState(null,'','#'+v+(v==='ask'&&AI.thread?'/'+AI.thread:''));}catch(e){}
+  try{history.replaceState(null,'','#'+v+(v==='ask'&&AI.thread?'/'+AI.thread:'')+(v==='co'&&CR.coSlug?'/'+CR.coSlug:''));}catch(e){}
   if(v!=='ask')document.title='Eagle I CRM';
   window.scrollTo(0,0);
 }
@@ -1286,8 +1298,11 @@ async function crInit(){
   await crLoadTeam();
   // A link to one chat (#ask/<id>) opens that chat.
   if(start==='ask'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||''))AI.loading=hashParts[1];
+  // A company in the group (#co/levi-homes, from the portfolio) opens its profile.
+  await sbLoad();
+  if(start==='co')CR.coSlug=/^[a-z0-9-]{1,60}$/.test(hashParts[1]||'')?hashParts[1]:'';
   // A new company (or a new person) is walked through setting up first.
-  crView(me.needsSetup?'start':['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start'].includes(start)?start:'ask');
+  crView(me.needsSetup?'start':['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co'].includes(start)?start:'ask');
   crSetupBanner();
   if(AI.loading)aiLoad(AI.loading);
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
@@ -2854,7 +2869,8 @@ function plBadge(n){
   const b=document.getElementById('pl-needs-badge');if(b){b.textContent=n;b.classList.toggle('on',n>0);}
 }
 function plRender(){
-  const d=PL.data;if(!d)return;
+  if(!PL.data)return;const d=sbScope(PL.data);
+  const bar=document.getElementById('pl-subbar');if(bar)bar.innerHTML=sbBar('plRender');
   const open=d.deals.filter(x=>plStage(x.stage).open);
   const selling=open.filter(x=>!['signed','production'].includes(x.stage));
   const weekAgo=Date.now()-7*86400000;
@@ -2880,6 +2896,7 @@ function plRender(){
     if(waiting)tags.push(`<span class="pl-tag warn">Waiting ${plAgo(x.created_at)}</span>`);
     if(x.site_visit_at&&new Date(x.site_visit_at)>new Date(Date.now()-86400000))tags.push(`<span class="pl-tag">📅 ${new Date(x.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span>`);
     if(CR.team.length>1)tags.push(`<span class="pl-tag">${x.owner_name?'👤 '+uxEsc(x.owner_name):'Unassigned'}</span>`);
+    if(!CR.sub&&x.subsidiary_id&&sbName(x.subsidiary_id))tags.unshift(`<span class="pl-tag gC">🏢 ${uxEsc(sbName(x.subsidiary_id))}</span>`);
     if(x.automations_waiting)tags.push(`<span class="pl-tag auto">✓ ${x.automations_waiting} automatic email${x.automations_waiting>1?'s':''} scheduled</span>`);
     return `<button class="pl-card" onclick="plOpenDeal('${x.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(x.title)}</div><div class="pl-card-val">${uxEsc(plMoney(x.value))}</div></div>
       <div class="pl-card-sub">${uxEsc([x.contact_name,x.contact_phone,x.contact_email].filter(Boolean).join(' · '))}</div>
@@ -2894,8 +2911,8 @@ function plStageOptions(sel){return (PL.data?PL.data.stages:[]).filter(s=>!s.hid
 function plSourceOptions(sel){return PL_SOURCES.map(([k,l])=>`<option value="${k}"${k===sel?' selected':''}>${uxEsc(l)}</option>`).join('');}
 function plField(id,label,val,attrs){return `<div class="${attrs&&attrs.full?'full':''}"><label for="${id}">${label}</label><input id="${id}" class="cred-input" value="${uxEsc(val==null?'':val)}" ${attrs&&attrs.type?'type="'+attrs.type+'"':''} ${attrs&&attrs.ph?'placeholder="'+uxEsc(attrs.ph)+'"':''} ${attrs&&attrs.mode?'inputmode="'+attrs.mode+'"':''}></div>`;}
 
-function plNewDeal(){
-  if(!PL.data){plLoad().then(plNewDeal);return;}
+function plNewDeal(subId){
+  if(!PL.data){plLoad().then(()=>plNewDeal(subId));return;}
   uxOpen(uxHead('Add a deal','A person and the project you are selling them.')+
     `<div class="pl-form">
       ${plField('pln-name','Name *','',{ph:'e.g. Maria Garcia'})}${plField('pln-phone','Phone','',{type:'tel',mode:'tel'})}
@@ -2905,6 +2922,7 @@ function plNewDeal(){
       <div><label for="pln-stage">Stage</label><select id="pln-stage">${plStageOptions('new')}</select></div>
       <div><label for="pln-source">Where it came from</label><select id="pln-source">${plSourceOptions('manual')}</select></div>
       ${CR.team.length>1?`<div class="full"><label for="pln-owner">Who's handling it</label><select id="pln-owner">${crOwnerOptions(CR.me&&CR.me.userId)}</select></div>`:''}
+      ${CR.subs.length?`<div class="full"><label for="pln-sub">Company</label><select id="pln-sub">${sbOptions(typeof subId==='string'?subId:CR.sub)}</select></div>`:''}
       <div class="full"><label for="pln-note">Note</label><textarea id="pln-note" class="cred-input" rows="3"></textarea></div>
     </div>
     <div class="sm">If you pick a later stage, that stage's approved automatic emails start for this deal.</div>
@@ -2919,7 +2937,7 @@ async function plSaveNew(btn,anyway){
   if(!anyway){try{const {matches}=await plApi('/api/crm/deals/duplicates',{body:{name:v('pln-name'),email:v('pln-email'),phone:v('pln-phone'),address:v('pln-address')}});
     if(matches.length){btn.disabled=false;document.getElementById('pln-err').innerHTML=`<div class="pl-banner" style="display:block"><b>This may already be in your pipeline:</b>${matches.map(m=>`<div style="margin-top:8px">“${uxEsc(m.title)}” · ${uxEsc(m.name)} · ${uxEsc(m.stage)} <span class="sm">(${uxEsc(m.why)})</span> <button class="btn-xs p" onclick="CR.dirty=false;uxClose();plOpenDeal('${m.id}')">Open that deal</button></div>`).join('')}<div class="vd-mbtns"><button class="btn-xs" onclick="plSaveNew(this,true)">It’s different: add a new one anyway</button></div></div>`;return;}}catch(e){}}
   try{
-    const r=await plApi('/api/crm/deals',{body:{name:v('pln-name'),phone:v('pln-phone'),email:v('pln-email'),address:v('pln-address'),title:v('pln-title'),value:v('pln-value'),stage:v('pln-stage'),source:v('pln-source'),note:v('pln-note'),ownerUserId:document.getElementById('pln-owner')?v('pln-owner'):undefined}});
+    const r=await plApi('/api/crm/deals',{body:{...(document.getElementById('pln-sub')?{subsidiaryId:v('pln-sub')||null}:{}),name:v('pln-name'),phone:v('pln-phone'),email:v('pln-email'),address:v('pln-address'),title:v('pln-title'),value:v('pln-value'),stage:v('pln-stage'),source:v('pln-source'),note:v('pln-note'),ownerUserId:document.getElementById('pln-owner')?v('pln-owner'):undefined}});
     uxClose();showNotif('Deal added',r.deal.title);await plLoad();
   }catch(e){document.getElementById('pln-err').textContent=e.message;btn.disabled=false;}
 }
@@ -2944,7 +2962,7 @@ async function plOpenDeal(id){
   const actorLbl={owner:'Your team',eagle_i:'Eagle I',contact:x.contact_name};
   const kindIcon={lead_in:'📥',note:'📝',stage:'➡️',email:'✉️',reply:'💬',system:'✏️',text:'📱',call:'📞'};
   const zipInfo=x.zip_median_value?` · county median home value in ${uxEsc(x.property_zip)}: ${plMoney(x.zip_median_value)}`:'';
-  uxOpen(uxHead(uxEsc(x.title),uxEsc(plSourceLabel(x.source))+' · added '+new Date(x.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+zipInfo)+
+  uxOpen(uxHead(uxEsc(x.title),(x.subsidiary_name?'🏢 '+uxEsc(x.subsidiary_name)+' · ':'')+uxEsc(plSourceLabel(x.source))+' · added '+new Date(x.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+zipInfo)+
     plNextStep(x,d.nextStep)+`<div class="pl-form">
       <div class="full"><label for="pld-stage">Stage</label><select id="pld-stage" onchange="plStageChanged('${x.id}',this)">${plStageOptions(x.stage)}</select></div>
       ${plField('pld-title','Project',x.title)}${crCan('money')?plField('pld-value','Estimated value',x.value==null?'':Math.round(x.value),{mode:'decimal',ph:'e.g. 85k'}):''}
@@ -2955,6 +2973,7 @@ async function plOpenDeal(id){
       <div class="full"><label for="pld-visit">Site visit</label><input id="pld-visit" type="datetime-local" class="cred-input" value="${x.site_visit_at?plLocalInput(x.site_visit_at):''}"></div>
       <div class="${CR.team.length>1?'':'full'}"><label for="pld-source">Where it came from</label><select id="pld-source">${plSourceOptions(x.source)}</select></div>
       ${CR.team.length>1?`<div><label for="pld-owner">Who's handling it</label><select id="pld-owner">${crOwnerOptions(x.owner_user_id)}</select></div>`:''}
+      ${CR.subs.length?`<div class="full"><label for="pld-sub">Company</label><select id="pld-sub">${sbOptions(x.subsidiary_id)}</select></div>`:''}
     </div>
     ${x.stage==='lost'&&x.lost_reason?`<div class="sm">Lost because: ${uxEsc(x.lost_reason)}</div>`:''}
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="plSaveDeal('${x.id}',this)">Save changes</button>
@@ -3021,6 +3040,84 @@ async function plOpenDeal(id){
   ivLoad(x.id);
   pqLoad(x.id);
   lpLoad(x.id,'pld-loop');
+}
+/* ---------- the companies in the group (lib/crmSubsidiaries.js) ----------
+   One team for all of them; each company has its own profile, projects and files.
+   The company picked on Pipeline and Jobs is remembered on this device. */
+async function sbLoad(){
+  try{CR.subs=(await plApi('/api/crm/subsidiaries')).companies||[];}catch(e){CR.subs=CR.subs||[];}
+  if(CR.sub===undefined){try{CR.sub=localStorage.getItem('cr-sub')||'';}catch(e){CR.sub='';}}
+  if(CR.sub&&!CR.subs.some(c=>c.id===CR.sub))CR.sub='';
+}
+const sbList=()=>CR.subs||[];
+const sbName=id=>(sbList().find(c=>c.id===id)||{}).name||'';
+const sbKeep=rows=>CR.sub?rows.filter(x=>x.subsidiary_id===CR.sub):rows;
+function sbOptions(sel){return '<option value="">Not under a company</option>'+sbList().map(c=>`<option value="${c.id}"${c.id===sel?' selected':''}>${uxEsc(c.name)}</option>`).join('');}
+// The pipeline's numbers for the company picked.
+function sbScope(d){
+  if(!CR.sub)return d;
+  const deals=sbKeep(d.deals),counts={};deals.forEach(x=>counts[x.stage]=(counts[x.stage]||0)+1);
+  const openValue=d.moneyHidden?null:deals.filter(x=>plStage(x.stage).open&&!['signed','production'].includes(x.stage)).reduce((n,x)=>n+Number(x.value||0),0);
+  return {...d,deals,counts,openValue};
+}
+function sbBar(then){
+  if(!sbList().length)return '';
+  const cur=sbList().find(c=>c.id===CR.sub);
+  return `<div class="sb-bar"><label for="sb-pick-${then}">Company</label><select id="sb-pick-${then}" onchange="sbPick(this.value,'${then}')"><option value="">All companies</option>${sbList().map(c=>`<option value="${c.id}"${c.id===CR.sub?' selected':''}>${uxEsc(c.name)}</option>`).join('')}</select>${cur?`<button class="btn-xs" onclick="cpOpen('${cur.slug}')">${uxEsc(cur.name)}’s profile</button>`:''}</div>`;
+}
+function sbPick(id,then){CR.sub=id;try{localStorage.setItem('cr-sub',id);}catch(e){}if(then==='plRender')plRender();else if(then==='jbList')jbList();}
+
+// A company's profile (#co/levi-homes), or the list of companies (#co).
+function cpOpen(slug){CR.coSlug=slug||'';crView('co');}
+async function cpLoad(){
+  const el=document.getElementById('co-box');if(!el)return;
+  await sbLoad();
+  const edit=crCan('settings');
+  if(!CR.coSlug){
+    el.innerHTML=`<div class="sh"><div><div class="st">Our companies</div><div class="ss">Every company in the group. The team, roles and permissions are the same for all of them; each one has its own projects and files.</div></div>${edit?'<button class="btn btn-blue" onclick="cpEdit(\'\')">＋ Add a company</button>':''}</div>
+      <div class="pl-list">${sbList().map(c=>`<button class="pl-card" onclick="cpOpen('${c.slug}')"><div class="pl-card-top"><div class="pl-card-title">🏢 ${uxEsc(c.name)}</div></div>${c.what?`<div class="pl-card-sub">${uxEsc(c.what)}</div>`:''}
+        <div class="pl-tags"><span class="pl-tag">${c.selling} being sold</span><span class="pl-tag">${c.jobs} job${c.jobs===1?'':'s'} going</span><span class="pl-tag">${c.done} finished</span></div></button>`).join('')||'<div class="pl-empty">No companies yet.'+(edit?' Tap “Add a company”.':' The owner or an admin can add them.')+'</div>'}</div>`;
+    return;
+  }
+  try{
+    const p=await plApi('/api/crm/subsidiaries/'+encodeURIComponent(CR.coSlug));const c=p.company;
+    const site=u=>{try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return '';}};
+    const row=(d,job)=>`<button class="pl-card" onclick="${job?`jbOpen('${d.id}')`:`plOpenDeal('${d.id}')`}"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(d.title)}</div><div class="pl-card-val">${uxEsc(plMoney(d.value))}</div></div><div class="pl-card-sub">${uxEsc(d.contact_name||'')}${d.address?' · 📍 '+uxEsc(d.address):''}</div>${job?'':`<div class="pl-tags"><span class="pl-tag">${uxEsc(plStage(d.stage).label)}</span></div>`}</button>`;
+    const sec=(t,rows,job,empty)=>`<div class="pl-h">${t} (${rows.length})</div><div class="pl-list">${rows.map(d=>row(d,job)).join('')||`<div class="sm">${empty}</div>`}</div>`;
+    el.innerHTML=`<div class="vd-mbtns" style="margin:0 0 6px"><button class="btn-xs" onclick="cpOpen('')">← All companies</button></div>
+      <div class="cp-head"><div class="st">🏢 ${uxEsc(c.name)}</div>${c.what?`<div class="ss">${uxEsc(c.what)}</div>`:''}
+        ${c.about?`<p class="sm" style="color:var(--ink)">${uxEsc(c.about)}</p>`:''}
+        ${(c.services||[]).length?`<div class="pl-tags" style="margin-top:8px">${c.services.map(x=>`<span class="pl-tag">${uxEsc(x)}</span>`).join('')}</div>`:''}
+        <div class="pl-item-d" style="margin-top:8px">${[c.address&&uxEsc(c.address),c.phone&&`<a href="tel:${uxEsc(String(c.phone).replace(/[^\d+]/g,''))}">${uxEsc(c.phone)}</a>`,c.email&&`<a href="mailto:${uxEsc(c.email)}">${uxEsc(c.email)}</a>`,c.website&&site(c.website)&&`<a href="${uxEsc(c.website)}" target="_blank" rel="noopener">${uxEsc(site(c.website))}</a>`].filter(Boolean).join(' · ')}</div>
+        <div class="vd-mbtns"><button class="btn btn-blue" onclick="plNewDeal('${c.id}')">＋ Add a deal for ${uxEsc(c.name)}</button><button class="btn-xs" onclick="sbPick('${c.id}','');crView('pipeline')">Its pipeline</button>${edit?`<button class="btn-xs" onclick="cpEdit('${c.id}')">Edit details</button>`:''}</div></div>
+      ${sec('Jobs going',p.jobs,true,'No signed jobs right now.')}
+      ${sec('Being sold',p.selling,false,'Nothing being sold right now.')}
+      ${p.done.length?sec('Finished',p.done,false,''):''}
+      <div class="pl-h">Files (${p.files.length})</div>
+      <div class="pl-list">${p.files.map(f=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">📄 ${uxEsc(f.filename)}</div><div class="pl-item-d">${uxEsc(f.deal_title)} · ${crWhen(f.created_at)}</div></div>
+        <div class="pl-acts">${f.drive_link?`<a class="btn-xs" href="${uxEsc(f.drive_link)}" target="_blank" rel="noopener">Open</a>`:''}<button class="btn-xs" onclick="plOpenDeal('${f.deal_id}')">Its project</button></div></div></div>`).join('')||'<div class="sm">No files yet. Files added to this company’s projects show up here.</div>'}</div>`;
+    document.title=c.name+' · Eagle I CRM';
+  }catch(e){el.innerHTML=`<div class="vd-mbtns"><button class="btn-xs" onclick="cpOpen('')">← All companies</button></div><div class="pl-empty">${uxEsc(e.message)}</div>`;}
+}
+function cpEdit(id){
+  const c=id?sbList().find(x=>x.id===id):{};if(id&&!c)return;
+  const f=(k,l,o={})=>`<div class="${o.full?'full':''}"><label for="cp-${k}">${l}</label>${o.area?`<textarea id="cp-${k}" class="cred-input" rows="3">${uxEsc(c[k]||'')}</textarea>`:`<input id="cp-${k}" class="cred-input" value="${uxEsc(k==='services'?(c.services||[]).join(', '):c[k]||'')}"${o.type?` type="${o.type}"`:''}${o.ph?` placeholder="${uxEsc(o.ph)}"`:''}>`}</div>`;
+  uxOpen(uxHead(id?'Edit '+uxEsc(c.name):'Add a company','It shares the team, roles and permissions; its projects and files are its own.')+`<div class="pl-form">
+    ${f('name','Name',{full:true})}${f('what','What it does',{full:true,ph:'e.g. Luxury home remodeling'})}
+    ${f('services','Services (with commas between)',{full:true,ph:'Kitchens, Bathrooms, Additions'})}${f('about','About (optional)',{full:true,area:true})}
+    ${f('address','Address',{full:true})}${f('phone','Phone',{type:'tel'})}${f('email','Email',{type:'email'})}${f('website','Website',{full:true,ph:'e.g. levihomes.com'})}
+  </div><div class="vd-mbtns"><button class="btn btn-blue" onclick="cpSave('${id||''}',this)">${id?'Save':'Add company'}</button>${id?`<button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="cpArchive('${id}')">Take off the list</button>`:''}</div><div class="sm" id="cp-msg"></div>`);
+}
+async function cpSave(id,btn){
+  const v=k=>document.getElementById('cp-'+k).value;btn.disabled=true;
+  const body={name:v('name'),what:v('what'),services:v('services'),about:v('about'),address:v('address'),phone:v('phone'),email:v('email'),website:v('website')};
+  try{const r=await plApi('/api/crm/subsidiaries'+(id?'/'+id:''),{method:id?'PATCH':'POST',body});uxClose();showNotif('Saved',r.company.name+(id?' is updated.':' is in the group now.'));await sbLoad();CR.coSlug=r.company.slug;cpLoad();}
+  catch(e){document.getElementById('cp-msg').textContent=e.message;btn.disabled=false;}
+}
+async function cpArchive(id){
+  const c=sbList().find(x=>x.id===id);if(!c)return;
+  if(!confirm('Take '+c.name+' off the list of companies? Its projects and files stay; they just won’t be under a company anymore.'))return;
+  try{await plApi('/api/crm/subsidiaries/'+id,{method:'DELETE'});uxClose();showNotif('Taken off',c.name+' is off the list.');await sbLoad();cpOpen('');}catch(e){showNotif('Could not do that',e.message);}
 }
 /* ---------- kept in the loop: emails I was only copied on for this project ---------- */
 async function lpLoad(dealId,elId){
@@ -3388,9 +3485,10 @@ const fdate=d=>d?new Date(ymdOf(d)+'T12:00:00Z').toLocaleDateString([], {month:'
 async function jbList(){
   const el=document.getElementById('jb-list');
   try{
-    const [{jobs},{vendors}]=await Promise.all([plApi('/api/crm/jobs'),plApi('/api/crm/vendors')]);JB.vendors=vendors;
+    let [{jobs},{vendors}]=await Promise.all([plApi('/api/crm/jobs'),plApi('/api/crm/vendors')]);JB.vendors=vendors;
+    jobs=sbKeep(jobs);const bar=document.getElementById('jb-subbar');if(bar)bar.innerHTML=sbBar('jbList');
     el.innerHTML=jobs.length?jobs.map(j=>{const pct=j.phases?Math.round(j.done/j.phases*100):0;return `<button class="pl-card" onclick="jbOpen('${j.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${plMoney(j.value)}</div></div>
-      <div class="pl-card-sub">${uxEsc(j.contact_name)}${j.address?' · '+uxEsc(j.address):''}</div>
+      <div class="pl-card-sub">${!CR.sub&&j.subsidiary_id&&sbName(j.subsidiary_id)?'🏢 '+uxEsc(sbName(j.subsidiary_id))+' · ':''}${uxEsc(j.contact_name)}${j.address?' · '+uxEsc(j.address):''}</div>
       <div style="height:8px;background:var(--bg4);border-radius:6px;overflow:hidden;margin-top:8px" aria-label="${pct}% done"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>
       <div class="pl-tags">${j.current_phase?`<span class="pl-tag">Now: ${uxEsc(j.current_phase)}</span>`:j.phases?'<span class="pl-tag auto">All phases done</span>':'<span class="pl-tag warn">No schedule yet</span>'}${j.finish?`<span class="pl-tag">Finish ${fdate(j.finish)}</span>`:''}${j.cos_waiting?`<span class="pl-tag warn">${j.cos_waiting} change order${j.cos_waiting>1?'s':''} waiting</span>`:''}${j.selections_open?`<span class="pl-tag warn">${j.selections_open} selection${j.selections_open>1?'s':''} open</span>`:''}</div></button>`;}).join(''):'<div class="pl-empty">No signed jobs yet. When a contract is signed, the job shows up here with its schedule.</div>';
     vdRender();
@@ -3823,7 +3921,7 @@ async function plSaveDeal(id,btn){
   const v=k=>document.getElementById(k).value;
   btn.disabled=true;
   try{
-    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),language:v('pld-lang'),source:v('pld-source'),siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{})}});
+    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{...(document.getElementById('pld-sub')?{subsidiaryId:v('pld-sub')||null}:{}),title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),language:v('pld-lang'),source:v('pld-source'),siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{})}});
     document.getElementById('pld-msg').textContent='Saved.';btn.disabled=false;plLoad();
   }catch(e){document.getElementById('pld-msg').textContent=e.message;btn.disabled=false;}
 }

@@ -207,7 +207,7 @@ async function signIn(e,as){
     const d=await call('/api/crm-auth/login',{email:$('in-email').value,password:$('in-pw').value,as});
     if(d.code){$('code-sub').textContent=`For your safety, we emailed a sign-in code to ${d.to}. Type it here.`;show('form-code');$('in-code').focus();b.disabled=false;return;}
     if(d.choose){$('in-choices').innerHTML=d.choose.map(c=>`<button type="button" class="btn o" onclick="signIn(null,'${c.as}')">${c.label.replace(/[<>&]/g,'')}</button>`).join('');$('in-choose').hidden=false;b.disabled=false;return;}
-    location.href=d.go||'/crm/app';
+    location.href=goTo(d.go);
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
 // "Continue with Google": what they've typed so far goes along, then Google, then back here signed in.
@@ -224,7 +224,7 @@ async function google(type,btn){
 }
 async function sendCode(e){
   e.preventDefault();const b=$('code-btn'),err=$('code-err');b.disabled=true;err.textContent='';
-  try{const d=await call('/api/crm-auth/login/code',{code:$('in-code').value,remember:$('in-remember').checked});location.href=d.go||'/crm/app';}
+  try{const d=await call('/api/crm-auth/login/code',{code:$('in-code').value,remember:$('in-remember').checked});location.href=goTo(d.go);}
   catch(x){err.textContent=x.message;b.disabled=false;}
 }
 async function resendCode(btn){
@@ -243,9 +243,11 @@ async function signUp(e){
     const d=await call('/api/crm-auth/signup',{type:TYPE,code:$('up-code').value,companyName:$('up-company').value,businessName:$('up-biz').value,trade:$('up-trade').value,
       name:$('up-name').value,phone:$('up-phone').value,email:$('up-email').value,password:$('up-pw').value,note:$('up-note').value,acceptedTerms:$('up-terms').checked});
     if(d.pending){$('sent-msg').textContent=d.confirm?(d.emailed?`One more step: we sent a link to ${$('up-email').value}. Tap it to confirm it’s your email, and then ${d.companyName} can let you in. (Not there? Check your spam folder.)`:`We couldn’t send the confirmation email just now. Wait a few minutes and try again.`):`We asked ${d.companyName} to let you in. You’ll get an email when they do, then sign in here with the email and password you just picked.`;$('sent-title').textContent=d.confirm?'Check your email':'Request sent';show('sent');return;}
-    location.href=d.go||'/crm/app';
+    location.href=goTo(d.go);
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
+// From the portfolio (?co=levi-homes): once signed in, the CRM opens on that company.
+function goTo(go){go=go||'/crm/app';const co=new URLSearchParams(location.search).get('co');return co&&go==='/crm/app'&&/^[a-z0-9-]{1,60}$/.test(co)?'/crm/app#co/'+co:go;}
 // Links: /crm/login#signup, ?code=ABCD-2345 (from the Team screen), ?marketing=1.
 const q=new URLSearchParams(location.search);
 if(q.get('marketing'))$('mkt-note').hidden=false;
@@ -254,7 +256,7 @@ if(q.get('new'))$('choice-company').hidden=false;
 // From the portfolio: which company this sign-in is for (?co=levi-homes), and whether they're signed in to another.
 if(q.get('co'))fetch('/api/crm-portfolio/'+encodeURIComponent(q.get('co'))).then(r=>r.ok?r.json():null).then(c=>{if(!c)return;const n=$('co-note');
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-  n.innerHTML=q.get('other')?`You’re signed in to <b>${esc(q.get('other'))}</b>. To open <b>${esc(c.name)}</b>, sign in below with your ${esc(c.name)} login.`:`Sign in to <b>${esc(c.name)}</b>’s CRM.`;
+  n.innerHTML=q.get('other')?`You’re signed in to <b>${esc(q.get('other'))}</b>. To open <b>${esc(c.name)}</b>, sign in below with your Levi Construction Group login.`:`Sign in to open <b>${esc(c.name)}</b>.`;
   n.hidden=false;document.title=c.name+' · Eagle I CRM';}).catch(()=>{});
 // Back from Google.
 if(q.get('google_error')){$('in-err').textContent=q.get('google_error');}

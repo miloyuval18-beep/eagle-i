@@ -253,22 +253,30 @@ app.get(['/crm', '/crm/'], (req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'public', 'crm-portfolio.html'));
 });
-// One company's CRM: signed in to it already, straight in; otherwise its sign-in page.
+// One company in the group: signed in, the CRM opens on its profile; otherwise the sign-in page, which then does.
 app.get('/crm/c/:slug', async (req, res) => {
   try {
-    const t = (await query(`SELECT id, company_name FROM tenants WHERE slug = $1`, [String(req.params.slug).toLowerCase().slice(0, 60)])).rows[0];
-    if (!t) return res.redirect('/crm');
-    if (req.session && req.session.userId && req.session.tenantId === t.id) return res.redirect('/crm/app');
+    const subs = require('./lib/crmSubsidiaries');
+    const p = await subs.portfolio();
+    const slug = String(req.params.slug).toLowerCase().slice(0, 60);
+    if (!p.group || !p.companies.some(c => c.slug === slug)) return res.redirect('/crm');
+    if (req.session && req.session.userId && req.session.tenantId === p.tenantId) return res.redirect('/crm/app#co/' + slug);
     let other = '';
     if (req.session && req.session.userId) other = ((await query(`SELECT t.company_name FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1 AND u.app <> 'marketing'`, [req.session.userId])).rows[0] || {}).company_name || '';
-    res.redirect(`/crm/login?co=${encodeURIComponent(req.params.slug)}${other ? '&other=' + encodeURIComponent(other) : ''}`);
+    res.redirect(`/crm/login?co=${encodeURIComponent(slug)}${other ? '&other=' + encodeURIComponent(other) : ''}`);
   } catch (err) { console.error('CRM company link failed:', err.message); res.redirect('/crm/login'); }
 });
-// The company's name for its sign-in page.
+// The portfolio's contents: the group and its companies (public: what's on their websites).
+app.get('/api/crm-portfolio', async (req, res) => {
+  try { const p = await require('./lib/crmSubsidiaries').portfolio(); res.json({ group: p.group, companies: p.companies.map(({ id, ...c }) => c) }); }
+  catch (err) { res.status(500).json({ error: { message: 'Could not load the companies.' } }); }
+});
+// A company's name for its sign-in page.
 app.get('/api/crm-portfolio/:slug', async (req, res) => {
-  const t = (await query(`SELECT company_name FROM tenants WHERE slug = $1`, [String(req.params.slug).toLowerCase().slice(0, 60)]).catch(() => ({ rows: [] }))).rows[0];
-  if (!t) return res.status(404).json({ error: { message: 'Not found.' } });
-  res.json({ name: t.company_name });
+  const p = await require('./lib/crmSubsidiaries').portfolio().catch(() => ({ companies: [] }));
+  const c = p.companies.find(x => x.slug === String(req.params.slug).toLowerCase());
+  if (!c) return res.status(404).json({ error: { message: 'Not found.' } });
+  res.json({ name: c.name });
 });
 app.get(['/crm/app', '/crm/app/'], async (req, res) => {
   // Homeowners and subs have their own page; marketing logins are separate from the CRM's.

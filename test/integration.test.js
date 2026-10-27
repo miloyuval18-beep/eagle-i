@@ -2551,22 +2551,65 @@ describe('the homepage: choose the CRM or Eagle I Marketing', () => {
   });
 });
 
-describe('the CRM portfolio: Levi Construction Group, and a way into each company', () => {
-  test('/crm is the portfolio; old links still open the CRM; each company has its own way in', async () => {
+describe('Levi Construction Group: one team, its companies each with their own projects and files', () => {
+  async function owner(label) {
+    const c = makeClient();
+    const r = await (await c.post('/api/auth/signup', { email: uniqueEmail(label), password: 'TestPass1234!', companyName: 'Group Co', industry: 'home_services', acceptedTerms: true, product: 'crm' })).json();
+    trackTenant(r.tenantId);
+    return { c, tenantId: r.tenantId };
+  }
+  test('/crm is the portfolio; old links still open the CRM', async () => {
     const page = await makeClient().get('/crm');
     assert.equal(page.status, 200);
     const html = await page.text();
-    assert.match(html, /Levi Construction Group/); assert.match(html, /href="\/crm\/c\/levi-homes"/);
+    assert.match(html, /Levi Construction Group/); assert.match(html, /\/lcg-mark\.svg/);
     assert.match(html, /location\.replace\('\/crm\/app' \+ location\.hash\)/, 'old /crm#… links forward to the app');
     assert.equal((await makeClient().get('/crm?google=x')).headers.get('location'), '/crm/app?google=x');
-    // A company: signed out, its sign-in page; signed in to it, straight in; signed in elsewhere, told so.
+  });
+  test('companies in the group: profiles, a way in from the portfolio, and projects under each', async () => {
     const pool = getTestPool();
-    const t = (await pool.query(`INSERT INTO tenants (company_name, industry, products, slug) VALUES ('Portfolio Test Co', 'home_services', '{crm}', $1) RETURNING id`, ['pt-' + Date.now().toString(36)])).rows[0];
-    trackTenant(t.id);
-    const slug = (await pool.query('SELECT slug FROM tenants WHERE id = $1', [t.id])).rows[0].slug;
-    assert.equal((await makeClient().get('/crm/c/' + slug)).headers.get('location'), `/crm/login?co=${slug}`);
+    const { c: o, tenantId } = await owner('group');
+    const { c: other } = await owner('group-other');
+    await pool.query(`UPDATE tenants SET slug = NULL WHERE slug = 'levi-construction-group'`);
+    await pool.query(`UPDATE tenants SET slug = 'levi-construction-group' WHERE id = $1`, [tenantId]);
+    // Adding a company (company settings).
+    const add = await (await o.post('/api/crm/subsidiaries', { name: 'Levi Homes', what: 'Luxury home remodeling', services: 'Kitchens, Bathrooms', website: 'levihomes.com', phone: '713-555-0100' })).json();
+    const lh = add.company;
+    assert.equal(lh.slug, 'levi-homes'); assert.equal(lh.website, 'https://levihomes.com'); assert.deepEqual(lh.services, ['Kitchens', 'Bathrooms']);
+    const second = (await (await o.post('/api/crm/subsidiaries', { name: 'Levi Homes' })).json()).company;
+    assert.equal(second.slug, 'levi-homes-2', 'each gets its own address');
+    assert.equal((await o.post('/api/crm/subsidiaries', { name: '' })).status, 400);
+    // The public portfolio lists them (no ids); each has a way in.
+    const pf = await (await makeClient().get('/api/crm-portfolio')).json();
+    assert.equal(pf.group.name, 'Group Co'); assert.ok(pf.companies.some(x => x.slug === 'levi-homes' && x.phone === '713-555-0100' && !x.id));
+    assert.deepEqual(await (await makeClient().get('/api/crm-portfolio/levi-homes')).json(), { name: 'Levi Homes' });
+    assert.equal((await makeClient().get('/crm/c/levi-homes')).headers.get('location'), '/crm/login?co=levi-homes');
+    assert.equal((await o.get('/crm/c/levi-homes')).headers.get('location'), '/crm/app#co/levi-homes');
+    assert.match((await other.get('/crm/c/levi-homes')).headers.get('location'), /^\/crm\/login\?co=levi-homes&other=Group%20Co/);
     assert.equal((await makeClient().get('/crm/c/nope-nothing')).headers.get('location'), '/crm');
-    assert.deepEqual(await (await makeClient().get('/api/crm-portfolio/' + slug)).json(), { name: 'Portfolio Test Co' });
-    assert.equal((await makeClient().get('/api/crm-portfolio/nope-nothing')).status, 404);
+    // A project under a company, its files on the company's profile.
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Rita Ruiz', title: 'Ruiz kitchen', subsidiaryId: lh.id })).json();
+    assert.equal(deal.subsidiary_id, lh.id); assert.equal(deal.subsidiary_name, 'Levi Homes');
+    const pl = await (await o.get('/api/crm/pipeline')).json();
+    assert.equal(pl.deals.find(x => x.id === deal.id).subsidiary_id, lh.id);
+    await o.post(`/api/crm/deals/${deal.id}/files`, { filename: 'plans.png', dataBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=' });
+    let prof = await (await o.get('/api/crm/subsidiaries/levi-homes')).json();
+    assert.equal(prof.company.name, 'Levi Homes'); assert.equal(prof.selling[0].id, deal.id); assert.equal(prof.files[0].filename, 'plans.png');
+    assert.equal((await o.get('/api/crm/subsidiaries/' + lh.id)).status, 200, 'by id too');
+    const list = await (await o.get('/api/crm/subsidiaries')).json();
+    assert.equal(list.companies.find(x => x.id === lh.id).selling, 1);
+    // Another company can't see it or put its deals under it.
+    assert.equal((await other.get('/api/crm/subsidiaries/levi-homes')).status, 404);
+    const { deal: theirs } = await (await other.post('/api/crm/deals', { name: 'Someone', title: 'Theirs', subsidiaryId: lh.id })).json();
+    assert.equal(theirs.subsidiary_id, null);
+    assert.equal((await other.patch(`/api/crm/deals/${theirs.id}`, { subsidiaryId: lh.id })).status, 400);
+    // Moving a project to another company, and taking a company off the list.
+    await o.patch(`/api/crm/deals/${deal.id}`, { subsidiaryId: second.id });
+    assert.equal((await (await o.get(`/api/crm/deals/${deal.id}`)).json()).deal.subsidiary_name, 'Levi Homes', 'the second one is also called Levi Homes');
+    assert.ok((await (await o.get(`/api/crm/deals/${deal.id}`)).json()).activities.some(a => /company to Levi Homes/.test(a.body || '')));
+    assert.equal((await o.delete('/api/crm/subsidiaries/' + second.id)).status, 200);
+    assert.equal((await (await o.get(`/api/crm/deals/${deal.id}`)).json()).deal.subsidiary_id, null, 'its projects stay, no longer under it');
+    assert.ok(!(await (await makeClient().get('/api/crm-portfolio')).json()).companies.some(x => x.slug === 'levi-homes-2'));
+    await pool.query(`UPDATE tenants SET slug = NULL WHERE id = $1`, [tenantId]);
   });
 });

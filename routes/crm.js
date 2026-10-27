@@ -265,7 +265,7 @@ router.post('/api/crm/deals', requireAuth, async (req, res) => {
     const deal = await crm.createDeal({
       tenantId: req.tenantId, name: b.name, email: b.email, phone: b.phone, address: b.address, zip: b.zip,
       title: b.title, stage: b.stage || 'new', value: b.value, source: b.source || 'manual', note: b.note || null, baseUrl: baseUrlOf(req),
-      userId: req.userId, ownerUserId: b.ownerUserId || null
+      userId: req.userId, ownerUserId: b.ownerUserId || null, subsidiaryId: b.subsidiaryId || null
     });
     sendDueNow(deal.id);
     res.json({ ok: true, deal: await crm.getDeal(req.tenantId, deal.id) });
@@ -518,6 +518,34 @@ router.delete('/api/crm/team/invites/:id', requireAuth, team.need('team'), async
     require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'invite_cancel' });
     res.json({ ok: true });
   } catch (err) { fail(res, err, 'Failed to cancel the invitation'); }
+});
+
+// The companies in the group (lib/crmSubsidiaries.js): everyone sees them and their
+// profiles; changing them is a company setting.
+const subs = require('../lib/crmSubsidiaries');
+router.get('/api/crm/subsidiaries', requireAuth, async (req, res) => {
+  try { res.json({ companies: await subs.list(req.tenantId, { counts: true }) }); } catch (err) { fail(res, err, 'Failed to load the companies'); }
+});
+router.get('/api/crm/subsidiaries/:id', requireAuth, async (req, res) => {
+  try { res.json(await subs.profile({ tenantId: req.tenantId, id: req.params.id, seeMoney: team.can(req.crmUser, 'money') })); } catch (err) { fail(res, err, 'Failed to load the company'); }
+});
+router.post('/api/crm/subsidiaries', requireAuth, team.need('settings'), async (req, res) => {
+  try {
+    const c = await subs.save({ tenantId: req.tenantId, body: req.body || {} });
+    require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'settings', detail: `Added ${c.name} to the group` });
+    res.json({ ok: true, company: c });
+  } catch (err) { fail(res, err, 'Failed to add the company'); }
+});
+router.patch('/api/crm/subsidiaries/:id', requireAuth, team.need('settings'), async (req, res) => {
+  try { res.json({ ok: true, company: await subs.save({ tenantId: req.tenantId, id: req.params.id, body: req.body || {} }) }); } catch (err) { fail(res, err, 'Failed to save the company'); }
+});
+router.delete('/api/crm/subsidiaries/:id', requireAuth, team.need('settings'), async (req, res) => {
+  try {
+    const c = await subs.get(req.tenantId, req.params.id);
+    await subs.archive(req.tenantId, req.params.id);
+    require('../lib/crmAudit').log({ tenantId: req.tenantId, actor: req.crmUser, action: 'settings', detail: `Took ${c ? c.name : 'a company'} off the group` });
+    res.json({ ok: true });
+  } catch (err) { fail(res, err, 'Failed to remove the company'); }
 });
 
 // { role } and/or { reportsTo } (a user id, or null for no one).

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 132 132" role="img" aria-label="Levi Construction Group">
+  <rect x="-6" y="-6" width="132" height="132" fill="#0b0b0b"/>
+  <!-- Levi Construction Group's mark: a wrench and a screwdriver crossed, gold outlines. -->
+  <g fill="none" stroke="#a8925f" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- wrench: open jaws at both ends, top-right and bottom-left -->
+    <g transform="rotate(45 60 60)">
+      <path d="M54 30 A16 16 0 0 1 53 0.8 L53 17 A7 7 0 0 0 67 17 L67 0.8 A16 16 0 0 1 66 30"/>
+      <path d="M54 30 L54 90 M66 30 L66 90"/>
+      <path d="M66 90 A16 16 0 0 1 67 119.2 L67 103 A7 7 0 0 0 53 103 L53 119.2 A16 16 0 0 1 54 90"/>
+    </g>
+    <!-- screwdriver: tip top-left, handle bottom-right -->
+    <g transform="rotate(-45 60 60)" fill="#0b0b0b">
+      <path d="M60 8 L64 16 L64 58 L56 58 L56 16 Z"/>
+      <path d="M53 62 h14 a3 3 0 0 1 3 3 v36 a8 8 0 0 1 -8 8 h-4 a8 8 0 0 1 -8 -8 v-36 a3 3 0 0 1 3 -3 z"/>
+      <path d="M53 58 h14 v4 h-14 z"/>
+    </g>
+  </g>
+</svg>

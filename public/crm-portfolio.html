@@ -4,72 +4,82 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Levi Construction Group</title>
-<meta name="description" content="Levi Construction Group: our companies, and the way into each one's CRM.">
+<meta name="description" content="Levi Construction Group: our companies, and the way into each one in the CRM.">
 <script>
   // Older links into the CRM (/crm#needs, /crm#calendar…) open the CRM itself, now at /crm/app.
   if (location.hash && location.hash.length > 1) location.replace('/crm/app' + location.hash);
 </script>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/svg+xml" href="/lcg-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f4f6f8;--card:#ffffff;--soft:#eef1f4;
-  --ink:#14202b;--ink2:#3a4855;--ink3:#55636f;
-  --bdr:#c3ccd4;--accent:#1f4e79;--accent2:#173b5c;
-  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;
+  --bg:#f4f3f0;--card:#ffffff;--soft:#f0ede6;
+  --ink:#16140f;--ink2:#3d3a33;--ink3:#5a554b;
+  --bdr:#cfc8b8;--gold:#a8925f;--gold-ink:#7a6638;--black:#0b0b0b;--go:#16140f;--go2:#3d3a33;
+  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;--brand:'Oswald','Arial Narrow',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:18.5px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
-.top{background:var(--accent2);color:#fff;padding:40px 16px 34px;text-align:center}
-.top .eyebrow{font-size:15px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
-.top h1{font-size:36px;font-weight:800;line-height:1.15;margin:6px 0 8px}
-.top p{font-size:19px;opacity:.92;max-width:600px;margin:0 auto}
+.top{background:var(--black);color:#fff;padding:34px 16px 30px;text-align:center}
+.top img{width:120px;height:120px;display:block;margin:0 auto}
+.top h1{font-family:var(--brand);font-weight:500;color:var(--gold);font-size:34px;letter-spacing:.06em;text-transform:uppercase;line-height:1.15;margin-top:4px}
+.top p{font-size:18.5px;color:#d9d2c0;max-width:560px;margin:8px auto 0}
 main{max-width:980px;margin:0 auto;padding:28px 16px 36px}
-h2{font-size:15px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin:0 0 14px}
+h2{font-family:var(--brand);font-weight:500;font-size:18px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-ink);margin:0 0 14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
-.co{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:24px 22px;display:flex;flex-direction:column;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
+.co{background:var(--card);border:1px solid var(--bdr);border-top:5px solid var(--gold);border-radius:14px;padding:22px 22px 24px;display:flex;flex-direction:column;box-shadow:0 2px 4px rgba(22,20,15,.04),0 10px 28px rgba(22,20,15,.08)}
 .co h3{font-size:26px;font-weight:800;line-height:1.2}
 .co .what{font-size:17.5px;font-weight:700;color:var(--ink3);margin:4px 0 12px}
-.co p{color:var(--ink2);margin-bottom:12px}
+.co .about{color:var(--ink2);margin-bottom:12px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .chips span{background:var(--soft);border:1px solid var(--bdr);border-radius:999px;padding:4px 12px;font-size:16px;color:var(--ink2)}
 .contact{font-size:17px;color:var(--ink2);margin-bottom:18px;flex:1}
-.contact a{color:var(--accent);font-weight:700}
-.go{display:block;text-align:center;text-decoration:none;color:#fff;background:var(--accent);border-radius:10px;padding:16px;font-size:19px;font-weight:800}
-.go:hover,.go:focus-visible{background:var(--accent2)}
+.contact a{color:var(--gold-ink);font-weight:800}
+.go{display:block;text-align:center;text-decoration:none;color:#fff;background:var(--go);border-radius:10px;padding:16px;font-size:19px;font-weight:800}
+.go:hover,.go:focus-visible{background:var(--go2)}
 a:focus-visible{outline:3px solid #f0b429;outline-offset:2px}
 .hq{margin-top:20px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .hq b{font-size:19px}
 .hq .sm{font-size:16.5px;color:var(--ink3)}
-.hq a{color:var(--accent);font-weight:800;text-decoration:none;border:2px solid var(--accent);border-radius:10px;padding:11px 16px;font-size:17.5px;white-space:nowrap}
+.hq a{color:var(--ink);font-weight:800;text-decoration:none;border:2px solid var(--ink);border-radius:10px;padding:11px 16px;font-size:17.5px}
+.empty{background:var(--card);border:1px dashed var(--bdr);border-radius:14px;padding:22px;color:var(--ink3);text-align:center}
 .foot{text-align:center;color:var(--ink3);font-size:16.5px;margin-top:28px;line-height:1.9}
-.foot a{color:var(--accent);font-weight:700}
-@media (max-width:600px){.top{padding:30px 16px 26px}.top h1{font-size:30px}.co{padding:20px 18px}.co h3{font-size:24px}.grid{grid-template-columns:1fr}}
+.foot a{color:var(--gold-ink);font-weight:800}
+@media (max-width:600px){.top{padding:24px 16px 24px}.top img{width:96px;height:96px}.top h1{font-size:27px}.co{padding:20px 18px}.co h3{font-size:24px}.grid{grid-template-columns:1fr}.hq a{width:100%;text-align:center}}
 </style>
 </head>
 <body>
 <header class="top">
-  <div class="eyebrow">Portfolio</div>
+  <img src="/lcg-mark.svg" alt="">
   <h1>Levi Construction Group</h1>
-  <p>The family of companies building and remodeling homes across Houston.</p>
+  <p>Our companies. Pick one to open its projects and files.</p>
 </header>
 <main>
   <h2>Our companies</h2>
-  <div class="grid">
-    <section class="co" aria-labelledby="c-levi-homes">
-      <h3 id="c-levi-homes">Levi Homes</h3>
-      <div class="what">Luxury home remodeling</div>
-      <div class="chips"><span>Kitchens</span><span>Bathrooms</span><span>Room additions</span><span>Whole-home renovations</span><span>Garage conversions</span><span>Attics</span><span>Structural repairs</span><span>Plans &amp; design</span></div>
-      <div class="contact">11777-B Katy Fwy #305N, Houston, TX 77079<br><a href="tel:+17139225715">(713) 922-5715</a> · <a href="https://www.levihomes.com" target="_blank" rel="noopener">levihomes.com</a></div>
-      <a class="go" href="/crm/c/levi-homes">Open the Levi Homes CRM</a>
-    </section>
-  </div>
+  <div class="grid" id="cos"><div class="empty">Loading…</div></div>
   <div class="hq">
-    <div><b>Levi Construction Group head office</b><div class="sm">The group’s own CRM</div></div>
-    <a href="/crm/c/levi-construction-group">Open the head office CRM</a>
+    <div><b>Everything, all companies</b><div class="sm">The whole group’s CRM: every project, the team and the settings.</div></div>
+    <a href="/crm/app">Open the group CRM</a>
   </div>
   <div class="foot">Homeowner or sub? <a href="/crm/login">Sign in here</a><br><a href="/">← Eagle I home</a></div>
 </main>
+<script>
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const site = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
+fetch('/api/crm-portfolio').then(r => r.json()).then(d => {
+  const el = document.getElementById('cos');
+  const cos = (d && d.companies) || [];
+  if (!cos.length) { el.innerHTML = '<div class="empty">No companies are set up yet. Open the group CRM and add them under Company → Our companies.</div>'; return; }
+  el.innerHTML = cos.map(c => `<section class="co" aria-labelledby="c-${esc(c.slug)}">
+      <h3 id="c-${esc(c.slug)}">${esc(c.name)}</h3>
+      ${c.what ? `<div class="what">${esc(c.what)}</div>` : ''}
+      ${c.about ? `<div class="about">${esc(c.about)}</div>` : ''}
+      ${c.services && c.services.length ? `<div class="chips">${c.services.map(s => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
+      <div class="contact">${[c.address ? esc(c.address) : '', [c.phone ? `<a href="tel:${esc(String(c.phone).replace(/[^\d+]/g, ''))}">${esc(c.phone)}</a>` : '', c.website && site(c.website) ? `<a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(site(c.website))}</a>` : ''].filter(Boolean).join(' · ')].filter(Boolean).join('<br>')}</div>
+      <a class="go" href="/crm/c/${encodeURIComponent(c.slug)}">Open ${esc(c.name)}</a>
+    </section>`).join('');
+}).catch(() => { document.getElementById('cos').innerHTML = '<div class="empty">Couldn’t load the companies. Check your connection and refresh.</div>'; });
+</script>
 </body>
 </html>
