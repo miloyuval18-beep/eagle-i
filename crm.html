@@ -148,6 +148,7 @@ select{width:auto;cursor:pointer}
 .pl-tag.warn{color:var(--amber);border-color:rgba(160,110,0,.5)}
 .pl-tag.gA{color:var(--green);border-color:rgba(60,110,70,.45);font-weight:800}
 .pl-tag.gB{color:var(--accent);border-color:var(--accent);font-weight:800}
+.lp-item .pl-tag{display:inline-flex;align-items:center;font-size:15px}
 .pl-tag.gC{color:var(--ink2);font-weight:800}
 .fit-r{font-size:16px;display:flex;gap:8px;padding:2px 0}.fit-r b{min-width:34px;text-align:right}
 .fit-brief{white-space:pre-wrap;font-size:16.5px;line-height:1.5;background:var(--bg2,rgba(0,0,0,.03));border:1px solid var(--bdr2);border-radius:10px;padding:10px 12px;margin-top:6px}
@@ -1106,6 +1107,10 @@ const CR_GUIDES={
     ['Notes and tasks','Add a note after a call or visit (🎤 to talk it), and tasks for what’s next.'],
     ['Estimates and invoices','Start an estimate or an invoice from here. They’re sent from your company, and you always see who it goes to first.',null,()=>crCan('estimates')||crCan('invoices')],
     ['The homeowner’s page','Further down: a private page for the homeowner with updates, visits, estimates and photos. Post an update there to keep them in the loop.']]},
+  loop:{icon:'📨',steps:[
+    ['Kept in the loop','These are emails about this project you were only copied on. No action needed: nobody is waiting on you, so there are no reminders and nothing goes on your calendar.','#pld-loop .lp-item,#jb-loop .lp-item'],
+    ['When it is for you','If an email is sent to your address or uses your name, it counts as yours like any other: reminders, calendar and all.'],
+    ['Every morning','Your morning email lists what you were copied on since the day before, by project, each marked “No action needed”. Switch this off in Account → My calendar & morning email.']]},
   job:{icon:'🛠',steps:[
     ['The job','Everything for one signed job, top to bottom.'],
     ['The schedule','Each phase has dates and who’s doing it. Change the dates and the sub is asked to confirm them.'],
@@ -1141,7 +1146,7 @@ function crGuide(key){
     gdRender();
   },350);
 }
-const GD_WINDOWS={deal:'plOpenDeal',job:'jbOpen',estimate:'esOpen',newdeal:'plNewDeal',caladd:'cvEdit',sub:'vdPage',search:'srOpen',bin:'binOpen',mycal:'dyOpen',activity:'alOpen'};
+const GD_WINDOWS={loop:'lpLoad',deal:'plOpenDeal',job:'jbOpen',estimate:'esOpen',newdeal:'plNewDeal',caladd:'cvEdit',sub:'vdPage',search:'srOpen',bin:'binOpen',mycal:'dyOpen',activity:'alOpen'};
 function gdStillThere(key){
   if(GD_WINDOWS[key]){const m=document.getElementById('ux-modal');return !!(m&&m.style.display!=='none')||key==='search';}
   // A screen's tip: that screen is the one showing, with no window open over it.
@@ -1241,6 +1246,8 @@ async function dyOpen(){
       <div id="dy-gmail"></div>
       <div class="pl-h">Morning email</div>
       <label class="pl-switch"><input type="checkbox" ${d.digestOn?'checked':''} onchange="dyDigest(this.checked)"><span>At 7am, Monday to Saturday: today’s visits, tasks due, phases starting, and what’s waiting for you. Nothing on? No email.</span></label>
+      <div class="pl-h">Emails I’m copied on</div>
+      <label class="pl-switch"><input type="checkbox" ${d.oversight?'checked':''} onchange="dyOversight(this.checked)"><span>Just keep me in the loop. When I’m only copied on an email, don’t remind me to answer it or put it on my calendar; list it on the project and in my morning email as “no action needed”. If it’s sent to me or uses my name, it’s mine like any other.</span></label>
       <div class="pl-h">End-of-day check-in</div>
       <label class="pl-switch"><input type="checkbox" id="dy-ci" onchange="dyCheckin(this.checked)"><span>Weekdays at 5pm: “What did you get done today?” Reply in your own words and Eagle I files it on the right jobs, so nobody has to type it up twice.</span></label>`);
     plApi('/api/crm/me/checkin').then(c=>{const i=document.getElementById('dy-ci');if(i)i.checked=c.on;}).catch(()=>{});
@@ -1253,6 +1260,7 @@ async function dyOpen(){
 }
 async function dyReset(){if(!confirm('Make a new calendar link? Calendars using the old one stop updating until you add the new one.'))return;try{await plApi('/api/crm/me/calendar/reset',{body:{}});dyOpen();}catch(e){showNotif('Could not do that',e.message);}}
 async function dyCheckin(on){try{await plApi('/api/crm/me/checkin',{method:'PATCH',body:{on}});showNotif(on?'Check-in on':'Check-in off','');}catch(e){showNotif('Could not save',e.message);}}
+async function dyOversight(on){try{await plApi('/api/crm/me/oversight',{method:'PATCH',body:{on}});showNotif(on?'Kept in the loop':'Copied emails count like any other',on?'Emails you’re only copied on won’t remind you or go on your calendar.':'');}catch(e){showNotif('Could not save',e.message);}}
 async function dyDigest(on){try{await plApi('/api/crm/me/digest',{method:'PATCH',body:{on}});showNotif(on?'Morning email on':'Morning email off','');}catch(e){showNotif('Could not save',e.message);}}
 async function crInit(){
   let me;
@@ -2002,6 +2010,8 @@ function tmPermsHtml(m){
   return `<details class="tm-perms"${TM_OPEN.has(m.id)?' open':''} ontoggle="this.open?TM_OPEN.add('${m.id}'):TM_OPEN.delete('${m.id}')"><summary>What ${uxEsc((m.name||m.email).split(' ')[0])} can do${m.custom?' <span class="pl-tag warn">Adjusted</span>':` <span class="pl-tag">${uxEsc(role)} defaults</span>`}</summary>
     <div class="sm" style="margin:6px 0 4px">Everyone can work deals, notes, tasks, visits, the calendar and job schedules. Tick what else ${uxEsc((m.name||m.email).split(' ')[0])} may do. Changing their role starts these over from the new role’s defaults.</div>
     ${P.map(p=>{const on=!!m.permissions[p.key],mine=crCan(p.key),lock=!on&&!mine;return `<label class="pl-switch tm-perm"${lock?' title="You can’t give this because you don’t have it yourself."':''}><input type="checkbox" ${on?'checked':''} ${lock?'disabled':''} onchange="tmPerm('${m.id}','${p.key}',this)"><span><b>${uxEsc(p.label)}</b><br><span class="sm">${uxEsc(p.help)}</span></span></label>`;}).join('')}
+    <div class="pl-h" style="font-size:16px;margin-top:10px">Emails they’re copied on</div>
+    <label class="pl-switch tm-perm"><input type="checkbox" ${m.oversight?'checked':''} onchange="tmOversight('${m.id}',this)"><span><b>Just keep them in the loop</b><br><span class="sm">When ${uxEsc((m.name||m.email).split(' ')[0])} is only copied on an email, there are no reminders to answer it and nothing goes on their calendar. It’s listed on the project and in their morning email as “no action needed”. Sent to them, or uses their name, and it counts as theirs.</span></span></label>
     ${m.custom?`<div class="pl-acts"><button class="btn-xs" onclick="tmPermReset('${m.id}')">Back to the ${uxEsc(role.toLowerCase())} defaults</button></div>`:''}</details>`;
 }
 // For people who can't change it: a plain list of what this person can do.
@@ -2016,6 +2026,11 @@ async function tmPerm(id,key,box){
   if(box.checked&&key==='team'&&!confirm('Let '+name+' manage the team? They’ll be able to invite people, let people in, and change roles and permissions.')){box.checked=false;return;}
   box.disabled=true;
   try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{permissions:{[key]:box.checked}}});showNotif('Saved',name+(box.checked?' can now: ':' can no longer: ')+p.label.toLowerCase()+'.');TM_OPEN.add(id);tmLoad();}
+  catch(e){box.checked=!box.checked;box.disabled=false;showNotif('Could not change that',e.message);}
+}
+async function tmOversight(id,box){
+  const name=TMN[id]||'them';box.disabled=true;
+  try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{oversight:box.checked}});showNotif('Saved',box.checked?'Emails '+name+' is only copied on will just keep them in the loop.':'Emails '+name+' is copied on count like any other.');TM_OPEN.add(id);tmLoad();}
   catch(e){box.checked=!box.checked;box.disabled=false;showNotif('Could not change that',e.message);}
 }
 async function tmPermReset(id){
@@ -2992,6 +3007,7 @@ async function plOpenDeal(id){
     ${(()=>{const why={replied:'they replied',stage_changed:'the deal moved to another stage',opted_out:'they asked not to get emails',no_email:'there’s no email address for them',switched_off:'that automatic email was switched off',not_approved:'its wording wasn’t approved yet',no_address:'your business address is missing (Account → Company details)',rescheduled:'the visit was rescheduled',too_late:'it was too late to send',skipped:'someone chose to skip it',invoice_changed:'the invoice changed or was paid',estimate_changed:'the estimate changed or was signed',no_review_link:'no review link is set up yet',deal_closed:'the deal was closed',item_removed:'the item was removed',warranty_changed:'the warranty date changed',deal_deleted:'the deal was deleted'};
       const not=d.automations.filter(a=>a.status==='cancelled'&&a.cancel_reason&&a.cancel_reason!=='rescheduled_auto'&&Date.now()-new Date(a.due_at)<30*86400000).slice(-6);
       return not.length?'<div class="pl-h">Not sent</div><ul class="pl-tl">'+not.map(a=>`<li class="eagle_i">🚫 ${uxEsc(a.playbook_name)}, email ${a.step}<div class="pl-tl-meta">Not sent because ${uxEsc(why[a.cancel_reason]||a.cancel_reason.replace(/_/g,' '))}</div></li>`).join('')+'</ul>':'';})()}
+    <div id="pld-loop"></div>
     <div class="pl-h">History</div>
     <ul class="pl-tl">${d.activities.map(a=>`<li class="${a.actor}">${kindIcon[a.kind]||'•'} ${uxEsc(a.body||'')}<div class="pl-tl-meta">${uxEsc(a.actor==='owner'&&a.user_name?(CR.me&&a.user_name===(CR.me.name||CR.me.email)?'You':a.user_name):(actorLbl[a.actor]||a.actor))} · ${crWhen(a.created_at)}</div></li>`).join('')||'<li>No history yet.</li>'}</ul>`);
   plDealEstimates(x.id);
@@ -3004,6 +3020,21 @@ async function plOpenDeal(id){
   ptLoad(x.id);
   ivLoad(x.id);
   pqLoad(x.id);
+  lpLoad(x.id,'pld-loop');
+}
+/* ---------- kept in the loop: emails I was only copied on for this project ---------- */
+async function lpLoad(dealId,elId){
+  const el=document.getElementById(elId);if(!el)return;
+  try{
+    const {items}=await plApi('/api/crm/deals/'+dealId+'/loop');
+    if(!items.length){el.innerHTML='';return;}
+    el.innerHTML=`<div class="pl-h">Kept in the loop</div><div class="sm" style="margin-top:0">Emails you were copied on for this project. They weren’t sent to you and don’t use your name: <b>no action needed</b>. Only you see these.</div>
+      <div class="pl-list">${items.map(i=>`<div class="pl-item lp-item"><div class="pl-item-t">${uxEsc(i.subject||'(no subject)')}</div>
+        <div class="pl-item-d">${uxEsc(i.from)}${i.to?' to '+uxEsc(i.to):''} · ${crWhen(i.lastAt)}${i.messages>1?' · '+i.messages+' emails':''}</div>
+        ${i.snippet?`<div class="pl-item-d" style="color:var(--ink)">${uxEsc(i.snippet)}</div>`:''}
+        <div class="pl-acts"><span class="pl-tag gA">No action needed</span><a class="btn-xs" href="${uxEsc(i.gmail)}" target="_blank" rel="noopener">Open in Gmail</a></div></div>`).join('')}</div>`;
+    crGuide('loop');
+  }catch(e){el.innerHTML='';}
 }
 /* ---------- coach: lead summary, next move, replies ---------- */
 const CC={};
@@ -3438,6 +3469,7 @@ async function jbOpen(dealId){
     <div id="jb-punch"></div>
     <div id="jb-photos"></div>
     <div id="jc-catch"></div>
+    <div id="jb-loop"></div>
     <div class="pl-h">Change orders</div>
     <div class="pl-list">${d.cos.map(coRow).join('')||'<div class="sm">No change orders yet. When the homeowner asks for something extra, add it below and send it for their approval.</div>'}</div>
     <details style="margin-top:6px"${crCan('estimates')?'':' hidden'}><summary class="btn-xs p" style="display:inline-flex;list-style:none;cursor:pointer">＋ New change order</summary>
@@ -3463,6 +3495,7 @@ async function jbOpen(dealId){
       <div class="vd-mbtns"><button class="btn btn-blue" onclick="jbNewPO(this)">Create purchase order</button></div></details>
     <div class="sm" id="jb-msg"></div>`);
   jcLoad(dealId);
+  lpLoad(dealId,'jb-loop');
   dwLoad(dealId);
   joLoad(dealId);
 }
@@ -3846,8 +3879,9 @@ function ewAgo(x){return x.days?`${x.days} business day${x.days===1?'':'s'}`:'to
 function ewCard(x,kind){
   const tags=`${x.importance==='urgent'&&kind==='reply'?'<span class="ew-tag urgent">Urgent</span>':''}${x.customer?'<span class="ew-tag">Customer</span>':x.sub?'<span class="ew-tag">Sub</span>':''}`;
   return `<div class="pl-item"><div class="ew-row"><div style="min-width:0"><div class="ew-who">${uxEsc(x.who)}${tags}</div><div class="pl-item-d" style="margin-top:2px">${uxEsc(x.subject||'(no subject)')}</div>${x.reason?`<div class="sm" style="margin-top:2px">${uxEsc(x.reason)}${x.deadline?' · by '+uxEsc(new Date(x.deadline+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})):''}</div>`:''}</div><div class="pl-tl-meta" style="white-space:nowrap">${uxEsc(ewAgo(x))}</div></div>
+    ${x.seenOn?`<div class="sm" style="margin-top:2px">Seen because ${uxEsc(x.seenOn)} was copied. Answer it from your own email; connecting your Gmail (Account → My calendar &amp; morning email) lets Eagle I see your reply.</div>`:''}
     <div class="pl-tl-meta">${kind==='reply'?'To':'From'} ${uxEsc(x.person||x.mailbox)}${x.deal?' · '+uxEsc(x.deal):''}${x.followupsSent?` · followed up ${x.followupsSent}×`:''}</div>
-    <div class="pl-acts">${kind==='wait'?`<button class="btn-xs p" onclick="ewFollow('${x.id}')">${x.draft?'Review the follow-up':'Write a follow-up'}</button>`:''}<a class="btn-xs${kind==='reply'?' p':''}" href="${uxEsc(x.gmail)}" target="_blank" rel="noopener">Open in Gmail</a>${x.dealId?`<button class="btn-xs" onclick="plOpenDeal('${x.dealId}')">Open deal</button>`:''}<button class="btn-xs" onclick="ewAct('${x.id}','done')">${kind==='reply'?'✓ Handled':'✓ Got it'}</button><button class="btn-xs" onclick="ewAct('${x.id}','snooze',3)">Snooze 3 days</button><button class="btn-xs" onclick="ewAct('${x.id}','dismiss')">Not needed</button></div></div>`;
+    <div class="pl-acts">${kind==='wait'?`<button class="btn-xs p" onclick="ewFollow('${x.id}')">${x.draft?'Review the follow-up':'Write a follow-up'}</button>`:''}${x.gmail?`<a class="btn-xs${kind==='reply'?' p':''}" href="${uxEsc(x.gmail)}" target="_blank" rel="noopener">Open in Gmail</a>`:''}${x.dealId?`<button class="btn-xs" onclick="plOpenDeal('${x.dealId}')">Open deal</button>`:''}<button class="btn-xs" onclick="ewAct('${x.id}','done')">${kind==='reply'?'✓ Handled':'✓ Got it'}</button><button class="btn-xs" onclick="ewAct('${x.id}','snooze',3)">Snooze 3 days</button><button class="btn-xs" onclick="ewAct('${x.id}','dismiss')">Not needed</button></div></div>`;
 }
 async function ewLoad(){
   const el=document.getElementById('ew-box');if(!el)return;
@@ -3863,7 +3897,7 @@ async function ewLoad(){
       ||'<div class="pl-empty">No email waiting on anyone. ✓</div>';
   }catch(e){el.innerHTML='<div class="pl-empty">Could not load email: '+uxEsc(e.message)+'</div>';}
 }
-async function ewGmail(id){if(!ewFind(id))await ewLoad();const x=ewFind(id);if(x)window.open(x.gmail,'_blank','noopener');else showNotif('Already settled','That email has been answered or closed.');}
+async function ewGmail(id){if(!ewFind(id))await ewLoad();const x=ewFind(id);if(x&&x.gmail)window.open(x.gmail,'_blank','noopener');else if(x)showNotif('Answer it from your own email','This one was seen on a copy in '+x.seenOn+'’s Gmail.');else showNotif('Already settled','That email has been answered or closed.');}
 async function ewFollow(id){
   if(!ewFind(id))await ewLoad();
   const x=ewFind(id);if(!x){showNotif('Already settled','They replied, or it was closed.');return;}
@@ -3872,7 +3906,7 @@ async function ewFollow(id){
     <div class="sm" style="margin-top:0">No reply to “${uxEsc(x.subject||'')}” in ${uxEsc(ewAgo(x))}.${x.reason?' '+uxEsc(x.reason)+'.':''} It goes to ${uxEsc(x.email)} in the same conversation, with replies coming to ${uxEsc(x.mailbox)} (you’re copied).</div>
     <label for="ew-s" style="font-size:15px;font-weight:700;display:block;margin-top:10px">Subject</label><input id="ew-s" class="cred-input" value="${uxEsc(d?d.subject:'Re: '+(x.subject||''))}">
     <label for="ew-b" style="font-size:15px;font-weight:700;display:block;margin-top:8px">Message</label><textarea id="ew-b" class="cred-input" rows="7">${uxEsc(d?d.body:'Writing it…')}</textarea>
-    <div class="vd-mbtns"><button class="btn btn-blue" id="ew-send" onclick="ewSend('${x.id}',this)" ${d?'':'disabled'}>Send follow-up</button><button class="btn-xs" onclick="ewRedraft('${x.id}')">✨ Write it again</button><a class="btn-xs" href="${uxEsc(x.gmail)}" target="_blank" rel="noopener">Answer in Gmail instead</a></div><div class="sm" id="ew-msg"></div>`);
+    <div class="vd-mbtns"><button class="btn btn-blue" id="ew-send" onclick="ewSend('${x.id}',this)" ${d?'':'disabled'}>Send follow-up</button><button class="btn-xs" onclick="ewRedraft('${x.id}')">✨ Write it again</button>${x.gmail?`<a class="btn-xs" href="${uxEsc(x.gmail)}" target="_blank" rel="noopener">Answer in Gmail instead</a>`:''}</div><div class="sm" id="ew-msg"></div>`);
   if(!d)ewRedraft(id);
 }
 async function ewRedraft(id){const b=document.getElementById('ew-b'),s=document.getElementById('ew-send');if(!b)return;b.value='Writing it…';if(s)s.disabled=true;

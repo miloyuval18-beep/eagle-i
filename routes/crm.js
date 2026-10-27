@@ -26,11 +26,11 @@ function fail(res, err, what) {
 router.get('/api/crm/me', requireAuth, async (req, res) => {
   try {
     const r = (await query(
-      `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.permissions, u.disabled_at, u.tips, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
+      `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.permissions, u.oversight, u.disabled_at, u.tips, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
     if (!r || r.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
     if (r.disabled_at) return res.status(401).json({ error: { message: 'Your account has been turned off. Ask the owner or an admin.', code: 'disabled' } });
     res.json({
-      userId: r.id, email: r.email, name: r.name, phone: r.phone, role: r.role, roleLabel: team.roleLabel(r.role), canManage: team.isManager(r.role), perms: team.permsOf(r), companyName: r.company_name,
+      userId: r.id, email: r.email, name: r.name, phone: r.phone, role: r.role, roleLabel: team.roleLabel(r.role), canManage: team.isManager(r.role), perms: team.permsOf(r), oversight: team.oversightOf(r), companyName: r.company_name,
       // Guided setup (crm.html #setup): the company's for its owner, a shorter one for everyone else.
       needsSetup: r.role === 'owner' ? !r.company_setup_done : !r.setup_done_at,
       tips: require('../lib/crmTips').clean(r.tips),
@@ -526,6 +526,8 @@ router.patch('/api/crm/team/:userId', requireAuth, team.need('team'), async (req
   try {
     if (b.role !== undefined) await team.setRole({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId, role: b.role });
     if (b.reportsTo !== undefined) await team.setReportsTo({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId, reportsTo: b.reportsTo || null });
+    // { oversight: true|false }: emails they're only copied on keep them in the loop.
+    if (b.oversight !== undefined) await team.setOversight({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId, on: !!b.oversight });
     // { permissions: { key: true|false } } adjusts their checklist; null puts them back on their role's defaults.
     if (b.permissions !== undefined) return res.json({ ok: true, permissions: await team.setPermissions({ tenantId: req.tenantId, actor: req.crmUser, userId: req.params.userId, permissions: b.permissions }) });
     res.json({ ok: true });

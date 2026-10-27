@@ -1433,3 +1433,29 @@ describe('sign-in limits (lib/rateLimit.js)', () => {
     reset();
   });
 });
+
+describe('pages load: every inline script parses', () => {
+  const fs = require('fs'), path = require('path');
+  const pages = ['crm.html', ...fs.readdirSync(path.join(__dirname, '..', 'public')).filter(f => f.endsWith('.html')).map(f => 'public/' + f)];
+  for (const page of pages) test(page, () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', page), 'utf8');
+    const re = /<script(?![^>]*\bsrc=)(?![^>]*type="(?:application\/(?:ld\+)?json|text\/template)")[^>]*>([\s\S]*?)<\/script>/g;
+    let m;
+    while ((m = re.exec(html))) assert.doesNotThrow(() => new Function(m[1]), `${page}: a script on this page doesn't parse`);
+  });
+});
+
+describe('copied emails: does it name them? (lib/crmEmailWatch.js)', () => {
+  const { mentions } = require('../lib/crmEmailWatch');
+  const levi = { name: 'Levi Stone', company: 'Levi Homes' }, mark = { name: 'Mark Ruiz', company: 'Ruiz Builders' };
+  test('greetings, call-outs and full names count', () => {
+    for (const t of ['Hi Levi, quick one', 'Levi, can you approve this?', 'Levi asked us to move it', 'Mr. Stone signed off', 'cc Levi', '@Levi please look', 'Thanks Levi']) assert.equal(mentions(t, levi), true, t);
+    for (const t of ['Hi Mark, see below', 'Mark - the framing is done', 'Mark Ruiz wants it Friday']) assert.equal(mentions(t, mark), true, t);
+  });
+  test('the company name, addresses, everyday words and someone else with the same name do not', () => {
+    for (const t of ['Thanks to Levi Homes for the job', 'see levi@levihomes.com', 'www.levihomes.com/levi']) assert.equal(mentions(t, levi), false, t);
+    for (const t of ['We will mark the layout', 'The Mark 4 saw is on site']) assert.equal(mentions(t, mark), false, t);
+    assert.equal(mentions('Order is in. Thanks, Levi', levi, [{ name: 'Levi Grant' }]), false);
+    assert.equal(mentions('Levi Stone wants it', levi, [{ name: 'Levi Grant' }]), true);
+  });
+});

@@ -21,8 +21,15 @@ const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } cat
 const links = (req, token) => { const url = `${baseUrlOf(req)}/cal/${token}.ics`; return { calendarUrl: url, webcalUrl: url.replace(/^https?:/, 'webcal:'), phoneUrl: `${baseUrlOf(req)}/cal/${token}/add` }; };
 
 router.get('/api/crm/me/daily', requireAuth, wrap('Failed to load', async (req, res) => {
-  const u = (await query('SELECT crm_digest_off FROM users WHERE id = $1', [req.userId])).rows[0];
-  res.json({ ...links(req, await daily.calendarToken(req.userId)), digestOn: !(u && u.crm_digest_off) });
+  const u = (await query('SELECT crm_digest_off, role, oversight FROM users WHERE id = $1', [req.userId])).rows[0];
+  res.json({ ...links(req, await daily.calendarToken(req.userId)), digestOn: !(u && u.crm_digest_off), oversight: team.oversightOf(u) });
+}));
+// Emails I'm only copied on keep me in the loop (lib/crmEmailWatch.js).
+router.patch('/api/crm/me/oversight', requireAuth, wrap('Failed to save', async (req, res) => res.json(await team.setOversight({ tenantId: req.tenantId, actor: req.crmUser, userId: req.userId, on: !!(req.body || {}).on }))));
+// What I was copied on for this project. Mine only: it came from my mailbox.
+router.get('/api/crm/deals/:id/loop', requireAuth, wrap('Failed to load', async (req, res) => {
+  const items = await require('../lib/crmEmailWatch').loopFor({ tenantId: req.tenantId, userId: req.userId, dealId: req.params.id });
+  res.json({ items: team.can(req.crmUser, 'money') ? items : team.hideMoney(items) });
 }));
 router.post('/api/crm/me/calendar/reset', requireAuth, wrap('Failed to make a new link', async (req, res) => res.json(links(req, await daily.resetCalendarToken(req.userId)))));
 router.patch('/api/crm/me/digest', requireAuth, wrap('Failed to save', async (req, res) => res.json(await daily.setDigest(req.userId, !!(req.body || {}).on))));
