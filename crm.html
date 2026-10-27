@@ -686,6 +686,109 @@ select{max-width:100%;text-overflow:ellipsis}
   .cr-tab .ti{width:24px;height:24px}
   .wrap{padding-bottom:calc(160px + env(safe-area-inset-bottom))}
 }
+
+/* ---------- Levi Construction Group colors ----------
+   More color and contrast: a charcoal bar with gold (the logo's colors), a vivid
+   cobalt for everything you can act on, a color of its own for each stage, and
+   bolder cards. Every text color clears WCAG AA on what it sits on. */
+:root{
+  --bg:#eceff4;--bg4:#e6eaf1;
+  --bdr:#cdd4df;--bdr2:#aab4c3;--bdr3:#7d8899;--ctl:#8e99ab;
+  --ink:#0b1220;--ink2:#1f2a3d;--ink3:#36435a;
+  --blue:#1b4fd8;--blue2:#1438a8;--accent:#1b4fd8;--accent-soft:#e3ebff;--accent-line:#9db5f5;
+  --gold:#c9a24a;--gold2:#e2c178;--gold-ink:#7a5a12;--char:#14161c;--char2:#1f232c;
+  --green:#05823f;--green-soft:#dcf7e7;--green-line:#7fdba6;
+  --amber:#b4530a;--amber-soft:#fff1d6;--amber-line:#f5be6b;
+  --red:#c01b1b;--red-soft:#ffe3e1;--red-line:#f5a3a0;
+  --ai:linear-gradient(135deg,#1b4fd8 0%,#5b3be0 55%,#0e9f9a 100%);
+  --glow:rgba(27,79,216,.22);
+  --sh2:0 1px 3px rgba(11,18,32,.10),0 1px 2px rgba(11,18,32,.06);
+  --sh3:0 14px 28px -10px rgba(11,18,32,.28),0 4px 10px -4px rgba(11,18,32,.12);
+}
+body{background:var(--bg) linear-gradient(180deg,#e3e8f1 0,#eceff4 340px) no-repeat}
+::selection{background:#c9d8ff}
+/* the bar: charcoal and gold */
+.cr-top{background:var(--char);border-bottom:3px solid var(--gold);box-shadow:0 6px 18px -8px rgba(0,0,0,.45);-webkit-backdrop-filter:none;backdrop-filter:none}
+.cr-brand{color:#fff}
+.cr-brand span{color:var(--gold2)}
+.cr-company{color:#c9cfdb}
+.cr-top .cr-menu-btn{background:var(--char2);color:#fff;border-color:#3a4150;box-shadow:none}
+.cr-top .cr-menu-btn:hover{background:#2b303b;border-color:var(--gold)}
+.cr-tab{color:#c4cad6}
+.cr-tab:hover{color:#fff}
+.cr-tab.active{color:var(--gold2);border-bottom-color:var(--gold)}
+.cr-tab.active .ti{opacity:1}
+/* page titles with a gold rule */
+.st{color:var(--ink);font-weight:800}
+.sh .st::after{content:'';display:block;width:54px;height:4px;border-radius:4px;margin-top:8px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.pl-h{color:var(--ink2);font-weight:800;display:flex;align-items:center;gap:8px}
+.pl-h::before{content:'';width:4px;height:16px;border-radius:3px;background:var(--accent)}
+/* buttons */
+.btn-blue{background:linear-gradient(135deg,#2a5ff0 0%,#1b4fd8 55%,#1438a8 100%);box-shadow:0 6px 14px -6px rgba(27,79,216,.65),inset 0 1px 0 rgba(255,255,255,.18)}
+.btn-blue:hover{background:linear-gradient(135deg,#1f52e0,#1438a8);box-shadow:0 8px 18px -6px rgba(27,79,216,.7)}
+.btn-xs{border-color:var(--bdr2);color:var(--ink);background:#fff}
+.btn-xs.p{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 8px -3px rgba(27,79,216,.55)}
+.btn-xs.p:hover{background:var(--blue2);border-color:var(--blue2);color:#fff}
+/* cards: bolder edges, a colored stripe on hover */
+.pl-card,.pl-item,.pl-pb,.es-line{border-color:var(--bdr);box-shadow:var(--sh2)}
+.pl-card{border-left:4px solid var(--accent-line)}
+.pl-card:hover{border-color:var(--bdr2);border-left-color:var(--accent);box-shadow:var(--sh3)}
+.pl-card-title,.pl-item-t{font-weight:700;color:var(--ink)}
+.pl-card-val{color:var(--green);font-weight:800}
+/* summary tiles: each its own color */
+.pl-tile{border:0;color:#fff;box-shadow:0 8px 18px -10px rgba(11,18,32,.55)}
+.pl-tile .pl-tile-v,.pl-tile .pl-tile-l{color:#fff}
+.pl-tile-l{opacity:.92;font-weight:700}
+.pl-tile:nth-child(4n+1){background:linear-gradient(135deg,#1b4fd8,#3b7bff)}
+.pl-tile:nth-child(4n+2){background:linear-gradient(135deg,#047a3f,#16a35b)}
+.pl-tile:nth-child(4n+3){background:linear-gradient(135deg,#6b2fd6,#8f5cf7)}
+.pl-tile:nth-child(4n+4){background:linear-gradient(135deg,#c2410c,#ea7a1a)}
+/* stage chips and tags */
+.pl-chip{border-color:var(--bdr2);color:var(--ink2);font-weight:600}
+.pl-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 10px -4px rgba(27,79,216,.6)}
+.pl-chip.active b{color:#fff}
+.pl-tag{border-radius:999px;padding:2px 9px;font-weight:600;border-color:var(--bdr2);color:var(--ink2);background:#fff}
+.pl-tag.auto,.pl-tag.gA{background:var(--green-soft);border-color:var(--green-line);color:#035c2c}
+.pl-tag.warn{background:var(--amber-soft);border-color:var(--amber-line);color:#8a3c05}
+.pl-tag.gB{background:var(--accent-soft);border-color:var(--accent-line);color:#1438a8}
+.pl-tag.gC{background:#fbf3df;border-color:#e6cf93;color:var(--gold-ink)}
+.pl-tag.co{background:var(--char);border-color:var(--char);color:var(--gold2);font-weight:700}
+.pl-tag.st-new{background:#e3ebff;border-color:#9db5f5;color:#1438a8}
+.pl-tag.st-qualified{background:#e9e4ff;border-color:#b6a6f7;color:#4a24b8}
+.pl-tag.st-site_visit{background:#dcf5f3;border-color:#7fd4cd;color:#06655f}
+.pl-tag.st-design_agreement,.pl-tag.st-in_design{background:#fde7f3;border-color:#f1a8cf;color:#9b1c5c}
+.pl-tag.st-proposal{background:#fff1d6;border-color:#f5be6b;color:#8a3c05}
+.pl-tag.st-signed{background:#dcf7e7;border-color:#7fdba6;color:#035c2c}
+.pl-tag.st-production{background:#ffe6d5;border-color:#f7a873;color:#9a3412}
+.pl-tag.st-complete{background:#d9f2e4;border-color:#5cc08a;color:#045227}
+.pl-tag.st-lost{background:#eceef2;border-color:#b5bcc8;color:#3d4657}
+/* banners and next step: stronger fills */
+.pl-banner{background:var(--amber-soft);border-color:var(--amber-line);border-left:5px solid var(--amber);color:#5c2a03}
+.nx{border-left:5px solid var(--accent);background:var(--accent-soft)}
+.nx-warn{border-left-color:var(--amber)}
+.nx-ok{border-left-color:var(--green)}
+.cc-box{background:linear-gradient(180deg,#e9efff 0%,#ffffff 75%);border-color:var(--accent-line)}
+/* the company bar and profiles */
+.sb-bar{background:#fff;border:1px solid var(--bdr);border-left:5px solid var(--gold);box-shadow:var(--sh2)}
+.cp-head{border-top-color:var(--gold);box-shadow:var(--sh2);background:linear-gradient(180deg,#fffaf0 0%,#ffffff 60%)}
+/* Ask: a bright greeting and colored counts */
+.ai-hello .g{background:linear-gradient(90deg,#1b4fd8,#6b2fd6 55%,#0e9f9a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ai-glance-t{border-width:0;color:#fff;font-weight:600;box-shadow:0 6px 14px -8px rgba(11,18,32,.6)}
+.ai-glance-t b{color:#fff}
+.ai-glance-t:nth-child(5n+1){background:linear-gradient(135deg,#c2410c,#ea7a1a)}
+.ai-glance-t:nth-child(5n+2){background:linear-gradient(135deg,#0e7c78,#14a8a1)}
+.ai-glance-t:nth-child(5n+3){background:linear-gradient(135deg,#1b4fd8,#3b7bff)}
+.ai-glance-t:nth-child(5n+4){background:linear-gradient(135deg,#047a3f,#16a35b)}
+.ai-glance-t:nth-child(5n+5){background:linear-gradient(135deg,#6b2fd6,#8f5cf7)}
+.ai-panel.inline .ai-head{border-bottom:2px solid var(--gold-line,#e6cf93)}
+/* windows */
+.vd-modal-box{border-color:var(--bdr2);box-shadow:0 30px 60px -18px rgba(11,18,32,.45)}
+@media (max-width:640px){
+  .cr-top{background:var(--char)}
+  .cr-nav{background:var(--char);border-top:3px solid var(--gold);box-shadow:0 -8px 20px -6px rgba(0,0,0,.4)}
+  .cr-tab{color:#c4cad6}
+  .cr-tab.active{color:var(--char);background:linear-gradient(135deg,var(--gold2),var(--gold))}
+}
 </style>
 </head>
 <body>
@@ -2892,11 +2995,11 @@ function plRender(){
   el.innerHTML=list.map(x=>{
     const st=plStage(x.stage);
     const waiting=x.stage==='new'&&!x.first_response_at;
-    const tags=[...(x.grade?[`<span class="pl-tag g${x.grade}" title="Fit score ${x.score}">Fit ${x.grade}</span>`]:[]),`<span class="pl-tag">${uxEsc(st.label)}</span>`,`<span class="pl-tag">${uxEsc(plSourceLabel(x.source))}</span>`,`<span class="pl-tag">${plAgo(x.stage_entered_at)} in stage</span>`];
+    const tags=[...(x.grade?[`<span class="pl-tag g${x.grade}" title="Fit score ${x.score}">Fit ${x.grade}</span>`]:[]),`<span class="pl-tag st-${uxEsc(x.stage)}">${uxEsc(st.label)}</span>`,`<span class="pl-tag">${uxEsc(plSourceLabel(x.source))}</span>`,`<span class="pl-tag">${plAgo(x.stage_entered_at)} in stage</span>`];
     if(waiting)tags.push(`<span class="pl-tag warn">Waiting ${plAgo(x.created_at)}</span>`);
     if(x.site_visit_at&&new Date(x.site_visit_at)>new Date(Date.now()-86400000))tags.push(`<span class="pl-tag">📅 ${new Date(x.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span>`);
     if(CR.team.length>1)tags.push(`<span class="pl-tag">${x.owner_name?'👤 '+uxEsc(x.owner_name):'Unassigned'}</span>`);
-    if(!CR.sub&&x.subsidiary_id&&sbName(x.subsidiary_id))tags.unshift(`<span class="pl-tag gC">🏢 ${uxEsc(sbName(x.subsidiary_id))}</span>`);
+    if(!CR.sub&&x.subsidiary_id&&sbName(x.subsidiary_id))tags.unshift(`<span class="pl-tag co">${uxEsc(sbName(x.subsidiary_id))}</span>`);
     if(x.automations_waiting)tags.push(`<span class="pl-tag auto">✓ ${x.automations_waiting} automatic email${x.automations_waiting>1?'s':''} scheduled</span>`);
     return `<button class="pl-card" onclick="plOpenDeal('${x.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(x.title)}</div><div class="pl-card-val">${uxEsc(plMoney(x.value))}</div></div>
       <div class="pl-card-sub">${uxEsc([x.contact_name,x.contact_phone,x.contact_email].filter(Boolean).join(' · '))}</div>
@@ -3082,7 +3185,7 @@ async function cpLoad(){
   try{
     const p=await plApi('/api/crm/subsidiaries/'+encodeURIComponent(CR.coSlug));const c=p.company;
     const site=u=>{try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return '';}};
-    const row=(d,job)=>`<button class="pl-card" onclick="${job?`jbOpen('${d.id}')`:`plOpenDeal('${d.id}')`}"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(d.title)}</div><div class="pl-card-val">${uxEsc(plMoney(d.value))}</div></div><div class="pl-card-sub">${uxEsc(d.contact_name||'')}${d.address?' · 📍 '+uxEsc(d.address):''}</div>${job?'':`<div class="pl-tags"><span class="pl-tag">${uxEsc(plStage(d.stage).label)}</span></div>`}</button>`;
+    const row=(d,job)=>`<button class="pl-card" onclick="${job?`jbOpen('${d.id}')`:`plOpenDeal('${d.id}')`}"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(d.title)}</div><div class="pl-card-val">${uxEsc(plMoney(d.value))}</div></div><div class="pl-card-sub">${uxEsc(d.contact_name||'')}${d.address?' · 📍 '+uxEsc(d.address):''}</div>${job?'':`<div class="pl-tags"><span class="pl-tag st-${uxEsc(d.stage)}">${uxEsc(plStage(d.stage).label)}</span></div>`}</button>`;
     const sec=(t,rows,job,empty)=>`<div class="pl-h">${t} (${rows.length})</div><div class="pl-list">${rows.map(d=>row(d,job)).join('')||`<div class="sm">${empty}</div>`}</div>`;
     el.innerHTML=`<div class="vd-mbtns" style="margin:0 0 6px"><button class="btn-xs" onclick="cpOpen('')">← All companies</button></div>
       <div class="cp-head"><div class="st">🏢 ${uxEsc(c.name)}</div>${c.what?`<div class="ss">${uxEsc(c.what)}</div>`:''}
