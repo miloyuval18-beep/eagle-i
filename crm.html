@@ -3407,7 +3407,7 @@ async function ckLoad(){
         <div class="vd-mbtns" style="justify-content:space-between"><span class="sm" style="margin:0">About two minutes. Eagle I files it on the right jobs as you go.</span><button class="btn-xs" onclick="ckFinish(this)">✓ I’m done</button></div></div>`;
     }else{
       today=`<div class="pl-pb ck-card"><div class="ck-top"><b>${uxEsc(ckDay(c.day))}</b></div><div class="pl-form">
-        <div class="full"><label for="ck-did">What did you get done today? Which projects?</label><textarea id="ck-did" class="cred-input" rows="4" placeholder="e.g. Ruiz kitchen: cabinets hung, waiting on the counter template."></textarea></div>
+        <div class="full"><label for="ck-did">${(d.myProjects||[]).length?'What got done today on each of your projects?':'What did you get done today? Which projects?'}</label><textarea id="ck-did" class="cred-input" rows="${Math.min(10,Math.max(4,(d.myProjects||[]).length*2))}" placeholder="${uxEsc((d.myProjects||[]).length?d.myProjects.map(t=>t+': ').join('\n'):'e.g. Ruiz kitchen: cabinets hung, waiting on the counter template.')}"></textarea></div>
         <div class="full"><label for="ck-prob">Any problems or anything stuck?</label><textarea id="ck-prob" class="cred-input" rows="2" placeholder="None"></textarea></div>
         <div class="full"><label for="ck-next">What’s next tomorrow?</label><textarea id="ck-next" class="cred-input" rows="2"></textarea></div></div>
         <div class="vd-mbtns"><button class="btn btn-blue" onclick="ckForm(this)">Save my check-in</button></div><div class="sm" id="ck-msg"></div></div>`;

@@ -46,6 +46,12 @@ const THU_830PM = new Date('2026-10-30T01:30:00Z');
     await query(`UPDATE users SET checkin_excluded = true WHERE id = $1`, [it.id]);
     DEAL = (await crm.createDeal({ tenantId: t, name: 'Rita Ruiz', title: 'Ruiz kitchen', stage: 'production', userId: owner.id, ownerUserId: dana.id })).id;
     await query(`INSERT INTO crm_job_items (tenant_id, deal_id, title, start_date, end_date, assignee_user_id, position) VALUES ($1, $2, 'Cabinets', '2026-10-28', '2026-10-30', $3, 0)`, [t, DEAL, dana.id]);
+    // Dana is a project manager: Ruiz kitchen (handling it) and Chen bath (its project manager, signed, tile next week).
+    const CHEN = (await crm.createDeal({ tenantId: t, name: 'Mark Chen', title: 'Chen bath', stage: 'signed', userId: owner.id, ownerUserId: owner.id })).id;
+    await query(`UPDATE crm_deals SET pm_user_id = $2 WHERE id = $1`, [CHEN, dana.id]);
+    await query(`INSERT INTO crm_job_items (tenant_id, deal_id, title, start_date, end_date, position) VALUES ($1, $2, 'Tile', '2026-11-02', '2026-11-04', 0)`, [t, CHEN]);
+    // Someone else's project she doesn't manage.
+    await crm.createDeal({ tenantId: t, name: 'Ann Other', title: 'Other kitchen', stage: 'production', userId: owner.id, ownerUserId: owner.id });
     const mine = (u) => sent.filter(m => m.to === u.email);
     const at = (now) => ci.processCheckins({ now, appUrl: 'https://app.test' });
 
@@ -74,11 +80,17 @@ const THU_830PM = new Date('2026-10-30T01:30:00Z');
 
     // Dana opens it: Eagle I opens with what she was down for.
     const v = await ci.view(dana.id, { now: THU });
-    assert.match(v.checkin.opener, /Hi Dana! Quick check-in for Thursday\. You were down for Ruiz kitchen\./);
+    assert.equal(v.checkin.opener, 'Hi Dana! Quick check-in for Thursday. Let’s go through your projects: Ruiz kitchen and Chen bath. Starting with Ruiz kitchen (Cabinets is underway): what got done there today?'.replace('’', "'"));
+    assert.deepEqual(v.myProjects, ['Ruiz kitchen', 'Chen bath'], 'the short form names her projects');
+    // Sam (not a project manager): the usual question.
+    assert.match((await ci.view(sam.id, { now: THU })).checkin.opener, /What did you work on today/);
     assert.equal(v.checkin.status, 'sent');
     // The chat: two answers, then Eagle I wraps up and it's summarized.
     let r = await ci.message(dana.id, 'Hung all the uppers at Ruiz.', { now: THU, voice: true });
-    assert.equal(r.done, false); assert.equal(seen[0].voice, true); assert.match(seen[0].extra, /daily check-in for Thursday, October 29/); assert.match(seen[0].extra, /Cabinets/);
+    assert.equal(r.done, false); assert.equal(seen[0].voice, true); assert.match(seen[0].extra, /daily check-in for Thursday, October 29, about the projects they manage/); assert.match(seen[0].extra, /Cabinets/);
+    // The questions are about her projects, with what's coming up; not anyone else's.
+    assert.match(seen[0].extra, /Chen bath/); assert.match(seen[0].extra, /Tile from 2026-11-02/); assert.match(seen[0].extra, /one at a time, by name/);
+    assert.ok(!/Other kitchen/.test(seen[0].extra), 'not a project she doesn’t manage');
     assert.equal((await query(`SELECT kind FROM crm_ai_threads WHERE title LIKE 'Daily check-in%' AND user_id = $1`, [dana.id])).rows[0].kind, 'checkin', 'kept out of the Ask chat list');
     await ci.message(dana.id, 'The counter template guy never showed.', { now: THU });
     sent.length = 0;
