@@ -38,15 +38,21 @@ function loadDotEnvValue(key) {
 // process.env.DATABASE_URL at require-time — populate it in *this* process
 // too (not just the spawned server's), since integration tests import those
 // modules directly. Must run before anything else in this file is required.
-if (!process.env.DATABASE_URL) {
-  const fromDotEnv = loadDotEnvValue('DATABASE_URL');
-  if (fromDotEnv) process.env.DATABASE_URL = fromDotEnv;
+// Tests only ever run against a database on this machine. .env's DATABASE_URL is
+// the live site, so it is never used here: an unset or non-local DATABASE_URL stops
+// the run before anything is created (tests used to fall back to .env and left
+// test companies on the live site).
+const LOCAL_DB = /@(localhost|127\.0\.0\.1)(:\d+)?\//;
+if (!LOCAL_DB.test(process.env.DATABASE_URL || '')) {
+  console.error('Tests need DATABASE_URL pointing at a local Postgres (localhost), e.g. DATABASE_URL=postgres://postgres:pw@localhost:5544/eaglei PGSSL=false npm test. Refusing to run against anything else.');
+  process.exit(2);
 }
+if (!process.env.PGSSL) process.env.PGSSL = 'false';
 
 let serverProcess = null;
 
 async function startServer() {
-  const databaseUrl = process.env.DATABASE_URL || loadDotEnvValue('DATABASE_URL');
+  const databaseUrl = process.env.DATABASE_URL;
   const sessionSecret = process.env.SESSION_SECRET || loadDotEnvValue('SESSION_SECRET') || 'test-secret';
   if (!databaseUrl) {
     throw new Error('DATABASE_URL not found in env or .env — tests need a real Postgres to run against.');
@@ -139,7 +145,7 @@ function trackTenant(tenantId) {
 
 async function cleanupTenants() {
   if (!tenantsToClean.size) return;
-  const databaseUrl = process.env.DATABASE_URL || loadDotEnvValue('DATABASE_URL');
+  const databaseUrl = process.env.DATABASE_URL;
   const pool = new Pool({ connectionString: databaseUrl });
   try {
     for (const id of tenantsToClean) {
@@ -158,7 +164,7 @@ function uniqueEmail(tag) {
 // For tests that need to poke the DB directly (seed a row, force a cap) —
 // caller is responsible for pool.end() when done.
 function getTestPool() {
-  const databaseUrl = process.env.DATABASE_URL || loadDotEnvValue('DATABASE_URL');
+  const databaseUrl = process.env.DATABASE_URL;
   return new Pool({ connectionString: databaseUrl });
 }
 
