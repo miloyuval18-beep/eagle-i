@@ -1205,6 +1205,8 @@ async function crLoadTeam(){try{const d=await plApi('/api/crm/team');CR.team=(d.
 const crSees=()=>{const m=CR.teamInfo&&CR.teamInfo.me;return m?CR.team.filter(x=>x.id!==m.id&&m.sees.includes(x.id)):[];};
 const crBelow=()=>{const m=CR.teamInfo&&CR.teamInfo.me;return m?CR.team.filter(x=>m.below.includes(x.id)):[];};
 const crLeads=()=>crCan('see_all')||crBelow().length>0;
+// A project's project manager: the team's project managers first, then everyone else.
+function crPmOptions(sel){const pms=CR.team.filter(m=>m.role==='project_manager'),rest=CR.team.filter(m=>m.role!=='project_manager');const o=m=>`<option value="${m.id}"${m.id===sel?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`;return '<option value="">None</option>'+(pms.length?`<optgroup label="Project managers">${pms.map(o).join('')}</optgroup>`:'')+(rest.length?`<optgroup label="Everyone else">${rest.map(o).join('')}</optgroup>`:'');}
 function crOwnerOptions(sel){return '<option value="">Unassigned</option>'+CR.team.map(m=>`<option value="${m.id}"${m.id===sel?' selected':''}>${uxEsc(m.name||m.email)}${CR.me&&m.id===CR.me.userId?' (you)':''}</option>`).join('');}
 function crMenu(force){const m=document.getElementById('cr-menu');const open=force===undefined?!m.classList.contains('open'):force;m.classList.toggle('open',open);document.getElementById('cr-menu-btn').setAttribute('aria-expanded',open);}
 document.addEventListener('click',e=>{if(!e.target.closest('#cr-menu')&&!e.target.closest('#cr-menu-btn'))crMenu(false);});
@@ -3130,6 +3132,7 @@ function plRender(){
     if(waiting)tags.push(`<span class="pl-tag warn">Waiting ${plAgo(x.created_at)}</span>`);
     if(x.site_visit_at&&new Date(x.site_visit_at)>new Date(Date.now()-86400000))tags.push(`<span class="pl-tag">📅 ${new Date(x.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span>`);
     if(CR.team.length>1)tags.push(`<span class="pl-tag">${x.owner_name?'👤 '+uxEsc(x.owner_name):'Unassigned'}</span>`);
+    if(x.pm_user_id){const pm=CR.team.find(m=>m.id===x.pm_user_id);if(pm)tags.push(`<span class="pl-tag">PM: ${uxEsc(pm.name||pm.email)}</span>`);}
     if(!CR.sub&&x.subsidiary_id&&sbName(x.subsidiary_id))tags.unshift(`<span class="pl-tag co">${uxEsc(sbName(x.subsidiary_id))}</span>`);
     if(x.automations_waiting)tags.push(`<span class="pl-tag auto">✓ ${x.automations_waiting} automatic email${x.automations_waiting>1?'s':''} scheduled</span>`);
     return `<button class="pl-card" onclick="plOpenDeal('${x.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(x.title)}</div><div class="pl-card-val">${uxEsc(plMoney(x.value))}</div></div>
@@ -3206,7 +3209,7 @@ async function plOpenDeal(id){
       <div class="full"><label for="pld-lang">Reads</label><select id="pld-lang"><option value="en">English</option><option value="es"${x.contact_language==='es'?' selected':''}>Español: automatic emails and their pages in Spanish</option></select></div>
       <div class="full"><label for="pld-visit">Site visit</label><input id="pld-visit" type="datetime-local" class="cred-input" value="${x.site_visit_at?plLocalInput(x.site_visit_at):''}"></div>
       <div class="${CR.team.length>1?'':'full'}"><label for="pld-source">Where it came from</label><select id="pld-source">${plSourceOptions(x.source)}</select></div>
-      ${CR.team.length>1?`<div><label for="pld-owner">Who's handling it</label><select id="pld-owner">${crOwnerOptions(x.owner_user_id)}</select></div>`:''}
+      ${CR.team.length>1?`<div><label for="pld-owner">Who's handling it</label><select id="pld-owner">${crOwnerOptions(x.owner_user_id)}</select></div><div><label for="pld-pm">Project manager</label><select id="pld-pm">${crPmOptions(x.pm_user_id)}</select></div>`:''}
       ${CR.subs.length?`<div class="full"><label for="pld-sub">Company</label><select id="pld-sub">${sbOptions(x.subsidiary_id)}</select></div>`:''}
     </div>
     ${x.stage==='lost'&&x.lost_reason?`<div class="sm">Lost because: ${uxEsc(x.lost_reason)}</div>`:''}
@@ -4299,7 +4302,7 @@ async function plSaveDeal(id,btn){
   const v=k=>document.getElementById(k).value;
   btn.disabled=true;
   try{
-    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{...(document.getElementById('pld-sub')?{subsidiaryId:v('pld-sub')||null}:{}),title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),language:v('pld-lang'),source:v('pld-source'),siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{})}});
+    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{...(document.getElementById('pld-sub')?{subsidiaryId:v('pld-sub')||null}:{}),title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),language:v('pld-lang'),source:v('pld-source'),siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{}),...(document.getElementById('pld-pm')?{pmUserId:v('pld-pm')||null}:{})}});
     document.getElementById('pld-msg').textContent='Saved.';btn.disabled=false;plLoad();
   }catch(e){document.getElementById('pld-msg').textContent=e.message;btn.disabled=false;}
 }

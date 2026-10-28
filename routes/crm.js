@@ -135,6 +135,8 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
       const f = MONEY_FILTERS.find(([re, unless]) => re.test(p) && !(unless || []).some(k => team.can(me, k)));
       if (f) { const json = res.json.bind(res); res.json = (b) => json(res.statusCode < 400 ? team.hideMoney(b) : b); }
     }
+    // Project managers (without "See every project"): only the projects they manage or handle (lib/crmScope.js).
+    if (!/^\/api\/crm\/(me|team)(\/|$)/.test(p) && !(await require('../lib/crmScope').enforce(req, res))) return;
     if (await crm.hasCrm(req.tenantId)) {
       // After the trial (with billing switched on) the CRM is read-only until a plan is chosen.
       if (!['GET', 'HEAD'].includes(req.method) && !/^\/api\/crm\/(billing|me)(\/|$)/.test(req.originalUrl.split('?')[0])) {
@@ -310,6 +312,9 @@ router.post('/api/crm/deals', requireAuth, async (req, res) => {
       title: b.title, stage: b.stage || 'new', value: b.value, source: b.source || 'manual', note: b.note || null, baseUrl: baseUrlOf(req),
       userId: req.userId, ownerUserId: b.ownerUserId || null, subsidiaryId: b.subsidiaryId || null
     });
+    // Its project manager: the one picked, or a project manager adding their own project.
+    const pm = b.pmUserId || (req.crmUser && req.crmUser.role === 'project_manager' && !req.adminView ? req.userId : null);
+    if (pm) await crm.updateDeal({ tenantId: req.tenantId, dealId: deal.id, patch: { pmUserId: pm }, baseUrl: baseUrlOf(req), userId: req.userId });
     sendDueNow(deal.id);
     res.json({ ok: true, deal: await crm.getDeal(req.tenantId, deal.id) });
   } catch (err) { fail(res, err, 'Failed to add the deal'); }

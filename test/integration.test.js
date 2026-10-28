@@ -1434,6 +1434,42 @@ describe('CRM team safety, money, homeowner and sub extras, help and errors', ()
     return m;
   }
 
+  test('project managers see only the projects they manage or handle, or someone under them does', async () => {
+    const o = await company('pmscope');
+    const pm = await member(o, 'project_manager', 'pm1'), pm2 = await member(o, 'project_manager', 'pm2');
+    const sup = await member(o, 'superintendent', 'sup');
+    await sql('UPDATE users SET reports_to = $1 WHERE id = $2', [pm.me.userId, sup.me.userId]);
+    const add = async (title, extra) => (await (await o.post('/api/crm/deals', { name: title + ' Person', title, stage: 'production', ...extra })).json()).deal;
+    const handled = await add('Handled', { ownerUserId: pm.me.userId });
+    const managed = await add('Managed', { pmUserId: pm.me.userId });
+    const underMe = await add('Under me', { ownerUserId: sup.me.userId });
+    const other = await add('Other', { pmUserId: pm2.me.userId });
+    assert.equal(managed.pm_user_id, pm.me.userId); assert.ok(managed.pm_name);
+    // The pipeline, its counts, jobs and search: only theirs.
+    const pl = await (await pm.get('/api/crm/pipeline')).json();
+    assert.deepEqual(pl.deals.map(d => d.title).sort(), ['Handled', 'Managed', 'Under me']);
+    assert.equal(pl.counts.production, 3);
+    const jobs = await (await pm.get('/api/crm/jobs')).json();
+    assert.ok(!JSON.stringify(jobs).includes(other.id), 'not in jobs');
+    assert.ok(!JSON.stringify(await (await pm.get('/api/crm/search?q=Other')).json()).includes(other.id), 'not in search');
+    // Opening one that isn't theirs, or changing it.
+    assert.equal((await pm.get('/api/crm/deals/' + other.id)).status, 404);
+    assert.equal((await pm.patch('/api/crm/deals/' + other.id, { title: 'Mine now' })).status, 404);
+    assert.equal((await pm.get('/api/crm/deals/' + managed.id)).status, 200);
+    // The other project manager sees theirs; the superintendent and the owner see everything.
+    assert.deepEqual((await (await pm2.get('/api/crm/pipeline')).json()).deals.map(d => d.title), ['Other']);
+    assert.equal((await (await sup.get('/api/crm/pipeline')).json()).deals.length, 4);
+    assert.equal((await (await o.get('/api/crm/pipeline')).json()).deals.length, 4);
+    // A project manager adding a project manages it.
+    const own = (await (await pm2.post('/api/crm/deals', { name: 'New One', title: 'New one' })).json()).deal;
+    assert.equal(own.pm_user_id, pm2.me.userId);
+    assert.equal((await (await pm2.get('/api/crm/pipeline')).json()).deals.length, 2);
+    // "See every project" ticked on their card: everything.
+    await sql(`UPDATE users SET permissions = '{"all_projects": true}' WHERE id = $1`, [pm.me.userId]);
+    assert.equal((await (await pm.get('/api/crm/pipeline')).json()).deals.length, 5);
+    assert.equal((await pm.get('/api/crm/deals/' + other.id)).status, 200);
+  });
+
   test('owners and admins need an emailed code on a new device, unless they trusted it', async () => {
     const o = await company('2fa');
     const c = makeClient();
