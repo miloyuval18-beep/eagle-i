@@ -285,7 +285,7 @@ app.get('/api/crm-portfolio/:slug', async (req, res) => {
   const p = await require('./lib/crmSubsidiaries').portfolio().catch(() => ({ companies: [] }));
   const c = p.companies.find(x => x.slug === String(req.params.slug).toLowerCase());
   if (!c) return res.status(404).json({ error: { message: 'Not found.' } });
-  res.json({ name: c.name });
+  res.json({ name: c.name, logo: c.logo || null });
 });
 app.get(['/crm/app', '/crm/app/'], async (req, res) => {
   // Homeowners and subs have their own page; marketing logins are separate from the CRM's.

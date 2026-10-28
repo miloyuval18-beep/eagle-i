@@ -264,7 +264,7 @@ a{color:var(--accent);text-underline-offset:2px}
 .cr-top{background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(1.6) blur(12px);backdrop-filter:saturate(1.6) blur(12px);border-bottom:1px solid var(--bdr);box-shadow:none}
 .cr-bar{padding:10px 16px}
 .cr-brand{font-weight:700;font-size:20.5px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;color:var(--ink)}
-.cr-brand::before{content:'';width:30px;height:30px;border-radius:7px;flex:0 0 auto;box-shadow:var(--sh2);background:#0b0b0b url('/lcg-mark.svg') center/30px 30px no-repeat}
+.cr-brand::before{content:'';width:30px;height:30px;border-radius:7px;flex:0 0 auto;box-shadow:var(--sh2);background:#0b0b0b var(--cr-logo,url('/lcg-mark.svg')) center/cover no-repeat}
 .cr-brand span{background:none;-webkit-background-clip:initial;background-clip:initial;color:var(--accent)}
 .cr-company{font-size:16px;color:var(--ink3);font-weight:500}
 .cr-menu-btn{margin-left:auto;border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 12px;font-weight:500;box-shadow:var(--sh1);min-height:36px}
@@ -1375,8 +1375,15 @@ window.addEventListener('load',()=>{
 // Simple view: only Ask, Today, Calendar and Jobs in the menu bar.
 function crSimpleApply(){let on=false;try{on=localStorage.getItem('simple')==='1';}catch(e){}document.body.classList.toggle('simple',on);const b=document.getElementById('cr-simple-btn');if(b)b.textContent=on?'Full view: all tabs':'Simple view: fewer tabs';return on;}
 function crSimple(){let on=false;try{on=localStorage.getItem('simple')==='1';localStorage.setItem('simple',on?'':'1');}catch(e){}const now=crSimpleApply();showNotif(now?'Simple view':'Full view',now?'Pipeline and Money are hidden from the menu bar. Switch back any time from Account.':'All tabs are back.');if(now&&['pipeline','estimates'].includes(CR.view))crView('needs');}
+// The top bar's logo: the company being looked at (its profile, or the one picked), else the group's.
+function crMark(){
+  const c=(CR.view==='co'&&CR.coSlug&&sbList().find(x=>x.slug===CR.coSlug))||(CR.sub&&sbList().find(x=>x.id===CR.sub))||null;
+  const logo=c&&c.logo?c.logo:'';
+  document.querySelectorAll('.cr-brand').forEach(b=>{if(logo)b.style.setProperty('--cr-logo',`url('${logo.replace(/'/g,'')}')`);else b.style.removeProperty('--cr-logo');});
+  const ic=document.querySelector('link[rel="icon"]');if(ic){ic.type=logo?'image/png':'image/svg+xml';ic.href=logo||'/lcg-mark.svg';}
+}
 function crView(v){
-  CR.view=v;setTimeout(()=>crTip(v),0);
+  CR.view=v;setTimeout(()=>crTip(v),0);setTimeout(crMark,0);
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
   document.querySelectorAll('.cr-tab').forEach(t=>{t.classList.toggle('active',t.dataset.view===v);t.setAttribute('aria-current',t.dataset.view===v?'page':'false');});
   if(VN){try{VN.stop();}catch(e){}}
@@ -3252,6 +3259,7 @@ async function sbLoad(){
   try{CR.subs=(await plApi('/api/crm/subsidiaries')).companies||[];}catch(e){CR.subs=CR.subs||[];}
   if(CR.sub===undefined){try{CR.sub=localStorage.getItem('cr-sub')||'';}catch(e){CR.sub='';}}
   if(CR.sub&&!CR.subs.some(c=>c.id===CR.sub))CR.sub='';
+  crMark();
 }
 const sbList=()=>CR.subs||[];
 const sbName=id=>(sbList().find(c=>c.id===id)||{}).name||'';
@@ -3269,7 +3277,7 @@ function sbBar(then){
   const cur=sbList().find(c=>c.id===CR.sub);
   return `<div class="sb-bar"><label for="sb-pick-${then}">Company</label><select id="sb-pick-${then}" onchange="sbPick(this.value,'${then}')"><option value="">All companies</option>${sbList().map(c=>`<option value="${c.id}"${c.id===CR.sub?' selected':''}>${uxEsc(c.name)}</option>`).join('')}</select>${cur?`<button class="btn-xs" onclick="cpOpen('${cur.slug}')">${uxEsc(cur.name)}’s profile</button>`:''}</div>`;
 }
-function sbPick(id,then){CR.sub=id;try{localStorage.setItem('cr-sub',id);}catch(e){}if(then==='plRender')plRender();else if(then==='jbList')jbList();}
+function sbPick(id,then){CR.sub=id;try{localStorage.setItem('cr-sub',id);}catch(e){}crMark();if(then==='plRender')plRender();else if(then==='jbList')jbList();}
 
 // A company's profile (#co/levi-homes), or the list of companies (#co).
 function cpOpen(slug){CR.coSlug=slug||'';crView('co');}

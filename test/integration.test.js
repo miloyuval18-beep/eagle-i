@@ -2588,7 +2588,7 @@ describe('Levi Construction Group: one team, its companies each with their own p
     // The public portfolio lists them (no ids); each has a way in.
     const pf = await (await makeClient().get('/api/crm-portfolio')).json();
     assert.equal(pf.group.name, 'Group Co'); assert.ok(pf.companies.some(x => x.slug === 'levi-homes' && x.phone === '713-555-0100' && !x.id));
-    assert.deepEqual(await (await makeClient().get('/api/crm-portfolio/levi-homes')).json(), { name: 'Levi Homes' });
+    assert.deepEqual(await (await makeClient().get('/api/crm-portfolio/levi-homes')).json(), { name: 'Levi Homes', logo: null });
     assert.equal((await makeClient().get('/crm/c/levi-homes')).headers.get('location'), '/crm/login?co=levi-homes');
     assert.equal((await o.get('/crm/c/levi-homes')).headers.get('location'), '/crm/app#co/levi-homes');
     assert.match((await other.get('/crm/c/levi-homes')).headers.get('location'), /^\/crm\/login\?co=levi-homes&other=Group%20Co/);

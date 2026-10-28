@@ -18,6 +18,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:18.5px
 .card{width:100%;max-width:480px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:28px 22px;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
 .brand{font-size:26px;font-weight:800;text-align:center;color:var(--ink)}
 .brand span{color:var(--accent)}
+.co-logo{display:block;width:84px;height:84px;border-radius:16px;object-fit:cover;margin:0 auto 10px;background:#111318}
 .tag{font-size:17px;color:var(--ink3);text-align:center;margin:4px 0 20px}
 .tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--soft);border-radius:9px;padding:4px}
 .tab{flex:1;text-align:center;padding:10px;border-radius:6px;cursor:pointer;font-size:17.5px;font-weight:700;color:var(--ink3);border:0;background:transparent;font-family:var(--f)}
@@ -260,7 +261,9 @@ if(q.get('new'))$('choice-company').hidden=false;
 if(q.get('co'))fetch('/api/crm-portfolio/'+encodeURIComponent(q.get('co'))).then(r=>r.ok?r.json():null).then(c=>{if(!c)return;const n=$('co-note');
   const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   n.innerHTML=q.get('other')?`You’re signed in to <b>${esc(q.get('other'))}</b>. To open <b>${esc(c.name)}</b>, sign in below with your Levi Construction Group login.`:`Sign in to open <b>${esc(c.name)}</b>.`;
-  n.hidden=false;document.title=c.name+' · Eagle I CRM';}).catch(()=>{});
+  n.hidden=false;document.title=c.name+' · Eagle I CRM';
+  // That company's logo above the sign-in (the lion for Levi Homes).
+  if(c.logo){const im=document.createElement('img');im.className='co-logo';im.src=c.logo;im.alt=c.name+' logo';document.querySelector('.brand').before(im);}}).catch(()=>{});
 // Back from Google.
 if(q.get('google_error')){$('in-err').textContent=q.get('google_error');}
 if(q.get('pending')){$('sent-msg').textContent=q.get('confirmed')?`Thanks, your email is confirmed. We asked ${q.get('pending')} to let you in; you’ll get an email when they do, then sign in here.`:`We asked ${q.get('pending')} to let you in. You’ll get an email when they do, then tap “Sign in with Google” here.`;setTimeout(()=>show('sent'),0);}
