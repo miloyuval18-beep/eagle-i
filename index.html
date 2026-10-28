@@ -1572,8 +1572,8 @@ function vpApply(){
     const b=document.getElementById(btn),h=document.getElementById(host),r=document.querySelector(bar);if(!b||!h||!r)continue;
     b.hidden=!EagleTalk.can();b.textContent=talk?'⌨️ Type':'🎙 Talk';h.hidden=!talk;r.style.display=talk?'none':'';
   }
-  if(talk&&!VTALK)VTALK=EagleTalk.mount(document.getElementById('vp-talk'),{lang:()=>'en',ask:(q)=>ask(q,true)});
-  if(talk&&!TCTALK&&document.getElementById('tc-talk'))TCTALK=EagleTalk.mount(document.getElementById('tc-talk'),{lang:()=>'en',ask:(q)=>sendTcMsg(q,true)});
+  if(talk&&!VTALK)VTALK=EagleTalk.mount(document.getElementById('vp-talk'),{lang:()=>'en',ask:(q)=>ask(q,true),toggle:'#vp-mode'});
+  if(talk&&!TCTALK&&document.getElementById('tc-talk'))TCTALK=EagleTalk.mount(document.getElementById('tc-talk'),{lang:()=>'en',ask:(q)=>sendTcMsg(q,true),toggle:'#tc-mode'});
   for(const t of [VTALK,TCTALK])if(t){if(!talk)t.stop();else t.refresh();}
 }
 function vpToggleMode(){VMODE=VMODE==='talk'?'text':'talk';vpApply();}
@@ -1581,7 +1581,7 @@ function vpSetupTalk(){
   VMODE=(ME&&ME.aiMode)||'text';vpApply();
   if(ME&&!ME.aiMode)EagleTalk.choose({title:'How would you like to use Eagle I?',sub:'You can switch any time with the button at the top of the Eagle I AI panel.',
     talk:['Talk','Like a phone call. You speak, Eagle I answers out loud.'],type:['Type','Like texting. You type, Eagle I writes back.'],noMic:'This browser can’t listen. Try Chrome, Edge or Safari.',
-    onPick:m=>{VMODE=m;ME.aiMode=m;vpApply();fetch('/api/me/ai-mode',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})}).catch(()=>{});if(m==='talk'&&!vpOpen)toggleVP();}});
+    onPick:m=>{VMODE=m;ME.aiMode=m;vpApply();fetch('/api/me/ai-mode',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})}).catch(()=>{});if(m==='talk'){if(!vpOpen)toggleVP();setTimeout(()=>VTALK&&VTALK.walk(),250);}}});
 }
 // SpeechRecognition's error events give a specific reason code but every
 // call site here was previously swallowing it and just resetting the UI —

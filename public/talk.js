@@ -56,6 +56,18 @@
 .et-opt{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:18px 12px;border:2px solid #cdd4df;border-radius:14px;background:#fff;cursor:pointer;font:inherit;color:#0b1220}
 .et-opt:hover:not(:disabled){border-color:#1b4fd8}.et-opt:disabled{opacity:.6;cursor:not-allowed}
 .et-opt .i{font-size:40px}.et-opt b{font-size:21px}.et-opt span:not(.i){font-size:16px;color:#36435a}.et-opt em{font-size:14px;color:#c01b1b}
+.et-tour,.et-shade{font-family:'Inter','Nunito Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+.et-tour{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:2100;width:min(520px,calc(100% - 24px));background:#14161c;color:#fff;border:2px solid #c9a24a;border-radius:16px;padding:14px 16px;box-shadow:0 20px 40px -12px rgba(0,0,0,.55)}
+.et-tour.top{bottom:auto;top:calc(12px + env(safe-area-inset-top))}
+.et-tour-h{display:flex;justify-content:space-between;font-weight:800;font-size:15px;color:#e2c178;letter-spacing:.02em}
+.et-tour-t{font-size:19px;line-height:1.45;margin:8px 0 12px;min-height:56px}
+.et-tour-b{display:flex;justify-content:space-between;gap:10px}
+.et-tour-b button{font:inherit;font-weight:800;font-size:16.5px;border-radius:10px;padding:9px 16px;min-height:44px;cursor:pointer;border:0}
+.et-tour-skip{background:transparent;color:#c9cfdb;border:1px solid #3a4150!important}
+.et-tour-next{background:#c9a24a;color:#14161c}
+.et-lit{outline:4px solid #c9a24a!important;outline-offset:4px;border-radius:12px;animation:etGlow 1.2s ease-in-out infinite}
+@keyframes etGlow{50%{outline-color:#e2c178}}
+.et-again{font:inherit;font-size:15px;background:none;border:0;color:inherit;opacity:.75;text-decoration:underline;cursor:pointer;padding:4px}
 .et-toggle{font:inherit;font-size:15.5px;font-weight:700;border:1px solid #aab4c3;background:#fff;color:#0b1220;border-radius:999px;padding:6px 12px;min-height:38px;cursor:pointer;white-space:nowrap}
 @media (max-width:520px){.et-opts{grid-template-columns:1fr}}`;
     document.head.appendChild(css);
@@ -77,7 +89,7 @@
   function mount(host, o) {
     style();
     const W = () => Object.assign({}, WORDS[o.lang() === 'es' ? 'es' : 'en'], (o.words || {})[o.lang()] || {});
-    host.innerHTML = '<div class="et-talk"><div class="et-live" aria-live="polite"></div><button class="et-btn" type="button"><span aria-hidden="true">🎙</span></button><div class="et-status"></div><button class="et-end" type="button" hidden></button></div>';
+    host.innerHTML = '<div class="et-talk"><div class="et-live" aria-live="polite"></div><button class="et-btn" type="button"><span aria-hidden="true">🎙</span></button><div class="et-status"></div><button class="et-end" type="button" hidden></button><button class="et-again" type="button"></button></div>';
     const live = host.querySelector('.et-live'), btn = host.querySelector('.et-btn'), st = host.querySelector('.et-status'), end = host.querySelector('.et-end');
     const S = { on: false, state: 'idle', rec: null, voice: null, quiet: 0, cut: false };
     if ('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged', () => { S.voice = null; });
@@ -133,9 +145,75 @@
       start();
     };
     end.onclick = stop;
+    const again = host.querySelector('.et-again');
+    const walk = () => { stop(); tour({ lang: o.lang(), steps: tourSteps({ lang: o.lang(), button: btn, toggle: o.toggle, confirm: o.confirm, who: o.who }) }); };
+    again.onclick = walk;
     status('idle', W().tap);
-    return { start, stop, refresh: () => { if (!S.on) status('idle', W().tap); } };
+    again.textContent = TOUR_WORDS[o.lang() === 'es' ? 'es' : 'en'].again;
+    return { start, stop, walk, refresh: () => { if (!S.on) status('idle', W().tap); again.textContent = TOUR_WORDS[o.lang() === 'es' ? 'es' : 'en'].again; } };
   }
 
-  window.EagleTalk = { can, plain, mount, choose, style };
+  // The spoken walk-through after someone picks Talk: Eagle I explains talking in its own
+  // voice, a sentence on screen at a time, lighting up what it's talking about.
+  // steps: [{ say, el }] (el: a CSS selector or element, optional). Must start from a tap.
+  const TOUR_WORDS = { en: { title: 'How talking works', skip: 'Skip', done: 'Got it', again: '▶ How talking works' }, es: { title: 'Cómo funciona hablar', skip: 'Saltar', done: 'Entendido', again: '▶ Cómo funciona hablar' } };
+  function tour({ lang = 'en', steps, onDone }) {
+    style();
+    if (!('speechSynthesis' in window) || !steps || !steps.length) { if (onDone) onDone(); return; }
+    const W = TOUR_WORDS[lang === 'es' ? 'es' : 'en'];
+    const card = document.createElement('div'); card.className = 'et-tour'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', W.title);
+    card.innerHTML = `<div class="et-tour-h"><span>🔊 ${W.title}</span><span class="et-tour-n"></span></div><div class="et-tour-t" aria-live="polite"></div>
+      <div class="et-tour-b"><button type="button" class="et-tour-skip">${W.skip}</button><button type="button" class="et-tour-next">${W.done}</button></div>`;
+    document.documentElement.appendChild(card);
+    let i = 0, over = false, lit = null;
+    const voice = voiceFor(lang === 'es' ? 'es' : 'en');
+    const light = (sel) => {
+      if (lit) lit.classList.remove('et-lit'); lit = null;
+      const el = typeof sel === 'string' ? document.querySelector(sel) : sel;
+      if (el && el.offsetParent !== null) { lit = el; el.classList.add('et-lit'); try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
+      // Out of the way of what it's pointing at.
+      const r = lit && lit.getBoundingClientRect();
+      card.classList.toggle('top', !!r && r.top + r.height / 2 > innerHeight * 0.45);
+    };
+    const finish = () => { if (over) return; over = true; try { speechSynthesis.cancel(); } catch (e) {} if (lit) lit.classList.remove('et-lit'); card.remove(); if (onDone) onDone(); };
+    const next = () => {
+      if (over) return;
+      if (i >= steps.length) return finish();
+      const st = steps[i++];
+      card.querySelector('.et-tour-n').textContent = `${i} / ${steps.length}`;
+      card.querySelector('.et-tour-t').textContent = st.say;
+      card.querySelector('.et-tour-next').textContent = i >= steps.length ? W.done : '→';
+      light(st.el);
+      const u = new SpeechSynthesisUtterance(plain(st.say)); u.lang = tag(lang); if (voice) u.voice = voice; u.rate = 1; u.pitch = 1;
+      u.onend = () => setTimeout(next, 350); u.onerror = () => setTimeout(next, 1500);
+      try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { setTimeout(next, 2500); }
+    };
+    card.querySelector('.et-tour-skip').onclick = finish;
+    card.querySelector('.et-tour-next').onclick = () => { try { speechSynthesis.cancel(); } catch (e) {} if (i >= steps.length) finish(); };
+    next();
+    return { stop: finish };
+  }
+  // The usual walk-through. o: { lang, button, toggle, confirm (says yes/no for sending), who ('Eagle I') }
+  function tourSteps(o) {
+    const es = o.lang === 'es', who = o.who || 'Eagle I';
+    return (es ? [
+      { say: `Hola, soy ${who}. Eligió hablar, así que le explico cómo funciona.` },
+      { say: 'Toque el botón grande y redondo y hable con naturalidad, como en una llamada. Cuando termine de hablar, le respondo en voz alta.', el: o.button },
+      { say: 'Después vuelvo a escuchar, así que puede seguir la conversación sin tocar nada.', el: o.button },
+      { say: 'Si estoy hablando y quiere interrumpir, toque el botón.', el: o.button },
+      ...(o.confirm ? [{ say: 'Antes de enviar algo a alguien, siempre le pregunto. Solo diga sí o no.' }] : []),
+      { say: 'Cuando termine, diga “eso es todo”. Y si prefiere escribir, toque este botón cuando quiera.', el: o.toggle },
+      { say: 'Listo. Toque el botón cuando quiera empezar.', el: o.button }
+    ] : [
+      { say: `Hi, I'm ${who}. You picked talking, so here's how it works.` },
+      { say: 'Tap the big round button and just talk, like you would on the phone. When you stop talking, I answer out loud.', el: o.button },
+      { say: 'Then I listen again on my own, so you can keep the conversation going without touching anything.', el: o.button },
+      { say: 'If I’m talking and you want to cut in, tap the button.', el: o.button },
+      ...(o.confirm ? [{ say: 'Before I send anything to anyone, I always ask first. Just say yes or no.' }] : []),
+      { say: 'When you’re finished, say “that’s all”. And if you’d rather type, tap this button any time.', el: o.toggle },
+      { say: 'That’s it. Tap the button whenever you’re ready.', el: o.button }
+    ]);
+  }
+
+  window.EagleTalk = { can, plain, mount, choose, style, tour, tourSteps, TOUR_WORDS };
 })();

@@ -8,6 +8,7 @@
 <link rel="manifest" href="/crm-manifest.webmanifest">
 <meta name="theme-color" content="#ffffff">
 <link rel="apple-touch-icon" href="/crm-apple-touch.png">
+<script src="/talk.js"></script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Eagle I">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -815,6 +816,7 @@ body.view-only .cr-top{top:0}
 @keyframes tkPulse{0%{box-shadow:0 0 0 0 rgba(201,162,74,.55)}70%{box-shadow:0 0 0 18px rgba(201,162,74,0)}100%{box-shadow:0 0 0 0 rgba(201,162,74,0)}}
 .tk-status{font-weight:800;font-size:18px;color:var(--ink)}
 .tk-end{margin-top:2px}
+.tk-again{font:inherit;font-size:15px;background:none;border:0;color:var(--ink3);text-decoration:underline;cursor:pointer;padding:4px;min-height:36px}
 .tk-end[hidden],.ai-mode[hidden],.ai-help-call[hidden]{display:none!important}
 .ai-help-call{margin-top:6px}
 @media (max-width:520px){#ai-panel #ai-csub{display:none}}
@@ -1414,7 +1416,12 @@ async function dyOpen(){
 }
 async function dyReset(){if(!confirm('Make a new calendar link? Calendars using the old one stop updating until you add the new one.'))return;try{await plApi('/api/crm/me/calendar/reset',{body:{}});dyOpen();}catch(e){showNotif('Could not do that',e.message);}}
 async function dyCheckin(on){try{await plApi('/api/crm/me/checkin',{method:'PATCH',body:{on}});showNotif(on?'Check-in on':'Check-in off','');}catch(e){showNotif('Could not save',e.message);}}
-async function dyAi(mode){try{await plApi('/api/crm/me/ai-mode',{method:'PATCH',body:{mode}});CR.me.aiMode=mode;AI.mode=mode;tkApply();showNotif('Saved',mode==='talk'?'The chat starts in talk mode.':'The chat starts in typing mode.');}catch(e){showNotif('Could not save',e.message);}}
+async function dyAi(mode){
+  const was=CR.me&&CR.me.aiMode;
+  // Switched to talking: show how it works right away (this tap lets the phone speak).
+  if(mode==='talk'&&was!=='talk'){uxClose();AI.mode='talk';tkTour();}
+  try{await plApi('/api/crm/me/ai-mode',{method:'PATCH',body:{mode}});CR.me.aiMode=mode;AI.mode=mode;tkApply();if(mode!=='talk'||was==='talk')showNotif('Saved',mode==='talk'?'The chat starts in talk mode.':'The chat starts in typing mode.');}catch(e){showNotif('Could not save',e.message);}
+}
 async function dyOversight(on){try{await plApi('/api/crm/me/oversight',{method:'PATCH',body:{on}});showNotif(on?'Kept in the loop':'Copied emails count like any other',on?'Emails you’re only copied on won’t remind you or go on your calendar.':'');}catch(e){showNotif('Could not save',e.message);}}
 async function dyDigest(on){try{await plApi('/api/crm/me/digest',{method:'PATCH',body:{on}});showNotif(on?'Morning email on':'Morning email off','');}catch(e){showNotif('Could not save',e.message);}}
 async function voExit(){try{await fetch('/api/admin/view-as/exit',{method:'POST'});}catch(e){}location.href='/admin';}
@@ -4437,6 +4444,7 @@ crInit();
       <button class="tk-btn" id="tk-btn" onclick="tkTap()" aria-label="Tap to talk"><span class="tk-ic" aria-hidden="true">🎙</span></button>
       <div class="tk-status" id="tk-status">Tap to talk</div>
       <button class="btn-xs tk-end" id="tk-end" onclick="tkStop('Tap to talk')" hidden>End conversation</button>
+      <button class="tk-again" type="button" onclick="tkTour()">▶ How talking works</button>
     </div>
     <div class="ai-att" id="ai-att"></div>
     <div class="ai-comp">
@@ -4707,8 +4715,16 @@ function tkAsk(){
 }
 async function tkPick(mode){
   uxClose();AI.mode=mode;tkApply();
+  if(mode==='talk'){tkStatus('idle','Tap to talk');tkTour();} // the walk-through, while this tap still lets the phone speak
   try{await plApi('/api/crm/me/ai-mode',{method:'PATCH',body:{mode}});CR.me.aiMode=mode;}catch(e){}
-  if(mode==='talk')tkStatus('idle','Tap to talk');
+}
+// Eagle I explains talking out loud, a sentence on screen at a time (public/talk.js).
+function tkTour(){
+  if(!window.EagleTalk)return;
+  tkStop();
+  const go=()=>EagleTalk.tour({lang:document.documentElement.lang==='es'?'es':'en',steps:EagleTalk.tourSteps({lang:document.documentElement.lang==='es'?'es':'en',button:'#tk-btn',toggle:'#ai-mode',confirm:true})});
+  const p=document.getElementById('ai-panel');
+  if(CR.view==='ask'||(p&&p.classList.contains('open')))go();else{crView('ask');setTimeout(go,350);}
 }
 function tkStatus(state,text){
   TALK.state=state;const b=document.getElementById('tk-btn'),st=document.getElementById('tk-status'),end=document.getElementById('tk-end');if(!b)return;
