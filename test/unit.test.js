@@ -1477,3 +1477,14 @@ describe('copied emails: last names count too (lib/crmEmailWatch.js)', () => {
     for (const t of ['Stone countertops arrive Friday', 'The stone arrives Friday']) assert.equal(mentions(t, levi), false, t);
   });
 });
+
+describe('setup help (lib/crmAssistant.js)', () => {
+  test('the assistant knows the setup, the step they are on, and offers a call', () => {
+    const { setupPrompt } = require('../lib/crmAssistant');
+    const p = setupPrompt('google');
+    assert.match(p, /"Your email and calendar" step/);
+    assert.match(p, /Request a call/);
+    assert.match(p, /Connect my Gmail/);
+    assert.doesNotMatch(setupPrompt(null), /step of the guided setup\)/);
+  });
+});

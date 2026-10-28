@@ -815,7 +815,8 @@ body.view-only .cr-top{top:0}
 @keyframes tkPulse{0%{box-shadow:0 0 0 0 rgba(201,162,74,.55)}70%{box-shadow:0 0 0 18px rgba(201,162,74,0)}100%{box-shadow:0 0 0 0 rgba(201,162,74,0)}}
 .tk-status{font-weight:800;font-size:18px;color:var(--ink)}
 .tk-end{margin-top:2px}
-.tk-end[hidden],.ai-mode[hidden]{display:none!important}
+.tk-end[hidden],.ai-mode[hidden],.ai-help-call[hidden]{display:none!important}
+.ai-help-call{margin-top:6px}
 @media (max-width:520px){#ai-panel #ai-csub{display:none}}
 .tk-choose{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
 .tk-opt{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:20px 14px;border:2px solid var(--bdr);border-radius:16px;background:#fff;cursor:pointer;font:inherit;color:var(--ink)}
@@ -2268,12 +2269,34 @@ async function tmHandoverGo(id,btn){
 }
 
 /* ---------- "Help me set up" ---------- */
-function hpOpen(){
-  uxOpen(uxHead('Help me set up','Someone from Eagle I will call you and set things up with you, usually within one business day. It’s free.')+`
+// “Help me set up”: the assistant, ready to walk them through it (talk or type, their
+// choice); a call from a person is one tap away under the chat. Without the assistant,
+// straight to asking for a call.
+async function hpOpen(){
+  let ai=false;try{ai=(AI.home&&AI.home.ai!=null)?AI.home.ai:(await plApi('/api/crm/assistant/home')).ai;}catch(e){}
+  if(!ai||(CR.me&&CR.me.viewOnly)){hpCall();return;}
+  uxClose();
+  const step=CR.view==='start'?stSteps()[ST.step]:null;
+  AI.thread=null;AI.title=null;AI.files=[];AI.helper={kind:'setup',step};
+  const owner=stOwner();
+  const chips=owner?['How do I connect my Gmail?','How do I invite my team?','How do I bring in my customers?','How do I turn on the automatic emails?','Where do I put my business address?']
+    :['How do I connect my Gmail?','My invitation link doesn’t work','How do I add the schedule to my phone?','I can’t see something I need'];
+  document.getElementById('ai-body').innerHTML=`<div class="ai-hello"><div class="g">Let’s get you set up</div><div class="s">Tell me what you’re stuck on${step&&ST_TITLE[step]?` with “${uxEsc(ST_TITLE[step])}”`:''}, and I’ll walk you through it one step at a time. ${tkCan()?'Talk or type, whichever is easier.':''}</div></div>
+    <div class="ai-chips">${chips.map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div>
+    <div style="text-align:center;margin-top:14px"><button class="btn-xs" onclick="hpCall()">📞 Rather talk to a person? Request a call</button></div>`;
+  aiHead();aiHelpBar();
+  if(CR.view==='ask')aiMount(true);else aiOpen();
+}
+function aiHelpBar(){const b=document.getElementById('ai-help-call');if(b)b.hidden=!(AI.helper&&AI.helper.kind==='setup');}
+function hpCall(need){
+  uxOpen(uxHead('Request a call','Someone from Eagle I will call you and set things up with you, usually within one business day. It’s free.')+`
     <div class="pl-form"><div><label for="hp-phone">Your phone</label><input id="hp-phone" class="cred-input" type="tel" inputmode="tel" value="${uxEsc((CR.me&&CR.me.phone)||'')}" placeholder="713-555-0100"></div>
     <div><label for="hp-when">Best time to call</label><select id="hp-when" class="cred-input"><option>Any time</option><option>Mornings</option><option>Afternoons</option><option>Evenings</option></select></div>
     <div class="full"><label for="hp-need">What would you like help with? <span class="sm">(optional)</span></label><textarea id="hp-need" class="cred-input" rows="4" placeholder="e.g. bringing in our customers from Buildertrend, setting up the team, the automatic emails…"></textarea></div></div>
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="hpSend(this)">Ask for a call</button></div><div class="sm" id="hp-msg"></div>`);
+  // From the setup chat: what they were asking about, so the caller knows.
+  const asked=need!=null?need:(AI.helper?[...document.querySelectorAll('#ai-body .ai-msg.me .ai-b')].map(x=>x.innerText.trim()).filter(Boolean).slice(-4).join('\n'):'');
+  if(asked)document.getElementById('hp-need').value=asked;
 }
 async function hpSend(btn){
   const v=(id)=>document.getElementById(id).value;
@@ -2384,7 +2407,7 @@ async function stLoad(){
   box.innerHTML=`<div class="sh"><div><div class="st">${stOwner()?'Let’s set up '+uxEsc(me.companyName||'your company'):'Welcome to '+uxEsc(me.companyName||'Eagle I')}</div>${bar}</div></div>
     <div class="pl-pb"><div class="pl-item-t" style="font-size:21px">${uxEsc(ST_TITLE[k])}</div>${body}
     <div class="vd-mbtns" style="margin-top:16px;align-items:center"><button class="btn btn-blue" id="st-go" onclick="stNext(this)">${last?'Finish':'Save and continue'}</button>${ST.step>0?'<button class="btn-xs" onclick="stSetStep(ST.step-1);stLoad()">← Back</button>':''}${last?'':'<button class="btn-xs" onclick="stSetStep(ST.step+1);stLoad()">Skip this step</button>'}</div><div class="sm" id="st-err" style="color:var(--red)"></div></div>
-    <div class="st-warn" style="margin-top:14px;background:#f6f9fc;border-color:#c9d8e8">🙋 <b>Rather have someone walk you through it?</b> We’ll call you and set it up with you, free. <button class="btn-xs p" onclick="hpOpen()">Help me set up</button></div>
+    <div class="st-warn" style="margin-top:14px;background:#f6f9fc;border-color:#c9d8e8">🙋 <b>Stuck?</b> Eagle I can walk you through it, talking or typing. <button class="btn-xs p" onclick="hpOpen()">Help me set up</button> <button class="btn-xs" onclick="hpCall()">📞 Request a call</button></div>
     <div class="sm" style="margin-top:14px">Want to do this later? <button class="btn-xs" onclick="stFinish(true)">Skip setup for now</button> You can come back to it from Account → Guided setup.</div>`;
   window.scrollTo(0,0);
   stLabel();
@@ -4423,6 +4446,7 @@ crInit();
       <button class="ai-send" id="ai-go" onclick="aiSend()" aria-label="Send">↑</button>
     </div>
     <div class="ai-hint">Eagle I asks you before anything is sent.</div>
+    <div style="text-align:center"><button class="btn-xs ai-help-call" id="ai-help-call" onclick="hpCall()" hidden>📞 Still stuck? Request a call</button></div>
   </div>
   </div>
 </aside>
@@ -4540,7 +4564,7 @@ async function aiSend(opts={}){
   inp.value='';aiGrow(inp);try{localStorage.removeItem('draft:ai:new');localStorage.removeItem('draft:ai:'+AI.thread);}catch(e){}
   const think=document.createElement('div');think.className='ai-think';think.innerHTML='<span class="ai-dots"><i></i><i></i><i></i></span><span id="ai-step">Thinking…</span>';body.appendChild(think);aiScroll();
   try{
-    const res=await fetch('/api/crm/assistant/threads/'+AI.thread+'/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,fileIds:files.map(f=>f.id),voice:!!opts.voice})});
+    const res=await fetch('/api/crm/assistant/threads/'+AI.thread+'/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,fileIds:files.map(f=>f.id),voice:!!opts.voice,...(AI.helper?{helper:AI.helper.kind,step:AI.helper.step}:{})})});
     if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error((d.error&&d.error.message)||'Something went wrong.');}
     const reader=res.body.getReader();const dec=new TextDecoder();let buf='',done=null;
     for(;;){const {value,done:end}=await reader.read();if(end)break;buf+=dec.decode(value,{stream:true});let i;
@@ -4575,6 +4599,7 @@ function aiSide(open){
 }
 function aiDraftBack(){const i=document.getElementById('ai-in');if(!i)return;i.value=crDraftGet(i)||'';aiGrow(i);}
 function aiNew(){
+  AI.helper=null;aiHelpBar();
   AI.thread=null;AI.title=null;AI.files=[];aiAttRender();aiHead();aiHash();aiDraftBack();
   if(!aiWide())aiSide(false);
   aiHome();aiMark();
@@ -4629,6 +4654,7 @@ function aiRename(id){
 }
 async function aiLoad(id){
   if(AI.busy){showNotif('One moment','Eagle I is still answering.');return;}
+  AI.helper=null;aiHelpBar();
   if(!aiWide())aiSide(false);
   const body=document.getElementById('ai-body');body.innerHTML='<div class="ai-think"><span class="ai-dots"><i></i><i></i><i></i></span></div>';
   try{const v=await plApi('/api/crm/assistant/threads/'+id);AI.loading=null;AI.thread=id;AI.title=v.thread.title;AI.files=[];aiAttRender();
