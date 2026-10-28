@@ -30,15 +30,18 @@ input{width:100%;font:inherit;font-size:18px;padding:12px 14px;border:1px solid 
 button{font:inherit;font-weight:800;font-size:17px;border:0;border-radius:10px;padding:12px 18px;background:var(--accent);color:#fff;cursor:pointer;min-height:48px}
 button:hover{background:var(--accent2)}
 button:disabled{opacity:.5}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button.edit{background:#c01b1b}
+button.edit:hover{background:#9a1414}
 .note{background:#fff1d6;border:1px solid #f5be6b;border-left:5px solid #b4530a;border-radius:12px;padding:12px 14px;margin-bottom:14px;color:#5c2a03}
 .err{color:#c01b1b;font-weight:700}
-@media (max-width:600px){.co button{width:100%}}
+@media (max-width:600px){.btns{width:100%}.co button{flex:1 1 100%}}
 </style>
 </head>
 <body>
 <header class="top"><div class="in"><h1>Eagle I <span>admin</span></h1><a href="/marketing">Eagle I Marketing →</a></div></header>
 <main>
-  <p class="lead">Every company on Eagle I CRM. “Open” shows you its CRM exactly as its owner sees it, <b>view only</b>: nothing can be changed, sent or connected while you look, and each look is noted in that company’s activity log.</p>
+  <p class="lead">Every company on Eagle I CRM. <b>Open (view only)</b> shows its CRM exactly as its owner sees it, with nothing changeable. <b>Open (full access)</b> lets you change anything there as its owner could; what you change or send is real. Either way the visit is noted in that company’s activity log.</p>
   <div class="note" id="viewing" hidden></div>
   <input id="q" type="search" placeholder="Search by company or owner email…" aria-label="Search companies" oninput="draw()">
   <div class="list" id="list">Loading…</div>
@@ -62,11 +65,13 @@ function draw() {
   document.getElementById('list').innerHTML = rows.map(c => `<div class="co${c.slug ? ' group' : ''}"><div style="min-width:0">
       <h2>${esc(c.company_name)}</h2><div class="d">${esc(c.owner_email || 'no owner')} · since ${when(c.created_at)}${c.last_activity ? ' · last activity ' + when(c.last_activity) : ''}</div>
       <div class="tags">${c.slug ? '<span class="g">Portfolio</span>' : ''}<span>${c.people} ${c.people === 1 ? 'person' : 'people'}</span><span>${c.selling} being sold</span><span>${c.jobs} jobs</span>${c.companies ? `<span class="g">${c.companies} companies</span>` : ''}</div>
-    </div><button onclick="openCo('${c.id}', this)">Open (view only)</button></div>`).join('') || '<p>No companies match.</p>';
+    </div><div class="btns"><button onclick="openCo('${c.id}', this, 'view')">Open (view only)</button><button class="edit" onclick="openCo('${c.id}', this, 'edit')">Open (full access)</button></div></div>`).join('') || '<p>No companies match.</p>';
 }
-async function openCo(id, btn) {
+async function openCo(id, btn, mode) {
+  const c = ALL.find(x => x.id === id);
+  if (mode === 'edit' && !confirm(`Open ${c ? c.company_name : 'this company'} with full access? Anything you change or send there is real, and the visit is noted in their activity log.`)) return;
   btn.disabled = true;
-  try { const r = await fetch('/api/admin/view-as', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId: id }) }); const d = await r.json(); if (!r.ok) throw new Error(d.error.message); location.href = d.go; }
+  try { const r = await fetch('/api/admin/view-as', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId: id, mode }) }); const d = await r.json(); if (!r.ok) throw new Error(d.error.message); location.href = d.go; }
   catch (e) { alert(e.message); btn.disabled = false; }
 }
 async function exitView() { await fetch('/api/admin/view-as/exit', { method: 'POST' }); location.reload(); }

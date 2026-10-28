@@ -2653,6 +2653,19 @@ describe('the Eagle I admin: every CRM company, view only', () => {
     assert.ok(log.some(l => /Eagle I admin .* looked at the CRM \(view only\)/.test(l.detail)));
     // The admin's own Eagle I Marketing still works as itself.
     assert.notEqual((await a.get('/api/leads')).status, 403);
+    // Full access: changes are real; Google still can't be connected; the visit is logged.
+    const fe = await (await a.post('/api/admin/view-as', { tenantId: co.tenantId, mode: 'edit' })).json();
+    assert.equal(fe.mode, 'edit');
+    const me2 = await (await a.get('/api/crm/me')).json();
+    assert.equal(me2.adminEdit, true); assert.equal(me2.viewOnly, false);
+    const added = await a.post('/api/crm/deals', { name: 'Added By Admin', title: 'Admin-added deal' });
+    assert.equal(added.status, 200);
+    assert.equal((await a.patch(`/api/crm/deals/${deal.id}`, { title: 'Doe kitchen and bath' })).status, 200);
+    assert.equal((await (await o.get(`/api/crm/deals/${deal.id}`)).json()).deal.title, 'Doe kitchen and bath', 'the owner sees the change');
+    assert.equal((await a.get('/api/crm/google/oauth/start')).status, 403);
+    assert.ok((await pool.query(`SELECT detail FROM crm_audit WHERE tenant_id = $1`, [co.tenantId])).rows.some(l => /opened the CRM with full access/.test(l.detail)));
+    // Someone else can't turn it on.
+    assert.equal((await o.post('/api/admin/view-as', { tenantId: co.tenantId, mode: 'edit' })).status, 403);
     // Stopping.
     await a.post('/api/admin/view-as/exit', {});
     assert.equal((await a.get('/api/crm/me')).status, 401, 'back to their own (marketing) login');

@@ -53,14 +53,16 @@ function requireAuth(req, res, next) {
   }
   req.userId = req.session.userId;
   req.tenantId = req.session.tenantId;
-  // An Eagle I admin looking at a company's CRM (routes/admin.js): that company's
-  // data, read only. Nothing can be changed, sent or connected while looking.
+  // The Eagle I admin in a company's CRM (routes/admin.js): that company's data,
+  // read only unless they opened it with full access. Connecting Google is never
+  // allowed (it would link the admin's own Google account to the company).
   if (req.session.viewAs && /^\/(api\/crm|crm)(\/|$)/.test(req.originalUrl.split('?')[0])) {
     req.tenantId = req.session.viewAs;
-    req.viewOnly = true;
+    req.adminView = true;
+    req.viewOnly = req.session.viewMode !== 'edit';
     const path = req.originalUrl.split('?')[0];
-    const reading = ['GET', 'HEAD'].includes(req.method) && !/\/(oauth|google\/start|drive\/(on|connect))(\/|$)/.test(path);
-    if (!reading && path !== '/api/crm/client-error') return res.status(403).json({ error: { message: 'You’re looking at this company as the Eagle I admin, so nothing can be changed here. Exit the admin view to make changes.', code: 'view_only' } });
+    if (/\/(oauth|google\/start|drive\/(on|connect))(\/|$)/.test(path)) return res.status(403).json({ error: { message: 'Connecting Google isn’t possible from the Eagle I admin view. The company connects its own.', code: 'view_only' } });
+    if (req.viewOnly && !['GET', 'HEAD'].includes(req.method) && path !== '/api/crm/client-error') return res.status(403).json({ error: { message: 'You’re looking at this company as the Eagle I admin, so nothing can be changed here. Open it with full access from the admin page to make changes.', code: 'view_only' } });
   }
   next();
 }

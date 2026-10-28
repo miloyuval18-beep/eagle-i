@@ -263,7 +263,7 @@ app.get('/crm/c/:slug', async (req, res) => {
     if (req.session && req.session.userId && req.session.tenantId === p.tenantId) return res.redirect('/crm/app#co/' + slug);
     if (req.session && req.session.userId && ((await query('SELECT is_admin FROM users WHERE id = $1', [req.session.userId])).rows[0] || {}).is_admin) {
       if (req.session.viewAs !== p.tenantId) {
-        req.session.viewAs = p.tenantId;
+        req.session.viewAs = p.tenantId; req.session.viewMode = 'view';
         await require('./lib/crmAudit').log({ tenantId: p.tenantId, actor: null, action: 'settings', detail: 'The Eagle I admin looked at the CRM (view only)' }).catch(() => {});
       }
       return res.redirect('/crm/app#co/' + slug);

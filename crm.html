@@ -795,6 +795,8 @@ body{background:var(--bg) linear-gradient(180deg,#e3e8f1 0,#eceff4 340px) no-rep
 }
 .vo-bar{position:sticky;top:0;z-index:70;background:linear-gradient(90deg,#c9a24a,#e2c178);color:#14161c;font-weight:700;font-size:15.5px;line-height:1.3;padding:6px 12px;display:flex;align-items:center;gap:10px;justify-content:space-between}
 .vo-bar span{flex:1;min-width:0}
+.vo-bar.edit{background:#c01b1b;color:#fff}
+.vo-bar.edit button{background:#fff;color:#9a1414}
 .vo-bar button{flex:0 0 auto}
 .vo-bar button{font:inherit;font-weight:800;background:#14161c;color:#e2c178;border:0;border-radius:8px;padding:5px 12px;min-height:38px;cursor:pointer}
 body.view-only .cr-top{top:0}
@@ -1394,8 +1396,9 @@ async function crInit(){
   catch(e){document.getElementById('pl-list').innerHTML='<div class="pl-empty">Could not reach Eagle I. Check your connection and reload.</div>';return;}
   CR.me=me;
   // The Eagle I admin looking at this company: say so, and how to stop.
-  if(me.viewOnly){const b=document.createElement('div');b.className='vo-bar';b.setAttribute('role','status');
-    b.innerHTML=`<span>👁 Admin view of <b>${uxEsc(me.companyName||'this company')}</b> · view only</span><button onclick="voExit()">Stop looking</button>`;document.body.prepend(b);document.body.classList.add('view-only');}
+  if(me.viewOnly||me.adminEdit){const b=document.createElement('div');b.className='vo-bar'+(me.adminEdit?' edit':'');b.setAttribute('role','status');
+    b.innerHTML=me.adminEdit?`<span>✏️ Full access: <b>${uxEsc(me.companyName||'this company')}</b> · changes are real</span><button onclick="voExit()">Done</button>`:`<span>👁 Admin view of <b>${uxEsc(me.companyName||'this company')}</b> · view only</span><button onclick="voExit()">Stop looking</button>`;
+    document.body.prepend(b);document.body.classList.add('view-only');}
   document.getElementById('cr-company').textContent=me.companyName||'';
   document.getElementById('cr-who').textContent=me.email||'';
   document.getElementById('cr-mkt').hidden=!me.hasMarketing;

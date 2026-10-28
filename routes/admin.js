@@ -76,22 +76,24 @@ router.get('/api/admin/crm', requireAuth, requireAdmin, async (req, res) => {
               (SELECT COUNT(*)::int FROM crm_subsidiaries s WHERE s.tenant_id = t.id AND s.archived_at IS NULL) AS companies,
               (SELECT MAX(a.created_at) FROM crm_activities a WHERE a.tenant_id = t.id) AS last_activity
        FROM tenants t WHERE 'crm' = ANY(t.products) ORDER BY (t.slug IS NOT NULL) DESC, t.created_at DESC`)).rows;
-    res.json({ companies: rows, viewing: req.session.viewAs || null });
+    res.json({ companies: rows, viewing: req.session.viewAs || null, mode: req.session.viewMode || null });
   } catch (err) { res.status(500).json({ error: { message: 'Failed to load the CRM companies: ' + err.message } }); }
 });
 router.post('/api/admin/view-as', requireAuth, requireAdmin, async (req, res) => {
   try {
     const t = (await query(`SELECT id, company_name FROM tenants WHERE id::text = $1 AND 'crm' = ANY(products)`, [String((req.body || {}).tenantId || '')])).rows[0];
     if (!t) return res.status(404).json({ error: { message: 'Company not found.' } });
+    const edit = (req.body || {}).mode === 'edit';
     req.session.viewAs = t.id;
+    req.session.viewMode = edit ? 'edit' : 'view';
     await new Promise((ok) => req.session.save(() => ok()));
     const me = (await query('SELECT email FROM users WHERE id = $1', [req.userId])).rows[0] || {};
-    await require('../lib/crmAudit').log({ tenantId: t.id, actor: null, action: 'settings', detail: `The Eagle I admin (${me.email || 'Eagle I'}) looked at the CRM (view only)` }).catch(() => {});
-    res.json({ ok: true, go: '/crm/app', company: t.company_name });
+    await require('../lib/crmAudit').log({ tenantId: t.id, actor: null, action: 'settings', detail: edit ? `The Eagle I admin (${me.email || 'Eagle I'}) opened the CRM with full access to make changes` : `The Eagle I admin (${me.email || 'Eagle I'}) looked at the CRM (view only)` }).catch(() => {});
+    res.json({ ok: true, go: '/crm/app', company: t.company_name, mode: edit ? 'edit' : 'view' });
   } catch (err) { res.status(500).json({ error: { message: 'Failed to open it: ' + err.message } }); }
 });
 router.post('/api/admin/view-as/exit', requireAuth, async (req, res) => {
-  delete req.session.viewAs;
+  delete req.session.viewAs; delete req.session.viewMode;
   await new Promise((ok) => req.session.save(() => ok()));
   res.json({ ok: true, go: '/admin' });
 });
