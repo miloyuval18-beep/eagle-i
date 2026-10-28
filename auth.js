@@ -60,6 +60,8 @@ function requireAuth(req, res, next) {
     req.tenantId = req.session.viewAs;
     req.adminView = true;
     req.viewOnly = req.session.viewMode !== 'edit';
+    // Which role the admin is seeing it as ("See as" in the admin bar): owner unless they picked another.
+    req.viewRole = req.session.viewRole || 'owner';
     const path = req.originalUrl.split('?')[0];
     if (/\/(oauth|google\/start|drive\/(on|connect))(\/|$)/.test(path)) return res.status(403).json({ error: { message: 'Connecting Google isn’t possible from the Eagle I admin view. The company connects its own.', code: 'view_only' } });
     if (req.viewOnly && !['GET', 'HEAD'].includes(req.method) && path !== '/api/crm/client-error') return res.status(403).json({ error: { message: 'You’re looking at this company as the Eagle I admin, so nothing can be changed here. Open it with full access from the admin page to make changes.', code: 'view_only' } });

@@ -30,7 +30,8 @@ router.get('/api/crm/me', requireAuth, async (req, res) => {
       if (!(await isPlatformAdmin(req.userId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
       const t = (await query('SELECT company_name, products FROM tenants WHERE id = $1', [req.tenantId])).rows[0];
       if (!t) return res.status(401).json({ error: { message: 'Not logged in.' } });
-      return res.json({ userId: req.userId, email: 'Eagle I admin', name: 'Eagle I admin', role: 'owner', roleLabel: req.viewOnly ? 'Eagle I admin (view only)' : 'Eagle I admin (full access)', canManage: true, perms: team.permsOf({ role: 'owner' }), oversight: false,
+      const role = team.ROLES.includes(req.viewRole) ? req.viewRole : 'owner';
+      return res.json({ userId: req.userId, email: 'Eagle I admin', name: 'Eagle I admin', role, seeAs: role, roles: team.ROLES.map(r => ({ role: r, label: team.roleLabel(r) })), roleLabel: `Eagle I admin as ${team.roleLabel(role).toLowerCase()} (${req.viewOnly ? 'view only' : 'full access'})`, canManage: team.isManager(role), perms: team.permsOf({ role }), oversight: false,
         companyName: t.company_name, needsSetup: false, tips: { seen: [], off: true }, products: t.products || [], hasCrm: true, hasMarketing: false, viewOnly: !!req.viewOnly, adminEdit: !req.viewOnly });
     }
     const r = (await query(
@@ -103,7 +104,8 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
     // The Eagle I admin in a company (routes/admin.js): as its owner would, read only unless opened with full access (auth.js).
     if (req.adminView) {
       if (!me || !(await isPlatformAdmin(req.userId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
-      me = { ...me, tenant_id: req.tenantId, role: 'owner', permissions: null, app: 'crm', disabled_at: null, name: 'Eagle I admin', viewOnly: !!req.viewOnly, adminEdit: !req.viewOnly };
+      // "See as": the role they picked (owner unless they picked another), with that role's usual permissions.
+      me = { ...me, tenant_id: req.tenantId, role: team.ROLES.includes(req.viewRole) ? req.viewRole : 'owner', permissions: null, app: 'crm', disabled_at: null, name: 'Eagle I admin', viewOnly: !!req.viewOnly, adminEdit: !req.viewOnly };
     }
     // A removed team member's old session stops working at once, and a marketing login never opens the CRM.
     if (!me || me.tenant_id !== req.tenantId || me.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
@@ -130,6 +132,21 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
     }
     res.status(403).json({ error: { message: 'Eagle I CRM is not switched on for this company.', code: 'no_crm' } });
   } catch (err) { fail(res, err, 'Failed to check your account'); }
+});
+
+// "See as a homeowner" for the Eagle I admin: each project's homeowner page, opened as the homeowner sees it.
+router.get('/api/crm/admin/homeowner-pages', async (req, res) => {
+  if (!req.adminView) return res.status(403).json({ error: { message: 'Only for the Eagle I admin.' } });
+  try {
+    const rows = (await query(`SELECT d.id, d.title, d.stage, c.name AS contact_name FROM crm_deals d LEFT JOIN crm_contacts c ON c.id = d.contact_id
+      WHERE d.tenant_id = $1 AND d.stage <> 'lost' ORDER BY (d.stage IN ('signed', 'production')) DESC, d.updated_at DESC LIMIT 60`, [req.tenantId])).rows;
+    res.json({ projects: rows.map(r => ({ id: r.id, title: r.title, stage: r.stage, homeowner: r.contact_name })) });
+  } catch (err) { fail(res, err, 'Failed to load'); }
+});
+router.get('/api/crm/admin/homeowner-pages/:id', async (req, res) => {
+  if (!req.adminView) return res.status(403).json({ error: { message: 'Only for the Eagle I admin.' } });
+  try { res.json({ url: '/p/' + (await require('../lib/crmPortal').portalToken(req.tenantId, req.params.id)) + '?preview=1' }); }
+  catch (err) { fail(res, err, 'Failed to open it'); }
 });
 
 // Changes that speak for the whole company need a permission from the person's

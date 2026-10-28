@@ -86,14 +86,24 @@ router.post('/api/admin/view-as', requireAuth, requireAdmin, async (req, res) =>
     const edit = (req.body || {}).mode === 'edit';
     req.session.viewAs = t.id;
     req.session.viewMode = edit ? 'edit' : 'view';
+    delete req.session.viewRole;
     await new Promise((ok) => req.session.save(() => ok()));
     const me = (await query('SELECT email FROM users WHERE id = $1', [req.userId])).rows[0] || {};
     await require('../lib/crmAudit').log({ tenantId: t.id, actor: null, action: 'settings', detail: edit ? `The Eagle I admin (${me.email || 'Eagle I'}) opened the CRM with full access to make changes` : `The Eagle I admin (${me.email || 'Eagle I'}) looked at the CRM (view only)` }).catch(() => {});
     res.json({ ok: true, go: '/crm/app', company: t.company_name, mode: edit ? 'edit' : 'view' });
   } catch (err) { res.status(500).json({ error: { message: 'Failed to open it: ' + err.message } }); }
 });
+// "See as": which role the admin sees the company's CRM as (owner, admin, project manager…).
+router.post('/api/admin/view-as/role', requireAuth, requireAdmin, async (req, res) => {
+  const role = String((req.body || {}).role || '');
+  if (!req.session.viewAs) return res.status(400).json({ error: { message: 'Open a company from the admin page first.' } });
+  if (!require('../lib/crmTeam').ROLES.includes(role)) return res.status(400).json({ error: { message: 'Pick a role.' } });
+  req.session.viewRole = role;
+  await new Promise((ok) => req.session.save(() => ok()));
+  res.json({ ok: true, role });
+});
 router.post('/api/admin/view-as/exit', requireAuth, async (req, res) => {
-  delete req.session.viewAs; delete req.session.viewMode;
+  delete req.session.viewAs; delete req.session.viewMode; delete req.session.viewRole;
   await new Promise((ok) => req.session.save(() => ok()));
   res.json({ ok: true, go: '/admin' });
 });

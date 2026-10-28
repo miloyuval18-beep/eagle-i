@@ -215,6 +215,14 @@ app.use('/api/crm-public', (req, res, next) => {
   };
   next();
 });
+// The Eagle I admin looking at a company view only ("See as a homeowner" opens the real
+// homeowner page): nothing sent from the homeowner's or sub's pages goes through.
+app.use('/api/crm-public', (req, res, next) => {
+  if (req.session && req.session.viewAs && req.session.viewMode !== 'edit' && !['GET', 'HEAD'].includes(req.method)) {
+    return res.status(403).json({ error: { message: 'This is the Eagle I admin preview, so nothing is sent from here.', code: 'view_only' } });
+  }
+  next();
+});
 app.use(crmRoutes);
 app.use(crmEstimateRoutes); // after crmRoutes: their /api/crm/* routes rely on that sign-in check
 app.use(crmIntakeRoutes);

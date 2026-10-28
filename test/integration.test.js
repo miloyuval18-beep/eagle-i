@@ -2661,6 +2661,27 @@ describe('the Eagle I admin: every CRM company, view only', () => {
     assert.ok(log.some(l => /Eagle I admin .* looked at the CRM \(view only\)/.test(l.detail)));
     // The admin's own Eagle I Marketing still works as itself.
     assert.notEqual((await a.get('/api/leads')).status, 403);
+    // See as: another role, with that role's permissions.
+    assert.equal(me.seeAs, 'owner'); assert.ok(me.roles.some(r => r.role === 'project_manager'));
+    assert.equal((await a.get('/api/crm/invoices')).status, 200);
+    assert.equal((await a.post('/api/admin/view-as/role', { role: 'nope' })).status, 400);
+    assert.equal((await o.post('/api/admin/view-as/role', { role: 'superintendent' })).status, 403, 'only the admin');
+    assert.equal((await a.post('/api/admin/view-as/role', { role: 'superintendent' })).status, 200);
+    const sup = await (await a.get('/api/crm/me')).json();
+    assert.equal(sup.role, 'superintendent'); assert.equal(sup.perms.money, false); assert.equal(sup.canManage, false); assert.match(sup.roleLabel, /as superintendent \(view only\)/);
+    assert.equal((await a.get('/api/crm/invoices')).status, 403, 'a superintendent doesn’t see money');
+    await a.post('/api/admin/view-as/role', { role: 'owner' });
+    // See as a homeowner: the project's real homeowner page, where nothing can be sent in view only.
+    const hp = await (await a.get('/api/crm/admin/homeowner-pages')).json();
+    assert.equal(hp.projects[0].id, deal.id); assert.equal(hp.projects[0].homeowner, 'Pat Doe');
+    const { url } = await (await a.get('/api/crm/admin/homeowner-pages/' + deal.id)).json();
+    assert.match(url, /^\/p\/[0-9a-f]+\?preview=1$/);
+    const tok = url.split('/p/')[1].split('?')[0];
+    assert.equal((await a.get('/api/crm-public/portal/' + tok)).status, 200);
+    const sent = await a.post(`/api/crm-public/portal/${tok}/messages`, { message: 'hi' });
+    assert.equal(sent.status, 403); assert.equal((await sent.json()).error.code, 'view_only');
+    assert.equal((await o.get('/api/crm/admin/homeowner-pages')).status, 403, 'only in the admin view');
+    assert.equal((await makeClient().post(`/api/crm-public/portal/${tok}/messages`, { message: 'Hello from the homeowner' })).status, 200, 'the homeowner still can');
     // Full access: changes are real; Google still can't be connected; the visit is logged.
     const fe = await (await a.post('/api/admin/view-as', { tenantId: co.tenantId, mode: 'edit' })).json();
     assert.equal(fe.mode, 'edit');
