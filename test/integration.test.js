@@ -2570,7 +2570,7 @@ describe('Levi Construction Group: one team, its companies each with their own p
     const pool = getTestPool();
     const { c: o, tenantId } = await owner('group');
     const { c: other } = await owner('group-other');
-    await pool.query(`UPDATE tenants SET slug = NULL WHERE slug = 'levi-construction-group'`);
+    const hadSlug = (await pool.query(`UPDATE tenants SET slug = NULL WHERE slug = 'levi-construction-group' RETURNING id`)).rows.map(r => r.id);
     await pool.query(`UPDATE tenants SET slug = 'levi-construction-group' WHERE id = $1`, [tenantId]);
     // Adding a company (company settings).
     const add = await (await o.post('/api/crm/subsidiaries', { name: 'Levi Homes', what: 'Luxury home remodeling', services: 'Kitchens, Bathrooms', website: 'levihomes.com', phone: '713-555-0100' })).json();
@@ -2611,6 +2611,8 @@ describe('Levi Construction Group: one team, its companies each with their own p
     assert.equal((await (await o.get(`/api/crm/deals/${deal.id}`)).json()).deal.subsidiary_id, null, 'its projects stay, no longer under it');
     assert.ok(!(await (await makeClient().get('/api/crm-portfolio')).json()).companies.some(x => x.slug === 'levi-homes-2'));
     await pool.query(`UPDATE tenants SET slug = NULL WHERE id = $1`, [tenantId]);
+    // Back to whoever had it (the local preview's Levi Construction Group).
+    if (hadSlug.length) await pool.query(`UPDATE tenants SET slug = 'levi-construction-group' WHERE id = $1`, [hadSlug[0]]);
   });
 });
 
@@ -2664,6 +2666,13 @@ describe('the Eagle I admin: every CRM company, view only', () => {
     assert.equal((await (await o.get(`/api/crm/deals/${deal.id}`)).json()).deal.title, 'Doe kitchen and bath', 'the owner sees the change');
     assert.equal((await a.get('/api/crm/google/oauth/start')).status, 403);
     assert.ok((await pool.query(`SELECT detail FROM crm_audit WHERE tenant_id = $1`, [co.tenantId])).rows.some(l => /opened the CRM with full access/.test(l.detail)));
+    // Daily check-in: the company's Team and Problems, but no check-in of the admin's own.
+    const ck = await (await a.get('/api/crm/checkins/today')).json();
+    assert.equal(ck.checkin, null); assert.equal(ck.canSeeTeam, true);
+    assert.equal((await a.post('/api/crm/checkins/today/message', { text: 'hi' })).status, 403);
+    assert.equal((await a.post('/api/crm/checkins/today/finish', { form: { did: 'x' } })).status, 403);
+    assert.equal((await a.get('/api/crm/checkins/team')).status, 200);
+    assert.equal((await pool.query(`SELECT 1 FROM crm_checkins c JOIN users u ON u.id = c.user_id WHERE LOWER(u.email) = $1`, [aEmail.toLowerCase()])).rows.length, 0, 'nothing made for the admin');
     // Someone else can't turn it on.
     assert.equal((await o.post('/api/admin/view-as', { tenantId: co.tenantId, mode: 'edit' })).status, 403);
     // Stopping.

@@ -1472,6 +1472,8 @@ async function crInit(){
     const toCal=q.get('gcal')||location.hash==='#calendar';
     setTimeout(()=>{if(q.get('google_error'))showNotif('Google',q.get('google_error'));else if(q.get('gcal'))showNotif('Google Calendar on','Your meetings show on the calendar now.');else showNotif('Google connected',q.get('google')+(q.get('drive')==='on'?' · project files now go to Google Drive':' · reading recent customer email now'));},300);
     try{history.replaceState(null,'',toCal?'/crm/app#calendar':'/crm/app#company');}catch(e){}}}
+  // Signed in from an email's link (crm-login.html kept where it pointed): open that screen.
+  try{const n=sessionStorage.getItem('crm-next');if(n){sessionStorage.removeItem('crm-next');if(!location.hash&&/^[a-z]+(\/[\w-]+)?$/.test(n))history.replaceState(null,'','#'+n);}}catch(e){}
   const hashParts=(location.hash||'').slice(1).split('/');const start=hashParts[0];crSimpleApply();
   await crLoadTeam();
   // A link to one chat (#ask/<id>) opens that chat.
@@ -3339,7 +3341,7 @@ function ckSummary(s,opts={}){
 }
 function ckTabs(d){
   if(!d.canSeeTeam)return '';
-  const t=[['mine','My check-in'],['team','Team'],['projects','Projects'],['problems','Problems']];
+  const t=[...(d.checkin?[['mine','My check-in']]:[]),['team','Team'],['projects','Projects'],['problems','Problems']];
   return `<div class="pl-stages ck-tabs" role="tablist">${t.map(([k,l])=>`<button class="pl-chip${CK.tab===k?' active':''}" role="tab" aria-selected="${CK.tab===k}" onclick="CK.tab='${k}';ckLoad()">${l}</button>`).join('')}</div>`;
 }
 async function ckLoad(){
@@ -3347,6 +3349,8 @@ async function ckLoad(){
   try{
     const d=CK.data=await plApi('/api/crm/checkins/today');
     if(!d.canSeeTeam)CK.tab='mine';
+    // The Eagle I admin has no check-in of their own here: the company's tabs only.
+    if(!d.checkin&&CK.tab==='mine')CK.tab='team';
     try{history.replaceState(null,'','#checkin'+(CK.tab!=='mine'?'/'+CK.tab:''));}catch(e){}
     const head=`<div class="sh"><div><div class="st">Daily check-in</div><div class="ss">${CK.tab==='mine'?'A few quick questions about your day. Talk or type; it goes on the right jobs for you.':'What everyone got done, progress by project, and problems that need someone.'}</div></div></div>${ckTabs(d)}`;
     if(CK.tab==='team')return ckTeam(el,head);
@@ -3440,7 +3444,7 @@ async function ckHandled(id,btn){btn.disabled=true;try{await plApi('/api/crm/che
 async function ckBanner(){
   const el=document.getElementById('ck-banner');if(!el)return;
   try{const d=await plApi('/api/crm/checkins/today');const c=d.checkin;
-    el.innerHTML=c.status==='done'?'':`<div class="nx" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div class="nx-l">Daily check-in</div><div class="nx-t">${c.status==='started'?'Finish today’s check-in':'How did today go? Two minutes with Eagle I.'}</div></div><button class="btn btn-blue" onclick="ckOpen('mine')">${c.status==='started'?'Keep going':'Start my check-in'}</button></div>`;
+    el.innerHTML=!c||c.status==='done'?'':`<div class="nx" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div class="nx-l">Daily check-in</div><div class="nx-t">${c.status==='started'?'Finish today’s check-in':'How did today go? Two minutes with Eagle I.'}</div></div><button class="btn btn-blue" onclick="ckOpen('mine')">${c.status==='started'?'Keep going':'Start my check-in'}</button></div>`;
   }catch(e){el.innerHTML='';}
 }
 /* ---------- Today: everything I was only copied on this week ---------- */

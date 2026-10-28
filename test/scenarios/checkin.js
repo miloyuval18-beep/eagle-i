@@ -30,6 +30,8 @@ const tag = Date.now().toString(36);
 // Thu Oct 29 2026, 3:45pm Central (20:45 UTC); Wed Oct 28 (the day before it starts); Sat Oct 31.
 const THU = new Date('2026-10-29T20:45:00Z'), WED = new Date('2026-10-28T20:45:00Z'), SAT = new Date('2026-10-31T20:45:00Z');
 const THU_EARLY = new Date('2026-10-29T19:00:00Z'), THU_6PM = new Date('2026-10-29T23:10:00Z');
+// 8:30pm Central on Thursday is already Friday in UTC.
+const THU_830PM = new Date('2026-10-30T01:30:00Z');
 
 (async () => {
   const t = (await query(`INSERT INTO tenants (company_name, industry, products) VALUES ('Checkin Co', 'home_services', '{crm}') RETURNING id`)).rows[0].id;
@@ -55,6 +57,13 @@ const THU_EARLY = new Date('2026-10-29T19:00:00Z'), THU_6PM = new Date('2026-10-
     assert.match(mine(dana)[0].html, /https:\/\/app\.test\/crm\/app#checkin/);
     sent.length = 0; await at(THU);
     assert.equal(sent.filter(m => m.to.includes(tag)).length, 0, 'once a day');
+    // A send that fails is tried again on the next round.
+    const flaky = await add('flaky', 'Fay Flaky', 'member');
+    let tries = 0;
+    await ci.processCheckins({ now: THU, appUrl: 'https://app.test', send: async (m) => { if (m.to === flaky.email) { tries++; throw new Error('down'); } } });
+    await ci.processCheckins({ now: new Date(THU.getTime() + 5 * 60000), appUrl: 'https://app.test', send: async (m) => { if (m.to === flaky.email) tries++; } });
+    assert.equal(tries, 2, 'retried after a failed send');
+    await query(`UPDATE users SET disabled_at = now() WHERE id = $1`, [flaky.id]);
     assert.equal((await at(SAT)).sent, 0, 'not on weekends');
 
     // Dana opens it: Eagle I opens with what she was down for.
@@ -105,7 +114,8 @@ const THU_EARLY = new Date('2026-10-29T19:00:00Z'), THU_6PM = new Date('2026-10-
 
     // 6pm: the owners' and admins' summary of the day, once.
     sent.length = 0;
-    await ci.processTeamDigest({ now: THU_6PM, appUrl: 'https://app.test' });
+    // Sent late (8:30pm Central, Friday in UTC): still Thursday's progress.
+    await ci.processTeamDigest({ now: THU_830PM, appUrl: 'https://app.test' });
     const dg = mine(owner);
     assert.equal(dg.length, 1); assert.match(dg[0].subject, /Today’s check-ins: 2 of 3, 1 problem/);
     assert.match(dg[0].html, /Ruiz kitchen/); assert.match(dg[0].html, /not yet: Olive Owner/);

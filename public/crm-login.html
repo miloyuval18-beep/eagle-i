@@ -247,7 +247,10 @@ async function signUp(e){
   }catch(x){err.textContent=x.message;b.disabled=false;}
 }
 // From the portfolio (?co=levi-homes): once signed in, the CRM opens on that company.
-function goTo(go){go=go||'/crm/app';const co=new URLSearchParams(location.search).get('co');return co&&go==='/crm/app'&&/^[a-z0-9-]{1,60}$/.test(co)?'/crm/app#co/'+co:go;}
+// A link from an email to a screen (/crm/app#checkin, #needs…) comes here first when signed out: open that screen after.
+const NEXT=/^#((checkin|needs|calendar|pipeline|jobs|estimates|team|company|reports|ask|co|auto|growth|refs|billing|deal|job)(\/[\w-]+)?)$/.test(location.hash)?location.hash.slice(1):'';
+try{if(NEXT)sessionStorage.setItem('crm-next',NEXT);}catch(e){}
+function goTo(go){go=go||'/crm/app';const co=new URLSearchParams(location.search).get('co');if(co&&go==='/crm/app'&&/^[a-z0-9-]{1,60}$/.test(co))return '/crm/app#co/'+co;return NEXT&&go==='/crm/app'?'/crm/app#'+NEXT:go;}
 // Links: /crm/login#signup, ?code=ABCD-2345 (from the Team screen), ?marketing=1.
 const q=new URLSearchParams(location.search);
 if(q.get('marketing'))$('mkt-note').hidden=false;
