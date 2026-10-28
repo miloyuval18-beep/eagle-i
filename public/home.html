@@ -4,204 +4,137 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Eagle I</title>
-<meta name="description" content="Eagle I: a CRM for construction companies, and an AI marketing command center. From leads to completed projects, built for builders.">
-<meta name="theme-color" content="#0a1322">
+<meta name="description" content="Welcome to your command center: Eagle I CRM for project management and operations, and Eagle I Marketing for marketing and lead generation.">
+<meta name="theme-color" content="#0f1b33">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Nunito+Sans:wght@400;600;700;800&family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Montserrat:wght@500;600;700&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --navy:#0a1322;--navy2:#0f1d33;--navy3:#16294a;--panel:#f3f4f6;--card:#ffffff;
-  --ink:#121a26;--ink2:#36414f;--ink3:#566170;--bdr:#d9dde3;
-  --blue:#2f8cff;--crm:#0e3a6e;--crm2:#0a2c55;--mk:#1d1b18;--mk2:#3a3631;
-  --gold:#c9a24a;--gold2:#e2c178;--goldsoft:#d8b46a;
-  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;--h:'Montserrat','Nunito Sans',sans-serif;--serif:'Playfair Display',Georgia,serif;
+  --navy:#0f1b33;--navy2:#13305e;--blue:#1f4f8f;--ink:#1b2333;--ink2:#3c4656;--ink3:#5b6575;
+  --dark:#111318;--dark2:#08090c;--gold:#c9a24a;--gold2:#e7c983;--gold3:#a9822f;
+  --serif:'Cormorant Garamond',Georgia,serif;--h:'Montserrat','Nunito Sans',sans-serif;--f:'Nunito Sans',system-ui,-apple-system,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{background:var(--navy)}
-body{background:radial-gradient(1200px 700px at 15% 10%,#13284a 0%,var(--navy) 60%) var(--navy);color:#fff;font-family:var(--f);font-size:18px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
-a:focus-visible{outline:3px solid #f0b429;outline-offset:3px;border-radius:6px}
+html{background:#2b2a2c}
+body{min-height:100vh;font-family:var(--f);font-size:18px;line-height:1.5;color:var(--ink);-webkit-font-smoothing:antialiased;
+  background:linear-gradient(180deg,rgba(236,240,248,.55) 0%,rgba(236,240,248,0) 26%),url('/home/house-bg.jpg') center top/cover no-repeat fixed #2b2a2c}
+a:focus-visible{outline:3px solid #f0b429;outline-offset:3px;border-radius:8px}
+main{max-width:900px;margin:0 auto;padding:34px 16px 24px}
+h1{text-align:center;font-family:var(--serif);font-weight:700;line-height:.98;font-size:clamp(44px,6.4vw,76px);color:var(--navy);letter-spacing:-.005em;text-shadow:0 1px 0 rgba(255,255,255,.4)}
+h1 span{display:block;background:linear-gradient(180deg,#e3b55a 0%,#c9952f 48%,#8f6418 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;padding-bottom:4px}
+.lead{text-align:center;font-family:var(--h);font-weight:700;font-size:clamp(13px,1.4vw,15.5px);letter-spacing:.32em;color:#1f2737;margin:14px auto 26px;text-transform:uppercase;width:fit-content;max-width:100%;padding:4px 14px;border-radius:999px;background:rgba(240,243,249,.62)}
 
-/* Top: the story on the left (dark), where to go on the right (light). */
-.top{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);max-width:1440px;margin:0 auto;position:relative}
-.hero{position:relative;padding:0 0 34px;overflow:hidden}
-.art{position:relative;height:clamp(240px,30vw,400px)}
-.art img{width:100%;height:100%;object-fit:cover;object-position:30% 30%;display:block}
-.art::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,19,34,0) 45%,var(--navy) 100%),linear-gradient(90deg,rgba(10,19,34,.35) 0%,rgba(10,19,34,0) 30%)}
-.words{position:relative;padding:0 clamp(16px,4vw,56px);margin-top:-18px}
-.wordmark{font-family:var(--h);font-weight:900;font-size:clamp(54px,7.4vw,104px);line-height:.95;letter-spacing:.02em;background:linear-gradient(180deg,#ffffff 0%,#c9d3e0 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.wordmark b{font-weight:900;background:linear-gradient(180deg,#5fb0ff,#1d74e8);-webkit-background-clip:text;background-clip:text;color:transparent}
-.motto{font-family:var(--h);font-weight:700;font-size:clamp(13px,1.3vw,17px);letter-spacing:.42em;color:#dbe3ee;margin:12px 0 22px}
-.motto span{color:var(--blue)}
-h1{font-family:var(--serif);font-weight:500;font-size:clamp(32px,3.6vw,50px);line-height:1.12;color:var(--gold2);max-width:640px}
-.sub{font-size:clamp(19px,1.6vw,23px);color:#e8edf4;margin:14px 0 26px;letter-spacing:.01em}
-.wins{display:grid;grid-template-columns:repeat(4,1fr);max-width:640px}
-.wins div{text-align:center;padding:4px 8px;border-left:1px solid rgba(255,255,255,.14)}
-.wins div:first-child{border-left:0}
-.wins svg{width:40px;height:40px;color:var(--gold);display:block;margin:0 auto 8px}
-.wins span{display:block;font-family:var(--h);font-weight:700;font-size:13.5px;letter-spacing:.08em;line-height:1.3;color:#fff}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
+.card{border-radius:18px;padding:26px 26px 22px;display:flex;flex-direction:column;box-shadow:0 26px 50px -20px rgba(8,10,16,.6),0 6px 16px rgba(8,10,16,.22)}
+.card .logo{display:block;margin:0 auto;height:132px;width:auto}
+.card .name{text-align:center;font-family:var(--serif);font-weight:600;font-size:48px;line-height:1;margin-top:6px}
+.card .kind{text-align:center;font-family:var(--h);font-weight:600;font-size:13.5px;letter-spacing:.2em;text-transform:uppercase;margin-top:8px}
+.card hr{border:0;height:1px;margin:18px 0 12px}
+.card ul{list-style:none;flex:1;margin-bottom:20px}
+.card li{display:flex;align-items:center;gap:14px;padding:7px 0;font-size:17.5px;line-height:1.35}
+.card li svg{width:26px;height:26px;flex:none}
+.go{display:flex;align-items:center;justify-content:center;gap:14px;text-decoration:none;border-radius:10px;padding:16px;min-height:58px;font-family:var(--h);font-size:19px;font-weight:700}
+.go svg{width:22px;height:22px}
+.new{text-align:center;margin-top:12px;font-size:16.5px}
+.new a{font-weight:800}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-.side{background:var(--panel);color:var(--ink);padding:30px clamp(16px,2.6vw,36px) 34px;position:relative;z-index:1}
-.side::before{content:'';position:absolute;top:0;bottom:0;left:-90px;width:92px;background:var(--panel);clip-path:polygon(100% 0,100% 100%,0 100%);pointer-events:none}
-.logos{display:flex;align-items:center;justify-content:center;gap:clamp(16px,3vw,40px);margin:0 0 22px}
-.logos img{height:clamp(110px,10vw,150px);width:auto;display:block}
-.logos i{width:1px;align-self:stretch;margin:14px 0;background:#c9ced6}
-.pick{font-family:var(--h);font-weight:800;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);text-align:center;margin-bottom:14px}
-.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.card{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:10px 10px 18px;display:flex;flex-direction:column;box-shadow:0 2px 4px rgba(18,26,38,.05),0 14px 30px rgba(18,26,38,.10)}
-.card .pic{display:block;width:100%;aspect-ratio:310/142;object-fit:cover;border-radius:10px}
-.card .in{padding:14px 10px 0;display:flex;flex-direction:column;flex:1}
-.card h2{font-family:var(--h);font-weight:800;font-size:24px;line-height:1.2;color:var(--crm)}
-.card.mk h2{color:var(--mk)}
-.card .kind{font-size:17px;color:var(--ink3);font-weight:700;margin:2px 0 14px}
-.card ul{list-style:none;flex:1;margin-bottom:18px}
-.card li{position:relative;padding:5px 0 5px 34px;font-size:17px;color:var(--ink2);line-height:1.35}
-.card li::before{content:'';position:absolute;left:0;top:5px;width:23px;height:23px;border-radius:50%;background:var(--goldsoft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center/15px no-repeat}
-.go{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;color:#fff;background:var(--crm);border-radius:10px;padding:15px;font-family:var(--h);font-size:18.5px;font-weight:700;min-height:56px}
-.go::after{content:'';width:9px;height:9px;border-top:3px solid currentColor;border-right:3px solid currentColor;transform:rotate(45deg)}
-.go:hover{background:var(--crm2)}
-.mk .go{background:var(--mk)}
-.mk .go:hover{background:var(--mk2)}
-.new{text-align:center;margin-top:12px;font-size:16.5px;color:var(--ink3)}
-.new a{color:var(--crm);font-weight:800}
-.mk .new a{color:var(--mk)}
-.quick{display:none}
-.both{font-size:15.5px;color:var(--ink3);text-align:center;margin-top:16px}
+.crm{background:linear-gradient(180deg,#15171c 0%,var(--dark) 40%,var(--dark2) 100%);border:1px solid rgba(201,162,74,.45);color:#eceae4}
+.crm .logo{height:150px;margin-top:-6px;border-radius:10px}
+.crm .name{color:#f4f1ea}
+.crm .kind{color:var(--gold2)}
+.crm hr{background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.crm li svg{color:var(--gold)}
+.crm .go{background:linear-gradient(180deg,#ecd08f 0%,#d2ad62 55%,#b8913f 100%);color:#16130c;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.crm .go:hover{background:linear-gradient(180deg,#f2d99f,#d8b46a 55%,#c09947)}
+.crm .new{color:#b9b4a8}
+.crm .new a{color:var(--gold2)}
 
-/* Everything it does, in one strip. */
-.strip{max-width:1400px;margin:28px auto 0;padding:0 16px}
-.feats{display:grid;grid-template-columns:repeat(6,1fr);background:linear-gradient(180deg,rgba(22,41,74,.85),rgba(15,29,51,.92));border:1px solid rgba(255,255,255,.12);border-radius:16px;box-shadow:0 20px 40px -18px rgba(0,0,0,.6)}
-.feats section{text-align:center;padding:24px 12px 22px;border-left:1px solid rgba(255,255,255,.1)}
-.feats section:first-child{border-left:0}
-.feats svg{width:42px;height:42px;color:var(--gold);display:block;margin:0 auto 10px}
-.feats h3{font-family:var(--h);font-weight:800;font-size:15.5px;letter-spacing:.1em;margin-bottom:8px}
-.feats p{font-size:16.5px;line-height:1.6;color:#d5dde8}
-.motto2{display:flex;align-items:center;gap:18px;justify-content:center;max-width:900px;margin:26px auto 0;padding:0 16px;font-family:var(--h);font-weight:700;font-size:12.5px;letter-spacing:.42em;color:#c3ccd8;text-align:center}
-.motto2::before,.motto2::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-footer{text-align:center;color:#a9b4c3;font-size:15.5px;padding:18px 16px 26px;margin-top:14px}
-footer a{color:#d5dde8}
+.mk{background:rgba(255,255,255,.93);border:1px solid rgba(255,255,255,.9);color:var(--ink);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.mk .logo{height:156px;margin-top:-10px}
+.mk .kind{color:var(--navy);margin-top:2px}
+.mk hr{background:linear-gradient(90deg,transparent,#5b8fd6,transparent)}
+.mk li{color:var(--ink2)}
+.mk li svg{color:var(--navy)}
+.mk .go{background:linear-gradient(180deg,#1d4a86 0%,#123667 100%);color:#fff}
+.mk .go:hover{background:linear-gradient(180deg,#235497,#153d74)}
+.mk .new{color:var(--ink3)}
+.mk .new a{color:var(--blue)}
 
-@media (max-width:1080px){
-  .top{grid-template-columns:1fr}
-  .side::before{display:none}
-  .side{border-radius:20px 20px 0 0}
-  .art{height:clamp(220px,46vw,380px)}
+.note{text-align:center;color:#fff;font-size:16px;margin-top:22px;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+footer{text-align:center;color:#e6e6e6;font-size:15px;padding:8px 16px 26px;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+footer a{color:#fff}
+
+@media (max-width:760px){
+  body{background:linear-gradient(180deg,rgba(236,240,248,.6) 0%,rgba(236,240,248,0) 22%),url('/home/house-tall.jpg') center top/cover no-repeat fixed #2b2a2c}
+  main{padding-top:26px}
+  .lead{letter-spacing:.18em;margin-bottom:20px}
+  .cards{grid-template-columns:1fr;gap:16px}
+  .card{padding:22px 20px 20px}
+  .crm .logo{height:120px}.mk .logo{height:128px}
+  .card .name{font-size:42px}
 }
-@media (max-width:720px){
-  body{font-size:17.5px}
-  .words{margin-top:-10px}
-  .motto{letter-spacing:.18em;font-size:clamp(11.5px,3.5vw,14px);white-space:nowrap;margin:10px 0 18px}
-  .wins{grid-template-columns:repeat(2,1fr);row-gap:18px}
-  .wins div:nth-child(3){border-left:0}
-  .wins span{font-size:13px}
-  .cards{grid-template-columns:1fr}
-  /* On a phone the two choices are right under the headline, not a long scroll away. */
-  .quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-6px 0 26px}
-  .quick a{display:flex;align-items:center;justify-content:center;text-align:center;min-height:56px;padding:10px;border-radius:10px;font-family:var(--h);font-weight:700;font-size:16.5px;text-decoration:none;color:#fff;background:var(--crm);border:1px solid rgba(255,255,255,.18)}
-  .quick a.q-mk{background:#fff;color:var(--mk)}
-  .logos img{height:96px}
-  .feats{grid-template-columns:repeat(2,1fr)}
-  .feats section{border-left:0;border-top:1px solid rgba(255,255,255,.1)}
-  .feats section:nth-child(even){border-left:1px solid rgba(255,255,255,.1)}
-  .feats section:nth-child(-n+2){border-top:0}
-  .motto2{letter-spacing:.24em;font-size:12px}
-}
-@media (max-width:380px){.logos{gap:12px}.logos img{height:84px}.feats h3{font-size:14px;letter-spacing:.06em}}
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-chart" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 40h34"/><rect x="10" y="28" width="6" height="10" fill="currentColor" stroke="none"/><rect x="20" y="22" width="6" height="16" fill="currentColor" stroke="none"/><rect x="30" y="15" width="6" height="23" fill="currentColor" stroke="none"/><path d="M9 22l10-8 8 5 13-11"/><path d="M33 8h7v7"/></symbol>
-  <symbol id="i-gear" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M21 5h6l1 6 4 2 5-4 4 4-4 5 2 4 6 1v6l-6 1-2 4 4 5-4 4-5-4-4 2-1 6h-6l-1-6-4-2-5 4-4-4 4-5-2-4-6-1v-6l6-1 2-4-4-5 4-4 5 4 4-2z"/><circle cx="24" cy="24" r="6"/></symbol>
-  <symbol id="i-team" viewBox="0 0 48 48" fill="currentColor"><circle cx="24" cy="13" r="6"/><circle cx="11" cy="17" r="4.5"/><circle cx="37" cy="17" r="4.5"/><path d="M13 38c0-7 5-12 11-12s11 5 11 12z"/><path d="M2 38c0-6 4-10 9-10 2 0 3 .4 4.5 1.2C12.8 31.6 11 35 11 38z"/><path d="M46 38c0-6-4-10-9-10-2 0-3 .4-4.5 1.2C35.2 31.6 37 35 37 38z"/></symbol>
-  <symbol id="i-house" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M6 22L24 7l18 15"/><path d="M11 18v22h26V18"/><path d="M20 40V28h8v12"/></symbol>
-  <symbol id="i-doc" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M12 5h18l8 8v30H12z"/><path d="M30 5v8h8"/><path d="M18 20h14M18 26h14M18 32h7"/><circle cx="31" cy="34" r="3"/></symbol>
-  <symbol id="i-hat" viewBox="0 0 48 48" fill="currentColor"><path d="M7 31a17 17 0 0 1 12-16.2V25h3V13.3a17 17 0 0 1 4 0V25h3V14.8A17 17 0 0 1 41 31z"/><rect x="3" y="31" width="42" height="6" rx="3"/></symbol>
-  <symbol id="i-clip" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><rect x="10" y="8" width="28" height="35" rx="3"/><path d="M18 8V5h12v3"/><path d="M17 26l5 5 9-10"/></symbol>
-  <symbol id="i-horn" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M6 20v9h7l17 9V11l-17 9z"/><path d="M13 29l3 11h5l-2-9"/><path d="M36 18c2 2 2 11 0 13M40 14c4 4 4 17 0 21"/></symbol>
-  <symbol id="i-bars" viewBox="0 0 48 48" fill="currentColor"><rect x="8" y="26" width="8" height="15" rx="1"/><rect x="20" y="17" width="8" height="24" rx="1"/><rect x="32" y="7" width="8" height="34" rx="1"/></symbol>
+  <defs>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 10h7M8.5 14h7M8.5 18h4"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><circle cx="12" cy="8" r="3"/><circle cx="5.5" cy="10" r="2.2"/><circle cx="18.5" cy="10" r="2.2"/><path d="M6.5 19c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5M1.5 18.5c0-2.4 1.6-4 4-4M22.5 18.5c0-2.4-1.6-4-4-4"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4M8 13h2M12 13h2M16 13h1M8 16.5h2M12 16.5h2"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 15.5h6M9 19h3"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M2.5 4h3l2.4 11h10.6l2-8H7"/><circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="4" y="13" width="3.5" height="7" rx=".6"/><rect x="10.25" y="8.5" width="3.5" height="11.5" rx=".6"/><rect x="16.5" y="4" width="3.5" height="16" rx=".6"/></symbol>
+    <symbol id="i-horn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M3 10v4.5h3.5L15 19V5.5L6.5 10z"/><path d="M6.5 14.5 8 20h2.5L9.5 15M18 9.5c1 1 1 4.5 0 5.5M20.5 7.5c2 2 2 7 0 9"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-page" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 8.5h17M7 12.5h5M7 16h3M14.5 12.5h3v3.5h-3z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="5.5" width="18" height="13" rx="1.5"/><path d="M3.5 6.5 12 13l8.5-6.5"/></symbol>
+  </defs>
 </svg>
-
-<div class="top">
-  <header class="hero">
-    <div class="art"><img src="/home/hero.jpg" alt="The Eagle I eagle in front of a modern home, with a rising growth chart" width="790" height="296"></div>
-    <div class="words">
-      <div class="wordmark" role="img" aria-label="Eagle I">EAGLE <b>I</b></div>
-      <div class="motto">BUILD <span>·</span> MANAGE <span>·</span> MARKET <span>·</span> GROW</div>
-      <h1>All your construction operations in one platform</h1>
-      <p class="sub">From leads to completed projects. Built for builders.</p>
-      <nav class="quick" aria-label="Where to go"><a href="/crm" class="q-crm">Go to the CRM</a><a href="/marketing" class="q-mk">Go to Marketing</a></nav>
-      <div class="wins">
-        <div><svg aria-hidden="true"><use href="#i-chart"/></svg><span>MORE<br>LEADS</span></div>
-        <div><svg aria-hidden="true"><use href="#i-gear"/></svg><span>HIGHER<br>PROFITS</span></div>
-        <div><svg aria-hidden="true"><use href="#i-team"/></svg><span>SMOOTHER<br>OPERATIONS</span></div>
-        <div><svg aria-hidden="true"><use href="#i-house"/></svg><span>STRONGER<br>BRAND</span></div>
-      </div>
-    </div>
-  </header>
-
-  <main class="side">
-    <div class="logos">
-      <img src="/home/levi-logo.png" alt="Levi Homes LLC, luxury design and build" width="240" height="184">
-      <i aria-hidden="true"></i>
-      <img src="/home/eagle-logo.png" alt="Eagle I, marketing and growth" width="225" height="182">
-    </div>
-    <div class="pick">Where would you like to go?</div>
-    <div class="cards">
-      <section class="card crm" aria-labelledby="crm-h">
-        <img class="pic" src="/home/crm.jpg" alt="" width="310" height="142">
-        <div class="in">
-          <h2 id="crm-h">Eagle I CRM</h2>
-          <div class="kind">Project management and operations</div>
-          <ul>
-            <li>Leads and opportunities</li>
-            <li>Estimates and material takeoff</li>
-            <li>Project scheduling</li>
-            <li>Subcontractors and purchase orders</li>
-            <li>Invoices and payments</li>
-            <li>Client portal and documents</li>
-            <li>Daily logs and check-ins</li>
-            <li>Change orders and profit tracking</li>
-          </ul>
-          <a class="go" href="/crm">Go to the CRM</a>
-          <div class="new">New here? <a href="/crm/login#signup">Create an account</a></div>
-        </div>
-      </section>
-      <section class="card mk" aria-labelledby="mk-h">
-        <img class="pic" src="/home/marketing.jpg" alt="" width="309" height="142">
-        <div class="in">
-          <h2 id="mk-h">Eagle I Marketing</h2>
-          <div class="kind">Marketing and lead generation</div>
-          <ul>
-            <li>Track your competitors</li>
-            <li>Create and publish ads</li>
-            <li>Landing pages</li>
-            <li>Reviews and reputation</li>
-            <li>New leads in one place</li>
-            <li>Automatic follow-ups</li>
-            <li>Email campaigns</li>
-            <li>Analytics and a growth plan</li>
-          </ul>
-          <a class="go" href="/marketing">Go to Marketing</a>
-          <div class="new">New here? <a href="/login.html#signup">Create an account</a></div>
-        </div>
-      </section>
-    </div>
-    <p class="both">The CRM and Eagle I Marketing have separate logins.</p>
-  </main>
-</div>
-
-<div class="strip">
-  <div class="feats">
-    <section><svg aria-hidden="true"><use href="#i-team"/></svg><h3>LEADS</h3><p>Capture<br>Organize<br>Follow up<br>Convert</p></section>
-    <section><svg aria-hidden="true"><use href="#i-doc"/></svg><h3>ESTIMATING</h3><p>Material takeoff<br>Labor costs<br>Templates<br>Accurate bids</p></section>
-    <section><svg aria-hidden="true"><use href="#i-hat"/></svg><h3>PROJECTS</h3><p>Schedules<br>Daily logs<br>Photos<br>Client updates</p></section>
-    <section><svg aria-hidden="true"><use href="#i-clip"/></svg><h3>FINANCIALS</h3><p>Invoices<br>Payments<br>Change orders<br>Profit tracking</p></section>
-    <section><svg aria-hidden="true"><use href="#i-horn"/></svg><h3>MARKETING</h3><p>Ads<br>Landing pages<br>Reviews<br>Lead tracking</p></section>
-    <section><svg aria-hidden="true"><use href="#i-bars"/></svg><h3>REPORTS</h3><p>Job performance<br>Sales pipeline<br>Marketing results<br>Business growth</p></section>
+<main>
+  <h1>Welcome to Your <span>Command Center</span></h1>
+  <p class="lead">Choose what you would like to open</p>
+  <div class="cards">
+    <section class="card crm" aria-labelledby="crm-h">
+      <img class="logo" src="/home/lion.png" alt="" width="420" height="389">
+      <h2 class="name" id="crm-h">CRM</h2>
+      <div class="kind">Project management &amp; operations</div>
+      <hr>
+      <ul>
+        <li><svg aria-hidden="true"><use href="#i-clip"/></svg>Manage projects, tasks and schedules</li>
+        <li><svg aria-hidden="true"><use href="#i-people"/></svg>Track leads, clients and opportunities</li>
+        <li><svg aria-hidden="true"><use href="#i-cal"/></svg>Create estimates and material takeoff</li>
+        <li><svg aria-hidden="true"><use href="#i-doc"/></svg>Build contracts and documents</li>
+        <li><svg aria-hidden="true"><use href="#i-cart"/></svg>Order materials with purchase orders</li>
+        <li><svg aria-hidden="true"><use href="#i-bell"/></svg>Get reminders and follow-ups</li>
+        <li><svg aria-hidden="true"><use href="#i-bars"/></svg>Keep every project on track and on budget</li>
+      </ul>
+      <a class="go" href="/crm">Open CRM <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <div class="new">New here? <a href="/crm/login#signup">Create an account</a></div>
+    </section>
+    <section class="card mk" aria-labelledby="mk-h">
+      <img class="logo" src="/home/eagle-logo.png" alt="" width="225" height="182">
+      <h2 class="kind" id="mk-h"><span class="sr">Eagle I Marketing: </span>Marketing &amp; lead generation</h2>
+      <hr>
+      <ul>
+        <li><svg aria-hidden="true"><use href="#i-horn"/></svg>Track your competitors</li>
+        <li><svg aria-hidden="true"><use href="#i-target"/></svg>Create and publish ads</li>
+        <li><svg aria-hidden="true"><use href="#i-page"/></svg>Landing pages</li>
+        <li><svg aria-hidden="true"><use href="#i-star"/></svg>Reviews and reputation management</li>
+        <li><svg aria-hidden="true"><use href="#i-people"/></svg>New leads in one place</li>
+        <li><svg aria-hidden="true"><use href="#i-mail"/></svg>Email campaigns</li>
+        <li><svg aria-hidden="true"><use href="#i-bars"/></svg>Analytics and a growth plan</li>
+      </ul>
+      <a class="go" href="/marketing">Open Marketing <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <div class="new">New here? <a href="/login.html#signup">Create an account</a></div>
+    </section>
   </div>
-</div>
-<p class="motto2">TURNING CONSTRUCTION COMPANIES INTO INDUSTRY LEADERS</p>
+  <p class="note">The CRM and Eagle I Marketing have separate logins.</p>
+</main>
 <footer><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></footer>
 </body>
 </html>
