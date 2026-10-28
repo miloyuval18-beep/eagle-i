@@ -103,7 +103,7 @@
       S.cut = false; if (!S.voice) S.voice = voiceFor(o.lang());
       const parts = p.match(/[^.!?]+[.!?]*/g) || [p]; let i = 0;
       status('speaking', W().speaking);
-      const next = () => { if (!S.on || S.cut || i >= parts.length) return res(); const u = new SpeechSynthesisUtterance(parts[i++].trim()); u.lang = tag(o.lang()); if (S.voice) u.voice = S.voice; u.rate = 1; u.pitch = 1; u.onend = next; u.onerror = () => res(); speechSynthesis.speak(u); };
+      const next = () => { if (!S.on || S.cut || i >= parts.length) return res(); const u = new SpeechSynthesisUtterance(parts[i++].trim()); u.lang = tag(o.lang()); if (S.voice) u.voice = S.voice; u.rate = RATE; u.pitch = 1; u.onend = next; u.onerror = () => res(); speechSynthesis.speak(u); };
       next();
     });
     const listen = () => new Promise(res => {
@@ -156,7 +156,9 @@
   // The spoken walk-through after someone picks Talk: Eagle I explains talking in its own
   // voice, a sentence on screen at a time, lighting up what it's talking about.
   // steps: [{ say, el }] (el: a CSS selector or element, optional). Must start from a tap.
-  const TOUR_WORDS = { en: { title: 'How talking works', skip: 'Skip', done: 'Got it', again: '▶ How talking works' }, es: { title: 'Cómo funciona hablar', skip: 'Saltar', done: 'Entendido', again: '▶ Cómo funciona hablar' } };
+  // Speaking speed: a little slower than the device default, easier to follow.
+  const RATE = 0.9, TOUR_RATE = 0.85;
+  const TOUR_WORDS = { en: { title: 'How talking works', skip: 'Skip', done: 'Got it', next: 'Next →', again: '▶ How talking works' }, es: { title: 'Cómo funciona hablar', skip: 'Saltar', done: 'Entendido', next: 'Siguiente →', again: '▶ Cómo funciona hablar' } };
   function tour({ lang = 'en', steps, onDone }) {
     style();
     if (!('speechSynthesis' in window) || !steps || !steps.length) { if (onDone) onDone(); return; }
@@ -182,14 +184,14 @@
       const st = steps[i++];
       card.querySelector('.et-tour-n').textContent = `${i} / ${steps.length}`;
       card.querySelector('.et-tour-t').textContent = st.say;
-      card.querySelector('.et-tour-next').textContent = i >= steps.length ? W.done : '→';
+      card.querySelector('.et-tour-next').textContent = i >= steps.length ? W.done : W.next;
       light(st.el);
-      const u = new SpeechSynthesisUtterance(plain(st.say)); u.lang = tag(lang); if (voice) u.voice = voice; u.rate = 1; u.pitch = 1;
-      u.onend = () => setTimeout(next, 350); u.onerror = () => setTimeout(next, 1500);
-      try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { setTimeout(next, 2500); }
+      // Says the step, then waits for the Next button (it never moves on by itself).
+      const u = new SpeechSynthesisUtterance(plain(st.say)); u.lang = tag(lang); if (voice) u.voice = voice; u.rate = TOUR_RATE; u.pitch = 1;
+      try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
     };
     card.querySelector('.et-tour-skip').onclick = finish;
-    card.querySelector('.et-tour-next').onclick = () => { try { speechSynthesis.cancel(); } catch (e) {} if (i >= steps.length) finish(); };
+    card.querySelector('.et-tour-next').onclick = () => { try { speechSynthesis.cancel(); } catch (e) {} next(); };
     next();
     return { stop: finish };
   }

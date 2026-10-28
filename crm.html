@@ -1923,7 +1923,7 @@ function rpListen(){
   if(speechSynthesis.speaking){speechSynthesis.cancel();btn.textContent='▶ Listen';return;}
   const n=RP_SPEECH;if(!n)return;
   const parts=[n.headline+'.','What went well.',...(n.successes||[]),'What needs attention.',...(n.challenges||[]),...(n.team&&n.team.length?['The team.',...n.team.map(t=>t.name+': '+t.note)]:[]),...(n.focus&&n.focus.length?['This week, focus on.',...n.focus]:[])];
-  const u=new SpeechSynthesisUtterance(parts.join(' ').replace(/[“”]/g,''));u.rate=1.02;
+  const u=new SpeechSynthesisUtterance(parts.join(' ').replace(/[“”]/g,''));u.rate=0.9;
   const v=speechSynthesis.getVoices().find(x=>/en-US/.test(x.lang)&&/Samantha|Google US|Natural/.test(x.name))||speechSynthesis.getVoices().find(x=>/en-US/.test(x.lang));if(v)u.voice=v;
   u.onend=()=>{btn.textContent='▶ Listen';};btn.textContent='■ Stop';speechSynthesis.speak(u);
 }
@@ -4911,7 +4911,7 @@ function tkSpeak(text){
     // A sentence at a time: phones cut long readings short.
     const parts=plain.match(/[^.!?]+[.!?]*/g)||[plain];let i=0;
     tkStatus('speaking','Speaking… tap to cut in');
-    const next=()=>{if(!TALK.on||TALK.cut||i>=parts.length)return res();const u=new SpeechSynthesisUtterance(parts[i++].trim());u.lang=tkLang();if(TALK.voice)u.voice=TALK.voice;u.rate=1;u.pitch=1;
+    const next=()=>{if(!TALK.on||TALK.cut||i>=parts.length)return res();const u=new SpeechSynthesisUtterance(parts[i++].trim());u.lang=tkLang();if(TALK.voice)u.voice=TALK.voice;u.rate=0.9;u.pitch=1;
       u.onend=()=>next();u.onerror=()=>res();speechSynthesis.speak(u);};
     next();
   });
