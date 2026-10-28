@@ -30,6 +30,16 @@ h2{font-family:var(--brand);font-weight:500;font-size:18px;letter-spacing:.12em;
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
 .co{background:var(--card);border:1px solid var(--bdr);border-top:5px solid var(--gold);border-radius:14px;padding:22px 22px 24px;display:flex;flex-direction:column;box-shadow:0 2px 4px rgba(22,20,15,.04),0 10px 28px rgba(22,20,15,.08)}
 .co h3{font-size:26px;font-weight:800;line-height:1.2}
+.co .head{display:flex;align-items:center;gap:14px;margin-bottom:2px}
+.co .logo{width:64px;height:64px;border-radius:12px;object-fit:cover;flex:none;background:#111318}
+.later{margin-top:34px}
+.later .grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.co.soon{border-top-color:var(--bdr);box-shadow:none;padding:18px 18px 20px}
+.co.soon h3{font-size:21px}
+.co.soon .what{margin-bottom:6px}
+.soon-tag{display:inline-block;font-size:14.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--gold-ink);background:var(--soft);border:1px solid var(--bdr);border-radius:999px;padding:2px 10px;margin-bottom:10px;align-self:flex-start}
+.co.soon .go{background:transparent;color:var(--ink);border:2px solid var(--ink);padding:12px;font-size:17.5px}
+.co.soon .go:hover,.co.soon .go:focus-visible{background:var(--soft)}
 .co .what{font-size:17.5px;font-weight:700;color:var(--ink3);margin:4px 0 12px}
 .co .about{color:var(--ink2);margin-bottom:12px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
@@ -58,6 +68,7 @@ a:focus-visible{outline:3px solid #f0b429;outline-offset:2px}
 <main>
   <h2>Our companies</h2>
   <div class="grid" id="cos"><div class="empty">Loading…</div></div>
+  <section class="later" id="later" hidden aria-labelledby="later-h"><h2 id="later-h">Upcoming</h2><div class="grid" id="soon"></div></section>
   <div class="hq">
     <div><b>Everything, all companies</b><div class="sm">The whole group’s CRM: every project, the team and the settings.</div></div>
     <a href="/crm/app">Open the group CRM</a>
@@ -69,10 +80,22 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '
 const site = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
 fetch('/api/crm-portfolio').then(r => r.json()).then(d => {
   const el = document.getElementById('cos');
-  const cos = (d && d.companies) || [];
-  if (!cos.length) { el.innerHTML = '<div class="empty">No companies are set up yet. Open the group CRM and add them under Company → Our companies.</div>'; return; }
+  const all = (d && d.companies) || [];
+  // Open now under Our companies; the ones still to come below, under Upcoming.
+  const cos = all.filter(c => !c.upcoming), soon = all.filter(c => c.upcoming);
+  if (soon.length) {
+    document.getElementById('later').hidden = false;
+    document.getElementById('soon').innerHTML = soon.map(c => `<section class="co soon" aria-labelledby="c-${esc(c.slug)}">
+      <span class="soon-tag">Coming soon</span>
+      <div class="head">${c.logo ? `<img class="logo" src="${esc(c.logo)}" alt="">` : ''}<h3 id="c-${esc(c.slug)}">${esc(c.name)}</h3></div>
+      ${c.what ? `<div class="what">${esc(c.what)}</div>` : ''}
+      <div class="contact"></div>
+      <a class="go" href="/crm/c/${encodeURIComponent(c.slug)}">Open ${esc(c.name)}</a>
+    </section>`).join('');
+  }
+  if (!cos.length) { el.innerHTML = '<div class="empty">' + (soon.length ? 'Our companies show here once they’re open.' : 'No companies are set up yet. Open the group CRM and add them under Company → Our companies.') + '</div>'; return; }
   el.innerHTML = cos.map(c => `<section class="co" aria-labelledby="c-${esc(c.slug)}">
-      <h3 id="c-${esc(c.slug)}">${esc(c.name)}</h3>
+      <div class="head">${c.logo ? `<img class="logo" src="${esc(c.logo)}" alt="${esc(c.name)} logo">` : ''}<h3 id="c-${esc(c.slug)}">${esc(c.name)}</h3></div>
       ${c.what ? `<div class="what">${esc(c.what)}</div>` : ''}
       ${c.about ? `<div class="about">${esc(c.about)}</div>` : ''}
       ${c.services && c.services.length ? `<div class="chips">${c.services.map(s => `<span>${esc(s)}</span>`).join('')}</div>` : ''}

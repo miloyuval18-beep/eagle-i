@@ -2579,6 +2579,12 @@ describe('Levi Construction Group: one team, its companies each with their own p
     const second = (await (await o.post('/api/crm/subsidiaries', { name: 'Levi Homes' })).json()).company;
     assert.equal(second.slug, 'levi-homes-2', 'each gets its own address');
     assert.equal((await o.post('/api/crm/subsidiaries', { name: '' })).status, 400);
+    // Upcoming: not open yet, listed under Upcoming on the portfolio; saving other details keeps it.
+    const soon = (await (await o.post('/api/crm/subsidiaries', { name: 'Levish Properties', upcoming: true })).json()).company;
+    assert.equal(soon.upcoming, true); assert.equal(lh.upcoming, false); assert.equal(lh.logo, null);
+    assert.equal((await (await o.patch('/api/crm/subsidiaries/' + soon.id, { what: 'Rentals' })).json()).company.upcoming, true);
+    assert.equal((await (await o.patch('/api/crm/subsidiaries/' + soon.id, { upcoming: false })).json()).company.upcoming, false);
+    await o.delete('/api/crm/subsidiaries/' + soon.id);
     // The public portfolio lists them (no ids); each has a way in.
     const pf = await (await makeClient().get('/api/crm-portfolio')).json();
     assert.equal(pf.group.name, 'Group Co'); assert.ok(pf.companies.some(x => x.slug === 'levi-homes' && x.phone === '713-555-0100' && !x.id));

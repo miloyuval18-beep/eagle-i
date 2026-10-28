@@ -154,6 +154,7 @@ select{width:auto;cursor:pointer}
 .sb-bar label{font-weight:800;font-size:17px;margin:0}
 .sb-bar select{flex:1;min-width:180px;font-size:17px;padding:10px;border-radius:8px}
 .cp-head{background:var(--bg2,#fff);border:1px solid var(--bdr);border-top:5px solid #a8925f;border-radius:14px;padding:18px;margin-bottom:6px}
+.cp-check{display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer}.cp-check input{width:24px;height:24px;flex:none}
 .pl-tag.gC{color:var(--ink2);font-weight:800}
 .fit-r{font-size:16px;display:flex;gap:8px;padding:2px 0}.fit-r b{min-width:34px;text-align:right}
 .fit-brief{white-space:pre-wrap;font-size:16.5px;line-height:1.5;background:var(--bg2,rgba(0,0,0,.03));border:1px solid var(--bdr2);border-radius:10px;padding:10px 12px;margin-top:6px}
@@ -3272,13 +3273,15 @@ function sbPick(id,then){CR.sub=id;try{localStorage.setItem('cr-sub',id);}catch(
 
 // A company's profile (#co/levi-homes), or the list of companies (#co).
 function cpOpen(slug){CR.coSlug=slug||'';crView('co');}
+// A company's logo (or 🏢 without one).
+function cpMark(c,size){size=size||28;return c.logo?`<img src="${uxEsc(c.logo)}" alt="" style="width:${size}px;height:${size}px;border-radius:7px;object-fit:cover;vertical-align:middle;background:#111318">`:'🏢';}
 async function cpLoad(){
   const el=document.getElementById('co-box');if(!el)return;
   await sbLoad();
   const edit=crCan('settings');
   if(!CR.coSlug){
     el.innerHTML=`<div class="sh"><div><div class="st">Our companies</div><div class="ss">Every company in the group. The team, roles and permissions are the same for all of them; each one has its own projects and files.</div></div>${edit?'<button class="btn btn-blue" onclick="cpEdit(\'\')">＋ Add a company</button>':''}</div>
-      <div class="pl-list">${sbList().map(c=>`<button class="pl-card" onclick="cpOpen('${c.slug}')"><div class="pl-card-top"><div class="pl-card-title">🏢 ${uxEsc(c.name)}</div></div>${c.what?`<div class="pl-card-sub">${uxEsc(c.what)}</div>`:''}
+      <div class="pl-list">${sbList().map(c=>`<button class="pl-card" onclick="cpOpen('${c.slug}')"><div class="pl-card-top"><div class="pl-card-title">${cpMark(c)} ${uxEsc(c.name)}</div>${c.upcoming?'<span class="pl-tag">Upcoming</span>':''}</div>${c.what?`<div class="pl-card-sub">${uxEsc(c.what)}</div>`:''}
         <div class="pl-tags"><span class="pl-tag">${c.selling} being sold</span><span class="pl-tag">${c.jobs} job${c.jobs===1?'':'s'} going</span><span class="pl-tag">${c.done} finished</span></div></button>`).join('')||'<div class="pl-empty">No companies yet.'+(edit?' Tap “Add a company”.':' The owner or an admin can add them.')+'</div>'}</div>`;
     return;
   }
@@ -3288,7 +3291,7 @@ async function cpLoad(){
     const row=(d,job)=>`<button class="pl-card" onclick="${job?`jbOpen('${d.id}')`:`plOpenDeal('${d.id}')`}"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(d.title)}</div><div class="pl-card-val">${uxEsc(plMoney(d.value))}</div></div><div class="pl-card-sub">${uxEsc(d.contact_name||'')}${d.address?' · 📍 '+uxEsc(d.address):''}</div>${job?'':`<div class="pl-tags"><span class="pl-tag st-${uxEsc(d.stage)}">${uxEsc(plStage(d.stage).label)}</span></div>`}</button>`;
     const sec=(t,rows,job,empty)=>`<div class="pl-h">${t} (${rows.length})</div><div class="pl-list">${rows.map(d=>row(d,job)).join('')||`<div class="sm">${empty}</div>`}</div>`;
     el.innerHTML=`<div class="vd-mbtns" style="margin:0 0 6px"><button class="btn-xs" onclick="cpOpen('')">← All companies</button></div>
-      <div class="cp-head"><div class="st">🏢 ${uxEsc(c.name)}</div>${c.what?`<div class="ss">${uxEsc(c.what)}</div>`:''}
+      <div class="cp-head"><div class="st">${cpMark(c,40)} ${uxEsc(c.name)}${c.upcoming?' <span class="pl-tag" style="vertical-align:middle">Upcoming</span>':''}</div>${c.what?`<div class="ss">${uxEsc(c.what)}</div>`:''}
         ${c.about?`<p class="sm" style="color:var(--ink)">${uxEsc(c.about)}</p>`:''}
         ${(c.services||[]).length?`<div class="pl-tags" style="margin-top:8px">${c.services.map(x=>`<span class="pl-tag">${uxEsc(x)}</span>`).join('')}</div>`:''}
         <div class="pl-item-d" style="margin-top:8px">${[c.address&&uxEsc(c.address),c.phone&&`<a href="tel:${uxEsc(String(c.phone).replace(/[^\d+]/g,''))}">${uxEsc(c.phone)}</a>`,c.email&&`<a href="mailto:${uxEsc(c.email)}">${uxEsc(c.email)}</a>`,c.website&&site(c.website)&&`<a href="${uxEsc(c.website)}" target="_blank" rel="noopener">${uxEsc(site(c.website))}</a>`].filter(Boolean).join(' · ')}</div>
@@ -3309,11 +3312,12 @@ function cpEdit(id){
     ${f('name','Name',{full:true})}${f('what','What it does',{full:true,ph:'e.g. Luxury home remodeling'})}
     ${f('services','Services (with commas between)',{full:true,ph:'Kitchens, Bathrooms, Additions'})}${f('about','About (optional)',{full:true,area:true})}
     ${f('address','Address',{full:true})}${f('phone','Phone',{type:'tel'})}${f('email','Email',{type:'email'})}${f('website','Website',{full:true,ph:'e.g. levihomes.com'})}
+    <div class="full"><label class="cp-check"><input type="checkbox" id="cp-upcoming"${c.upcoming?' checked':''}> Upcoming: not open yet (listed under Upcoming on the group page)</label></div>
   </div><div class="vd-mbtns"><button class="btn btn-blue" onclick="cpSave('${id||''}',this)">${id?'Save':'Add company'}</button>${id?`<button class="btn-xs" style="color:var(--red);margin-left:auto" onclick="cpArchive('${id}')">Take off the list</button>`:''}</div><div class="sm" id="cp-msg"></div>`);
 }
 async function cpSave(id,btn){
   const v=k=>document.getElementById('cp-'+k).value;btn.disabled=true;
-  const body={name:v('name'),what:v('what'),services:v('services'),about:v('about'),address:v('address'),phone:v('phone'),email:v('email'),website:v('website')};
+  const body={name:v('name'),what:v('what'),services:v('services'),about:v('about'),address:v('address'),phone:v('phone'),email:v('email'),website:v('website'),upcoming:document.getElementById('cp-upcoming').checked};
   try{const r=await plApi('/api/crm/subsidiaries'+(id?'/'+id:''),{method:id?'PATCH':'POST',body});uxClose();showNotif('Saved',r.company.name+(id?' is updated.':' is in the group now.'));await sbLoad();CR.coSlug=r.company.slug;cpLoad();}
   catch(e){document.getElementById('cp-msg').textContent=e.message;btn.disabled=false;}
 }
