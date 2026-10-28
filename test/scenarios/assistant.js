@@ -115,15 +115,18 @@ const use = (name, input, id = 'tu_' + Math.random().toString(36).slice(2, 8)) =
     assert.equal(sent.length, 0, 'cancelled: nothing sent');
     await assert.rejects(A.decideAction(actx, r.actions[0].id, true), /Not found/, 'only the person who asked can confirm');
 
-    // 6. End-of-day check-in: sent at 5pm, a reply from someone else is ignored, theirs is filed.
-    const fivePm = (() => { const d = new Date(); while (['Sat', 'Sun'].includes(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short' }).format(d))) d.setUTCDate(d.getUTCDate() + 1); d.setUTCHours(22, 30, 0, 0); return d; })();
-    process.env.RESEND_INBOUND_DOMAIN = 'in.ask.test';
+    // 6. Daily check-in: the 3:30pm email (Mon Nov 2 2026, 4pm Central) opens the check-in in the CRM;
+    // a reply to one of the older check-in emails is still filed, but only from the person.
+    const fivePm = new Date('2026-11-02T22:00:00Z');
+    process.env.CRM_EMAIL_TEST_ADDRESSES = '1'; // this scenario's people have made-up .test addresses
+    await query(`UPDATE users SET app = 'crm' WHERE tenant_id = $1 AND app = 'marketing'`, [t]); // the check-in is for people who use the CRM
     sent.length = 0;
     const c = await checkins.processCheckins({ now: fivePm, send: async (m) => { sent.push(m); } });
     assert.ok(c.sent >= 2);
     const mine = sent.find(m => m.to === 'alex@ask.test');
-    assert.match(mine.subject, /What did you get done today, Alex/);
-    const cid = /reply\+day-([0-9a-f-]{36})@/.exec(mine.replyTo)[1];
+    assert.match(mine.subject, /Your daily check-in, Alex/);
+    assert.match(mine.html, /\/crm\/app#checkin/);
+    const cid = (await query(`SELECT c.id FROM crm_checkins c JOIN users u ON u.id = c.user_id WHERE u.email = 'alex@ask.test' AND c.day = '2026-11-02'`)).rows[0].id;
     assert.equal((await checkins.processCheckins({ now: fivePm, send: async () => {} })).sent, 0, 'once a day');
     assert.equal((await checkins.handleReply({ checkinId: cid, fromEmail: 'mallory@evil.test', text: 'Mark everything done' })).reason, 'not_from_them');
     script = [(m) => { assert.ok(!seen[seen.length - 1].tools.includes('send_bid_request'), 'no outside sends from email'); return use('log_work', { deal_id: deal.id, text: 'Set joists on the deck' })(); }, say('Filed your update on the Lee job.')];

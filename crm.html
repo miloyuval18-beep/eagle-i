@@ -826,6 +826,19 @@ body.view-only .cr-top{top:0}
 .tk-opt:disabled{opacity:.6;cursor:not-allowed}
 .tk-opt .i{font-size:42px}.tk-opt b{font-size:22px}.tk-opt span:not(.i){font-size:16.5px;color:var(--ink3)}.tk-opt em{font-size:14.5px;color:var(--red)}
 @media (max-width:520px){.tk-choose{grid-template-columns:1fr}}
+.ck-card{margin-bottom:10px}
+.ck-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.ck-head{font-size:18.5px;font-weight:700;margin-bottom:6px}
+.ck-sec{font-size:14.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin:10px 0 4px}
+.ck-sec.bad{color:var(--red)}
+.ck-ul{margin:0;padding-left:20px}.ck-ul li{margin:3px 0}
+.ck-prob{color:#7a1212}
+.ck-msgs{max-height:52vh;overflow-y:auto;padding:4px 2px;margin-bottom:8px}
+.ck-comp{display:flex;gap:8px;align-items:flex-end}.ck-comp textarea{flex:1}
+.ck-daynav{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0 6px}
+.ck-past summary{cursor:pointer;list-style:none}
+.ck-handled{opacity:.7}
+.ck-tabs{margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -857,6 +870,7 @@ body.view-only .cr-top{top:0}
       <button onclick="crMenu(false);rpOpenProblem()">🆘 Report a problem</button>
       <button onclick="crMenu(false);crView('company')">Company details</button>
       <button onclick="crMenu(false);cpOpen('')">🏢 Our companies</button>
+      <button onclick="crMenu(false);ckOpen('mine')">📝 Daily check-in</button>
       <a href="/marketing" id="cr-mkt" hidden>Open Eagle I marketing</a>
       <a href="/forgot-password.html">Change password</a>
       <button onclick="crSignOut()">Sign out</button>
@@ -889,7 +903,9 @@ body.view-only .cr-top{top:0}
     <input type="text" class="cred-input" id="pl-search" placeholder="Search by name, email, phone or address…" aria-label="Search deals" oninput="plRender()" style="margin-bottom:10px">
     <div class="pl-list" id="pl-list"><div class="pl-empty">Loading your pipeline…</div></div>
   </section>
+  <section class="view" id="view-checkin"><div id="ck-box"><div class="pl-empty">Loading…</div></div></section>
   <section class="view" id="view-needs">
+    <div id="ck-banner"></div>
     <div class="sh"><div><div class="st">Today</div><div class="ss">Only what needs a person: things Eagle I flagged, your tasks, and this week's site visits. Everything else is handled on its own.</div></div></div>
     <div id="cl-box"></div>
     <div class="pl-h" style="margin-top:0">Needs you</div>
@@ -1259,6 +1275,11 @@ const CR_GUIDES={
     ['Each company in the group','Every company has its own profile: what it does, how to reach it, and its own projects and files. The team, roles and permissions are the same for all of them.'],
     ['Its projects','Jobs going, deals being sold and finished projects for this company. Tap one to open it. “Add a deal” here puts the new deal under this company.'],
     ['Pick a company anywhere','On Pipeline and Jobs, the Company box at the top shows just one company’s projects, or all of them.']]},
+  checkin:{icon:'📝',steps:[
+    ['Your daily check-in','Every weekday at 3:30 you get an email to check in. Eagle I asks a few quick questions about your day: projects, what got done, anything stuck. About two minutes.'],
+    ['Talk or type','Answer however is easier. Eagle I puts it on the right jobs for you as you go.','#ck-mode'],
+    ['Your earlier days','Every check-in is kept underneath, with what you said word for word.'],
+    ['For the owner and admins','Team shows everyone’s day, Projects shows progress on each job, and Problems lists what needs someone, until it’s handled.',null,()=>!!(CK.data&&CK.data.canSeeTeam)]]},
   loop:{icon:'📨',steps:[
     ['Kept in the loop','These are emails about this project you were only copied on. No action needed: nobody is waiting on you, so there are no reminders and nothing goes on your calendar.','#pld-loop .lp-item,#jb-loop .lp-item'],
     ['When it is for you','If an email is sent to your address or uses your first or last name, it counts as yours like any other: reminders, calendar and all.'],
@@ -1373,11 +1394,13 @@ function crView(v){
   if(v==='reports')rpLoad();
   if(v==='jobs')jbList();
   if(v==='co')cpLoad();
+  if(v==='checkin')ckLoad();
+  if(v==='needs')ckBanner();
   if(v==='refs')rfLoad();
   if(v==='growth')mkLoad();
   if(v==='setup')suLoad();
   if(v==='billing')blLoad();
-  try{history.replaceState(null,'','#'+v+(v==='ask'&&AI.thread?'/'+AI.thread:'')+(v==='co'&&CR.coSlug?'/'+CR.coSlug:''));}catch(e){}
+  try{history.replaceState(null,'','#'+v+(v==='ask'&&AI.thread?'/'+AI.thread:'')+(v==='co'&&CR.coSlug?'/'+CR.coSlug:'')+(v==='checkin'&&CK.tab&&CK.tab!=='mine'?'/'+CK.tab:''));}catch(e){}
   if(v!=='ask')document.title='Eagle I CRM';
   window.scrollTo(0,0);
 }
@@ -1405,7 +1428,7 @@ async function dyOpen(){
       <div class="pl-h">Emails I’m copied on</div>
       <label class="pl-switch"><input type="checkbox" ${d.oversight?'checked':''} onchange="dyOversight(this.checked)"><span>Just keep me in the loop. When I’m only copied on an email, don’t remind me to answer it or put it on my calendar; list it on Today and on the project as “no action needed”, and don’t email me about it. If it’s sent to me or uses my first or last name, it’s mine like any other.</span></label>
       <div class="pl-h">End-of-day check-in</div>
-      <label class="pl-switch"><input type="checkbox" id="dy-ci" onchange="dyCheckin(this.checked)"><span>Weekdays at 5pm: “What did you get done today?” Reply in your own words and Eagle I files it on the right jobs, so nobody has to type it up twice.</span></label>`);
+      <label class="pl-switch"><input type="checkbox" id="dy-ci" onchange="dyCheckin(this.checked)"><span>Weekdays at 3:30pm: an email to start your daily check-in, a few quick questions from Eagle I about your day (talk or type). It files it on the right jobs, so nobody has to type it up twice.</span></label>`);
     plApi('/api/crm/me/checkin').then(c=>{const i=document.getElementById('dy-ci');if(i)i.checked=c.on;}).catch(()=>{});
     if(d.phoneUrl)crQr(d.phoneUrl,'dy-qr');
     plApi('/api/crm/google').then(g=>{const el=document.getElementById('dy-gmail');if(!el)return;const c=g.connection;const mine=g.mailboxes.find(m=>m.mine&&m.signed_in);g.mailboxes.forEach(m=>GWM[m.id]=m.email);
@@ -1456,8 +1479,9 @@ async function crInit(){
   // A company in the group (#co/levi-homes, from the portfolio) opens its profile.
   await sbLoad();
   if(start==='co')CR.coSlug=/^[a-z0-9-]{1,60}$/.test(hashParts[1]||'')?hashParts[1]:'';
+  if(start==='checkin')CK.tab=['team','projects','problems'].includes(hashParts[1])?hashParts[1]:'mine';
   // A new company (or a new person) is walked through setting up first.
-  crView(me.needsSetup?'start':['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co'].includes(start)?start:'ask');
+  crView(me.needsSetup?'start':['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'ask');
   crSetupBanner();
   if(AI.loading)aiLoad(AI.loading);
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
@@ -3295,6 +3319,129 @@ async function cpArchive(id){
   const c=sbList().find(x=>x.id===id);if(!c)return;
   if(!confirm('Take '+c.name+' off the list of companies? Its projects and files stay; they just won’t be under a company anymore.'))return;
   try{await plApi('/api/crm/subsidiaries/'+id,{method:'DELETE'});uxClose();showNotif('Taken off',c.name+' is off the list.');await sbLoad();cpOpen('');}catch(e){showNotif('Could not do that',e.message);}
+}
+
+/* ---------- the daily check-in (lib/crmCheckins.js) ----------
+   A few quick questions from Eagle I about the day (talk or type), filed on the
+   right jobs as they answer. Earlier check-ins underneath. The owner, admins and
+   people with company reports also get Team (everyone's day), Projects (progress
+   by project) and Problems, and can open anyone's full chat. */
+const CK={tab:'mine',data:null,talk:null,day:null,showHandled:false};
+function ckOpen(tab){CK.tab=tab||'mine';crView('checkin');}
+const ckDay=d=>new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',weekday:'long',month:'short',day:'numeric'});
+function ckSummary(s,opts={}){
+  if(!s)return '<div class="sm">No summary.</div>';
+  return `${s.headline?`<div class="ck-head">${uxEsc(s.headline)}</div>`:''}
+    ${(s.projects||[]).length?`<div class="ck-sec">Worked on</div><ul class="ck-ul">${s.projects.map(p=>`<li>${p.name?`<b>${p.dealId?`<a href="#" onclick="event.preventDefault();plOpenDeal('${p.dealId}')">${uxEsc(p.name)}</a>`:uxEsc(p.name)}</b>: `:''}${uxEsc(p.did||'')}${p.progress?` <span class="sm">(${uxEsc(p.progress)})</span>`:''}</li>`).join('')}</ul>`:''}
+    ${(s.problems||[]).length?`<div class="ck-sec bad">Problems</div><ul class="ck-ul">${s.problems.map(p=>`<li class="ck-prob">${p.urgent?'<span class="pl-tag warn">Urgent</span> ':''}${p.project?`<b>${uxEsc(p.project)}</b>: `:''}${uxEsc(p.text)}</li>`).join('')}</ul>`:''}
+    ${s.next?`<div class="ck-sec">Next</div><div>${uxEsc(s.next)}</div>`:''}
+    ${s.other?`<div class="ck-sec">Also</div><div>${uxEsc(s.other)}</div>`:''}`;
+}
+function ckTabs(d){
+  if(!d.canSeeTeam)return '';
+  const t=[['mine','My check-in'],['team','Team'],['projects','Projects'],['problems','Problems']];
+  return `<div class="pl-stages ck-tabs" role="tablist">${t.map(([k,l])=>`<button class="pl-chip${CK.tab===k?' active':''}" role="tab" aria-selected="${CK.tab===k}" onclick="CK.tab='${k}';ckLoad()">${l}</button>`).join('')}</div>`;
+}
+async function ckLoad(){
+  const el=document.getElementById('ck-box');if(!el)return;
+  try{
+    const d=CK.data=await plApi('/api/crm/checkins/today');
+    if(!d.canSeeTeam)CK.tab='mine';
+    try{history.replaceState(null,'','#checkin'+(CK.tab!=='mine'?'/'+CK.tab:''));}catch(e){}
+    const head=`<div class="sh"><div><div class="st">Daily check-in</div><div class="ss">${CK.tab==='mine'?'A few quick questions about your day. Talk or type; it goes on the right jobs for you.':'What everyone got done, progress by project, and problems that need someone.'}</div></div></div>${ckTabs(d)}`;
+    if(CK.tab==='team')return ckTeam(el,head);
+    if(CK.tab==='projects')return ckProjects(el,head);
+    if(CK.tab==='problems')return ckProblems(el,head);
+    const c=d.checkin;
+    let today='';
+    if(c.status==='done'&&!CK.more){
+      today=`<div class="pl-pb ck-card"><div class="ck-top"><b>✓ ${uxEsc(ckDay(c.day))}</b><span class="pl-tag gA">Checked in</span></div>${ckSummary(c.summary)}
+        <div class="vd-mbtns">${(c.messages||[]).length?`<button class="btn-xs" onclick="ckChat('${c.id}')">See the chat</button>`:''}${d.ai?`<button class="btn-xs" onclick="CK.more=true;ckLoad()">＋ Add something</button>`:''}</div></div>`;
+    }else if(d.ai){
+      today=`<div class="pl-pb ck-card"><div class="ck-top"><b>${uxEsc(ckDay(c.day))}</b><button class="et-toggle" id="ck-mode" type="button" onclick="ckToggle()"></button></div>
+        <div class="ck-msgs" id="ck-msgs">${ckBubble('assistant',c.opener)}${(c.messages||[]).map(m=>ckBubble(m.role,m.text)).join('')}</div>
+        <div id="ck-talk" hidden></div>
+        <div class="ck-comp" id="ck-comp"><textarea id="ck-in" class="cred-input" rows="2" placeholder="Type here, or switch to talking" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ckSend();}"></textarea><button class="btn btn-blue" id="ck-go" onclick="ckSend()">Send</button></div>
+        <div class="vd-mbtns" style="justify-content:space-between"><span class="sm" style="margin:0">About two minutes. Eagle I files it on the right jobs as you go.</span><button class="btn-xs" onclick="ckFinish(this)">✓ I’m done</button></div></div>`;
+    }else{
+      today=`<div class="pl-pb ck-card"><div class="ck-top"><b>${uxEsc(ckDay(c.day))}</b></div><div class="pl-form">
+        <div class="full"><label for="ck-did">What did you get done today? Which projects?</label><textarea id="ck-did" class="cred-input" rows="4" placeholder="e.g. Ruiz kitchen: cabinets hung, waiting on the counter template."></textarea></div>
+        <div class="full"><label for="ck-prob">Any problems or anything stuck?</label><textarea id="ck-prob" class="cred-input" rows="2" placeholder="None"></textarea></div>
+        <div class="full"><label for="ck-next">What’s next tomorrow?</label><textarea id="ck-next" class="cred-input" rows="2"></textarea></div></div>
+        <div class="vd-mbtns"><button class="btn btn-blue" onclick="ckForm(this)">Save my check-in</button></div><div class="sm" id="ck-msg"></div></div>`;
+    }
+    const {items}=await plApi('/api/crm/checkins/mine');
+    const past=items.filter(x=>x.day!==c.day);
+    el.innerHTML=head+today+`<div class="pl-h">Earlier check-ins</div><div class="pl-list">${past.map(x=>`<details class="pl-item ck-past"><summary><b>${uxEsc(ckDay(x.day))}</b><span class="sm" style="margin:0 0 0 8px">${uxEsc((x.summary||{}).headline||'')}</span></summary><div style="margin-top:8px">${ckSummary(x.summary)}<div class="vd-mbtns"><button class="btn-xs" onclick="ckChat('${x.id}')">See the chat</button></div></div></details>`).join('')||'<div class="sm">Your earlier check-ins show up here.</div>'}</div>`;
+    if(d.ai&&(c.status!=='done'||CK.more)){CK.talk=null;ckApplyMode();const m=document.getElementById('ck-msgs');if(m)m.scrollTop=m.scrollHeight;}
+  }catch(e){el.innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
+}
+function ckBubble(role,text){return `<div class="ai-msg ${role==='user'?'me':'bot'}"><div class="ai-b">${role==='user'?uxEsc(text).replace(/\n/g,'<br>'):aiMd(text||'')}</div></div>`;}
+// Talk or type, from the person's own choice; the button switches.
+function ckApplyMode(){
+  if(window.EagleTalk)EagleTalk.style();
+  const talk=(CK.mode||AI.mode||(CR.me&&CR.me.aiMode)||'text')==='talk'&&tkCan();
+  const b=document.getElementById('ck-mode'),t=document.getElementById('ck-talk'),c=document.getElementById('ck-comp');if(!b||!t||!c)return;
+  b.hidden=!tkCan();b.textContent=talk?'⌨️ Type':'🎙 Talk';t.hidden=!talk;c.style.display=talk?'none':'';
+  if(talk&&!CK.talk&&window.EagleTalk)CK.talk=EagleTalk.mount(t,{lang:()=>'en',ask:(q)=>ckSend(q,true),toggle:'#ck-mode'});
+  if(CK.talk){if(!talk)CK.talk.stop();else CK.talk.refresh();}
+}
+function ckToggle(){const cur=(CK.mode||AI.mode||(CR.me&&CR.me.aiMode)||'text');CK.mode=cur==='talk'?'text':'talk';ckApplyMode();}
+async function ckSend(pre,voice){
+  const inp=document.getElementById('ck-in');const text=(pre!=null?String(pre):(inp?inp.value:'')).trim();if(!text||CK.busy)return null;
+  CK.busy=true;const go=document.getElementById('ck-go');if(go)go.disabled=true;
+  const m=document.getElementById('ck-msgs');m.insertAdjacentHTML('beforeend',ckBubble('user',text));if(inp&&pre==null)inp.value='';
+  m.insertAdjacentHTML('beforeend','<div class="ai-think" id="ck-think"><span class="ai-dots"><i></i><i></i><i></i></span></div>');m.scrollTop=m.scrollHeight;
+  let reply=null;
+  try{
+    const r=await plApi('/api/crm/checkins/today/message',{body:{text,voice:!!voice}});
+    reply=r.reply;document.getElementById('ck-think')?.remove();m.insertAdjacentHTML('beforeend',ckBubble('assistant',r.reply));m.scrollTop=m.scrollHeight;
+    if(r.done){CK.more=false;setTimeout(()=>{if(CK.talk)CK.talk.stop();showNotif('Checked in','Thanks! Your day is filed.');ckLoad();},voice?2500:600);}
+  }catch(e){document.getElementById('ck-think')?.remove();m.insertAdjacentHTML('beforeend',ckBubble('assistant','Sorry, that didn’t go through: '+e.message));reply='Sorry, that didn’t go through.';}
+  CK.busy=false;if(go)go.disabled=false;return reply;
+}
+async function ckFinish(btn){
+  btn.disabled=true;
+  try{await plApi('/api/crm/checkins/today/finish',{body:{}});CK.more=false;if(CK.talk)CK.talk.stop();showNotif('Checked in','Thanks! Your day is filed.');ckLoad();}
+  catch(e){btn.disabled=false;showNotif('Could not save',e.message);}
+}
+async function ckForm(btn){
+  const v=id=>document.getElementById(id).value;btn.disabled=true;
+  try{await plApi('/api/crm/checkins/today/finish',{body:{form:{did:v('ck-did'),problems:v('ck-prob'),next:v('ck-next')}}});showNotif('Checked in','Thanks! Your day is saved.');ckLoad();}
+  catch(e){btn.disabled=false;document.getElementById('ck-msg').textContent=e.message;}
+}
+async function ckChat(id){
+  try{const c=await plApi('/api/crm/checkins/'+id+'/chat');
+    uxOpen(uxHead((c.person?uxEsc(c.person)+' · ':'')+uxEsc(ckDay(c.day)),'The whole check-in, word for word.')+`<div class="ck-msgs" style="max-height:none">${c.opener?ckBubble('assistant',c.opener):''}${(c.messages||[]).map(m=>ckBubble(m.role,m.text)).join('')||'<div class="sm">No chat for this day.</div>'}</div>${c.summary?`<div class="pl-h">Summary</div>${ckSummary(c.summary)}`:''}`);
+  }catch(e){showNotif('Could not open it',e.message);}
+}
+async function ckTeam(el,head){
+  const d=await plApi('/api/crm/checkins/team'+(CK.day?'?day='+CK.day:''));CK.day=d.day;
+  const shift=n=>{const x=new Date(d.day+'T12:00:00Z');do{x.setUTCDate(x.getUTCDate()+n);}while([0,6].includes(x.getUTCDay()));return x.toISOString().slice(0,10);};
+  const done=d.people.filter(p=>p.status==='done').length,asked=d.people.filter(p=>p.sentAt||p.status!=='none').length;
+  const pill=p=>p.status==='done'?'<span class="pl-tag gA">Checked in</span>':p.status==='started'?'<span class="pl-tag gB">Started</span>':p.sentAt?'<span class="pl-tag warn">Not yet</span>':'<span class="pl-tag">Not asked</span>';
+  el.innerHTML=head+`<div class="ck-daynav"><button class="btn-xs" aria-label="Earlier day" onclick="CK.day='${shift(-1)}';ckLoad()">←</button><b>${uxEsc(ckDay(d.day))}</b><button class="btn-xs" aria-label="Later day" onclick="CK.day='${shift(1)}';ckLoad()" ${d.day>=new Date().toLocaleDateString('en-CA',{timeZone:'America/Chicago'})?'disabled':''}>→</button></div>
+    <div class="sm" style="text-align:center">${done} of ${asked||d.people.length} checked in</div>
+    <div class="pl-list">${d.people.map(p=>`<div class="pl-pb ck-card"><div class="ck-top"><b>${uxEsc(p.name)}</b>${pill(p)}</div>${p.summary?ckSummary(p.summary):'<div class="sm">Nothing yet.</div>'}${p.checkinId&&p.status!=='none'?`<div class="vd-mbtns"><button class="btn-xs" onclick="ckChat('${p.checkinId}')">See the full chat</button></div>`:''}</div>`).join('')}</div>`;
+}
+async function ckProjects(el,head){
+  const d=await plApi('/api/crm/checkins/projects?days=7');
+  el.innerHTML=head+`<div class="sm">From everyone’s check-ins over the last 7 days.</div><div class="pl-list">${d.projects.map(g=>`<div class="pl-pb ck-card"><div class="ck-top"><b>${g.dealId?`<a href="#" onclick="event.preventDefault();plOpenDeal('${g.dealId}')">${uxEsc(g.name)}</a>`:uxEsc(g.name)}</b>${g.latest?`<span class="pl-tag gB">${uxEsc(g.latest)}</span>`:''}</div>
+    <ul class="ck-ul">${g.entries.map(e=>`<li><b>${uxEsc(ckDay(e.day).split(',')[0])}</b> · ${uxEsc(e.person)}: ${uxEsc(e.did||'')}</li>`).join('')}</ul></div>`).join('')||'<div class="pl-empty">No check-ins yet this week.</div>'}</div>`;
+}
+async function ckProblems(el,head){
+  const {items}=await plApi('/api/crm/checkins/problems'+(CK.showHandled?'?all=1':''));
+  el.innerHTML=head+`<div class="vd-mbtns" style="justify-content:flex-end"><label class="pl-switch" style="font-size:16px"><input type="checkbox" ${CK.showHandled?'checked':''} onchange="CK.showHandled=this.checked;ckLoad()"><span>Show handled ones too</span></label></div>
+    <div class="pl-list">${items.map(p=>`<div class="pl-pb ck-card${p.handledAt?' ck-handled':''}"><div class="ck-top"><b>${p.urgent?'<span class="pl-tag warn">Urgent</span> ':''}${uxEsc(p.project||'Problem')}</b><span class="sm" style="margin:0">${uxEsc(p.person||'')} · ${uxEsc(ckDay(p.day).split(',')[0])}</span></div><div>${uxEsc(p.text)}</div>
+      <div class="vd-mbtns">${p.handledAt?`<span class="pl-tag gA">Handled${p.handledBy?' by '+uxEsc(p.handledBy):''}</span>`:`<button class="btn-xs p" onclick="ckHandled('${p.id}',this)">✓ Mark handled</button>`}${p.dealId?`<button class="btn-xs" onclick="plOpenDeal('${p.dealId}')">Open the project</button>`:''}</div></div>`).join('')||'<div class="pl-empty">No open problems. 👍</div>'}</div>`;
+}
+async function ckHandled(id,btn){btn.disabled=true;try{await plApi('/api/crm/checkins/problems/'+id+'/handled',{body:{}});ckLoad();}catch(e){btn.disabled=false;showNotif('Could not save',e.message);}}
+// On Today: today's check-in, until it's done.
+async function ckBanner(){
+  const el=document.getElementById('ck-banner');if(!el)return;
+  try{const d=await plApi('/api/crm/checkins/today');const c=d.checkin;
+    el.innerHTML=c.status==='done'?'':`<div class="nx" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div class="nx-l">Daily check-in</div><div class="nx-t">${c.status==='started'?'Finish today’s check-in':'How did today go? Two minutes with Eagle I.'}</div></div><button class="btn btn-blue" onclick="ckOpen('mine')">${c.status==='started'?'Keep going':'Start my check-in'}</button></div>`;
+  }catch(e){el.innerHTML='';}
 }
 /* ---------- Today: everything I was only copied on this week ---------- */
 async function lpToday(all){
