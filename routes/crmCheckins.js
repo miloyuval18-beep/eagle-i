@@ -20,7 +20,7 @@ const hide = (req, x) => team.can(req.crmUser, 'money') ? x : team.hideMoney(x);
 // there: they see the company's Team, Projects and Problems, and nothing is made for them.
 const ADMIN = 'The Eagle I admin doesn’t have a check-in of their own here.';
 router.get('/api/crm/checkins/today', requireAuth, wrap('Failed to load your check-in', async (req, res) => {
-  if (req.adminView) return res.json({ checkin: null, ai: !!process.env.ANTHROPIC_API_KEY, canSeeTeam: true });
+  if (req.adminView) return res.json({ checkin: null, ai: !!process.env.ANTHROPIC_API_KEY, canSeeTeam: ci.canSeeTeam(req.crmUser) });
   res.json({ ...(await ci.view(req.userId)), canSeeTeam: ci.canSeeTeam(req.crmUser) });
 }));
 router.post('/api/crm/checkins/today/message', requireAuth, wrap('Eagle I couldn’t answer', async (req, res) => {
@@ -35,7 +35,7 @@ router.post('/api/crm/checkins/today/finish', requireAuth, wrap('Failed to save 
   res.json({ checkin: await ci.finish(req.userId, { form: b.form || null }) });
 }));
 router.get('/api/crm/checkins/mine', requireAuth, wrap('Failed to load', async (req, res) => {
-  if (req.adminView) return res.json({ items: [] });
+  if (req.adminView && !req.viewPerson) return res.json({ items: [] }); // seeing as a person: their earlier check-ins
   res.json({ items: await ci.mine(req.userId, { before: req.query.before }) });
 }));
 router.get('/api/crm/checkins/team', requireAuth, wrap('Failed to load', async (req, res) => res.json(hide(req, await ci.teamDay(req.crmUser, req.query.day)))));

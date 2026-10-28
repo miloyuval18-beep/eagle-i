@@ -27,12 +27,21 @@ const isPlatformAdmin = async (userId) => !!((await query('SELECT is_admin FROM 
 router.get('/api/crm/me', requireAuth, async (req, res) => {
   try {
     if (req.adminView) {
-      if (!(await isPlatformAdmin(req.userId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
+      if (!(await isPlatformAdmin(req.adminUserId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
       const t = (await query('SELECT company_name, products FROM tenants WHERE id = $1', [req.tenantId])).rows[0];
       if (!t) return res.status(401).json({ error: { message: 'Not logged in.' } });
+      // "See as": the roles, and the company's people.
+      const people = (await query(`SELECT id, name, email, role FROM users WHERE tenant_id = $1 AND disabled_at IS NULL AND app <> 'marketing' ORDER BY COALESCE(name, email)`, [req.tenantId])).rows
+        .map(p => ({ id: p.id, name: p.name || p.email, roleLabel: team.roleLabel(p.role) }));
+      const seeAll = { roles: team.ROLES.map(r => ({ role: r, label: team.roleLabel(r) })), people, companyName: t.company_name, needsSetup: false, tips: { seen: [], off: true }, products: t.products || [], hasCrm: true, hasMarketing: false };
+      if (req.viewPerson) {
+        const p = (await query(`SELECT id, email, name, phone, role, permissions, oversight, ai_mode FROM users WHERE id = $1 AND tenant_id = $2`, [req.userId, req.tenantId])).rows[0];
+        if (!p) return res.status(401).json({ error: { message: 'Not logged in.' } });
+        return res.json({ ...seeAll, userId: p.id, email: p.email, name: p.name, phone: p.phone, role: p.role, seeAs: 'user:' + p.id, seeAsName: p.name || p.email, roleLabel: `${p.name || p.email}, ${team.roleLabel(p.role).toLowerCase()} (seen by the Eagle I admin, view only)`, canManage: team.isManager(p.role), perms: team.permsOf(p), oversight: team.oversightOf(p), aiMode: p.ai_mode || null, viewOnly: true, adminEdit: false });
+      }
       const role = team.ROLES.includes(req.viewRole) ? req.viewRole : 'owner';
-      return res.json({ userId: req.userId, email: 'Eagle I admin', name: 'Eagle I admin', role, seeAs: role, roles: team.ROLES.map(r => ({ role: r, label: team.roleLabel(r) })), roleLabel: `Eagle I admin as ${team.roleLabel(role).toLowerCase()} (${req.viewOnly ? 'view only' : 'full access'})`, canManage: team.isManager(role), perms: team.permsOf({ role }), oversight: false,
-        companyName: t.company_name, needsSetup: false, tips: { seen: [], off: true }, products: t.products || [], hasCrm: true, hasMarketing: false, viewOnly: !!req.viewOnly, adminEdit: !req.viewOnly });
+      return res.json({ ...seeAll, userId: req.userId, email: 'Eagle I admin', name: 'Eagle I admin', role, seeAs: role, roleLabel: `Eagle I admin as ${team.roleLabel(role).toLowerCase()} (${req.viewOnly ? 'view only' : 'full access'})`, canManage: team.isManager(role), perms: team.permsOf({ role }), oversight: false,
+        viewOnly: !!req.viewOnly, adminEdit: !req.viewOnly });
     }
     const r = (await query(
       `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.permissions, u.oversight, u.ai_mode, u.disabled_at, u.tips, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
@@ -102,8 +111,12 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
   try {
     let me = await team.getUser(req.userId);
     // The Eagle I admin in a company (routes/admin.js): as its owner would, read only unless opened with full access (auth.js).
-    if (req.adminView) {
-      if (!me || !(await isPlatformAdmin(req.userId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
+    if (req.adminView && req.viewPerson) {
+      // "See as Maria": exactly her, read only.
+      if (!me || me.tenant_id !== req.tenantId || !(await isPlatformAdmin(req.adminUserId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
+      me = { ...me, disabled_at: null, viewOnly: true, adminEdit: false };
+    } else if (req.adminView) {
+      if (!me || !(await isPlatformAdmin(req.adminUserId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
       // "See as": the role they picked (owner unless they picked another), with that role's usual permissions.
       me = { ...me, tenant_id: req.tenantId, role: team.ROLES.includes(req.viewRole) ? req.viewRole : 'owner', permissions: null, app: 'crm', disabled_at: null, name: 'Eagle I admin', viewOnly: !!req.viewOnly, adminEdit: !req.viewOnly };
     }

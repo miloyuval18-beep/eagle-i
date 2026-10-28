@@ -1484,8 +1484,9 @@ async function crInit(){
   // The Eagle I admin looking at this company: say so, and how to stop.
   if(me.viewOnly||me.adminEdit){const b=document.createElement('div');b.className='vo-bar'+(me.adminEdit?' edit':'');b.setAttribute('role','status');
     // "See as": the CRM as each role sees it, or a project's homeowner page.
-    const seeAs=`<label class="vo-see"><span>See as</span><select onchange="voSeeAs(this)" aria-label="See the CRM as">${(me.roles||[]).map(r=>`<option value="${r.role}"${r.role===me.seeAs?' selected':''}>${uxEsc(r.label)}</option>`).join('')}<option value="homeowner">Homeowner…</option></select></label>`;
-    b.innerHTML=me.adminEdit?`<span>✏️ Full access: <b>${uxEsc(me.companyName||'this company')}</b> · changes are real</span>${seeAs}<button onclick="voExit()">Done</button>`:`<span>👁 Admin view of <b>${uxEsc(me.companyName||'this company')}</b> · view only</span>${seeAs}<button onclick="voExit()">Stop looking</button>`;
+    const seeAs=`<label class="vo-see"><span>See as</span><select onchange="voSeeAs(this)" aria-label="See the CRM as"><optgroup label="A role">${(me.roles||[]).map(r=>`<option value="${r.role}"${r.role===me.seeAs?' selected':''}>${uxEsc(r.label)}</option>`).join('')}</optgroup>${(me.people||[]).length?`<optgroup label="A person on the team">${me.people.map(p=>`<option value="user:${p.id}"${'user:'+p.id===me.seeAs?' selected':''}>${uxEsc(p.name)} (${uxEsc(p.roleLabel)})</option>`).join('')}</optgroup>`:''}<optgroup label="Outside the team"><option value="homeowner">Homeowner…</option></optgroup></select></label>`;
+    const who=me.seeAsName?`👁 Seeing <b>${uxEsc(me.companyName||'this company')}</b> as <b>${uxEsc(me.seeAsName)}</b> sees it · view only`:`👁 Admin view of <b>${uxEsc(me.companyName||'this company')}</b> · view only`;
+    b.innerHTML=me.adminEdit?`<span>✏️ Full access: <b>${uxEsc(me.companyName||'this company')}</b> · changes are real</span>${seeAs}<button onclick="voExit()">Done</button>`:`<span>${who}</span>${seeAs}<button onclick="voExit()">Stop looking</button>`;
     document.body.prepend(b);document.body.classList.add('view-only');}
   document.getElementById('cr-company').textContent=me.companyName||'';
   document.getElementById('cr-who').textContent=me.email||'';

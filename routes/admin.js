@@ -86,7 +86,7 @@ router.post('/api/admin/view-as', requireAuth, requireAdmin, async (req, res) =>
     const edit = (req.body || {}).mode === 'edit';
     req.session.viewAs = t.id;
     req.session.viewMode = edit ? 'edit' : 'view';
-    delete req.session.viewRole;
+    delete req.session.viewRole; delete req.session.viewUser;
     await new Promise((ok) => req.session.save(() => ok()));
     const me = (await query('SELECT email FROM users WHERE id = $1', [req.userId])).rows[0] || {};
     await require('../lib/crmAudit').log({ tenantId: t.id, actor: null, action: 'settings', detail: edit ? `The Eagle I admin (${me.email || 'Eagle I'}) opened the CRM with full access to make changes` : `The Eagle I admin (${me.email || 'Eagle I'}) looked at the CRM (view only)` }).catch(() => {});
@@ -97,13 +97,23 @@ router.post('/api/admin/view-as', requireAuth, requireAdmin, async (req, res) =>
 router.post('/api/admin/view-as/role', requireAuth, requireAdmin, async (req, res) => {
   const role = String((req.body || {}).role || '');
   if (!req.session.viewAs) return res.status(400).json({ error: { message: 'Open a company from the admin page first.' } });
+  // One of the company's people ("user:<id>"): exactly what they see, view only (nothing done as them).
+  const m = /^user:([0-9a-f-]{36})$/i.exec(role);
+  if (m) {
+    const p = (await query(`SELECT id, name, email FROM users WHERE id = $1 AND tenant_id = $2 AND disabled_at IS NULL AND app <> 'marketing'`, [m[1], req.session.viewAs])).rows[0];
+    if (!p) return res.status(404).json({ error: { message: 'That person isn’t on this company’s team.' } });
+    req.session.viewUser = p.id; req.session.viewMode = 'view';
+    await new Promise((ok) => req.session.save(() => ok()));
+    await require('../lib/crmAudit').log({ tenantId: req.session.viewAs, actor: null, action: 'settings', detail: `The Eagle I admin looked at the CRM as ${p.name || p.email} sees it (view only)` }).catch(() => {});
+    return res.json({ ok: true, role, mode: 'view' });
+  }
   if (!require('../lib/crmTeam').ROLES.includes(role)) return res.status(400).json({ error: { message: 'Pick a role.' } });
-  req.session.viewRole = role;
+  req.session.viewRole = role; delete req.session.viewUser;
   await new Promise((ok) => req.session.save(() => ok()));
   res.json({ ok: true, role });
 });
 router.post('/api/admin/view-as/exit', requireAuth, async (req, res) => {
-  delete req.session.viewAs; delete req.session.viewMode; delete req.session.viewRole;
+  delete req.session.viewAs; delete req.session.viewMode; delete req.session.viewRole; delete req.session.viewUser;
   await new Promise((ok) => req.session.save(() => ok()));
   res.json({ ok: true, go: '/admin' });
 });
