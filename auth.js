@@ -82,6 +82,13 @@ async function requireAdmin(req, res, next) {
 }
 
 function registerAuthRoutes(app) {
+  // Talk or type: how this login's assistant starts (Eagle I Marketing; the CRM uses /api/crm/me/ai-mode, same setting).
+  app.patch('/api/me/ai-mode', requireAuth, async (req, res) => {
+    const mode = (req.body || {}).mode;
+    if (!['talk', 'text'].includes(mode)) return res.status(400).json({ error: { message: 'Pick talk or type.' } });
+    try { await query('UPDATE users SET ai_mode = $2 WHERE id = $1', [req.userId, mode]); res.json({ mode }); }
+    catch (err) { res.status(500).json({ error: { message: 'Failed to save.' } }); }
+  });
   app.post('/api/auth/signup', async (req, res) => {
     const { email, password, companyName, industry, acceptedTerms, product } = req.body || {};
     if (!email || !EMAIL_RE.test(email)) {

@@ -102,7 +102,7 @@ router.get('/api/me', requireAuth, async (req, res) => {
     );
     const generationsUsed = usageRes.rows[0] ? usageRes.rows[0].generation_count : 0;
 
-    const userRes = await query('SELECT email, email_verified, is_admin FROM users WHERE id = $1', [req.userId]);
+    const userRes = await query('SELECT email, email_verified, is_admin, ai_mode FROM users WHERE id = $1', [req.userId]);
     const user = userRes.rows[0] || {};
 
     res.json({
@@ -115,6 +115,7 @@ router.get('/api/me', requireAuth, async (req, res) => {
       accountEmail: user.email,
       emailVerified: user.email_verified,
       isAdmin: user.is_admin,
+      aiMode: user.ai_mode || null, // talk or type for the assistant, asked once (public/talk.js)
       showRealEstateFeatures: REAL_ESTATE_INDUSTRIES.has(tenant.industry),
       // The Permits tab specifically also opens up for a construction
       // company that signed up under some other industry — see

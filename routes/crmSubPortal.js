@@ -26,6 +26,14 @@ router.get('/s/:token', (req, res) => {
   res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex', 'Referrer-Policy': 'no-referrer' });
   res.sendFile(path.join(__dirname, '..', 'public', 'sub-portal.html'));
 });
+// Talk or type, saved on the sub's record.
+router.post('/api/crm-public/sub-portal/:token/ai-mode', wrap('Failed to save', async (req, res) => {
+  const mode = (req.body || {}).mode;
+  if (!['talk', 'text'].includes(mode)) return res.status(400).json({ error: { message: 'Pick talk or type.' } });
+  const r = await require('../db').query(`UPDATE crm_vendors SET ai_mode = $2 WHERE portal_token = $1 AND archived = false`, [String(req.params.token).slice(0, 100), mode]);
+  if (!r.rowCount) return res.status(404).json({ error: { message: 'This link is not valid.' } });
+  res.json({ mode });
+}));
 router.get('/api/crm-public/sub-portal/:token', wrap('Failed to load', async (req, res) => {
   res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' });
   const got = await sp.subView(req.params.token, { baseUrl: baseUrlOf(req) });
@@ -46,7 +54,7 @@ router.get('/api/crm-public/sub-portal/:token/files/:fileId', wrap('Failed to lo
 router.post('/api/crm-public/sub-portal/:token/ask', wrap('Failed to answer', async (req, res) => {
   if (limited('sa:' + req.ip, 60)) return res.status(429).json({ error: { message: 'Too many questions. Please try again later.' } });
   const b = req.body || {};
-  res.json(await sp.ask({ token: req.params.token, question: b.question, dealId: b.jobId || null, lang: req.get('X-Lang') === 'es' ? 'es' : null }));
+  res.json(await sp.ask({ token: req.params.token, question: b.question, dealId: b.jobId || null, lang: req.get('X-Lang') === 'es' ? 'es' : null, voice: !!b.voice }));
 }));
 router.post('/api/crm-public/sub-portal/:token/message', wrap('Failed to send', async (req, res) => {
   if (limited('sm:' + req.ip, 20)) return res.status(429).json({ error: { message: 'Too many messages. Please try again later.' } });

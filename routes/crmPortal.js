@@ -155,6 +155,16 @@ router.get('/p/:token', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'portal.html'));
 });
 
+// Talk or type, saved on the homeowner's record so it follows them to any device.
+router.post('/api/crm-public/portal/:token/ai-mode', async (req, res) => {
+  const mode = (req.body || {}).mode;
+  if (!['talk', 'text'].includes(mode)) return res.status(400).json({ error: { message: 'Pick talk or type.' } });
+  try {
+    const r = await query(`UPDATE crm_contacts SET ai_mode = $2 WHERE id = (SELECT contact_id FROM crm_deals WHERE portal_token = $1)`, [String(req.params.token).slice(0, 100), mode]);
+    if (!r.rowCount) return res.status(404).json({ error: { message: 'This project link is not valid.' } });
+    res.json({ mode });
+  } catch (err) { fail(res, err, 'Failed to save'); }
+});
 router.get('/api/crm-public/portal/:token', async (req, res) => {
   res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' });
   try {

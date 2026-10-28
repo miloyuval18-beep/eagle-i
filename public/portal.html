@@ -105,6 +105,8 @@ input[type=text].nm{width:100%;border:1.5px solid var(--bdr2);border-radius:8px;
 <section id="v-ask" class="chat">
   <div class="msgs" id="msgs"></div>
   <div class="cfoot">
+    <div style="display:flex;justify-content:flex-end;margin:0 0 6px"><button class="et-toggle" id="mode-btn" type="button" onclick="toggleMode()" hidden></button></div>
+    <div id="talk" hidden></div>
     <div class="comp"><textarea id="q" rows="1" aria-label="Your question" oninput="grow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askIt();}"></textarea><button class="mic" id="mic" onclick="mic()" aria-label="Talk" hidden>🎤</button><button class="send" id="go" onclick="askIt()" aria-label="Send">↑</button></div>
     <div class="hint" id="hint"></div>
   </div>
@@ -113,6 +115,7 @@ input[type=text].nm{width:100%;border:1.5px solid var(--bdr2);border-radius:8px;
 <div class="wrap" id="app"><div class="card">Loading your project…</div></div>
 <div class="foot">Powered by Eagle I CRM</div>
 </div>
+<script src="/talk.js"></script>
 <script>
 (()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
 
@@ -158,7 +161,7 @@ const t=(k,v)=>String((T[L]||T.en)[k]??T.en[k]??k).replace(/\{(\w+)\}/g,(m,x)=>(
 const tm=(group,key,fallback)=>((T[L]||T.en)[group]||{})[key]||fallback||key;
 const pl=n=>n===1?'':'s';
 const loc=()=>L==='es'?'es-US':'en-US';
-function toggleLang(){L=L==='es'?'en':'es';chosenLang=true;try{localStorage.setItem('eaglei_lang',L);}catch(e){}setLangBtn();if(P)render();}
+function toggleLang(){L=L==='es'?'en':'es';chosenLang=true;try{localStorage.setItem('eaglei_lang',L);}catch(e){}setLangBtn();if(P){render();applyMode();}}
 function setLangBtn(){document.documentElement.lang=L;document.getElementById('lang-btn').textContent=L==='es'?'English':'Español';
   document.querySelectorAll('[data-t]').forEach(e=>e.textContent=t(e.dataset.t));document.getElementById('q').placeholder=t('ph');document.getElementById('hint').textContent=t('hint');}
 function show(v){document.getElementById('v-ask').hidden=v!=='ask';document.getElementById('v-proj').hidden=v!=='proj';document.getElementById('t-ask').classList.toggle('on',v==='ask');document.getElementById('t-proj').classList.toggle('on',v==='proj');if(v==='proj')window.scrollTo(0,0);}
@@ -171,7 +174,7 @@ async function load(){
   try{
     const r=await fetch('/api/crm-public/portal/'+token);const d=await r.json();
     if(!r.ok)throw new Error((d.error&&d.error.message)||t('invalid'));
-    P=d.portal;if(P.lang==='es'&&!chosenLang)L='es';setLangBtn();render();
+    P=d.portal;if(P.lang==='es'&&!chosenLang)L='es';setLangBtn();render();setupTalk();
   }catch(e){document.getElementById('app').innerHTML='<div class="card">'+esc(e.message)+'</div>';document.getElementById('msgs').innerHTML=`<div class="hello"><p>${esc(e.message)}</p></div>`;}
 }
 function render(){
@@ -266,15 +269,32 @@ function docLinks(answer){
   for(const e of P.estimates){if(a.includes('#'+e.number)||a.includes(String(e.title).toLowerCase()))out.push(`<a href="${esc(e.link)}${L==='es'?'?lang=es':''}">📄 ${esc(tm('estKind',e.kindKey,e.kind))} #${esc(e.number)}</a>`);}
   return out.length?`<div class="flinks">${out.slice(0,6).join('')}</div>`:'';
 }
-async function askIt(){
-  const q=document.getElementById('q');const text=q.value.trim();if(!text||BUSY||!P)return;
+async function askIt(pre,voice){
+  const q=document.getElementById('q');const text=(pre!=null?String(pre):q.value).trim();if(!text||BUSY||!P)return null;
   if(!STARTED){STARTED=true;document.getElementById('msgs').innerHTML='';}
   BUSY=true;document.getElementById('go').disabled=true;bubble('me',esc(text));q.value='';grow(q);
   const th=bubble('bot',esc(t('asking')));
-  try{const r=await fetch(`/api/crm-public/portal/${token}/ask`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,history:HIST.slice(-8)})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);
-    th.remove();bubble('bot',esc(d.answer),docLinks(d.answer)+(d.forwarded?`<div class="fwd">${esc(t('askFwd'))}</div>`:''));HIST.push({who:'me',text},{who:'bot',text:d.answer});}
-  catch(e){th.remove();bubble('bot',`<span style="color:var(--err)">${esc(e.message||t('oops'))}</span>`);}
-  BUSY=false;document.getElementById('go').disabled=false;q.focus();
+  try{const r=await fetch(`/api/crm-public/portal/${token}/ask`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,history:HIST.slice(-8),voice:!!voice})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);
+    th.remove();bubble('bot',esc(d.answer),docLinks(d.answer)+(d.forwarded?`<div class="fwd">${esc(t('askFwd'))}</div>`:''));HIST.push({who:'me',text},{who:'bot',text:d.answer});
+    BUSY=false;document.getElementById('go').disabled=false;if(!voice)q.focus();return d.answer;}
+  catch(e){th.remove();bubble('bot',`<span style="color:var(--err)">${esc(e.message||t('oops'))}</span>`);BUSY=false;document.getElementById('go').disabled=false;if(!voice)q.focus();return e.message||t('oops');}
+}
+/* Talk or type (public/talk.js): asked the first time, saved with the homeowner; the button switches any time. */
+let MODE=null,TALK=null,ASKED=false;
+const TW={en:{q:'How would you like to ask about your project?',sub:'You can switch any time with the button above the chat.',talk:['Talk','Like a phone call. You speak, it answers out loud.'],type:['Type','Like texting. You type, it writes back.'],noMic:'This browser can’t listen. Try Safari on iPhone or Chrome.',toTalk:'🎙 Talk',toType:'⌨️ Type'},
+  es:{q:'¿Cómo prefiere preguntar sobre su proyecto?',sub:'Puede cambiarlo cuando quiera con el botón encima del chat.',talk:['Hablar','Como una llamada. Usted habla y le responde en voz alta.'],type:['Escribir','Como un mensaje. Usted escribe y le responde por escrito.'],noMic:'Este navegador no puede escuchar. Pruebe Safari en iPhone o Chrome.',toTalk:'🎙 Hablar',toType:'⌨️ Escribir'}};
+const tw=k=>TW[L==='es'?'es':'en'][k];
+function applyMode(){
+  const talk=MODE==='talk'&&EagleTalk.can();const b=document.getElementById('mode-btn');
+  b.hidden=!EagleTalk.can();b.textContent=talk?tw('toType'):tw('toTalk');
+  document.getElementById('talk').hidden=!talk;document.querySelector('.comp').style.display=talk?'none':'';
+  if(talk&&!TALK)TALK=EagleTalk.mount(document.getElementById('talk'),{lang:()=>L,ask:(text)=>askIt(text,true)});
+  if(TALK){if(!talk)TALK.stop();else TALK.refresh();}
+}
+function toggleMode(){MODE=MODE==='talk'?'text':'talk';applyMode();}
+function setupTalk(){
+  if(MODE==null)MODE=P.aiMode||'text';applyMode();
+  if(!P.aiMode&&!ASKED){ASKED=true;EagleTalk.choose({title:tw('q'),sub:tw('sub'),talk:tw('talk'),type:tw('type'),noMic:tw('noMic'),onPick:m=>{MODE=m;P.aiMode=m;applyMode();fetch(`/api/crm-public/portal/${token}/ai-mode`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})}).catch(()=>{});}});}
 }
 let REC=null;
 function mic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;const b=document.getElementById('mic');if(REC){REC.stop();return;}

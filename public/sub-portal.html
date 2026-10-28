@@ -86,12 +86,15 @@ textarea.box{width:100%;border:1px solid var(--bdr2);border-radius:10px;padding:
   <section id="v-ask" class="chat">
     <div class="msgs" id="msgs"></div>
     <div class="foot">
+      <div style="display:flex;justify-content:flex-end;margin:0 0 6px"><button class="et-toggle" id="mode-btn" type="button" onclick="toggleMode()" hidden></button></div>
+      <div id="talk" hidden></div>
       <div class="comp"><textarea id="q" rows="1" aria-label="Your question" oninput="grow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askIt();}"></textarea><button class="mic" id="mic" onclick="mic()" aria-label="Talk" hidden>🎤</button><button class="send" id="go" onclick="askIt()" aria-label="Send">↑</button></div>
       <div class="hint" id="hint"></div>
     </div>
   </section>
   <section id="v-jobs" class="jobs" hidden></section>
 </main>
+<script src="/talk.js"></script>
 <script>
 (()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
 const token=location.pathname.split('/').pop();
@@ -108,7 +111,7 @@ const t=(k,v)=>String((T[L]||T.en)[k]??T.en[k]??k).replace(/\{(\w+)\}/g,(m,x)=>(
 let V=null,JOB=null,BUSY=false,STARTED=false;
 const fd=d=>d?new Date(d+'T12:00:00Z').toLocaleDateString(L==='es'?'es-US':'en-US',{weekday:'short',month:'short',day:'numeric'}):'';
 const range=(a,b)=>a?(fd(a)+(b&&b!==a?' – '+fd(b):'')):'';
-function toggleLang(){L=L==='es'?'en':'es';try{localStorage.setItem('eaglei_lang',L);}catch(e){}paint();}
+function toggleLang(){L=L==='es'?'en':'es';try{localStorage.setItem('eaglei_lang',L);}catch(e){}paint();if(V)applyMode();}
 function show(v){document.getElementById('v-ask').hidden=v!=='ask';document.getElementById('v-jobs').hidden=v!=='jobs';document.getElementById('t-ask').classList.toggle('on',v==='ask');document.getElementById('t-jobs').classList.toggle('on',v==='jobs');}
 function grow(e){e.style.height='38px';e.style.height=Math.min(130,e.scrollHeight)+'px';}
 function paint(){
@@ -131,15 +134,32 @@ function hello(){
 function pick(id){JOB=id;if(!STARTED)hello();else document.querySelectorAll('.jp').forEach(b=>b.classList.toggle('on',b.getAttribute('onclick')===`pick(${id?`'${id}'`:'null'})`));}
 function chip(b){document.getElementById('q').value=b.textContent;askIt();}
 function bubble(who,html,extra=''){const d=document.createElement('div');d.className='m '+(who==='me'?'me':'bot');d.innerHTML=`<div style="max-width:100%;display:flex;flex-direction:column;align-items:${who==='me'?'flex-end':'flex-start'}"><div class="b">${html}</div>${extra}</div>`;const m=document.getElementById('msgs');m.appendChild(d);m.scrollTop=m.scrollHeight;return d;}
-async function askIt(){
-  const q=document.getElementById('q');const text=q.value.trim();if(!text||BUSY)return;
+async function askIt(pre,voice){
+  const q=document.getElementById('q');const text=(pre!=null?String(pre):q.value).trim();if(!text||BUSY)return null;
   if(!STARTED){STARTED=true;document.getElementById('msgs').innerHTML='';if(V.jobs.length>1){const p=document.createElement('div');p.className='jobpick';p.style.margin='0 -16px 6px';p.innerHTML=`<button class="jp${JOB?'':' on'}" onclick="pick(null)">${esc(t('all'))}</button>${V.jobs.map(j=>`<button class="jp${JOB===j.id?' on':''}" onclick="pick('${j.id}')">${esc(j.title)}</button>`).join('')}`;document.getElementById('msgs').appendChild(p);}}
   BUSY=true;document.getElementById('go').disabled=true;bubble('me',esc(text));q.value='';grow(q);
   const th=bubble('bot',esc(t('looking')));
-  try{const r=await fetch(`/api/crm-public/sub-portal/${token}/ask`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,jobId:JOB})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);
-    th.remove();bubble('bot',esc(d.answer),d.forwarded?`<div class="fwd">${esc(t('fwd'))}</div>`:'');}
-  catch(e){th.remove();bubble('bot',`<span style="color:var(--err)">${esc(e.message||t('oops'))}</span>`);}
-  BUSY=false;document.getElementById('go').disabled=false;q.focus();
+  try{const r=await fetch(`/api/crm-public/sub-portal/${token}/ask`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,jobId:JOB,voice:!!voice})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);
+    th.remove();bubble('bot',esc(d.answer),d.forwarded?`<div class="fwd">${esc(t('fwd'))}</div>`:'');
+    BUSY=false;document.getElementById('go').disabled=false;if(!voice)q.focus();return d.answer;}
+  catch(e){th.remove();bubble('bot',`<span style="color:var(--err)">${esc(e.message||t('oops'))}</span>`);BUSY=false;document.getElementById('go').disabled=false;if(!voice)q.focus();return e.message||t('oops');}
+}
+/* Talk or type (public/talk.js): asked the first time, saved with the sub; the button switches any time. */
+let MODE=null,TALK=null,ASKED=false;
+const TW={en:{q:'How would you like to ask about your jobs?',sub:'You can switch any time with the button above the chat.',talk:['Talk','Like a phone call. You speak, it answers out loud. Handy on a job site.'],type:['Type','Like texting. You type, it writes back.'],noMic:'This browser can’t listen. Try Safari on iPhone or Chrome.',toTalk:'🎙 Talk',toType:'⌨️ Type'},
+  es:{q:'¿Cómo prefiere preguntar sobre sus trabajos?',sub:'Puede cambiarlo cuando quiera con el botón encima del chat.',talk:['Hablar','Como una llamada. Usted habla y le responde en voz alta. Práctico en la obra.'],type:['Escribir','Como un mensaje. Usted escribe y le responde por escrito.'],noMic:'Este navegador no puede escuchar. Pruebe Safari en iPhone o Chrome.',toTalk:'🎙 Hablar',toType:'⌨️ Escribir'}};
+const tw=k=>TW[L==='es'?'es':'en'][k];
+function applyMode(){
+  const talk=MODE==='talk'&&EagleTalk.can();const b=document.getElementById('mode-btn');
+  b.hidden=!EagleTalk.can();b.textContent=talk?tw('toType'):tw('toTalk');
+  document.getElementById('talk').hidden=!talk;document.querySelector('.comp').style.display=talk?'none':'';
+  if(talk&&!TALK)TALK=EagleTalk.mount(document.getElementById('talk'),{lang:()=>L,ask:(text)=>askIt(text,true)});
+  if(TALK){if(!talk)TALK.stop();else TALK.refresh();}
+}
+function toggleMode(){MODE=MODE==='talk'?'text':'talk';applyMode();}
+function setupTalk(){
+  if(MODE==null)MODE=V.aiMode||'text';applyMode();
+  if(!V.aiMode&&!ASKED){ASKED=true;EagleTalk.choose({title:tw('q'),sub:tw('sub'),talk:tw('talk'),type:tw('type'),noMic:tw('noMic'),onPick:m=>{MODE=m;V.aiMode=m;applyMode();fetch(`/api/crm-public/sub-portal/${token}/ai-mode`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})}).catch(()=>{});}});}
 }
 function jobs(){
   const el=document.getElementById('v-jobs');
@@ -179,7 +199,7 @@ function mic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition
 (async()=>{
   document.getElementById('mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
   paint();
-  try{const r=await fetch('/api/crm-public/sub-portal/'+token);const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);V=d;if(V.jobs.length===1)JOB=V.jobs[0].id;paint();}
+  try{const r=await fetch('/api/crm-public/sub-portal/'+token);const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);V=d;if(V.jobs.length===1)JOB=V.jobs[0].id;paint();setupTalk();}
   catch(e){document.getElementById('msgs').innerHTML=`<div class="hello"><p>${esc(e.message||t('oops'))}</p></div>`;}
 })();
 </script>

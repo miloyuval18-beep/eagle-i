@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="/talk.js"></script>
 <style>
 :root{
   /* Contrast pass — every text token below verified against every
@@ -34,6 +35,7 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:16px;line-height:1.6;overflow-x:hidden;min-height:100vh;-webkit-font-smoothing:antialiased;filter:grayscale(1)}
+html>.vp,html>.notif,html>.tab-chat,html>.tab-chat-btn,html>.vorb,html>.et-shade{filter:grayscale(1);font-family:var(--fb)}
 body::before{content:none}
 .topbar{position:sticky;top:0;z-index:400;background:rgba(255,255,255,.97);backdrop-filter:blur(24px);border-bottom:1px solid var(--bdr2);display:flex;align-items:stretch;padding:0 16px;height:60px;gap:0}
 .brand{display:flex;align-items:center;gap:10px;padding-right:14px;border-right:1px solid var(--bdr);flex-shrink:0;cursor:pointer}
@@ -591,6 +593,7 @@ tbody tr:last-child td{border-bottom:none}
   <div class="vp-head">
     <div class="vp-orb"><svg viewBox="0 0 24 24" fill="none" width="16" height="16"><rect x="9" y="2" width="6" height="12" rx="3" stroke="#fff" stroke-width="2"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
     <div><div class="vp-title">Eagle I AI</div><div class="vp-st" id="vp-st">Ready — speak or type</div></div>
+    <button class="et-toggle" id="vp-mode" type="button" onclick="vpToggleMode()" hidden style="margin-left:auto;margin-right:6px"></button>
     <div class="vp-x" onclick="toggleVP()">✕</div>
   </div>
   <div class="vp-feed" id="vp-feed">
@@ -603,6 +606,7 @@ tbody tr:last-child td{border-bottom:none}
     <button class="chip" onclick="ask('Generate a landing page for my primary service')">Landing page</button>
     <button class="chip" onclick="ask('Find referral partners for my business')">Vendors</button>
   </div>
+  <div id="vp-talk" hidden></div>
   <div class="vp-bar">
     <div class="vp-mic" id="vp-mic" onclick="toggleMic()"><svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="9" y="2" width="6" height="12" rx="3" stroke="currentColor" stroke-width="2"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
     <input class="vp-input" id="vp-input" placeholder="Ask Eagle I anything..." onkeydown="if(event.key==='Enter')ask()">
@@ -1531,9 +1535,11 @@ function speak(text,maxLen){
   u.onend=()=>setVPS('Ready — speak or type');
   synth.speak(u);
 }
-async function ask(pre){
+// pre: the question (else the box); voice: from talk mode, which reads the answer itself;
+// spoken: asked with the mic button, so the answer is read aloud once.
+async function ask(pre,voice,spoken){
   const inp=document.getElementById('vp-input');
-  const q=pre||inp.value.trim();if(!q)return;
+  const q=pre||inp.value.trim();if(!q)return null;
   inp.value='';
   if(!vpOpen)toggleVP();
   addMsg('u',q);showTyping();setVPS('Thinking...');
@@ -1546,7 +1552,7 @@ Return ONLY valid JSON: {"response":"Your answer","navigate_to":"tab_id or null"
 tab_ids: dash, strategy, market, keywords, competitors, opps, landing, vendors, permits, ads, budget`,450);
     hideTyping();
     addMsg('ai',p.response||'Let me check that for you.');
-    speak(p.response||'');
+    if(spoken)speak(p.response||'');
     if(p.navigate_to&&p.navigate_to!=='null'){
       setTimeout(()=>{
         const el=document.getElementById('t-'+p.navigate_to);
@@ -1554,7 +1560,28 @@ tab_ids: dash, strategy, market, keywords, competitors, opps, landing, vendors, 
       },700);
     }
     setVPS('Ready — speak or type');
-  }catch(e){hideTyping();addMsg('ai','Error reaching server. Check your API connection.');setVPS('Ready');}
+    return p.response||'';
+  }catch(e){hideTyping();addMsg('ai','Error reaching server. Check your API connection.');setVPS('Ready');return 'Sorry, I couldn’t reach the server just now.';}
+}
+/* Talk or type (public/talk.js): asked once, saved with the login (the CRM shares it); the button switches any time. */
+let VMODE='text',VTALK=null,TCTALK=null;
+function vpApply(){
+  const talk=VMODE==='talk'&&EagleTalk.can();
+  // Both of Eagle I's chats here: the Eagle I AI panel and the chat on each tab.
+  for(const [btn,host,bar] of [['vp-mode','vp-talk','#vp .vp-bar'],['tc-mode','tc-talk','#tab-chat .tc-bar']]){
+    const b=document.getElementById(btn),h=document.getElementById(host),r=document.querySelector(bar);if(!b||!h||!r)continue;
+    b.hidden=!EagleTalk.can();b.textContent=talk?'⌨️ Type':'🎙 Talk';h.hidden=!talk;r.style.display=talk?'none':'';
+  }
+  if(talk&&!VTALK)VTALK=EagleTalk.mount(document.getElementById('vp-talk'),{lang:()=>'en',ask:(q)=>ask(q,true)});
+  if(talk&&!TCTALK&&document.getElementById('tc-talk'))TCTALK=EagleTalk.mount(document.getElementById('tc-talk'),{lang:()=>'en',ask:(q)=>sendTcMsg(q,true)});
+  for(const t of [VTALK,TCTALK])if(t){if(!talk)t.stop();else t.refresh();}
+}
+function vpToggleMode(){VMODE=VMODE==='talk'?'text':'talk';vpApply();}
+function vpSetupTalk(){
+  VMODE=(ME&&ME.aiMode)||'text';vpApply();
+  if(ME&&!ME.aiMode)EagleTalk.choose({title:'How would you like to use Eagle I?',sub:'You can switch any time with the button at the top of the Eagle I AI panel.',
+    talk:['Talk','Like a phone call. You speak, Eagle I answers out loud.'],type:['Type','Like texting. You type, Eagle I writes back.'],noMic:'This browser can’t listen. Try Chrome, Edge or Safari.',
+    onPick:m=>{VMODE=m;ME.aiMode=m;vpApply();fetch('/api/me/ai-mode',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})}).catch(()=>{});if(m==='talk'&&!vpOpen)toggleVP();}});
 }
 // SpeechRecognition's error events give a specific reason code but every
 // call site here was previously swallowing it and just resetting the UI —
@@ -1587,7 +1614,7 @@ function toggleMic(){
   recog.onresult=e=>{
     const t=Array.from(e.results).map(r=>r[0].transcript).join('');
     document.getElementById('vp-input').value=t;
-    if(e.results[e.results.length-1].isFinal){recog.stop();ask(t);}
+    if(e.results[e.results.length-1].isFinal){recog.stop();ask(t,false,true);}
   };
   recog.onend=()=>{isListen=false;btn.classList.remove('on');document.getElementById('vorb-btn').classList.remove('listening');setVPS('Ready');};
   recog.onerror=(e)=>{
@@ -4842,6 +4869,10 @@ async function bootstrap(){
     if(r.status===401){window.location.href='/login.html';return;}
     ME=await r.json();
     if(!ME.onboarded){window.location.href='/onboarding.html';return;}
+    // Floating pieces live on <html>: <body> has the theme's grayscale filter, which pins
+    // position:fixed to the page instead of the screen (they'd sit at the bottom of the page).
+    for(const el of document.querySelectorAll('#vp,.notif,.tab-chat,.tab-chat-btn,#vorb-btn'))if(el.parentElement===document.body)document.documentElement.appendChild(el);
+    try{vpSetupTalk();}catch(e){console.warn('talk setup:',e.message);}
 
     Object.assign(C,{
       name:ME.companyName||'',
@@ -4978,12 +5009,14 @@ window.addEventListener('load',bootstrap);
     <div class="tc-voice" id="tc-voice" onclick="toggleTcVoice()" title="Voice replies on (click to mute)">
       <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5.5a9 9 0 0 1 0 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </div>
+    <button class="et-toggle" id="tc-mode" type="button" onclick="vpToggleMode()" hidden style="margin-left:auto;margin-right:6px"></button>
     <div class="tc-close" onclick="closeTabChat()">✕</div>
   </div>
   <div class="tc-feed" id="tc-feed">
     <div class="tc-msg-ai"><div class="tc-lbl">Eagle I</div>I'm ready to discuss this topic in depth. Ask me anything or use a suggestion below.</div>
   </div>
   <div class="tc-chips" id="tc-chips"></div>
+  <div id="tc-talk" hidden></div>
   <div class="tc-bar">
     <div class="tc-mic" id="tc-mic" onclick="toggleTcMic()">
       <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="9" y="2" width="6" height="12" rx="3" stroke="currentColor" stroke-width="2"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -5069,10 +5102,11 @@ function tcShowTyping(){
 function tcHideTyping(){const t=document.getElementById('tc-typing');if(t)t.remove();}
 function tcQuick(q){openTabChat();setTimeout(()=>sendTcMsg(q),250);}
 function sendTcChip(btn){const q=btn.getAttribute('data-q');if(q)sendTcMsg(q);}
-async function sendTcMsg(prefilled){
+// voice: from talk mode (public/talk.js), which reads the answer itself.
+async function sendTcMsg(prefilled,voice){
   const inp=document.getElementById('tc-input');
   const q=prefilled||(inp?inp.value.trim():'');
-  if(!q)return;
+  if(!q)return null;
   if(inp&&!prefilled)inp.value='';
   tcAddMsg('u',q);
   tcHistory.push({role:'user',content:q});
@@ -5081,7 +5115,7 @@ async function sendTcMsg(prefilled){
   const ctx=TAB_CONTEXTS[ctxKey]||TAB_CONTEXTS.dash;
   const sys=`You are Eagle I, an AI marketing assistant for ${C.name} (industry: ${ME?.industry||'general'}, services: ${C.services}, area: ${C.community||'their service area'}). The user is ${C.founder||'the owner'}. Phone: ${C.phone}. Email: ${C.email}. The user is currently viewing the "${ctx.title}" tab (${ctx.ctx}). Be specific, concrete, and actionable. Keep responses to 2-4 short paragraphs. No JSON, no markdown headers — just clean conversational text. Today: ${TODAY.toDateString()}.`;
   const convo=tcHistory.slice(-10).map(m=>`${m.role==='user'?'User':'Eagle I'}: ${m.content}`).join('\n\n');
-  const prompt=sys+'\n\n'+convo+'\n\nEagle I:';
+  const prompt=sys+(voice?'\n\nThis is a spoken conversation: your answer is read aloud. Answer in one to three short sentences the way a person talks; no lists, headings or symbols; offer more instead of reading it all.':'')+'\n\n'+convo+'\n\nEagle I:';
   try{
     const r=await fetch('/api/claude',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -5094,10 +5128,12 @@ async function sendTcMsg(prefilled){
     const html=text.split(/\n\n+/).map(p=>'<p style="margin:0 0 8px 0">'+p.replace(/\n/g,'<br>')+'</p>').join('');
     tcAddMsg('ai',html);
     tcHistory.push({role:'assistant',content:text});
-    if(tcVoiceEnabled)speak(text,900); // longer cap than Voice Panel's 260 — tab-chat replies run 2-4 short paragraphs
+    if(tcVoiceEnabled&&!voice)speak(text,900); // longer cap than Voice Panel's 260 — tab-chat replies run 2-4 short paragraphs
+    return text;
   }catch(e){
     tcHideTyping();
     tcAddMsg('ai','<p style="color:var(--red)">Error: '+e.message+'</p>');
+    return 'Sorry, something went wrong: '+e.message;
   }
 }
 function toggleTcMic(){

@@ -2708,3 +2708,33 @@ describe('the assistant: talk or type, each person’s choice', () => {
     assert.equal((await (await c.get('/api/crm/me')).json()).aiMode, 'text');
   });
 });
+
+describe('talk or type everywhere: asked once, saved where each person can be found again', () => {
+  test('marketing logins, homeowners (on their record) and subs (on theirs)', async () => {
+    const pool = getTestPool();
+    const c = makeClient();
+    const s = await (await c.post('/api/auth/signup', { email: uniqueEmail('tt-mkt'), password: 'TestPass1234!', companyName: 'Talk Mkt', industry: 'home_services', acceptedTerms: true })).json();
+    trackTenant(s.tenantId);
+    assert.equal((await (await c.get('/api/me')).json()).aiMode, null);
+    assert.equal((await c.patch('/api/me/ai-mode', { mode: 'yell' })).status, 400);
+    assert.equal((await (await c.patch('/api/me/ai-mode', { mode: 'talk' })).json()).mode, 'talk');
+    assert.equal((await (await c.get('/api/me')).json()).aiMode, 'talk');
+    // A homeowner's project page and a sub's page.
+    const o = makeClient();
+    const co = await (await o.post('/api/auth/signup', { email: uniqueEmail('tt-crm'), password: 'TestPass1234!', companyName: 'Talk CRM', industry: 'home_services', acceptedTerms: true, product: 'crm' })).json();
+    trackTenant(co.tenantId);
+    const { deal } = await (await o.post('/api/crm/deals', { name: 'Hope Owner', title: 'Owner kitchen', email: 'hope@home.test' })).json();
+    const ptok = require('crypto').randomBytes(24).toString('hex');
+    await pool.query('UPDATE crm_deals SET portal_token = $2 WHERE id = $1', [deal.id, ptok]);
+    assert.equal((await (await makeClient().get('/api/crm-public/portal/' + ptok)).json()).portal.aiMode, null, 'asked the first time');
+    assert.equal((await makeClient().post(`/api/crm-public/portal/${ptok}/ai-mode`, { mode: 'nope' })).status, 400);
+    assert.equal((await makeClient().post(`/api/crm-public/portal/nope/ai-mode`, { mode: 'talk' })).status, 404);
+    await makeClient().post(`/api/crm-public/portal/${ptok}/ai-mode`, { mode: 'talk' });
+    assert.equal((await (await makeClient().get('/api/crm-public/portal/' + ptok)).json()).portal.aiMode, 'talk', 'same on any device');
+    const stok = require('crypto').randomBytes(24).toString('hex');
+    await pool.query(`INSERT INTO crm_vendors (tenant_id, name, email, portal_token) VALUES ($1, 'Sam Framing', 'sam@frame.test', $2)`, [co.tenantId, stok]);
+    assert.equal((await (await makeClient().get('/api/crm-public/sub-portal/' + stok)).json()).aiMode, null);
+    await makeClient().post(`/api/crm-public/sub-portal/${stok}/ai-mode`, { mode: 'text' });
+    assert.equal((await (await makeClient().get('/api/crm-public/sub-portal/' + stok)).json()).aiMode, 'text');
+  });
+});
