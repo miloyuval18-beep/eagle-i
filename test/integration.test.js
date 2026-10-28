@@ -2693,3 +2693,18 @@ describe('the Eagle I admin signs in on either side', () => {
     assert.equal((await makeClient().post('/api/crm-auth/login', { email: other, password: 'TestPass1234!' })).status >= 400, true);
   });
 });
+
+describe('the assistant: talk or type, each person’s choice', () => {
+  test('not chosen yet, then saved; only talk or text', async () => {
+    const c = makeClient();
+    const s = await (await c.post('/api/auth/signup', { email: uniqueEmail('aimode'), password: 'TestPass1234!', companyName: 'Talk Co', industry: 'home_services', acceptedTerms: true, product: 'crm' })).json();
+    trackTenant(s.tenantId);
+    assert.equal((await (await c.get('/api/crm/me')).json()).aiMode, null, 'asked the first time');
+    assert.equal((await c.patch('/api/crm/me/ai-mode', { mode: 'shout' })).status, 400);
+    assert.equal((await (await c.patch('/api/crm/me/ai-mode', { mode: 'talk' })).json()).mode, 'talk');
+    assert.equal((await (await c.get('/api/crm/me')).json()).aiMode, 'talk');
+    assert.equal((await (await c.get('/api/crm/me/daily')).json()).aiMode, 'talk');
+    await c.patch('/api/crm/me/ai-mode', { mode: 'text' });
+    assert.equal((await (await c.get('/api/crm/me')).json()).aiMode, 'text');
+  });
+});

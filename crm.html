@@ -800,6 +800,29 @@ body{background:var(--bg) linear-gradient(180deg,#e3e8f1 0,#eceff4 340px) no-rep
 .vo-bar button{flex:0 0 auto}
 .vo-bar button{font:inherit;font-weight:800;background:#14161c;color:#e2c178;border:0;border-radius:8px;padding:5px 12px;min-height:38px;cursor:pointer}
 body.view-only .cr-top{top:0}
+
+/* Talk: the big round button */
+.ai-mode{border:1px solid var(--bdr2);background:#fff;color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:15.5px;font-weight:700;min-height:38px;cursor:pointer;white-space:nowrap}
+.ai-mode:hover{border-color:var(--accent);color:var(--accent)}
+.ai-talk{display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 8px 4px}
+.ai-talk[hidden]{display:none}
+.tk-live{min-height:24px;font-size:18px;color:var(--ink);text-align:center;max-width:560px;font-style:italic}
+.tk-btn{width:92px;height:92px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;font-size:38px;color:#fff;background:linear-gradient(135deg,#1b4fd8,#3b6cf0);box-shadow:0 10px 24px -8px rgba(27,79,216,.7);transition:transform .15s}
+.tk-btn:active{transform:scale(.96)}
+.tk-btn.listening{background:linear-gradient(135deg,#c9a24a,#e2c178);box-shadow:0 0 0 0 rgba(201,162,74,.6);animation:tkPulse 1.4s infinite}
+.tk-btn.speaking{background:linear-gradient(135deg,#14161c,#2c313d)}
+.tk-btn.thinking{background:linear-gradient(135deg,#1438a8,#1b4fd8);opacity:.85}
+@keyframes tkPulse{0%{box-shadow:0 0 0 0 rgba(201,162,74,.55)}70%{box-shadow:0 0 0 18px rgba(201,162,74,0)}100%{box-shadow:0 0 0 0 rgba(201,162,74,0)}}
+.tk-status{font-weight:800;font-size:18px;color:var(--ink)}
+.tk-end{margin-top:2px}
+.tk-end[hidden],.ai-mode[hidden]{display:none!important}
+@media (max-width:520px){#ai-panel #ai-csub{display:none}}
+.tk-choose{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.tk-opt{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:20px 14px;border:2px solid var(--bdr);border-radius:16px;background:#fff;cursor:pointer;font:inherit;color:var(--ink)}
+.tk-opt:hover:not(:disabled){border-color:var(--accent);box-shadow:var(--sh3)}
+.tk-opt:disabled{opacity:.6;cursor:not-allowed}
+.tk-opt .i{font-size:42px}.tk-opt b{font-size:22px}.tk-opt span:not(.i){font-size:16.5px;color:var(--ink3)}.tk-opt em{font-size:14.5px;color:var(--red)}
+@media (max-width:520px){.tk-choose{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -1373,6 +1396,9 @@ async function dyOpen(){
       <div id="dy-gmail"></div>
       <div class="pl-h">Morning email</div>
       <label class="pl-switch"><input type="checkbox" ${d.digestOn?'checked':''} onchange="dyDigest(this.checked)"><span>At 7am, Monday to Saturday: today’s visits, tasks due, phases starting, and what’s waiting for you. Nothing on? No email.</span></label>
+      <div class="pl-h">Eagle I assistant</div>
+      <div class="sm" style="margin-top:0">How the chat starts. You can always switch with the button at the top of the chat.</div>
+      <div class="vd-mbtns"><label class="pl-switch" style="font-size:17px"><input type="radio" name="dy-ai" value="talk" ${d.aiMode==='talk'?'checked':''} ${tkCan()?'':'disabled'} onchange="dyAi('talk')"><span>🎙 Talk</span></label><label class="pl-switch" style="font-size:17px"><input type="radio" name="dy-ai" value="text" ${d.aiMode!=='talk'?'checked':''} onchange="dyAi('text')"><span>⌨️ Type</span></label></div>
       <div class="pl-h">Emails I’m copied on</div>
       <label class="pl-switch"><input type="checkbox" ${d.oversight?'checked':''} onchange="dyOversight(this.checked)"><span>Just keep me in the loop. When I’m only copied on an email, don’t remind me to answer it or put it on my calendar; list it on Today and on the project as “no action needed”, and don’t email me about it. If it’s sent to me or uses my first or last name, it’s mine like any other.</span></label>
       <div class="pl-h">End-of-day check-in</div>
@@ -1387,6 +1413,7 @@ async function dyOpen(){
 }
 async function dyReset(){if(!confirm('Make a new calendar link? Calendars using the old one stop updating until you add the new one.'))return;try{await plApi('/api/crm/me/calendar/reset',{body:{}});dyOpen();}catch(e){showNotif('Could not do that',e.message);}}
 async function dyCheckin(on){try{await plApi('/api/crm/me/checkin',{method:'PATCH',body:{on}});showNotif(on?'Check-in on':'Check-in off','');}catch(e){showNotif('Could not save',e.message);}}
+async function dyAi(mode){try{await plApi('/api/crm/me/ai-mode',{method:'PATCH',body:{mode}});CR.me.aiMode=mode;AI.mode=mode;tkApply();showNotif('Saved',mode==='talk'?'The chat starts in talk mode.':'The chat starts in typing mode.');}catch(e){showNotif('Could not save',e.message);}}
 async function dyOversight(on){try{await plApi('/api/crm/me/oversight',{method:'PATCH',body:{on}});showNotif(on?'Kept in the loop':'Copied emails count like any other',on?'Emails you’re only copied on won’t remind you or go on your calendar.':'');}catch(e){showNotif('Could not save',e.message);}}
 async function dyDigest(on){try{await plApi('/api/crm/me/digest',{method:'PATCH',body:{on}});showNotif(on?'Morning email on':'Morning email off','');}catch(e){showNotif('Could not save',e.message);}}
 async function voExit(){try{await fetch('/api/admin/view-as/exit',{method:'POST'});}catch(e){}location.href='/admin';}
@@ -4377,10 +4404,17 @@ crInit();
   <div class="ai-main">
   <div class="ai-head"><button class="ai-hb ai-menu" onclick="aiSide()" title="Your chats" aria-label="Your chats" aria-controls="ai-side">☰</button>
     <div class="t"><span>✦</span> <b id="ai-ctitle">Eagle I</b> <small id="ai-csub">your assistant</small></div>
+    <button class="ai-mode" id="ai-mode" onclick="tkToggle()" hidden></button>
     <button class="ai-hb" onclick="aiNew()" title="New chat" aria-label="New chat">＋</button>
     <button class="ai-hb ai-close" onclick="aiClose()" title="Close" aria-label="Close">✕</button></div>
   <div class="ai-body" id="ai-body"></div>
   <div class="ai-foot">
+    <div class="ai-talk" id="ai-talk" hidden>
+      <div class="tk-live" id="tk-live" aria-live="polite"></div>
+      <button class="tk-btn" id="tk-btn" onclick="tkTap()" aria-label="Tap to talk"><span class="tk-ic" aria-hidden="true">🎙</span></button>
+      <div class="tk-status" id="tk-status">Tap to talk</div>
+      <button class="btn-xs tk-end" id="tk-end" onclick="tkStop('Tap to talk')" hidden>End conversation</button>
+    </div>
     <div class="ai-att" id="ai-att"></div>
     <div class="ai-comp">
       <label class="ai-ib" title="Attach plans or photos" aria-label="Attach plans or photos">📎<input type="file" accept="application/pdf,image/*,.csv,.txt" multiple hidden onchange="aiAttach(this)"></label>
@@ -4422,8 +4456,8 @@ function aiMount(inline){
     document.getElementById('ai-mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
     try{p.classList.toggle('side-hide',!!localStorage.getItem('ai-side-hide'));}catch(e){}
     if(!AI.threads)aiList();
-    if(!AI.thread&&!AI.loading)aiHome();if(!AI.loading)aiHash();aiHead();
-    if(matchMedia('(pointer:fine)').matches)setTimeout(()=>document.getElementById('ai-in').focus(),100);
+    if(!AI.thread&&!AI.loading)aiHome();if(!AI.loading)aiHash();aiHead();tkInit();
+    if(AI.mode!=='talk'&&matchMedia('(pointer:fine)').matches)setTimeout(()=>document.getElementById('ai-in').focus(),100);
   }else if(p.classList.contains('inline')){
     document.body.appendChild(p);p.classList.remove('inline','open');p.setAttribute('aria-modal','true');p.setAttribute('role','dialog');document.getElementById('ai-fab').classList.remove('hide');
   }
@@ -4433,7 +4467,8 @@ function aiOpen(){
   document.getElementById('ai-panel').classList.add('open');document.getElementById('ai-shade').classList.add('open');document.getElementById('ai-fab').classList.add('hide');
   document.getElementById('ai-mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
   if(!AI.thread&&!document.getElementById('ai-body').children.length)aiHome();
-  setTimeout(()=>document.getElementById('ai-in').focus(),250);
+  tkInit();
+  if(AI.mode!=='talk')setTimeout(()=>document.getElementById('ai-in').focus(),250);
   try{history.replaceState(null,'','#ask');}catch(e){}
 }
 function aiClose(){if(document.getElementById('ai-panel').classList.contains('inline'))return;document.getElementById('ai-panel').classList.remove('open');document.getElementById('ai-shade').classList.remove('open');document.getElementById('ai-fab').classList.remove('hide');aiSide(false);try{history.replaceState(null,'','#'+(CR.view||'pipeline'));}catch(e){}}
@@ -4492,9 +4527,9 @@ function aiShowReply(r){
   const extra=(r.steps&&r.steps.length?`<div class="ai-steps">${r.steps.map(x=>`<span>${uxEsc(x)}</span>`).join('')}</div>`:'')+(r.actions||[]).map(a=>{AI.cards[a.id]=a.summary;return aiCard(a);}).join('');
   aiBubble('assistant',aiMd(r.text||'Done.'),extra);
 }
-async function aiSend(){
-  if(AI.busy)return;
-  const inp=document.getElementById('ai-in');const text=inp.value.trim();
+async function aiSend(opts={}){
+  if(AI.busy)return null;
+  const inp=document.getElementById('ai-in');const text=(opts.text!=null?String(opts.text):inp.value).trim();
   if(AI.files.some(f=>f.uploading)){showNotif('One moment','Still attaching the file.');return;}
   if(!text&&!AI.files.length)return;
   AI.busy=true;document.getElementById('ai-go').disabled=true;
@@ -4505,7 +4540,7 @@ async function aiSend(){
   inp.value='';aiGrow(inp);try{localStorage.removeItem('draft:ai:new');localStorage.removeItem('draft:ai:'+AI.thread);}catch(e){}
   const think=document.createElement('div');think.className='ai-think';think.innerHTML='<span class="ai-dots"><i></i><i></i><i></i></span><span id="ai-step">Thinking…</span>';body.appendChild(think);aiScroll();
   try{
-    const res=await fetch('/api/crm/assistant/threads/'+AI.thread+'/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,fileIds:files.map(f=>f.id)})});
+    const res=await fetch('/api/crm/assistant/threads/'+AI.thread+'/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,fileIds:files.map(f=>f.id),voice:!!opts.voice})});
     if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error((d.error&&d.error.message)||'Something went wrong.');}
     const reader=res.body.getReader();const dec=new TextDecoder();let buf='',done=null;
     for(;;){const {value,done:end}=await reader.read();if(end)break;buf+=dec.decode(value,{stream:true});let i;
@@ -4514,8 +4549,9 @@ async function aiSend(){
         else if(ev.type==='done')done=ev;else if(ev.type==='error')throw new Error(ev.message);}}
     think.remove();
     if(done){aiShowReply(done);if(done.title){AI.title=done.title;aiHead();}aiList();}
-  }catch(e){think.remove();aiBubble('assistant','<span style="color:var(--red)">'+uxEsc(e.message)+'</span>');}
-  AI.busy=false;document.getElementById('ai-go').disabled=false;inp.focus();
+    AI.busy=false;document.getElementById('ai-go').disabled=false;if(!opts.voice)inp.focus();
+    return done;
+  }catch(e){think.remove();aiBubble('assistant','<span style="color:var(--red)">'+uxEsc(e.message)+'</span>');AI.busy=false;document.getElementById('ai-go').disabled=false;if(!opts.voice)inp.focus();return {error:e.message};}
 }
 function aiGoScreen(k){
   if(!document.getElementById('ai-panel').classList.contains('inline'))aiClose();
@@ -4607,6 +4643,130 @@ async function aiDel(id){
   if(!confirm(`Delete “${t.title||'this chat'}”? It stays in the recycle bin for 30 days.`))return;
   try{await plApi('/api/crm/assistant/threads/'+id,{method:'DELETE'});AI.threads=(AI.threads||[]).filter(x=>x.id!==id);aiRenderList();if(AI.thread===id)aiNew();}
   catch(e){showNotif('Could not delete',e.message);}
+}
+
+/* ---------- Talk: a spoken conversation with Eagle I ----------
+   The phone's own voice-to-text and text-to-voice. Tap once: it listens, sends what
+   you said when you stop, reads the answer aloud and listens again, like a phone
+   call. Yes or no out loud answers “Want me to send it?”. “That’s all” (or two
+   quiet turns) ends it; tap while it talks to cut in. Talk or type is each person’s
+   default (asked the first time) and can be switched any time with the button up top. */
+const TALK={on:false,state:'idle',rec:null,voice:null,quiet:0,pending:null,said:'',cut:false};
+if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{TALK.voice=null;};
+const tkCan=()=>!!(window.SpeechRecognition||window.webkitSpeechRecognition)&&('speechSynthesis' in window);
+const tkLang=()=>document.documentElement.lang==='es'?'es-US':'en-US';
+function tkInit(){
+  if(!AI.mode)AI.mode=(CR.me&&CR.me.aiMode)||'text';
+  if(AI.mode==='talk'&&!tkCan())AI.mode='text';
+  tkApply();
+  if(CR.me&&!CR.me.aiMode&&!CR.me.viewOnly&&!TALK.asked){TALK.asked=true;setTimeout(tkAsk,400);}
+}
+function tkApply(){
+  const talk=AI.mode==='talk';
+  const t=document.getElementById('ai-talk'),c=document.querySelector('#ai-panel .ai-comp'),m=document.getElementById('ai-mode');if(!t||!c||!m)return;
+  t.hidden=!talk;c.style.display=talk?'none':'';
+  m.hidden=!tkCan();m.textContent=talk?'⌨️ Type':'🎙 Talk';m.setAttribute('aria-label',talk?'Switch to typing':'Switch to talking');
+  if(!talk)tkStop();
+}
+function tkToggle(){AI.mode=AI.mode==='talk'?'text':'talk';tkApply();if(AI.mode==='text')setTimeout(()=>document.getElementById('ai-in').focus(),50);}
+// The first time: talk or type?
+function tkAsk(){
+  const can=tkCan();
+  uxOpen(uxHead('How would you like to use Eagle I?','You can switch any time with the button at the top of the chat.')+`
+    <div class="tk-choose">
+      <button class="tk-opt" ${can?'':'disabled'} onclick="tkPick('talk')"><span class="i">🎙</span><b>Talk</b><span>Like a phone call. You speak, Eagle I answers out loud.</span>${can?'':'<em>This browser can’t listen. Try Safari on iPhone or Chrome.</em>'}</button>
+      <button class="tk-opt" onclick="tkPick('text')"><span class="i">⌨️</span><b>Type</b><span>Like texting. You type, Eagle I writes back.</span></button>
+    </div>
+    <div class="sm" style="margin-top:12px">This sets how the chat starts. Change it later in Account → My calendar &amp; morning email.</div>`);
+}
+async function tkPick(mode){
+  uxClose();AI.mode=mode;tkApply();
+  try{await plApi('/api/crm/me/ai-mode',{method:'PATCH',body:{mode}});CR.me.aiMode=mode;}catch(e){}
+  if(mode==='talk')tkStatus('idle','Tap to talk');
+}
+function tkStatus(state,text){
+  TALK.state=state;const b=document.getElementById('tk-btn'),st=document.getElementById('tk-status'),end=document.getElementById('tk-end');if(!b)return;
+  b.className='tk-btn '+state;st.textContent=text;end.hidden=!TALK.on;
+  b.setAttribute('aria-label',state==='listening'?'Done talking':state==='speaking'?'Stop and talk':'Tap to talk');
+  b.querySelector('.tk-ic').textContent=state==='speaking'?'🔊':state==='thinking'?'…':'🎙';
+}
+function tkTap(){
+  if(TALK.state==='speaking'){TALK.cut=true;speechSynthesis.cancel();return;} // cut in: the loop listens next
+  if(TALK.state==='listening'){if(TALK.rec)TALK.rec.stop();return;}
+  if(TALK.state==='thinking')return;
+  // A tap is what lets a phone speak, so start the voice here.
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('');speechSynthesis.speak(u);}catch(e){}
+  TALK.on=true;TALK.quiet=0;tkLoop();
+}
+function tkStop(msg){
+  TALK.on=false;TALK.pending=null;
+  try{if(TALK.rec)TALK.rec.abort();}catch(e){}TALK.rec=null;
+  try{speechSynthesis.cancel();}catch(e){}
+  if(document.getElementById('tk-btn'))tkStatus('idle',msg||'Tap to talk');
+}
+// The most natural voice this device has.
+function tkVoice(){
+  const vs=speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.replace('_','-').startsWith(tkLang().slice(0,2)));
+  const rank=v=>(/natural|neural|premium|enhanced/i.test(v.name)?0:/(Samantha|Ava|Allison|Aria|Jenny|Google US English|Zoe|Nicky|Evan|Paulina|Monica)/i.test(v.name)?1:v.localService?2:3);
+  return vs.sort((a,b)=>rank(a)-rank(b))[0]||null;
+}
+// What a person would say: no symbols, lists or links.
+function tkPlain(t){
+  return String(t||'').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1').replace(/https?:\/\/\S+/g,'').replace(/[*_#`>|~]/g,'')
+    .replace(/^\s*[-•]\s+/gm,'').replace(/\n{2,}/g,'. ').replace(/\n/g,', ').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,'').replace(/\s+([.,!?])/g,'$1').replace(/\.\s*\./g,'.').replace(/:\s*,/g,':').replace(/,\s*,/g,',').replace(/\s{2,}/g,' ').trim();
+}
+function tkSpeak(text){
+  return new Promise(res=>{
+    const plain=tkPlain(text);if(!plain||!TALK.on)return res();
+    TALK.cut=false;if(!TALK.voice)TALK.voice=tkVoice();
+    // A sentence at a time: phones cut long readings short.
+    const parts=plain.match(/[^.!?]+[.!?]*/g)||[plain];let i=0;
+    tkStatus('speaking','Speaking… tap to cut in');
+    const next=()=>{if(!TALK.on||TALK.cut||i>=parts.length)return res();const u=new SpeechSynthesisUtterance(parts[i++].trim());u.lang=tkLang();if(TALK.voice)u.voice=TALK.voice;u.rate=1;u.pitch=1;
+      u.onend=()=>next();u.onerror=()=>res();speechSynthesis.speak(u);};
+    next();
+  });
+}
+function tkListen(){
+  return new Promise(res=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let finalText='',interim='';
+    const r=TALK.rec=new SR();r.lang=tkLang();r.interimResults=true;r.continuous=false;r.maxAlternatives=1;
+    const live=document.getElementById('tk-live');live.textContent='';
+    r.onresult=e=>{interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=t+' ';else interim+=t;}live.textContent=(finalText+interim).trim();};
+    r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){TALK.on=false;showNotif('Microphone not allowed','Allow the microphone for this site in your browser settings, then tap to talk.');}};
+    r.onend=()=>{TALK.rec=null;res((finalText||interim).trim());};
+    tkStatus('listening','Listening… tap when you’re done');
+    try{r.start();}catch(e){TALK.rec=null;res('');}
+  });
+}
+const TK_YES=/^(yes|yeah|yep|yup|sure|ok|okay|go ahead|send it|do it|please|please do|sounds good|correct|that's right|sí|si|claro|dale)\b/i;
+const TK_NO=/^(no|nope|nah|don't|do not|cancel|not now|wait|hold on|stop that)\b/i;
+const TK_BYE=/^(that's all|that is all|that's it|goodbye|bye|i'm done|im done|end|stop|nothing else|no thanks|eso es todo|adiós|adios)\b/i;
+async function tkLoop(){
+  while(TALK.on){
+    const said=await tkListen();
+    if(!TALK.on)break;
+    const live=document.getElementById('tk-live');
+    if(!said){TALK.quiet++;if(TALK.quiet>=2){tkStop('Tap to talk');break;}continue;}
+    TALK.quiet=0;if(live)live.textContent='';
+    // Answering “want me to send it?”
+    if(TALK.pending&&(TK_YES.test(said)||TK_NO.test(said))){
+      const id=TALK.pending;TALK.pending=null;const yes=TK_YES.test(said);
+      aiBubble('user',uxEsc(said));
+      const btn=document.querySelector(`#aic-${id} .cb ${yes?'.btn':'.btn-xs'}`);
+      tkStatus('thinking','Working on it…');
+      let msg=yes?'Done.':'Okay, I won’t send it.';
+      if(btn){try{const r=await plApi('/api/crm/assistant/actions/'+id,{body:{approve:yes}});const el=document.getElementById('aic-'+id);if(el)el.outerHTML=aiCard({id,status:r.status,result:r.result,summary:AI.cards[id]||{}});if(yes)msg=(r.result&&r.result.text)||'Done, it’s sent.';}catch(e){msg='That didn’t go through: '+e.message;}}
+      await tkSpeak(msg+' Anything else?');continue;
+    }
+    if(TK_BYE.test(said)&&said.split(/\s+/).length<=4){aiBubble('user',uxEsc(said));await tkSpeak('Okay. Talk soon.');tkStop('Tap to talk');break;}
+    tkStatus('thinking','Thinking…');
+    const r=await aiSend({text:said,voice:true});
+    if(!TALK.on)break;
+    if(!r||r.error){await tkSpeak(r&&r.error?'Sorry, something went wrong. '+r.error:'Sorry, I didn’t catch that.');continue;}
+    const p=(r.actions||[]).find(a=>a.status==='pending');TALK.pending=p?p.id:null;
+    await tkSpeak(r.text||'Done.');
+  }
 }
 function aiMic(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;

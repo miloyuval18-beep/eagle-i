@@ -1441,7 +1441,10 @@ describe('pages load: every inline script parses', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', page), 'utf8');
     const re = /<script(?![^>]*\bsrc=)(?![^>]*type="(?:application\/(?:ld\+)?json|text\/template)")[^>]*>([\s\S]*?)<\/script>/g;
     let m;
-    while ((m = re.exec(html))) assert.doesNotThrow(() => new Function(m[1]), `${page}: a script on this page doesn't parse`);
+    const all = [];
+    while ((m = re.exec(html))) { assert.doesNotThrow(() => new Function(m[1]), `${page}: a script on this page doesn't parse`); all.push(m[1]); }
+    // The page's scripts share one set of names: the same name declared twice stops the page.
+    assert.doesNotThrow(() => new Function(all.join('\n;\n')), `${page}: two scripts declare the same name`);
   });
 });
 

@@ -53,7 +53,7 @@ router.post('/api/crm/assistant/threads/:tid/messages', requireAuth, async (req,
   res.flushHeaders();
   const line = (o) => { try { res.write(JSON.stringify(o) + '\n'); } catch (e) { /* closed */ } };
   try {
-    const r = await assistant.runTurn(ctxOf(req), { threadId: req.params.tid, text: b.text, chatFileIds: Array.isArray(b.fileIds) ? b.fileIds.slice(0, 10) : [], onEvent: line });
+    const r = await assistant.runTurn(ctxOf(req), { threadId: req.params.tid, text: b.text, chatFileIds: Array.isArray(b.fileIds) ? b.fileIds.slice(0, 10) : [], onEvent: line, voice: !!b.voice });
     line({ type: 'done', ...r });
   } catch (err) {
     line({ type: 'error', message: err.status && err.status < 500 ? err.message : `Something went wrong: ${err.message}` });

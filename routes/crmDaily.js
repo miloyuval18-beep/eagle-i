@@ -21,8 +21,15 @@ const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } cat
 const links = (req, token) => { const url = `${baseUrlOf(req)}/cal/${token}.ics`; return { calendarUrl: url, webcalUrl: url.replace(/^https?:/, 'webcal:'), phoneUrl: `${baseUrlOf(req)}/cal/${token}/add` }; };
 
 router.get('/api/crm/me/daily', requireAuth, wrap('Failed to load', async (req, res) => {
-  const u = (await query('SELECT crm_digest_off, role, oversight FROM users WHERE id = $1', [req.userId])).rows[0];
-  res.json({ ...links(req, await daily.calendarToken(req.userId)), digestOn: !(u && u.crm_digest_off), oversight: team.oversightOf(u) });
+  const u = (await query('SELECT crm_digest_off, role, oversight, ai_mode FROM users WHERE id = $1', [req.userId])).rows[0];
+  res.json({ ...links(req, await daily.calendarToken(req.userId)), digestOn: !(u && u.crm_digest_off), oversight: team.oversightOf(u), aiMode: (u && u.ai_mode) || null });
+}));
+// Talk or type: how this person starts the assistant (crm.html), asked the first time they open it.
+router.patch('/api/crm/me/ai-mode', requireAuth, wrap('Failed to save', async (req, res) => {
+  const mode = (req.body || {}).mode;
+  if (!['talk', 'text'].includes(mode)) return res.status(400).json({ error: { message: 'Pick talk or type.' } });
+  await query('UPDATE users SET ai_mode = $2 WHERE id = $1', [req.userId, mode]);
+  res.json({ mode });
 }));
 // Emails I'm only copied on keep me in the loop (lib/crmEmailWatch.js).
 router.patch('/api/crm/me/oversight', requireAuth, wrap('Failed to save', async (req, res) => res.json(await team.setOversight({ tenantId: req.tenantId, actor: req.crmUser, userId: req.userId, on: !!(req.body || {}).on }))));
