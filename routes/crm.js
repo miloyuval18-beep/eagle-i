@@ -168,6 +168,21 @@ router.get('/api/crm/admin/homeowner-pages/:id', async (req, res) => {
 // checklist (lib/crmTeam.js PERMS): team.need('settings'), team.need('emails')…
 
 // The company details every automatic email uses (signature and footer).
+// Setup reminders (lib/crmSetupCheck.js): what's important and not set up yet, for this person.
+router.get('/api/crm/setup-check', async (req, res) => {
+  try {
+    // The Eagle I admin looking in isn't reminded of the company's setup.
+    if (req.adminView) return res.json({ items: [] });
+    res.json({ items: await require('../lib/crmSetupCheck').check(req.crmUser) });
+  } catch (err) { fail(res, err, 'Failed to check the setup'); }
+});
+router.post('/api/crm/setup-check/skip', async (req, res) => {
+  try { res.json(await require('../lib/crmSetupCheck').skip(req.userId, String((req.body || {}).key || ''))); } catch (err) { fail(res, err, 'Failed to save'); }
+});
+router.post('/api/crm/setup-check/unskip', async (req, res) => {
+  try { res.json(await require('../lib/crmSetupCheck').unskipAll(req.userId)); } catch (err) { fail(res, err, 'Failed to save'); }
+});
+
 router.get('/api/crm/company', async (req, res) => {
   try {
     const r = (await query(

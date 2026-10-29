@@ -1603,6 +1603,8 @@ async function crInit(){
   // A new company (or a new person) is walked through setting up first.
   crView(me.needsSetup?'start':priceDeal?'pipeline':['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'ask');
   if(priceDeal&&!me.needsSetup)prOpen(priceDeal);
+  // Important things not set up yet: a reminder each time the CRM is opened (a slim bar when they came from a link to something).
+  crSetupRemind(!!priceDeal||start==='checkin'||(start==='ask'&&!!hashParts[1]));
   crSetupBanner();
   if(AI.loading)aiLoad(AI.loading);
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
@@ -2484,6 +2486,57 @@ async function alOpen(more){
 }
 async function tmCancel(id){try{await plApi('/api/crm/team/invites/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not cancel',e.message);}}
 
+
+/* ---------- setup reminders ----------
+   Each time someone opens the CRM: the important things not set up yet for them or
+   their company (lib/crmSetupCheck.js), each with a guide and a button to the right
+   screen. A window when they open it; a slim bar instead when they came from a link
+   to something specific (so it doesn't get in the way). */
+const SETUP_R={items:[]};
+async function crSetupRemind(deep){
+  if(!CR.me||CR.me.needsSetup||CR.me.viewOnly)return;
+  try{const r=await plApi('/api/crm/setup-check');SETUP_R.items=r.items||[];}catch(e){return;}
+  if(!SETUP_R.items.length)return;
+  if(deep)srBanner();else srOpen();
+}
+function srBanner(){
+  let el=document.getElementById('sr-banner');
+  if(!SETUP_R.items.length){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='sr-banner';el.className='pl-banner';el.style.cssText='margin:10px 16px 0';const top=document.querySelector('.cr-top');if(!top)return;top.insertAdjacentElement('afterend',el);}
+  const n=SETUP_R.items.length;
+  el.innerHTML=`<span>⚙️ ${n===1?'One important thing isn’t':n+' important things aren’t'} set up yet: ${uxEsc(SETUP_R.items[0].title.toLowerCase())}${n>1?' and more':''}.</span><button class="btn-xs p" onclick="srOpen()">See ${n===1?'it':'them'}</button><button class="btn-xs" onclick="this.parentNode.remove()" aria-label="Hide until next time">Later</button>`;
+}
+function srOpen(){
+  const n=SETUP_R.items.length;if(!n)return;
+  uxOpen(uxHead('⚙️ A few things to set up',`${n===1?'One important thing isn’t':n+' important things aren’t'} set up yet. Eagle I will remind you each time you open it until ${n===1?'it’s':'they’re'} done.`)+`
+    <div class="pl-list">${SETUP_R.items.map((it,k)=>`<div class="pl-pb" id="sr-${it.key}" style="margin-top:${k?10:0}px">
+      <div style="display:flex;gap:12px;align-items:flex-start"><span style="flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--gold,#c9a24a);color:#16130c;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:18px">${k+1}</span>
+      <div style="min-width:0;flex:1"><div class="pl-item-t" style="font-size:19px">${uxEsc(it.title)}</div><div class="sm" style="margin:2px 0 0">${uxEsc(it.why)}</div></div></div>
+      <details style="margin-top:10px"><summary class="btn-xs p" style="display:inline-block;cursor:pointer;list-style:none">📋 Show me how</summary>
+        <ol style="margin:10px 0 0 24px;font-size:17.5px;line-height:1.55">${it.steps.map(x=>`<li style="margin-bottom:6px">${uxEsc(x)}</li>`).join('')}</ol>
+        <div class="vd-mbtns" style="margin-top:8px"><button class="btn btn-blue" onclick="srGo('${it.go}')">${uxEsc(it.button)} →</button><button class="btn-xs" onclick="uxClose();hpOpen()">🙋 Have Eagle I walk me through it</button></div></details>
+      <div style="margin-top:8px"><button class="btn-xs" style="border:0;background:none;text-decoration:underline;padding:4px 0" onclick="srSkip('${it.key}')">We don’t need this</button></div>
+    </div>`).join('')}</div>
+    <div class="vd-mbtns" style="margin-top:16px"><button class="btn btn-blue" onclick="uxClose()">Remind me next time</button></div>`);
+}
+function srGo(go){
+  uxClose();const b=document.getElementById('sr-banner');if(b)b.remove();
+  const at=(id,focus)=>{let n=0;const t=setInterval(()=>{const el=document.getElementById(id);if(el||++n>30){clearInterval(t);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});if(focus)el.focus();}}},150);};
+  if(go==='company-google'){crView('company');at('gw');}
+  else if(go==='company-drive'){crView('company');at('gw-drive');}
+  else if(go==='company-address'){crView('company');at('co-address',true);}
+  else if(go==='import')crView('setup');
+  else if(go==='team')crView('team');
+  else if(go==='vendors')crView('jobs');
+  else if(go==='auto')crView('auto');
+  else if(go==='start')crView('start');
+}
+async function srSkip(key){
+  const it=SETUP_R.items.find(x=>x.key===key);if(!it)return;
+  if(!confirm(`Stop reminding you about “${it.title}”?`))return;
+  try{await plApi('/api/crm/setup-check/skip',{body:{key}});SETUP_R.items=SETUP_R.items.filter(x=>x.key!==key);if(SETUP_R.items.length)srOpen();else{uxClose();showNotif('Done','You won’t be reminded about that again.');}srBanner();}
+  catch(e){showNotif('Could not save',e.message);}
+}
 
 /* ---------- guided setup (#start) ----------
    The owner of a new company: about you, the company, the team, Google,
