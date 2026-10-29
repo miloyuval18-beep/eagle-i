@@ -107,19 +107,24 @@
   // The host: Eagle I's lion in a suit, above the talk button. His mouth opens on the loud
   // part of each word of the natural voice (or, with the device's own voice, in a talking
   // rhythm); he leans in to listen, tilts his head to think, and the frame glows while he
-  // speaks. Anyone can hide him (remembered on this device).
+  // speaks. He's there by default whenever Eagle I talks: the talk area, the walk-through,
+  // and anything read aloud (floatingLion). The ✕ in the talk area removes him (everywhere,
+  // remembered on this device); "Show the lion" brings him back.
   const HOST_KEY = 'eaglei_host';
-  function lionHost(where) {
+  const lionOff = () => { try { return localStorage.getItem(HOST_KEY) === 'off'; } catch (e) { return false; } };
+  const NO_LION = { set() {}, remove() {}, el: null };
+  function lionHost(where, { closable = true } = {}) {
     style();
     const box = document.createElement('div'); box.className = 'et-hostbox';
-    box.innerHTML = `<div class="et-host" data-state="idle"><div class="et-him"><img class="et-base" src="/host/closed.jpg" alt="Eagle I's host, a lion in a suit" width="800" height="800"><img class="et-mouth" src="/host/mouth.png" alt=""></div><div class="et-ring"></div><div class="et-ring b"></div><div class="et-dots" aria-hidden="true"><i></i><i></i><i></i></div><button type="button" class="et-hide" aria-label="Hide the lion">✕</button></div><button type="button" class="et-show" hidden>🦁 Show the lion</button>`;
+    box.innerHTML = `<div class="et-host" data-state="idle"><div class="et-him"><img class="et-base" src="/host/closed.jpg" alt="Eagle I's host, a lion in a suit" width="800" height="800"><img class="et-mouth" src="/host/mouth.png" alt=""></div><div class="et-ring"></div><div class="et-ring b"></div><div class="et-dots" aria-hidden="true"><i></i><i></i><i></i></div>${closable ? '<button type="button" class="et-hide" aria-label="Remove the lion">✕</button>' : ''}</div>${closable ? '<button type="button" class="et-show" hidden>🦁 Show the lion</button>' : ''}`;
     where.prepend(box);
     const card = box.querySelector('.et-host'), mouth = box.querySelector('.et-mouth'), show = box.querySelector('.et-show');
-    const hidden = () => { try { return localStorage.getItem(HOST_KEY) === 'off'; } catch (e) { return false; } };
-    const apply = () => { const h = hidden(); card.hidden = h; show.hidden = !h; };
-    box.querySelector('.et-hide').onclick = () => { try { localStorage.setItem(HOST_KEY, 'off'); } catch (e) {} apply(); };
-    show.onclick = () => { try { localStorage.removeItem(HOST_KEY); } catch (e) {} apply(); };
-    apply();
+    if (closable) {
+      const apply = () => { const off = lionOff(); card.hidden = off; show.hidden = !off; };
+      box.querySelector('.et-hide').onclick = () => { try { localStorage.setItem(HOST_KEY, 'off'); } catch (e) {} apply(); };
+      show.onclick = () => { try { localStorage.removeItem(HOST_KEY); } catch (e) {} apply(); };
+      apply();
+    }
     let state = 'idle', open = false, flip = 0;
     const tick = () => {
       if (!box.isConnected) return;
@@ -134,6 +139,30 @@
     };
     requestAnimationFrame(tick);
     return { set(s) { state = s === 'speaking' || s === 'listening' || s === 'thinking' ? s : 'idle'; card.dataset.state = state; }, el: box };
+  }
+  // The lion in the corner of the screen while something is read aloud (a report).
+  function floatingLion() {
+    if (lionOff()) return NO_LION;
+    style();
+    let wrap = document.querySelector('.et-float');
+    if (!wrap) { wrap = document.createElement('div'); wrap.className = 'et-float'; document.documentElement.appendChild(wrap); }
+    wrap.innerHTML = ''; wrap.hidden = false;
+    const h = lionHost(wrap, { closable: false });
+    return { set: h.set, remove() { wrap.hidden = true; wrap.innerHTML = ''; } };
+  }
+  // Reads something aloud in Eagle I's voice with the lion showing; resolves when done.
+  // Returns { stop() } at once; .done is a promise.
+  function readAloud(text, { lang = 'en', rate = RATE } = {}) {
+    const lion = floatingLion(); lion.set('speaking');
+    let over = false;
+    const p = plain(text);
+    const done = cloud.say(p, { lang, rate, alive: () => !over }).then(said => new Promise(res => {
+      if (said || over) return res();
+      const v = voiceFor(lang), parts = p.match(/[^.!?]+[.!?]*/g) || [p]; let i = 0;
+      const next = () => { if (over || i >= parts.length) return res(); const u = new SpeechSynthesisUtterance(parts[i++].trim()); u.lang = tag(lang); if (v) u.voice = v; u.rate = rate; u.onend = next; u.onerror = () => res(); speechSynthesis.speak(u); };
+      next();
+    })).then(() => { over = true; lion.remove(); });
+    return { done, stop() { over = true; hush(); lion.remove(); } };
   }
   const hush = () => { cloud.stop(); try { speechSynthesis.cancel(); } catch (e) {} };
 
@@ -196,6 +225,15 @@
 .et-hide{position:absolute;top:6px;left:6px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#e7c983;font-size:15px;cursor:pointer;opacity:.75}
 .et-hide:hover,.et-hide:focus-visible{opacity:1}
 .et-show{border:0;background:none;color:inherit;font:inherit;font-size:15px;font-weight:700;text-decoration:underline;cursor:pointer;opacity:.8;margin:2px 0 6px}
+.et-tour-row{display:flex;gap:12px;align-items:center;margin:8px 0 12px}
+.et-tour-row .et-tour-t{margin:0;flex:1}
+.et-tour-row .et-hostbox{width:auto;flex:none}
+.et-tour-row .et-host{width:84px!important;margin:0;border-radius:12px}
+.et-tour-row .et-him,.et-tour-row .et-ring{border-radius:10px}
+.et-float{position:fixed;right:16px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:2050}
+.et-float[hidden]{display:none}
+.et-float .et-host{width:150px!important;margin:0}
+@media (max-width:640px){.et-float{right:12px;bottom:calc(92px + env(safe-area-inset-bottom))}.et-float .et-host{width:110px!important}}
 @media (max-width:640px){.et-host{width:min(140px,38vw);border-radius:14px}.et-him{border-radius:12px}.et-ring{border-radius:14px}.et-hide{width:28px;height:28px;font-size:13px;top:4px;left:4px}.et-dots{top:7px;right:8px}.et-dots i{width:7px;height:7px}}
 @media (max-width:640px) and (max-height:700px){.et-host{width:min(116px,32vw)}}
 @media (min-width:641px) and (max-height:700px){.et-host{width:min(170px,48vw)}}
@@ -301,11 +339,12 @@
     if (!('speechSynthesis' in window) || !steps || !steps.length) { if (onDone) onDone(); return; }
     const W = TOUR_WORDS[lang === 'es' ? 'es' : 'en'];
     const card = document.createElement('div'); card.className = 'et-tour'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', W.title);
-    card.innerHTML = `<div class="et-tour-h"><span>🔊 ${W.title}</span><span class="et-tour-n"></span></div><div class="et-tour-t" aria-live="polite"></div>
+    card.innerHTML = `<div class="et-tour-h"><span>🔊 ${W.title}</span><span class="et-tour-n"></span></div><div class="et-tour-row"><div class="et-tour-t" aria-live="polite"></div></div>
       <div class="et-tour-b"><button type="button" class="et-tour-skip">${W.skip}</button><button type="button" class="et-tour-next">${W.done}</button></div>`;
     document.documentElement.appendChild(card);
     let i = 0, over = false, lit = null, step = 0;
     cloud.unlock();
+    const lion = lionOff() ? NO_LION : lionHost(card.querySelector('.et-tour-row'), { closable: false });
     const voice = voiceFor(lang === 'es' ? 'es' : 'en');
     const light = (sel) => {
       if (lit) lit.classList.remove('et-lit'); lit = null;
@@ -327,10 +366,14 @@
       // Says the step, then waits for the Next button (it never moves on by itself).
       hush();
       const mine = ++step;
+      lion.set('speaking');
+      const quiet = () => { if (step === mine && !over) lion.set('idle'); };
       cloud.say(plain(st.say), { lang: lang === 'es' ? 'es' : 'en', rate: TOUR_RATE, alive: () => !over && step === mine }).then(said => {
-        if (said || over || step !== mine) return;
+        if (over || step !== mine) return;
+        if (said) return quiet();
         const u = new SpeechSynthesisUtterance(plain(st.say)); u.lang = tag(lang); if (voice) u.voice = voice; u.rate = TOUR_RATE; u.pitch = 1;
-        try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+        u.onend = quiet; u.onerror = quiet;
+        try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { quiet(); }
       });
     };
     card.querySelector('.et-tour-skip').onclick = finish;
@@ -360,5 +403,5 @@
     ]);
   }
 
-  window.EagleTalk = { can, plain, mount, choose, style, tour, tourSteps, TOUR_WORDS, cloud, host: lionHost };
+  window.EagleTalk = { can, plain, mount, choose, style, tour, tourSteps, TOUR_WORDS, cloud, host: lionHost, readAloud };
 })();

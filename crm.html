@@ -2036,13 +2036,22 @@ document.addEventListener('change',e=>{if(e.target&&e.target.matches&&e.target.m
 /* ---------- weekly reports ---------- */
 // The report read aloud, for the drive in.
 let RP_SPEECH=null;
+let RP_READ=null;
 function rpListen(){
   const btn=document.getElementById('rp-listen');
-  if(speechSynthesis.speaking){speechSynthesis.cancel();btn.textContent='▶ Listen';return;}
+  // Stop: the second tap.
+  if(RP_READ){RP_READ.stop();RP_READ=null;btn.textContent='▶ Listen';return;}
   const n=RP_SPEECH;if(!n)return;
   const parts=[n.headline+'.','What went well.',...(n.successes||[]),'What needs attention.',...(n.challenges||[]),...(n.team&&n.team.length?['The team.',...n.team.map(t=>t.name+': '+t.note)]:[]),...(n.focus&&n.focus.length?['This week, focus on.',...n.focus]:[])];
+  // Read in Eagle I's voice, with the lion in the corner (public/talk.js); the device's voice if that isn't there.
+  if(window.EagleTalk&&EagleTalk.readAloud){
+    EagleTalk.cloud.unlock();
+    RP_READ=EagleTalk.readAloud(parts.join(' ').replace(/[“”]/g,''),{lang:'en',rate:0.9});
+    btn.textContent='■ Stop';
+    RP_READ.done.then(()=>{RP_READ=null;btn.textContent='▶ Listen';});
+    return;
+  }
   const u=new SpeechSynthesisUtterance(parts.join(' ').replace(/[“”]/g,''));u.rate=0.9;
-  const v=speechSynthesis.getVoices().find(x=>/en-US/.test(x.lang)&&/Samantha|Google US|Natural/.test(x.name))||speechSynthesis.getVoices().find(x=>/en-US/.test(x.lang));if(v)u.voice=v;
   u.onend=()=>{btn.textContent='▶ Listen';};btn.textContent='■ Stop';speechSynthesis.speak(u);
 }
 function rpRender(r,label){
