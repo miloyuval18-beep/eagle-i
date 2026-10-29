@@ -196,7 +196,9 @@
 .et-hide{position:absolute;top:6px;left:6px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#e7c983;font-size:15px;cursor:pointer;opacity:.75}
 .et-hide:hover,.et-hide:focus-visible{opacity:1}
 .et-show{border:0;background:none;color:inherit;font:inherit;font-size:15px;font-weight:700;text-decoration:underline;cursor:pointer;opacity:.8;margin:2px 0 6px}
-@media (max-height:700px){.et-host{width:min(170px,48vw)}}
+@media (max-width:640px){.et-host{width:min(140px,38vw);border-radius:14px}.et-him{border-radius:12px}.et-ring{border-radius:14px}.et-hide{width:28px;height:28px;font-size:13px;top:4px;left:4px}.et-dots{top:7px;right:8px}.et-dots i{width:7px;height:7px}}
+@media (max-width:640px) and (max-height:700px){.et-host{width:min(116px,32vw)}}
+@media (min-width:641px) and (max-height:700px){.et-host{width:min(170px,48vw)}}
 @media (prefers-reduced-motion:reduce){.et-host .et-him,.et-ring,.et-dots i{animation:none!important}.et-him{transition:none}}`;
     document.head.appendChild(css);
   }
