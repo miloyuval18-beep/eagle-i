@@ -1445,6 +1445,11 @@ describe('pages load: every inline script parses', () => {
     while ((m = re.exec(html))) { assert.doesNotThrow(() => new Function(m[1]), `${page}: a script on this page doesn't parse`); all.push(m[1]); }
     // The page's scripts share one set of names: the same name declared twice stops the page.
     assert.doesNotThrow(() => new Function(all.join('\n;\n')), `${page}: two scripts declare the same name`);
+    // Two functions with the same name don't stop the page: the later one silently replaces the
+    // earlier (the search button once opened the setup reminders that way).
+    const names = [...all.join('\n').matchAll(/^(?:async\s+)?function\s+([\w$]+)\s*\(/gm)].map(x => x[1]);
+    const twice = [...new Set(names.filter((n, i) => names.indexOf(n) !== i))];
+    assert.deepEqual(twice, [], `${page}: functions declared twice`);
   });
 });
 
