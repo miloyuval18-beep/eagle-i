@@ -131,13 +131,17 @@ const THU_830PM = new Date('2026-10-30T01:30:00Z');
     assert.equal((await ci.problems(owner)).length, 0);
     await assert.rejects(ci.handleProblem(owner, probs[0].id), /isn’t open/);
 
+    // Olive starts her chat but stops partway: at 6pm it's summarized from what she said.
+    turns = 0;
+    assert.equal((await ci.message(owner.id, 'Walked the Ruiz job with the homeowner.', { now: THU })).done, false);
     // 6pm: the owners' and admins' summary of the day, once.
     sent.length = 0;
     // Sent late (8:30pm Central, Friday in UTC): still Thursday's progress.
     await ci.processTeamDigest({ now: THU_830PM, appUrl: 'https://app.test' });
     const dg = mine(owner);
-    assert.equal(dg.length, 1); assert.match(dg[0].subject, /Today’s check-ins: 2 of 3, 1 problem/);
-    assert.match(dg[0].html, /Ruiz kitchen/); assert.match(dg[0].html, /not yet: Olive Owner/);
+    assert.equal(dg.length, 1); assert.match(dg[0].subject, /Today’s check-ins: 3 of 3, 2 problems/);
+    assert.match(dg[0].html, /Ruiz kitchen/); assert.match(dg[0].html, /<b>Olive Owner<\/b> <span[^>]*>\(stopped partway\)/);
+    assert.equal((await ci.mine(owner.id))[0].status, 'done', 'her unfinished chat is wrapped up');
     assert.equal(mine(dana).length + mine(sam).length, 0, 'only owners and admins');
     assert.equal(mine(it).length, 0, 'no summary to a login left out');
     assert.ok(!(await ci.teamDay(owner, '2026-10-29')).people.some(p => p.name === 'IT Login'), 'not on the Team list');
