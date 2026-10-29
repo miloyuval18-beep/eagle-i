@@ -35,6 +35,56 @@
     return vs.sort((a, b) => rank(a) - rank(b))[0] || null;
   }
 
+  // The natural voice (routes/tts.js, Google's): used while this month's free allowance
+  // lasts. When the server says it's used up (or anything goes wrong, or the phone won't
+  // play it), the browser's own voice says it instead, for the rest of the visit.
+  const cloud = (() => {
+    let A = null, off = false, stopFn = null, silent = null;
+    const el = () => { if (!A) { A = new Audio(); A.preload = 'auto'; } return A; };
+    // A moment of silence, played from a tap, so the phone lets later answers play.
+    const quiet = () => {
+      if (silent) return silent;
+      const b = new ArrayBuffer(46), v = new DataView(b), w = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+      w(0, 'RIFF'); v.setUint32(4, 38, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, 2, true); v.setInt16(44, 0, true);
+      return (silent = URL.createObjectURL(new Blob([b], { type: 'audio/wav' })));
+    };
+    function unlock() { if (off) return; try { const a = el(); a.src = quiet(); const p = a.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+    async function fetchOne(text, lang, rate) {
+      try {
+        const r = await fetch('/api/tts', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, lang, rate, page: location.pathname }) });
+        if (r.status !== 200) { if (r.status === 204 && ['limit', 'off'].includes(r.headers.get('X-Voice-Fallback'))) off = true; return null; }
+        return URL.createObjectURL(await r.blob());
+      } catch (e) { return null; }
+    }
+    const play = (url) => new Promise(res => {
+      const a = el(); const done = (ok) => { stopFn = null; a.onended = a.onerror = null; try { URL.revokeObjectURL(url); } catch (e) {} res(ok); };
+      stopFn = () => { try { a.pause(); } catch (e) {} done(true); };
+      a.onended = () => done(true); a.onerror = () => done(false);
+      a.src = url; const p = a.play(); if (p && p.catch) p.catch(() => done(false));
+    });
+    // true: said (or cut off); false: not said, so use the browser's voice.
+    async function say(text, { lang = 'en', rate = 0.9, alive = () => true } = {}) {
+      if (off || !text) return false;
+      const chunks = []; let cur = '';
+      for (const t of (text.match(/[^.!?]+[.!?]*/g) || [text])) { if (cur && (cur + t).length > 900) { chunks.push(cur); cur = ''; } cur += t; }
+      if (cur.trim()) chunks.push(cur.trim());
+      let pending = fetchOne(chunks[0], lang, rate);
+      for (let i = 0; i < chunks.length; i++) {
+        const url = await pending;
+        if (!url) return i > 0;
+        if (i + 1 < chunks.length) pending = fetchOne(chunks[i + 1], lang, rate);
+        if (!alive()) { try { URL.revokeObjectURL(url); } catch (e) {} return true; }
+        if (!(await play(url))) return i > 0;
+        if (!alive()) return true;
+      }
+      return true;
+    }
+    function stop() { if (stopFn) stopFn(); else if (A) { try { A.pause(); } catch (e) {} } }
+    return { say, stop, unlock, get off() { return off; } };
+  })();
+  const hush = () => { cloud.stop(); try { speechSynthesis.cancel(); } catch (e) {} };
+
   let styled = false;
   function style() {
     if (styled) return; styled = true;
@@ -101,10 +151,14 @@
     const speak = (text) => new Promise(res => {
       const p = plain(text); if (!p || !S.on) return res();
       S.cut = false; if (!S.voice) S.voice = voiceFor(o.lang());
-      const parts = p.match(/[^.!?]+[.!?]*/g) || [p]; let i = 0;
       status('speaking', W().speaking);
-      const next = () => { if (!S.on || S.cut || i >= parts.length) return res(); const u = new SpeechSynthesisUtterance(parts[i++].trim()); u.lang = tag(o.lang()); if (S.voice) u.voice = S.voice; u.rate = RATE; u.pitch = 1; u.onend = next; u.onerror = () => res(); speechSynthesis.speak(u); };
-      next();
+      // The natural voice first; the browser's own if it can't.
+      cloud.say(p, { lang: o.lang(), rate: RATE, alive: () => S.on && !S.cut }).then(said => {
+        if (said || !S.on || S.cut) return res();
+        const parts = p.match(/[^.!?]+[.!?]*/g) || [p]; let i = 0;
+        const next = () => { if (!S.on || S.cut || i >= parts.length) return res(); const u = new SpeechSynthesisUtterance(parts[i++].trim()); u.lang = tag(o.lang()); if (S.voice) u.voice = S.voice; u.rate = RATE; u.pitch = 1; u.onend = next; u.onerror = () => res(); speechSynthesis.speak(u); };
+        next();
+      });
     });
     const listen = () => new Promise(res => {
       let fin = '', mid = ''; const r = S.rec = new (SR())(); r.lang = tag(o.lang()); r.interimResults = true; r.continuous = false;
@@ -132,14 +186,15 @@
     function start() {
       // A tap is what lets a phone speak, so wake the voice here.
       try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance('')); } catch (e) {}
+      cloud.unlock();
       S.on = true; S.quiet = 0; loop();
     }
     function stop() {
       S.on = false; try { if (S.rec) S.rec.abort(); } catch (e) {} S.rec = null;
-      try { speechSynthesis.cancel(); } catch (e) {} status('idle', W().tap);
+      hush(); status('idle', W().tap);
     }
     btn.onclick = () => {
-      if (S.state === 'speaking') { S.cut = true; speechSynthesis.cancel(); return; }
+      if (S.state === 'speaking') { S.cut = true; hush(); return; }
       if (S.state === 'listening') { if (S.rec) S.rec.stop(); return; }
       if (S.state === 'thinking') return;
       start();
@@ -167,7 +222,8 @@
     card.innerHTML = `<div class="et-tour-h"><span>🔊 ${W.title}</span><span class="et-tour-n"></span></div><div class="et-tour-t" aria-live="polite"></div>
       <div class="et-tour-b"><button type="button" class="et-tour-skip">${W.skip}</button><button type="button" class="et-tour-next">${W.done}</button></div>`;
     document.documentElement.appendChild(card);
-    let i = 0, over = false, lit = null;
+    let i = 0, over = false, lit = null, step = 0;
+    cloud.unlock();
     const voice = voiceFor(lang === 'es' ? 'es' : 'en');
     const light = (sel) => {
       if (lit) lit.classList.remove('et-lit'); lit = null;
@@ -177,7 +233,7 @@
       const r = lit && lit.getBoundingClientRect();
       card.classList.toggle('top', !!r && r.top + r.height / 2 > innerHeight * 0.45);
     };
-    const finish = () => { if (over) return; over = true; try { speechSynthesis.cancel(); } catch (e) {} if (lit) lit.classList.remove('et-lit'); card.remove(); if (onDone) onDone(); };
+    const finish = () => { if (over) return; over = true; hush(); if (lit) lit.classList.remove('et-lit'); card.remove(); if (onDone) onDone(); };
     const next = () => {
       if (over) return;
       if (i >= steps.length) return finish();
@@ -187,11 +243,16 @@
       card.querySelector('.et-tour-next').textContent = i >= steps.length ? W.done : W.next;
       light(st.el);
       // Says the step, then waits for the Next button (it never moves on by itself).
-      const u = new SpeechSynthesisUtterance(plain(st.say)); u.lang = tag(lang); if (voice) u.voice = voice; u.rate = TOUR_RATE; u.pitch = 1;
-      try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+      hush();
+      const mine = ++step;
+      cloud.say(plain(st.say), { lang: lang === 'es' ? 'es' : 'en', rate: TOUR_RATE, alive: () => !over && step === mine }).then(said => {
+        if (said || over || step !== mine) return;
+        const u = new SpeechSynthesisUtterance(plain(st.say)); u.lang = tag(lang); if (voice) u.voice = voice; u.rate = TOUR_RATE; u.pitch = 1;
+        try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+      });
     };
     card.querySelector('.et-tour-skip').onclick = finish;
-    card.querySelector('.et-tour-next').onclick = () => { try { speechSynthesis.cancel(); } catch (e) {} next(); };
+    card.querySelector('.et-tour-next').onclick = () => { hush(); next(); };
     next();
     return { stop: finish };
   }
@@ -217,5 +278,5 @@
     ]);
   }
 
-  window.EagleTalk = { can, plain, mount, choose, style, tour, tourSteps, TOUR_WORDS };
+  window.EagleTalk = { can, plain, mount, choose, style, tour, tourSteps, TOUR_WORDS, cloud };
 })();

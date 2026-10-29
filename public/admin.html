@@ -45,6 +45,7 @@ button.edit:hover{background:#9a1414}
 <main>
   <p class="lead">Every company on Eagle I CRM. <b>Open (view only)</b> shows its CRM exactly as its owner sees it, with nothing changeable. <b>Open (full access)</b> lets you change anything there as its owner could; what you change or send is real. Either way the visit is noted in that company’s activity log.</p>
   <div class="note" id="viewing" hidden></div>
+  <p class="lead" id="voice" hidden></p>
   <input id="q" type="search" placeholder="Search by company or owner email…" aria-label="Search companies" oninput="draw()">
   <div class="list" id="list">Loading…</div>
 </main>
@@ -78,6 +79,11 @@ async function openCo(id, btn, mode) {
 }
 async function exitView() { await fetch('/api/admin/view-as/exit', { method: 'POST' }); location.reload(); }
 load();
+// The natural voice this month: Google's free allowance, and where Eagle I stops.
+fetch('/api/admin/voice-usage').then(r => r.ok ? r.json() : null).then(v => {
+  if (!v) return; const el = document.getElementById('voice'); el.hidden = false;
+  el.innerHTML = v.on ? `🔊 <b>Natural voice this month:</b> ${v.chars.toLocaleString()} of ${v.cap.toLocaleString()} characters used${v.chars >= v.cap * 0.98 ? ' · <b>switched to the device’s own voice until next month</b>' : ''}. Google’s free allowance is 1,000,000; Eagle I stops at ${v.cap.toLocaleString()}.` : '🔊 Natural voice: off (no Google key), so the device’s own voice is used.';
+}).catch(() => {});
 </script>
 </body>
 </html>

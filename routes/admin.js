@@ -112,6 +112,10 @@ router.post('/api/admin/view-as/role', requireAuth, requireAdmin, async (req, re
   await new Promise((ok) => req.session.save(() => ok()));
   res.json({ ok: true, role });
 });
+// The natural voice's use this month (lib/tts.js): it stops at the cap, under Google's free allowance.
+router.get('/api/admin/voice-usage', requireAuth, requireAdmin, async (req, res) => {
+  try { res.json(await require('../lib/tts').usage()); } catch (err) { res.status(500).json({ error: { message: 'Failed to load.' } }); }
+});
 router.post('/api/admin/view-as/exit', requireAuth, async (req, res) => {
   delete req.session.viewAs; delete req.session.viewMode; delete req.session.viewRole; delete req.session.viewUser;
   await new Promise((ok) => req.session.save(() => ok()));

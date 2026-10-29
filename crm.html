@@ -5005,17 +5005,18 @@ function tkStatus(state,text){
   b.querySelector('.tk-ic').textContent=state==='speaking'?'🔊':state==='thinking'?'…':'🎙';
 }
 function tkTap(){
-  if(TALK.state==='speaking'){TALK.cut=true;speechSynthesis.cancel();return;} // cut in: the loop listens next
+  if(TALK.state==='speaking'){TALK.cut=true;tkHush();return;} // cut in: the loop listens next
   if(TALK.state==='listening'){if(TALK.rec)TALK.rec.stop();return;}
   if(TALK.state==='thinking')return;
   // A tap is what lets a phone speak, so start the voice here.
   try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('');speechSynthesis.speak(u);}catch(e){}
+  if(window.EagleTalk)EagleTalk.cloud.unlock();
   TALK.on=true;TALK.quiet=0;tkLoop();
 }
 function tkStop(msg){
   TALK.on=false;TALK.pending=null;
   try{if(TALK.rec)TALK.rec.abort();}catch(e){}TALK.rec=null;
-  try{speechSynthesis.cancel();}catch(e){}
+  tkHush();
   if(document.getElementById('tk-btn'))tkStatus('idle',msg||'Tap to talk');
 }
 // The most natural voice this device has.
@@ -5033,14 +5034,20 @@ function tkSpeak(text){
   return new Promise(res=>{
     const plain=tkPlain(text);if(!plain||!TALK.on)return res();
     TALK.cut=false;if(!TALK.voice)TALK.voice=tkVoice();
-    // A sentence at a time: phones cut long readings short.
-    const parts=plain.match(/[^.!?]+[.!?]*/g)||[plain];let i=0;
     tkStatus('speaking','Speaking… tap to cut in');
-    const next=()=>{if(!TALK.on||TALK.cut||i>=parts.length)return res();const u=new SpeechSynthesisUtterance(parts[i++].trim());u.lang=tkLang();if(TALK.voice)u.voice=TALK.voice;u.rate=0.9;u.pitch=1;
-      u.onend=()=>next();u.onerror=()=>res();speechSynthesis.speak(u);};
-    next();
+    // The natural voice (Google's, while this month's free allowance lasts); the device's own if it can't.
+    const cloud=window.EagleTalk&&EagleTalk.cloud;
+    (cloud?cloud.say(plain,{lang:tkLang().slice(0,2),rate:0.9,alive:()=>TALK.on&&!TALK.cut}):Promise.resolve(false)).then(said=>{
+      if(said||!TALK.on||TALK.cut)return res();
+      // A sentence at a time: phones cut long readings short.
+      const parts=plain.match(/[^.!?]+[.!?]*/g)||[plain];let i=0;
+      const next=()=>{if(!TALK.on||TALK.cut||i>=parts.length)return res();const u=new SpeechSynthesisUtterance(parts[i++].trim());u.lang=tkLang();if(TALK.voice)u.voice=TALK.voice;u.rate=0.9;u.pitch=1;
+        u.onend=()=>next();u.onerror=()=>res();speechSynthesis.speak(u);};
+      next();
+    });
   });
 }
+function tkHush(){try{if(window.EagleTalk)EagleTalk.cloud.stop();}catch(e){}try{speechSynthesis.cancel();}catch(e){}}
 function tkListen(){
   return new Promise(res=>{
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let finalText='',interim='';
