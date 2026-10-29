@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Eagle I">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@600;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
 <!-- Eagle I CRM: its own product and app, separate from the Eagle I marketing
      dashboard (index.html). API: routes/crm.js. -->
 <style>
@@ -845,6 +845,57 @@ body.view-only .cr-top{top:0}
 .ck-past summary{cursor:pointer;list-style:none}
 .ck-handled{opacity:.7}
 .ck-tabs{margin-bottom:12px}
+
+/* ---------- The Command Center look (the homepage's) ----------
+   Serif titles, small gold capitals for section names, charcoal and gold, one deep
+   navy for what you can act on, on warm paper. Comes last, so it only restyles;
+   sizes and contrast stay as they were for the older audience. */
+:root{
+  --bg:#f4f1ea;--bg4:#ece6da;
+  --bdr:#d8d0bf;--bdr2:#b1a895;--bdr3:#857d6e;--ctl:#8b8374;
+  --ink:#141a24;--ink2:#2b323f;--ink3:#4b5360;
+  --blue:#163a6b;--blue2:#0f2a52;--accent:#163a6b;--accent-soft:#e9eef6;--accent-line:#a9b9d3;
+  --ai:linear-gradient(135deg,#0f2a52 0%,#163a6b 55%,#2b5c9e 100%);
+  --glow:rgba(22,58,107,.22);
+  --serif:'Cormorant Garamond',Georgia,serif;--caps:'Montserrat','Inter',sans-serif;
+  --sh2:0 1px 3px rgba(20,26,36,.08),0 1px 2px rgba(20,26,36,.05);
+  --sh3:0 16px 30px -12px rgba(20,26,36,.28),0 4px 10px -4px rgba(20,26,36,.10);
+}
+body{background:var(--bg) radial-gradient(1200px 520px at 50% -160px,#fffaf0 0%,rgba(255,250,240,0) 72%) no-repeat}
+::selection{background:#f1e2bd}
+/* titles: serif, like "Welcome to Your Command Center" */
+.st{font-family:var(--serif);font-size:38px;font-weight:700;letter-spacing:-.005em;line-height:1.08}
+.sh .st::after{width:56px;height:3px;margin-top:10px}
+.vd-mt{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.005em}
+.cr-brand{font-family:var(--serif);font-size:26px;font-weight:700;letter-spacing:0}
+.ai-hello .g,.ai-panel.inline .ai-hello .g{font-family:var(--serif);font-weight:700;letter-spacing:-.005em;font-size:40px;line-height:1.08;background:linear-gradient(180deg,#e3b55a 0%,#c9952f 48%,#8f6418 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* section names: small gold capitals */
+.pl-h{font-family:var(--caps);font-size:14.5px;font-weight:700;letter-spacing:.14em;color:#6b4f12}
+.nx-l{font-family:var(--caps);letter-spacing:.12em;color:#6b4f12}
+/* buttons: the homepage's navy */
+.btn{font-family:var(--caps);letter-spacing:.005em}
+.btn-blue{background:linear-gradient(180deg,#1d4a86 0%,#123667 100%);box-shadow:0 6px 14px -6px rgba(15,42,82,.6),inset 0 1px 0 rgba(255,255,255,.14)}
+.btn-blue:hover{background:linear-gradient(180deg,#235497,#153d74);box-shadow:0 8px 18px -6px rgba(15,42,82,.65)}
+.btn-xs.p{box-shadow:0 3px 8px -3px rgba(15,42,82,.55)}
+.pl-chip.active{box-shadow:0 4px 10px -4px rgba(15,42,82,.6)}
+/* cards: white, rounder, softer depth, a gold edge */
+.pl-card,.pl-item,.pl-pb{border-radius:14px;box-shadow:0 2px 4px rgba(20,26,36,.04),0 12px 26px -16px rgba(20,26,36,.28)}
+.pl-card{border-left:4px solid #e2c98f}
+.pl-card:hover{border-left-color:var(--gold);box-shadow:var(--sh3)}
+.vd-modal-box{border-top:3px solid var(--gold);box-shadow:0 30px 60px -18px rgba(20,26,36,.45)}
+.cp-head{background:linear-gradient(180deg,#fffaf0 0%,#ffffff 60%)}
+.cc-box{background:linear-gradient(180deg,#eef2f8 0%,#ffffff 75%)}
+/* summary tiles and counts: navy, charcoal and gold */
+.pl-tile:nth-child(4n+1),.ai-glance-t:nth-child(3n+1){background:linear-gradient(135deg,#123667,#2b5c9e)}
+.pl-tile:nth-child(4n+3){background:linear-gradient(135deg,#0f2a52,#1d4a86)}
+/* stages: navy shades up to the proposal, then gold, charcoal and green */
+.pl-tag.st-new{background:#eef2f8;border-color:#c6d2e4;color:#163a6b}
+.pl-tag.st-qualified{background:#e4eaf4;border-color:#a9b9d3;color:#163a6b}
+.pl-tag.st-site_visit{background:#d7e1ef;border-color:#8fa6c8;color:#10305c}
+.pl-tag.st-design_agreement,.pl-tag.st-in_design{background:#c9d6ea;border-color:#7894bd;color:#0f2a52}
+.pl-tag.st-proposal{background:#163a6b;border-color:#163a6b;color:#fff}
+.pl-tag.gB{background:var(--accent-soft);border-color:var(--accent-line);color:#0f2a52}
+@media (max-width:640px){.st{font-size:34px}.vd-mt{font-size:27px}.ai-hello .g,.ai-panel.inline .ai-hello .g{font-size:34px}}
 </style>
 </head>
 <body>

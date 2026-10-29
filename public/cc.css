@@ -1,0 +1,45 @@
+/* Eagle I "Command Center" look for the CRM's own pages: sign-in and joining, the
+   homeowner's and sub's pages, estimates, invoices, booking and the forms customers
+   fill in. The homepage's language: serif titles (Cormorant Garamond), small gold
+   capitals (Montserrat), charcoal and gold, one deep navy for what you can act on,
+   on warm paper. Loaded after each page's own styles, so it only restyles; big
+   text and strong contrast stay (older audience). Pages with one card in the middle
+   (sign-in, booking, forms) set <body class="cc-photo"> for the house behind it. */
+:root{
+  --bg:#f4f1ea;--card:#ffffff;--soft:#f4f0e7;
+  --ink:#141a24;--ink2:#353d4b;--ink3:#555d69;
+  --bdr:#d8d0bf;--bdr2:#8b8374;
+  --accent:#163a6b;--accent2:#0f2a52;
+  --gold:#c9a24a;--gold2:#e7c983;--gold-ink:#7a5a12;--char:#111318;
+  --serif:'Cormorant Garamond',Georgia,serif;--caps:'Montserrat','Nunito Sans',sans-serif;
+}
+body{background:var(--bg) radial-gradient(1200px 520px at 50% -160px,#fffaf0 0%,rgba(255,250,240,0) 72%) no-repeat}
+::selection{background:#f1e2bd}
+a{color:var(--accent)}
+
+/* titles */
+h1,.brand{font-family:var(--serif);font-weight:700;letter-spacing:-.005em;color:var(--ink)}
+h1{font-size:34px;line-height:1.12}
+h2{font-family:var(--serif);font-weight:700;font-size:26px;line-height:1.15;color:var(--ink)}
+.brand{font-size:36px;line-height:1.05}
+.brand span{color:var(--gold-ink)}
+label{color:var(--ink2)}
+
+/* cards: white, a gold edge on top, soft depth */
+.card{border-color:var(--bdr);border-top:3px solid var(--gold);border-radius:16px;box-shadow:0 2px 4px rgba(20,26,36,.04),0 16px 34px -14px rgba(20,26,36,.22)}
+
+/* buttons: navy, the homepage's type */
+.btn,.btn-p,.btn-o,.btn-l,.gbtn{font-family:var(--caps);font-weight:700;letter-spacing:.01em;border-radius:10px}
+.btn:not(.btn-o):not(.btn-l){background-image:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.12))}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,58,107,.18)}
+
+/* tabs and chips: the selected one in navy */
+.tab.on,.tab.active,.tab[aria-selected="true"]{border-color:var(--accent)}
+
+/* the house behind one card (sign-in, booking, forms) */
+body.cc-photo{background:linear-gradient(180deg,rgba(236,240,248,.35) 0%,rgba(20,22,28,.28) 100%),url('/home/house-bg.jpg') center/cover no-repeat fixed #2b2a2c}
+body.cc-photo .card{background:rgba(255,255,255,.96)}
+@media (max-width:760px){body.cc-photo{background:linear-gradient(180deg,rgba(236,240,248,.3) 0%,rgba(20,22,28,.3) 100%),url('/home/house-tall.jpg') center top/cover no-repeat fixed #2b2a2c}}
+
+/* the gold rule under a page's first title */
+.cc-rule{display:block;width:56px;height:3px;border-radius:3px;margin:10px auto 0;background:linear-gradient(90deg,var(--gold),var(--gold2))}

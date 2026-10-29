@@ -11,25 +11,25 @@
 </script>
 <link rel="icon" type="image/svg+xml" href="/lcg-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Cormorant+Garamond:wght@600;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#f4f3f0;--card:#ffffff;--soft:#f0ede6;
   --ink:#16140f;--ink2:#3d3a33;--ink3:#5a554b;
   --bdr:#cfc8b8;--gold:#a8925f;--gold-ink:#7a6638;--black:#0b0b0b;--go:#16140f;--go2:#3d3a33;
-  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;--brand:'Oswald','Arial Narrow',sans-serif;
+  --f:'Nunito Sans',system-ui,-apple-system,sans-serif;--brand:'Montserrat','Nunito Sans',sans-serif;--serif:'Cormorant Garamond',Georgia,serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:18.5px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
-.top{background:var(--black);color:#fff;padding:34px 16px 30px;text-align:center}
-.top img{width:120px;height:120px;display:block;margin:0 auto}
-.top h1{font-family:var(--brand);font-weight:500;color:var(--gold);font-size:34px;letter-spacing:.06em;text-transform:uppercase;line-height:1.15;margin-top:4px}
+.top{background:linear-gradient(180deg,rgba(11,11,11,.70) 0%,rgba(11,11,11,.86) 100%),url('/home/house-bg.jpg') center 60%/cover no-repeat var(--black);color:#fff;padding:34px 16px 30px;text-align:center;border-bottom:3px solid var(--gold)}
+.top img{width:120px;height:120px;display:block;margin:0 auto;border-radius:18px;box-shadow:0 10px 24px -10px rgba(0,0,0,.7)}
+.top h1{font-family:var(--serif);font-weight:700;font-size:46px;letter-spacing:-.005em;line-height:1.05;margin-top:6px;background:linear-gradient(180deg,#e3b55a 0%,#c9952f 48%,#8f6418 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .top p{font-size:18.5px;color:#d9d2c0;max-width:560px;margin:8px auto 0}
 main{max-width:980px;margin:0 auto;padding:28px 16px 36px}
-h2{font-family:var(--brand);font-weight:500;font-size:18px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-ink);margin:0 0 14px}
+h2{font-family:var(--brand);font-weight:700;font-size:15px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-ink);margin:0 0 14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
 .co{background:var(--card);border:1px solid var(--bdr);border-top:5px solid var(--gold);border-radius:14px;padding:22px 22px 24px;display:flex;flex-direction:column;box-shadow:0 2px 4px rgba(22,20,15,.04),0 10px 28px rgba(22,20,15,.08)}
-.co h3{font-size:26px;font-weight:800;line-height:1.2}
+.co h3{font-family:var(--serif);font-size:32px;font-weight:700;line-height:1.1}
 .co .head{display:flex;align-items:center;gap:14px;margin-bottom:2px}
 .co .logo{width:64px;height:64px;border-radius:12px;object-fit:cover;flex:none;background:#111318}
 .later{margin-top:34px}
@@ -56,7 +56,7 @@ a:focus-visible{outline:3px solid #f0b429;outline-offset:2px}
 .empty{background:var(--card);border:1px dashed var(--bdr);border-radius:14px;padding:22px;color:var(--ink3);text-align:center}
 .foot{text-align:center;color:var(--ink3);font-size:16.5px;margin-top:28px;line-height:1.9}
 .foot a{color:var(--gold-ink);font-weight:800}
-@media (max-width:600px){.top{padding:24px 16px 24px}.top img{width:96px;height:96px}.top h1{font-size:27px}.co{padding:20px 18px}.co h3{font-size:24px}.grid{grid-template-columns:1fr}.hq a{width:100%;text-align:center}}
+@media (max-width:600px){.top{padding:24px 16px 24px}.top img{width:96px;height:96px}.top h1{font-size:38px}.co{padding:20px 18px}.co h3{font-size:24px}.grid{grid-template-columns:1fr}.hq a{width:100%;text-align:center}}
 </style>
 </head>
 <body>
