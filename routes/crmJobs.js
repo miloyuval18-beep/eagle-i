@@ -27,6 +27,19 @@ async function ownDeal(req, res) {
 }
 const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } catch (err) { fail(res, err, what); } };
 
+// Permits (lib/crmPermits.js): what the job needs and where each stands.
+const permits = require('../lib/crmPermits');
+router.post('/api/crm/deals/:id/permits', requireAuth, wrap('Failed to add the permit', async (req, res) => {
+  if (!(await ownDeal(req, res))) return;
+  res.json({ permit: await permits.save({ tenantId: req.tenantId, dealId: req.params.id, body: req.body, userId: req.userId }) });
+}));
+router.post('/api/crm/deals/:id/permits/suggest', requireAuth, wrap('Failed to work out the permits', async (req, res) => {
+  if (!(await ownDeal(req, res))) return;
+  res.json(await permits.suggest({ tenantId: req.tenantId, dealId: req.params.id, userId: req.userId }));
+}));
+router.put('/api/crm/permits/:pid', requireAuth, wrap('Failed to save the permit', async (req, res) => res.json({ permit: await permits.save({ tenantId: req.tenantId, id: req.params.pid, body: req.body, userId: req.userId }) })));
+router.delete('/api/crm/permits/:pid', requireAuth, wrap('Failed to delete the permit', async (req, res) => res.json(await permits.remove({ tenantId: req.tenantId, id: req.params.pid }))));
+
 router.get('/api/crm/jobs', requireAuth, wrap('Failed to load jobs', async (req, res) => res.json({ jobs: await jobs.listJobs(req.tenantId) })));
 
 router.get('/api/crm/deals/:id/job', requireAuth, wrap('Failed to load the job', async (req, res) => {
@@ -42,7 +55,8 @@ router.get('/api/crm/deals/:id/job', requireAuth, wrap('Failed to load the job',
     cos = can('estimates') ? cos.map(c => ({ ...c, cost: null })) : team.hideMoney(cos);
     selections = team.hideMoney(selections);
   }
-  res.json({ schedule, logs, pos, cos, selections, vendors, moneyHidden: !can('money') });
+  const permits = await require('../lib/crmPermits').list(req.tenantId, req.params.id);
+  res.json({ schedule, logs, pos, cos, selections, vendors, permits, ai: !!process.env.ANTHROPIC_API_KEY, moneyHidden: !can('money') });
 }));
 
 // schedule

@@ -72,7 +72,8 @@ const MARK = 'SECRET' + Date.now();
       send_email: { to: 'ana@owner.test', subject: 'Hello', message: 'Hi Ana', deal_id: deal.id }, send_sub_page: { vendor: 'Gulf Framing' }, email_watch: {},
       send_follow_up: { id: String(mw) }, send_project_page: { deal_id: deal.id }, email_homeowner: { deal_id: deal.id, subject: 'Update', message: 'All good' },
       post_portal_update: { deal_id: deal.id, text: 'Cabinets are in' }, send_estimate: { estimate_id: est.id },
-      import_file: { chat_file_id: chatFile.id }, price_project: { deal_id: deal.id, notes: 'Mid-range' }, pricing_status: { deal_id: deal.id }
+      import_file: { chat_file_id: chatFile.id }, price_project: { deal_id: deal.id, notes: 'Mid-range' }, pricing_status: { deal_id: deal.id },
+      list_permits: { deal_id: deal.id }, update_permit: { deal_id: deal.id, title: 'Building permit', status: 'submitted', permit_no: 'B-123' }
     };
     const missing = Object.keys(A.TOOLS).filter(k => !INPUT[k]);
     assert.deepEqual(missing, [], 'every tool has an input here');

@@ -70,7 +70,7 @@ router.get('/api/crm/deals/:id/pricing', requireAuth, wrap('Failed to load', asy
 router.post('/api/crm/deals/:id/pricing', requireAuth, wrap('Failed to start', async (req, res) => {
   const d = await ownDeal(req, res); if (!d) return;
   const b = req.body || {};
-  res.json({ run: await pricing.start({ tenantId: req.tenantId, dealId: d.id, fileIds: Array.isArray(b.fileIds) ? b.fileIds : null, notes: b.notes, userId: req.userId }) });
+  res.json({ run: await pricing.start({ tenantId: req.tenantId, dealId: d.id, fileIds: Array.isArray(b.fileIds) ? b.fileIds : null, fileRoles: b.fileRoles && typeof b.fileRoles === 'object' ? b.fileRoles : null, notes: b.notes, userId: req.userId }) });
 }));
 router.get('/api/crm/pricing/:rid', requireAuth, wrap('Failed to load', async (req, res) => res.json({ run: await pricing.getRun(req.tenantId, req.params.rid) })));
 router.put('/api/crm/pricing/:rid', requireAuth, wrap('Failed to save', async (req, res) => {
