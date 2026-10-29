@@ -43,3 +43,35 @@ body.cc-photo .card{background:rgba(255,255,255,.96)}
 
 /* the gold rule under a page's first title */
 .cc-rule{display:block;width:56px;height:3px;border-radius:3px;margin:10px auto 0;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+
+/* header bands: charcoal with the house faintly behind and a gold edge, the words in
+   light colors (the page's own colors are redefined inside, so everything follows).
+   The homeowner's project (body.cc-proj), an estimate's or invoice's heading
+   (body.cc-doc), and the account page's bar (body.cc-home). */
+body.cc-proj #app>.card:first-child,body.cc-doc #doc>.card>.head,body.cc-doc #app>.co:first-child,body.cc-home header{
+  --ink:#ffffff;--ink2:#ece6d8;--ink3:#d3cbb9;--accent:#e7c983;--accent2:#c9a24a;--bdr:rgba(255,255,255,.28);
+  color:#fff;border-color:#111318;
+  background:linear-gradient(90deg,rgba(17,19,24,.97) 0%,rgba(17,19,24,.90) 55%,rgba(17,19,24,.6) 100%),url('/home/house-bg.jpg') right 42%/cover no-repeat #111318;
+  border-bottom:3px solid var(--gold)}
+body.cc-proj #app>.card:first-child{border-top:0;padding:22px 20px}
+body.cc-proj #app>.card:first-child .co,body.cc-doc #doc>.card>.head .co,body.cc-doc #app>.co:first-child{font-family:var(--serif);font-weight:700;color:#e7c983;font-size:24px;line-height:1.15}
+/* inside the estimate's card: the band runs edge to edge across its top */
+body.cc-doc #doc>.card{border-top:0;overflow:hidden}
+body.cc-doc #doc>.card>.head{margin:-22px -20px 0;padding:22px 20px 18px}
+body.cc-doc #doc>.card>.head .co-sub{color:#d3cbb9}
+body.cc-doc #app{border-top:0;overflow:hidden}
+body.cc-doc #app>.co:first-child{display:block;margin:-22px -20px 0;padding:20px 20px 16px}
+body.cc-home header{border-bottom:3px solid var(--gold)}
+body.cc-home header .brand{color:#fff}
+body.cc-home header .brand span{color:#e7c983}
+@media (max-width:760px){body.cc-proj #app>.card:first-child,body.cc-doc #doc>.card>.head,body.cc-doc #app>.co:first-child,body.cc-home header{
+  background:linear-gradient(180deg,rgba(17,19,24,.86) 0%,rgba(17,19,24,.96) 100%),url('/home/house-tall.jpg') center 35%/cover no-repeat #111318}}
+/* "kind" labels (ESTIMATE #12, INVOICE): small gold capitals */
+.kind{font-family:var(--caps);letter-spacing:.14em;color:var(--gold-ink)}
+/* printed: plain paper, no dark band */
+@media print{
+  body{background:#fff!important}
+  body.cc-doc #doc>.card>.head,body.cc-doc #app>.co:first-child{--ink:#141a24;--ink2:#353d4b;--ink3:#555d69;color:#141a24;background:none!important;margin:0;padding:0;border:0}
+  body.cc-doc #doc>.card>.head .co,body.cc-doc #app>.co:first-child{color:#141a24}
+  .card{box-shadow:none!important;border-top:1px solid #ccc!important}
+}
