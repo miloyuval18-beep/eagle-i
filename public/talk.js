@@ -50,17 +50,35 @@
       return (silent = URL.createObjectURL(new Blob([b], { type: 'audio/wav' })));
     };
     function unlock() { if (off) return; try { const a = el(); a.src = quiet(); const p = a.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+    // How loud the answer is, 50 times a second, so the host's mouth can follow it. Measured
+    // from a copy of the sound; the sound itself plays as usual (never routed through this).
+    let dec = null, env = null;
+    async function loudness(blob) {
+      try {
+        if (!dec) dec = new (window.AudioContext || window.webkitAudioContext)();
+        const raw = await blob.arrayBuffer();
+        const buf = await new Promise((ok, no) => { const p = dec.decodeAudioData(raw, ok, no); if (p && p.then) p.then(ok, no); });
+        const d = buf.getChannelData(0), step = Math.max(1, Math.floor(buf.sampleRate / 50)), out = [];
+        for (let i = 0; i < d.length; i += step) { let s = 0, n = 0; for (let j = i; j < Math.min(d.length, i + step); j += 4) { s += d[j] * d[j]; n++; } out.push(Math.sqrt(s / Math.max(1, n))); }
+        const top = out.slice().sort((a, b) => a - b)[Math.floor(out.length * .9)] || 1;
+        return out.map(v => Math.min(1, v / top));
+      } catch (e) { return null; }
+    }
     async function fetchOne(text, lang, rate) {
       try {
         const r = await fetch('/api/tts', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, lang, rate, page: location.pathname }) });
         if (r.status !== 200) { if (r.status === 204 && ['limit', 'off'].includes(r.headers.get('X-Voice-Fallback'))) off = true; return null; }
-        return URL.createObjectURL(await r.blob());
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob); urlEnv.set(url, await loudness(blob));
+        return url;
       } catch (e) { return null; }
     }
+    const urlEnv = new Map();
     const play = (url) => new Promise(res => {
-      const a = el(); const done = (ok) => { stopFn = null; a.onended = a.onerror = null; try { URL.revokeObjectURL(url); } catch (e) {} res(ok); };
+      const a = el(); const done = (ok) => { stopFn = null; env = null; a.onended = a.onerror = null; try { URL.revokeObjectURL(url); } catch (e) {} res(ok); };
       stopFn = () => { try { a.pause(); } catch (e) {} done(true); };
       a.onended = () => done(true); a.onerror = () => done(false);
+      env = urlEnv.get(url) || null; urlEnv.delete(url);
       a.src = url; const p = a.play(); if (p && p.catch) p.catch(() => done(false));
     });
     // true: said (or cut off); false: not said, so use the browser's voice.
@@ -81,8 +99,42 @@
       return true;
     }
     function stop() { if (stopFn) stopFn(); else if (A) { try { A.pause(); } catch (e) {} } }
-    return { say, stop, unlock, get off() { return off; } };
+    // How loud the natural voice is right now (0 to 1), or -1 when it isn't the one speaking.
+    function level() { if (!A || A.paused || !env) return -1; return env[Math.floor(A.currentTime * 50)] || 0; }
+    return { say, stop, unlock, level, get off() { return off; } };
   })();
+
+  // The host: Eagle I's lion in a suit, above the talk button. His mouth opens on the loud
+  // part of each word of the natural voice (or, with the device's own voice, in a talking
+  // rhythm); he leans in to listen, tilts his head to think, and the frame glows while he
+  // speaks. Anyone can hide him (remembered on this device).
+  const HOST_KEY = 'eaglei_host';
+  function lionHost(where) {
+    style();
+    const box = document.createElement('div'); box.className = 'et-hostbox';
+    box.innerHTML = `<div class="et-host" data-state="idle"><div class="et-him"><img class="et-base" src="/host/closed.jpg" alt="Eagle I's host, a lion in a suit" width="800" height="800"><img class="et-mouth" src="/host/mouth.png" alt=""></div><div class="et-ring"></div><div class="et-ring b"></div><div class="et-dots" aria-hidden="true"><i></i><i></i><i></i></div><button type="button" class="et-hide" aria-label="Hide the lion">✕</button></div><button type="button" class="et-show" hidden>🦁 Show the lion</button>`;
+    where.prepend(box);
+    const card = box.querySelector('.et-host'), mouth = box.querySelector('.et-mouth'), show = box.querySelector('.et-show');
+    const hidden = () => { try { return localStorage.getItem(HOST_KEY) === 'off'; } catch (e) { return false; } };
+    const apply = () => { const h = hidden(); card.hidden = h; show.hidden = !h; };
+    box.querySelector('.et-hide').onclick = () => { try { localStorage.setItem(HOST_KEY, 'off'); } catch (e) {} apply(); };
+    show.onclick = () => { try { localStorage.removeItem(HOST_KEY); } catch (e) {} apply(); };
+    apply();
+    let state = 'idle', open = false, flip = 0;
+    const tick = () => {
+      if (!box.isConnected) return;
+      let o = false;
+      if (state === 'speaking') {
+        const lv = cloud.level();
+        if (lv >= 0) o = open ? lv > .22 : lv > .42;
+        else { const now = performance.now(); if (now > flip) { open = !open; flip = now + (open ? 90 + Math.random() * 120 : 70 + Math.random() * 130); } o = open; }
+      }
+      open = o; mouth.style.opacity = o ? '1' : '0';
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    return { set(s) { state = s === 'speaking' || s === 'listening' || s === 'thinking' ? s : 'idle'; card.dataset.state = state; }, el: box };
+  }
   const hush = () => { cloud.stop(); try { speechSynthesis.cancel(); } catch (e) {} };
 
   let styled = false;
@@ -119,7 +171,33 @@
 @keyframes etGlow{50%{outline-color:#e2c178}}
 .et-again{font:inherit;font-size:15px;background:none;border:0;color:inherit;opacity:.75;text-decoration:underline;cursor:pointer;padding:4px}
 .et-toggle{font:inherit;font-size:15.5px;font-weight:700;border:1px solid #aab4c3;background:#fff;color:#0b1220;border-radius:999px;padding:6px 12px;min-height:38px;cursor:pointer;white-space:nowrap}
-@media (max-width:520px){.et-opts{grid-template-columns:1fr}}`;
+@media (max-width:520px){.et-opts{grid-template-columns:1fr}}
+.et-hostbox{display:flex;flex-direction:column;align-items:center;width:100%}
+.et-host{position:relative;width:min(220px,62vw);aspect-ratio:1;border-radius:18px;background:#000;border:2px solid rgba(201,162,74,.6);box-shadow:0 18px 36px -18px rgba(0,0,0,.6);transition:box-shadow .3s;margin:2px 0 6px}
+.et-host[hidden]{display:none}
+.et-him{position:absolute;inset:0;overflow:hidden;border-radius:16px;transform-origin:50% 92%;transition:transform .45s ease}
+.et-him img{position:absolute;display:block;-webkit-user-drag:none;user-select:none}
+.et-base{inset:0;width:100%;height:100%}
+.et-mouth{left:37.48%;top:39.075%;width:25.518%;height:34.29%;opacity:0;transition:opacity 70ms linear}
+.et-host[data-state="speaking"]{box-shadow:0 0 0 2px rgba(231,201,131,.55),0 0 34px 4px rgba(231,201,131,.35),0 18px 36px -18px rgba(0,0,0,.6)}
+.et-host[data-state="speaking"] .et-him{animation:etBob 2.6s ease-in-out infinite}
+@keyframes etBob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(.6deg)}}
+.et-host[data-state="listening"] .et-him{transform:scale(1.04)}
+.et-host[data-state="thinking"] .et-him{transform:rotate(-2deg) translateY(-2px)}
+.et-ring{position:absolute;inset:0;border-radius:18px;border:3px solid #e7c983;opacity:0;pointer-events:none}
+.et-host[data-state="listening"] .et-ring{animation:etRing 1.8s ease-out infinite}
+.et-host[data-state="listening"] .et-ring.b{animation-delay:.9s}
+@keyframes etRing{0%{opacity:.8;inset:0}100%{opacity:0;inset:-14px}}
+.et-dots{position:absolute;top:10px;right:12px;display:flex;gap:5px;opacity:0;transition:opacity .3s}
+.et-host[data-state="thinking"] .et-dots{opacity:1}
+.et-dots i{width:9px;height:9px;border-radius:50%;background:#e7c983;animation:etDot 1.2s infinite}
+.et-dots i:nth-child(2){animation-delay:.2s}.et-dots i:nth-child(3){animation-delay:.4s}
+@keyframes etDot{0%,100%{opacity:.25}50%{opacity:1}}
+.et-hide{position:absolute;top:6px;left:6px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#e7c983;font-size:15px;cursor:pointer;opacity:.75}
+.et-hide:hover,.et-hide:focus-visible{opacity:1}
+.et-show{border:0;background:none;color:inherit;font:inherit;font-size:15px;font-weight:700;text-decoration:underline;cursor:pointer;opacity:.8;margin:2px 0 6px}
+@media (max-height:700px){.et-host{width:min(170px,48vw)}}
+@media (prefers-reduced-motion:reduce){.et-host .et-him,.et-ring,.et-dots i{animation:none!important}.et-him{transition:none}}`;
     document.head.appendChild(css);
   }
 
@@ -142,9 +220,11 @@
     host.innerHTML = '<div class="et-talk"><div class="et-live" aria-live="polite"></div><button class="et-btn" type="button"><span aria-hidden="true">🎙</span></button><div class="et-status"></div><button class="et-end" type="button" hidden></button><button class="et-again" type="button"></button></div>';
     const live = host.querySelector('.et-live'), btn = host.querySelector('.et-btn'), st = host.querySelector('.et-status'), end = host.querySelector('.et-end');
     const S = { on: false, state: 'idle', rec: null, voice: null, quiet: 0, cut: false };
+    const lion = o.host === false ? null : lionHost(host.querySelector('.et-talk'));
     if ('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged', () => { S.voice = null; });
     const status = (state, text) => {
       S.state = state; btn.className = 'et-btn ' + state; st.textContent = text; end.hidden = !S.on; end.textContent = W().end;
+      if (lion) lion.set(state);
       btn.firstChild.textContent = state === 'speaking' ? '🔊' : state === 'thinking' ? '…' : '🎙';
       btn.setAttribute('aria-label', state === 'listening' ? 'Done' : state === 'speaking' ? 'Cut in' : W().tap);
     };
@@ -278,5 +358,5 @@
     ]);
   }
 
-  window.EagleTalk = { can, plain, mount, choose, style, tour, tourSteps, TOUR_WORDS, cloud };
+  window.EagleTalk = { can, plain, mount, choose, style, tour, tourSteps, TOUR_WORDS, cloud, host: lionHost };
 })();

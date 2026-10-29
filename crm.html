@@ -4971,6 +4971,7 @@ function tkApply(){
   const talk=AI.mode==='talk';
   const t=document.getElementById('ai-talk'),c=document.querySelector('#ai-panel .ai-comp'),m=document.getElementById('ai-mode');if(!t||!c||!m)return;
   t.hidden=!talk;c.style.display=talk?'none':'';
+  if(talk&&!TALK.host&&window.EagleTalk&&EagleTalk.host)TALK.host=EagleTalk.host(t);
   m.hidden=!tkCan();m.textContent=talk?'⌨️ Type':'🎙 Talk';m.setAttribute('aria-label',talk?'Switch to typing':'Switch to talking');
   if(!talk)tkStop();
 }
@@ -5000,6 +5001,9 @@ function tkTour(){
 }
 function tkStatus(state,text){
   TALK.state=state;const b=document.getElementById('tk-btn'),st=document.getElementById('tk-status'),end=document.getElementById('tk-end');if(!b)return;
+  // The lion host above the button (public/talk.js), made once.
+  if(!TALK.host&&window.EagleTalk&&EagleTalk.host){const t=document.getElementById('ai-talk');if(t)TALK.host=EagleTalk.host(t);}
+  if(TALK.host)TALK.host.set(state);
   b.className='tk-btn '+state;st.textContent=text;end.hidden=!TALK.on;
   b.setAttribute('aria-label',state==='listening'?'Done talking':state==='speaking'?'Stop and talk':'Tap to talk');
   b.querySelector('.tk-ic').textContent=state==='speaking'?'🔊':state==='thinking'?'…':'🎙';

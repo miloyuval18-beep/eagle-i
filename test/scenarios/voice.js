@@ -10,7 +10,7 @@ const tts = require(R + '/lib/tts');
 let calls = 0, fail = false;
 const fake = async (url, opts) => { calls++; const body = JSON.parse(opts.body);
   if (fail) return { ok: false, status: 500, json: async () => ({ error: { message: 'down' } }) };
-  assert.equal(body.voice.name, body.voice.languageCode === 'es-US' ? 'es-US-Neural2-A' : 'en-US-Neural2-F');
+  assert.equal(body.voice.name, body.voice.languageCode === 'es-US' ? 'es-US-Neural2-B' : 'en-US-Neural2-D');
   return { ok: true, status: 200, json: async () => ({ audioContent: Buffer.from('mp3:' + body.input.text).toString('base64') }) }; };
 const OCT = new Date('2099-10-15T12:00:00Z'), NOV = new Date('2099-11-02T12:00:00Z');
 const say = (text, now = OCT, extra = {}) => tts.speak({ text, now, fetchImpl: fake, ...extra });
