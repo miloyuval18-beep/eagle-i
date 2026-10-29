@@ -1493,3 +1493,25 @@ describe('setup help (lib/crmAssistant.js)', () => {
     assert.doesNotMatch(setupPrompt(null), /step of the guided setup\)/);
   });
 });
+
+describe('AI answers that run out of room (lib/anthropic.js generateJSON)', () => {
+  test('all thinking and no answer: tried once more thinking less, then a clear message', async () => {
+    const A = require('../lib/anthropic');
+    const real = global.fetch, key = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = 'test-only';
+    const efforts = [];
+    let answer = true;
+    global.fetch = async (url, opts) => {
+      const b = JSON.parse(opts.body); efforts.push(b.output_config.effort);
+      const out = b.output_config.effort === 'low' && answer ? { stop_reason: 'end_turn', content: [{ type: 'text', text: '{"ok":true}' }] } : { stop_reason: 'max_tokens', content: [{ type: 'thinking', thinking: '' }] };
+      return { ok: true, json: async () => out };
+    };
+    try {
+      assert.deepEqual(await A.generateJSON('x', 100, { effort: 'high' }), { ok: true });
+      assert.deepEqual(efforts, ['high', 'low']);
+      answer = false; efforts.length = 0;
+      await assert.rejects(A.generateJSON('x', 100, { effort: 'medium' }), /too long to finish/);
+      assert.deepEqual(efforts, ['medium', 'low'], 'once, not forever');
+    } finally { global.fetch = real; if (key === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = key; }
+  });
+});

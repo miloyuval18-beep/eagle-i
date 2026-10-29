@@ -71,7 +71,7 @@ const tag = Date.now().toString(36);
     let run = await P.start({ tenantId: t, dealId: deal.id, notes: 'Mid-range finishes', userId: owner.id, wait: true });
     assert.equal(run.status, 'review', run.error || '');
     const read = prompts.find(x => /You are the estimator/.test(x.p));
-    assert.equal(read.opts.images.length, 1); assert.equal(read.opts.images[0].mediaType, 'application/pdf'); assert.equal(read.opts.effort, 'high');
+    assert.equal(read.opts.images.length, 1); assert.equal(read.opts.images[0].mediaType, 'application/pdf'); assert.equal(read.opts.effort, 'medium', 'high thinking once used the whole answer allowance');
     assert.match(read.p, /Houston, TX 77008/); assert.ok(!/12 Oak St/.test(read.p), 'never the street'); assert.match(read.p, /Mid-range finishes/);
     assert.equal(run.scope.sections.length, 2); assert.equal(run.materials.length, 3);
     // Rough budget: plumbing 4000 + 200 PEX, lumber 500 + 1200, crew 6000.
@@ -103,6 +103,12 @@ const tag = Date.now().toString(36);
     assert.match(toGulf.replyTo, /^reply\+bid-[0-9a-f-]{36}@in\.eaglei\.dev$/); assert.match(toGulf.html, /just reply to this email/);
     assert.ok(!/12 Oak St/.test(toGulf.html), 'no street before it’s theirs');
     assert.match(sent.find(m => m.to === 'office@bayou.dev').html, /Move the shower valve/);
+    // A sub gives one total: the materials they bring are listed, not priced line by line (so labor is never left out).
+    const toBayou = sent.find(m => m.to === 'office@bayou.dev');
+    assert.match(toBayou.text, /Your total should include these materials/); assert.match(toBayou.text, /PEX supply line \(1\/2 in\): 200 lf/);
+    assert.ok(!/Please price these/.test(toBayou.text));
+    // Whole words: a framing company is no glass shop.
+    assert.equal(P.fits({ name: 'Preview Framing', trade: 'Framing' }, { trade: 'Glass', search: 'frameless shower door' }), false);
     const found = (await query(`SELECT name, found_via, notes FROM crm_vendors WHERE tenant_id = $1 AND name = 'Gulf Lumber'`, [t])).rows[0];
     assert.equal(found.found_via, 'google'); assert.match(found.notes, /4\.6★/);
 

@@ -28,13 +28,13 @@ const PDF = (s) => Buffer.from('%PDF-1.4 ' + s);
     await jobs.saveItem({ tenantId: t, dealId: job.id, body: { title: 'Demolition', startDate: '2026-11-02', endDate: '2026-11-03', status: 'done' } });
     await jobs.saveItem({ tenantId: t, dealId: job.id, body: { title: 'Shower tile', startDate: '2026-11-09', endDate: '2026-11-11', status: 'todo', vendorId: tile.id } });
     await jobs.createPO({ tenantId: t, dealId: job.id, vendorId: tile.id, title: 'Thinset and grout', lines: [{ description: 'Thinset', quantity: 6, unit_cost: 32 }] });
-    await query(`INSERT INTO crm_bid_requests (tenant_id, deal_id, vendor_id, token, scope, file_ids, status, amount) VALUES ($1, $2, $3, $4, 'Tile', '{}', 'submitted', 7777)`, [t, job.id, rival.id, require('crypto').randomBytes(24).toString('hex')]);
+    await query(`INSERT INTO crm_bid_requests (tenant_id, deal_id, vendor_id, token, scope, file_ids, status, amount) VALUES ($1, $2, $3, $4, 'Tile', '{}', 'submitted', 7777.31)`, [t, job.id, rival.id, require('crypto').randomBytes(24).toString('hex')]);
     const plan = await portal.addFile({ tenantId: t, dealId: job.id, filename: 'A1 Bath Plan.pdf', buffer: PDF('plan'), userId: owner });
     const contract = await portal.addFile({ tenantId: t, dealId: job.id, filename: 'Signed contract.pdf', buffer: PDF('contract'), userId: owner });
     assert.equal(plan.sub_shared, true, 'plans go to subs by default'); assert.equal(contract.sub_shared, false, 'contracts don’t');
     await jobs.saveSelection({ tenantId: t, dealId: job.id, body: { category: 'Shower wall tile', options: [{ name: 'Zellige white 4x4', price: 1800 }, { name: 'Subway', price: 600 }] } });
     await query(`UPDATE crm_selections SET chosen_index = 0, chosen_at = now() WHERE deal_id = $1`, [job.id]);
-    const co = await jobs.createCO({ tenantId: t, dealId: job.id, title: 'Add a niche', description: 'Recessed niche 12x24 on the back wall', amount: 4321 });
+    const co = await jobs.createCO({ tenantId: t, dealId: job.id, title: 'Add a niche', description: 'Recessed niche 12x24 on the back wall', amount: 4321.57 });
     await query(`UPDATE crm_change_orders SET status = 'approved', approved_at = now() WHERE id = $1`, [co.id]);
     await query(`INSERT INTO crm_punch_items (tenant_id, deal_id, location, issue, trade) VALUES ($1, $2, 'Shower', 'Regrout the corner', 'Tile'), ($1, $2, 'Kitchen', 'Touch up paint', 'Paint')`, [t, job.id]);
     // bidding on another job, a lost one, and another company's job with the same email
@@ -62,7 +62,7 @@ const PDF = (s) => Buffer.from('%PDF-1.4 ' + s);
     assert.equal(b.status, 'bidding'); assert.equal(b.area, 'Katy TX 77494'); assert.ok(!('address' in b), 'no street before they win it');
     assert.deepEqual(b.files.map(f => f.name), ['Kitchen plan.pdf']);
     const all = JSON.stringify(view);
-    for (const secret of ['maria.private@home.test', '713-555-9999', '7777', '4321', 'Rival Tile', 'Signed contract', '9 Pine St', 'Lost deck']) assert.ok(!all.includes(secret), `never shows ${secret}`);
+    for (const secret of ['maria.private@home.test', '713-555-9999', '7777.31', '7,777', '4321.57', '4,321', 'Rival Tile', 'Signed contract', '9 Pine St', 'Lost deck']) assert.ok(!all.includes(secret), `never shows ${secret}`);
 
     // 3. Files: only what's shared with them.
     assert.ok(await sp.subFile(token, plan.id)); assert.ok(await sp.subFile(token, bidFile.id));
@@ -77,7 +77,8 @@ const PDF = (s) => Buffer.from('%PDF-1.4 ' + s);
     const a1 = await sp.ask({ token, question: 'When do I start?' });
     assert.equal(a1.forwarded, false); assert.match(a1.answer, /Nov 9/);
     const facts = prompts[prompts.length - 1];
-    for (const secret of ['maria.private@home.test', '713-555-9999', '7777', '4321']) assert.ok(!facts.includes(secret), `the assistant never sees ${secret}`);
+    // (Amounts with cents, so a random id can't contain them by chance.)
+    for (const secret of ['maria.private@home.test', '713-555-9999', '7777.31', '7,777', '4321.57', '4,321']) assert.ok(!facts.includes(secret), `the assistant never sees ${secret}`);
     sent.length = 0;
     const a2 = await sp.ask({ token, question: 'Can I start a day early?' });
     assert.equal(a2.forwarded, true);

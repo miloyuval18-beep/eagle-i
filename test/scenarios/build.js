@@ -41,6 +41,7 @@ const A0 = require(R + '/lib/anthropic');
 require.cache[require.resolve(R + '/lib/anthropic')].exports = { ...A0, generateJSON: async (p, max, opts) => {
   prompts.push({ p, opts });
   if (/You are the estimator/.test(p)) return JSON.parse(JSON.stringify(READING));
+  if (/lay out the job's schedule/.test(p)) return { schedule: READING.schedule, permits: READING.permits };
   if (/Work out the permits this job needs/.test(p)) return { permits: [{ kind: 'building', title: 'Building permit (deck)', authority: 'City of Houston', why: 'A new deck over 200 sf.', before_phase: 'Framing', inspections: [{ name: 'Footing inspection', after_phase: 'Demolition' }] }] };
   return {};
 } };
@@ -53,7 +54,7 @@ const noon = (day) => new Date(day + 'T17:00:00Z'); // noon Central
 (async () => {
   // Pure: lead times as suppliers write them; order-by dates.
   assert.equal(O.parseLeadDays('In stock'), 1); assert.equal(O.parseLeadDays('2 weeks'), 10); assert.equal(O.parseLeadDays('2-3 weeks'), 15);
-  assert.equal(O.parseLeadDays('10 business days'), 10); assert.equal(O.parseLeadDays('6 wks'), 30); assert.equal(O.parseLeadDays('7 days'), 5); assert.equal(O.parseLeadDays('call us'), null);
+  assert.equal(O.parseLeadDays('10 business days'), 10); assert.equal(O.parseLeadDays('2-3 weeks on the porcelain; the rest is in stock'), 15, 'the longest wins over “in stock”'); assert.equal(O.parseLeadDays('6 wks'), 30); assert.equal(O.parseLeadDays('7 days'), 5); assert.equal(O.parseLeadDays('call us'), null);
   assert.equal(O.orderByFor('2026-11-20', 3), '2026-11-13', 'Fri 20th less 3 + 2 working days');
   assert.equal(O.shiftWorkdays('2026-11-02', -1), '2026-10-30', 'back over a weekend');
 
