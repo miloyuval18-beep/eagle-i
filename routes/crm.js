@@ -90,7 +90,7 @@ const PERM_ROUTES = [
   ['money', /^GET$/, /^\/api\/crm\/(invoices|payments|cashflow|costing)$|^\/api\/crm\/deals\/[^/]+\/(costs|draws)$/],
   ['money', WRITE, /^\/api\/crm\/deals\/[^/]+\/(costs|receipts)$|^\/api\/crm\/costs\//],
   ['invoices', WRITE, /^\/api\/crm\/deals\/[^/]+\/(invoices|draws)(\/.*)?$|^\/api\/crm\/invoices\/[^/]+\/(send|paid)$|^\/api\/crm\/draws\/(?!settings$)[^/]+(\/invoice)?$/],
-  ['estimates', WRITE, /^\/api\/crm\/deals\/[^/]+\/(estimates|change-orders)$|^\/api\/crm\/estimates\/[^/]+(\/.*)?$|^\/api\/crm\/change-orders\/|^\/api\/crm\/change-catches\/|^\/api\/crm\/takeoffs\/[^/]+\/to-estimate$/],
+  ['estimates', WRITE, /^\/api\/crm\/deals\/[^/]+\/(estimates|change-orders)$|^\/api\/crm\/estimates\/[^/]+(\/.*)?$|^\/api\/crm\/change-orders\/|^\/api\/crm\/change-catches\/|^\/api\/crm\/takeoffs\/[^/]+\/to-estimate$|^\/api\/crm\/deals\/[^/]+\/pricing$|^\/api\/crm\/pricing\//],
   ['subs', WRITE, /^\/api\/crm\/vendors(\/.*)?$|^\/api\/crm\/deals\/[^/]+\/pos$|^\/api\/crm\/pos\/|^\/api\/crm\/bids\//]
 ];
 
@@ -102,7 +102,7 @@ router.get('/api/crm/google/oauth/callback', (req, res, next) => require('./crmA
 const MONEY_FILTERS = [
   [/^\/api\/crm\/jobs$/], [/^\/api\/crm\/marketing$/], [/^\/api\/crm\/today$/], [/^\/api\/crm\/inbox$/], [/^\/api\/crm\/search$/],
   [/^\/api\/crm\/deals\/[^/]+$/], [/^\/api\/crm\/deals\/[^/]+\/(fit|coach|lifetime|outlook|pulses|activities)$/], [/^\/api\/crm\/referrals$/],
-  [/^\/api\/crm\/(estimates|deals\/[^/]+\/estimates|takeoffs)(\/.*)?$/, ['estimates']],
+  [/^\/api\/crm\/(estimates|deals\/[^/]+\/estimates|takeoffs|pricing|deals\/[^/]+\/pricing)(\/.*)?$/, ['estimates']],
   [/^\/api\/crm\/catalog$/, ['estimates', 'subs']]
 ];
 

@@ -96,7 +96,7 @@ router.get('/api/crm-public/bid/:token/files/:fid', wrap('Failed to load the fil
 router.post('/api/crm-public/bid/:token', wrap('Failed to send your price', async (req, res) => {
   if (limited(req.ip)) return res.status(429).json({ error: { message: 'Too many attempts. Please try again later.' } });
   const b = req.body || {};
-  res.json({ ok: true, ...(await bids.submitBid({ token: req.params.token, amount: b.amount, note: b.note, decline: !!b.decline })) });
+  res.json({ ok: true, ...(await bids.submitBid({ token: req.params.token, amount: b.amount, note: b.note, decline: !!b.decline, lines: Array.isArray(b.lines) ? b.lines.slice(0, 300) : null, leadTime: b.leadTime })) });
 }));
 
 module.exports = router;

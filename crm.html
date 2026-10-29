@@ -1598,8 +1598,11 @@ async function crInit(){
   await sbLoad();
   if(start==='co')CR.coSlug=/^[a-z0-9-]{1,60}$/.test(hashParts[1]||'')?hashParts[1]:'';
   if(start==='checkin')CK.tab=['team','projects','problems'].includes(hashParts[1])?hashParts[1]:'mine';
+  // An email link to a project's pricing (#price/<deal id>).
+  const priceDeal=start==='price'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||'')?hashParts[1]:null;
   // A new company (or a new person) is walked through setting up first.
-  crView(me.needsSetup?'start':['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'ask');
+  crView(me.needsSetup?'start':priceDeal?'pipeline':['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'ask');
+  if(priceDeal&&!me.needsSetup)prOpen(priceDeal);
   crSetupBanner();
   if(AI.loading)aiLoad(AI.loading);
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
@@ -2841,6 +2844,136 @@ function eaAddLine(i){
   it.add=null;esRender();showNotif('Line added','Enter your cost, then Save.');
 }
 
+/* ---------- price this project: plans → scope, takeoff, vendors, prices, estimate ---------- */
+const PR={};
+async function prOpen(dealId){
+  PR.dealId=dealId;clearTimeout(PR.poll);uxOpen(uxHead('💰 Price this project','Loading…'));
+  try{const r=await plApi('/api/crm/deals/'+dealId+'/pricing');PR.d=r;prRender(r.run&&!PR.fresh?r.run:null);}
+  catch(e){uxOpen(uxHead('Could not open pricing',uxEsc(e.message)));}
+}
+function prBack(){return `<div class="vd-mbtns" style="margin-top:14px"><button class="btn-xs" onclick="clearTimeout(PR.poll);plOpenDeal('${PR.dealId}')">← Back to the deal</button></div>`;}
+const PR_STEPS=['Read the plans','Check it','Prices out','Estimate ready'];
+function prSteps(n){return `<div class="pl-tags" style="margin:0 0 12px">${PR_STEPS.map((s,i)=>`<span class="pl-tag${i===n?' gA':i<n?'':' '}"${i===n?' style="font-weight:800"':''}>${i<n?'✓ ':''}${i+1}. ${s}</span>`).join('')}</div>`;}
+function prRender(run){
+  PR.run=run;clearTimeout(PR.poll);PR.fresh=false;
+  const d=PR.d,title=uxEsc(d.deal.title);
+  if(!run||run.status==='failed'){
+    const files=d.files;
+    uxOpen(uxHead('💰 Price this project',title)+prSteps(0)+`
+      <div class="pl-banner" style="margin-bottom:10px"><span>Eagle I reads the plans and writes the scope of work, the material takeoff and a rough budget, then finds the right subs and suppliers. You check it all, and nothing is sent until you press Send. When the prices come back, it builds the estimate from the best ones.</span></div>
+      ${run&&run.status==='failed'?`<div class="pl-banner" style="border-color:var(--red);margin-bottom:10px"><span>Last time: ${uxEsc(run.error||'it didn’t work')}</span></div>`:''}
+      ${!d.ai?'<div class="sm">Reading plans needs the AI switched on (ANTHROPIC_API_KEY on the server).</div>':!files.length?'<div class="sm">Add the plans to this deal first: open the deal, then Photos &amp; files (PDFs, or photos of the sheets).</div>':`
+      <div class="pl-h">Which files to read</div><div class="pl-list">${files.map((f,i)=>`<label class="pl-item" style="display:flex;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" class="pr-f" value="${f.id}"${i<d.maxFiles?' checked':''} style="width:22px;height:22px"><span style="min-width:0"><b>${uxEsc(f.filename)}</b><span class="sm" style="margin:0;display:block">${Math.max(1,Math.round(f.size/1024))} KB · ${new Date(f.created_at).toLocaleDateString()}</span></span></label>`).join('')}</div>
+      <div class="pl-form"><div class="full"><label for="pr-notes">Anything Eagle I should know (optional)</label><textarea id="pr-notes" rows="2" class="cred-input" placeholder="e.g. homeowner supplies appliances; keep the existing windows; mid-range finishes"></textarea></div></div>
+      <div class="vd-mbtns"><button class="btn btn-blue" onclick="prStart(this)">Read the plans</button><span class="sm" style="margin:0">Takes a few minutes. You can close this and come back.</span></div>`}`+prBack());
+    return;
+  }
+  if(run.status==='reading'){
+    uxOpen(uxHead('💰 Price this project',title)+prSteps(0)+`<div class="pl-pb" style="text-align:center;padding:24px 14px"><div style="font-size:40px">📐</div><div class="pl-item-t" style="margin-top:6px">Eagle I is reading ${run.files.length} file${run.files.length===1?'':'s'}…</div><div class="sm">Writing the scope of work, measuring the materials and finding vendors. This usually takes 2 to 5 minutes. You can close this; it’ll be in Needs you when it’s ready.</div></div>`+prBack());
+    PR.poll=setTimeout(prRefresh,6000);return;
+  }
+  if(run.status==='review'){uxOpen(uxHead('💰 Price this project',title)+prSteps(1)+prReview(run)+prBack());return;}
+  if(run.status==='waiting'){uxOpen(uxHead('💰 Price this project',title)+prSteps(2)+prWaiting(run)+prBack());PR.poll=setTimeout(prRefresh,30000);return;}
+  uxOpen(uxHead('💰 Price this project',title)+prSteps(3)+prPriced(run)+prBack());
+}
+async function prRefresh(){if(!PR.run||!document.getElementById('pr-live'))return;try{const r=await plApi('/api/crm/pricing/'+PR.run.id);if(r.run.status!==PR.run.status||r.run.status==='waiting')prRender(r.run);else PR.poll=setTimeout(prRefresh,6000);}catch(e){PR.poll=setTimeout(prRefresh,15000);}}
+async function prStart(btn){
+  const ids=[...document.querySelectorAll('.pr-f:checked')].map(x=>x.value);
+  if(!ids.length)return showNotif('Pick a file','Tick at least one plan file.');
+  if(ids.length>PR.d.maxFiles)return showNotif('Too many files',`Pick up to ${PR.d.maxFiles} at a time.`);
+  btn.disabled=true;btn.textContent='Starting…';
+  try{const r=await plApi('/api/crm/deals/'+PR.dealId+'/pricing',{body:{fileIds:ids,notes:document.getElementById('pr-notes').value}});prRender(r.run);}
+  catch(e){showNotif('Could not start',e.message);btn.disabled=false;btn.textContent='Read the plans';}
+}
+function prScope(s){
+  if(!s)return '';
+  const list=(h,a)=>a&&a.length?`<div class="pl-item-t" style="margin-top:10px">${h}</div><ul style="margin:4px 0 0 22px">${a.map(x=>`<li>${uxEsc(x)}</li>`).join('')}</ul>`:'';
+  return `<details class="pl-pb" style="margin-top:10px"${PR.openScope?' open':''} ontoggle="PR.openScope=this.open"><summary class="pl-item-t" style="cursor:pointer">📄 Scope of work${s.project?' · '+uxEsc(s.project):''}</summary>
+    ${s.summary?`<p style="margin:8px 0">${uxEsc(s.summary)}</p>`:''}
+    ${(s.sections||[]).map(x=>`<div class="pl-item-t" style="margin-top:10px">${uxEsc(x.trade)}</div><ul style="margin:4px 0 0 22px">${x.work.map(w=>`<li>${uxEsc(w)}</li>`).join('')}</ul>`).join('')}
+    ${list('Not included',s.exclusions)}${list('Assumed',s.assumptions)}</details>
+    ${s.questions&&s.questions.length?`<div class="pl-banner" style="margin-top:10px"><span><b>To confirm with the homeowner or designer:</b><br>${s.questions.map(q=>'• '+uxEsc(q)).join('<br>')}</span></div>`:''}`;
+}
+const PR_KIND={sub:'A sub prices the work',supplier:'Suppliers price the materials',crew:'Your own crew'};
+function prReview(run){
+  const conf={high:'gA',medium:'gB',low:'warn'},M=run.materials;
+  return `<div id="pr-live"></div>
+    <div class="pl-tiles" style="display:flex;gap:10px;flex-wrap:wrap"><div class="pl-pb" style="flex:1;min-width:150px"><div class="sm" style="margin:0">Rough budget (cost)</div><div class="pl-card-val" style="font-size:24px">${prWhole(run.roughTotal||0)}</div><div class="sm" style="margin:0">From typical local prices, until real ones come in.</div></div>
+    <div class="pl-pb" style="flex:1;min-width:150px"><div class="sm" style="margin:0">Read from the plans</div><div class="pl-card-val" style="font-size:22px;line-height:1.25">${(run.scope&&run.scope.sections||[]).length} trades<br>${M.length} materials</div></div></div>
+    ${prScope(run.scope)}
+    <details class="pl-pb" style="margin-top:10px"><summary class="pl-item-t" style="cursor:pointer">📐 Material takeoff (${M.length}): check the quantities</summary>
+      <div class="sm">“high” comes from written dimensions or a schedule, “medium” was measured to scale, “low” is an estimate: check those first.</div>
+      <div class="pl-list" style="margin-top:6px">${M.map(m=>`<div class="pl-item" style="padding:8px 10px" data-pm="${m.i}">
+        <div class="es-grid" style="grid-template-columns:1fr 90px 70px;align-items:center;gap:6px"><input class="cred-input" data-f="name" value="${uxEsc(m.name)}" aria-label="Material"><input class="cred-input" data-f="quantity" inputmode="decimal" value="${m.quantity==null?'':m.quantity}" placeholder="?" aria-label="Quantity"><input class="cred-input" data-f="unit" value="${uxEsc(m.unit)}" aria-label="Unit"></div>
+        <input class="cred-input" data-f="spec" value="${uxEsc(m.spec||'')}" placeholder="Spec (size, grade, model)" aria-label="Spec" style="margin-top:6px">
+        <div class="pl-tags"><span class="pl-tag ${conf[m.confidence]||''}">${uxEsc(m.confidence)}</span>${m.trade?`<span class="pl-tag">${uxEsc(m.trade)}</span>`:''}${m.where?`<span class="pl-tag">${uxEsc(m.where)}</span>`:''}${m.rough?`<span class="pl-tag">rough ${esMoney(m.rough)}/${uxEsc(m.unit)}</span>`:''}</div>
+        ${m.how?`<div class="sm" style="margin:4px 0 0">${uxEsc(m.how)}</div>`:''}</div>`).join('')}</div></details>
+    <div class="pl-h" style="margin-top:16px">Who gets asked for prices</div>
+    <div class="sm">Ticked people get their part: the scope, the lines to price and the plans, never anything else on the deal. “Found nearby” are local businesses from Google, with the email on their website; they’re added to your subs and vendors when you send.</div>
+    ${run.packages.map(p=>`<div class="pl-pb" style="margin-top:10px" data-pk="${p.key}">
+      <div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(p.label)}</div><div class="pl-item-d">${PR_KIND[p.kind]}${p.items.length?` · ${p.items.length} material${p.items.length===1?'':'s'}`:''}</div></div><div class="pl-card-val">${esMoney(p.rough||0)}<div class="sm" style="margin:0;text-align:right">rough</div></div></div>
+      ${p.kind==='crew'?'<div class="sm">Your own crew does this, so nobody is asked. The rough number goes on the estimate; change it there.</div>':`
+      ${p.scope!=null?`<label class="sm" style="display:block;margin:8px 0 2px">What they’re pricing</label><textarea class="cred-input" data-f="scope" rows="2">${uxEsc(p.scope||'')}</textarea>`:''}
+      ${p.items.length?`<div class="sm" style="margin:6px 0 0">${p.items.slice(0,8).map(i=>uxEsc(M[i].name)).join(' · ')}${p.items.length>8?` · and ${p.items.length-8} more`:''}</div>`:''}
+      <div class="pl-list" style="margin-top:8px">${p.vendors.length?p.vendors.map((v,k)=>`<label class="pl-item" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer" data-v="${k}">
+        <input type="checkbox" data-f="picked"${v.picked?' checked':''} style="width:22px;height:22px;margin-top:3px;flex:0 0 auto" aria-label="Ask ${uxEsc(v.name)}">
+        <span style="flex:1;min-width:0"><b>${uxEsc(v.name)}</b> <span class="pl-tag${v.source==='yours'?' gA':''}" style="margin-left:4px">${v.source==='yours'?'Yours':v.source==='added'?'Added':'Found nearby'}</span>${v.rating?` <span class="sm" style="margin:0">★ ${v.rating}${v.reviews?` (${v.reviews})`:''}</span>`:''}
+          <input class="cred-input" data-f="email" value="${uxEsc(v.email||'')}" placeholder="Their email (needed to ask them)" inputmode="email" style="margin-top:6px" onclick="event.preventDefault()">
+          <span class="sm" style="margin:2px 0 0;display:block">${[v.phone?uxEsc(v.phone):'',v.website?`<a href="${uxEsc(v.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">website</a>`:''].filter(Boolean).join(' · ')}</span></span></label>`).join(''):'<div class="sm">No one found for this yet. Add someone below.</div>'}</div>
+      <details style="margin-top:6px"><summary class="sm" style="cursor:pointer;margin:0">＋ Add someone else</summary><div class="es-grid" style="grid-template-columns:1fr 1fr;gap:6px;margin-top:6px"><input class="cred-input" data-f="add-name" placeholder="Business name"><input class="cred-input" data-f="add-email" placeholder="Email" inputmode="email"></div></details>`}
+    </div>`).join('')}
+    <div class="pl-form" style="margin-top:14px"><div><label for="pr-due">Prices due by</label><input type="date" id="pr-due" class="cred-input" value="${run.dueDate||''}"></div></div>
+    <div class="vd-mbtns" style="margin-top:12px"><button class="btn btn-blue" onclick="prSendAsk(this)">Send price requests…</button><button class="btn-xs" onclick="prSave(this)">Save my changes</button><button class="btn-xs" onclick="PR.fresh=true;prRender(null)">Read the plans again</button></div><div class="sm" id="pr-msg"></div>`;
+}
+function prCollect(){
+  const materials=[...document.querySelectorAll('[data-pm]')].map(r=>{const g=f=>r.querySelector('[data-f="'+f+'"]').value;return {i:+r.dataset.pm,name:g('name'),quantity:g('quantity'),unit:g('unit'),spec:g('spec')};});
+  const packages=[...document.querySelectorAll('[data-pk]')].map(el=>{const sc=el.querySelector('[data-f="scope"]');const an=el.querySelector('[data-f="add-name"]'),ae=el.querySelector('[data-f="add-email"]');
+    return {key:el.dataset.pk,scope:sc?sc.value:undefined,vendors:[...el.querySelectorAll('[data-v]')].map(v=>({picked:v.querySelector('[data-f="picked"]').checked,email:v.querySelector('[data-f="email"]').value})),add:an&&an.value.trim()?[{name:an.value,email:ae.value}]:[]};});
+  return {materials,packages,dueDate:(document.getElementById('pr-due')||{}).value};
+}
+async function prSave(btn){btn.disabled=true;try{const r=await plApi('/api/crm/pricing/'+PR.run.id,{method:'PUT',body:prCollect()});prRender(r.run);showNotif('Saved','Your changes are kept.');}catch(e){showNotif('Could not save',e.message);btn.disabled=false;}}
+async function prSendAsk(btn){
+  btn.disabled=true;
+  try{
+    const body=prCollect();const r=await plApi('/api/crm/pricing/'+PR.run.id,{method:'PUT',body});PR.run=r.run;
+    const asks=r.run.packages.filter(p=>p.kind!=='crew').map(p=>({p,v:p.vendors.filter(v=>v.picked&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email||''))})).filter(x=>x.v.length);
+    const n=asks.reduce((t,x)=>t+x.v.length,0);
+    if(!n){btn.disabled=false;return showNotif('No one to ask','Tick at least one vendor with an email address.');}
+    const empty=r.run.packages.filter(p=>p.kind!=='crew'&&!asks.some(x=>x.p.key===p.key));
+    uxOpen(uxHead('Send price requests?',`${n} email${n===1?'':'s'} to ${asks.length} package${asks.length===1?'':'s'} for ${uxEsc(PR.d.deal.title)}`)+`
+      <div class="pl-list">${asks.map(x=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(x.p.label)}</div><div class="pl-item-d">${x.v.map(v=>uxEsc(v.name)+' &lt;'+uxEsc(v.email)+'&gt;').join('<br>')}</div></div>`).join('')}</div>
+      ${empty.length?`<div class="pl-banner" style="margin-top:10px"><span>Nobody is asked for: ${empty.map(p=>uxEsc(p.label)).join(', ')}. Those keep the rough budget on the estimate.</span></div>`:''}
+      <div class="sm" style="margin-top:10px">Each gets their part of the scope, the lines to price, the plans (${r.run.files.length} file${r.run.files.length===1?'':'s'}) and the due date (${new Date(r.run.dueDate+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'})}), with the job’s area but not the street address. They price on a private page or by replying to the email.</div>
+      <div class="vd-mbtns" style="margin-top:14px"><button class="btn btn-blue" onclick="prSend(this)">Send ${n} request${n===1?'':'s'}</button><button class="btn-xs" onclick="prRender(PR.run)">← Back</button></div>`);
+  }catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
+}
+async function prSend(btn){btn.disabled=true;btn.textContent='Sending…';
+  try{const r=await plApi('/api/crm/pricing/'+PR.run.id+'/send',{body:{}});prRender(r.run);showNotif('Sent',`${r.sent.length} price request${r.sent.length===1?'':'s'} went out.${r.skipped.length?` Not sent: ${r.skipped.map(s=>s.name+' ('+s.why+')').join(', ')}.`:''}`);}
+  catch(e){showNotif('Could not send',e.message);btn.disabled=false;btn.textContent='Send';}}
+function prWaiting(run){
+  const st={sent:'Not opened yet',viewed:'Opened',submitted:'Priced',declined:'Passed',awarded:'Picked'};
+  const inN=run.bids.filter(b=>b.status==='submitted'||b.status==='declined').length;
+  return `<div id="pr-live"></div><div class="pl-pb"><div class="pl-item-t" style="font-size:20px">${inN} of ${run.bids.length} answered</div><div class="sm">Prices are due ${new Date(run.dueDate+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'})}. Anyone who hasn’t answered gets a reminder that morning. Eagle I builds the estimate as soon as everyone answers, or the day after they’re due, and tells you.</div></div>
+    ${run.packages.filter(p=>p.kind!=='crew').map(p=>{const bs=run.bids.filter(b=>b.packageKey===p.key);if(!bs.length)return '';return `<div class="pl-h" style="margin-top:12px">${uxEsc(p.label)}</div><div class="pl-list">${bs.map(b=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(b.vendor)}</div><div class="pl-item-d">${st[b.status]||b.status}${b.source==='email'?' · by email':''}${b.leadTime?' · '+uxEsc(b.leadTime):''}${b.note?` · “${uxEsc(b.note)}”`:''}</div></div><div class="pl-card-val">${b.amount!=null?esMoney(b.amount):'—'}</div></div></div>`).join('')}</div>`;}).join('')}
+    ${prScope(run.scope)}
+    <div class="vd-mbtns" style="margin-top:14px"><button class="btn btn-blue" onclick="prBuild(this)">Build the estimate now with what’s in</button></div>`;
+}
+async function prBuild(btn){if(!confirm('Build the estimate now? Anything not priced yet keeps its rough number, and late prices won’t be added.'))return;btn.disabled=true;btn.textContent='Building…';
+  try{const r=await plApi('/api/crm/pricing/'+PR.run.id+'/build',{body:{}});prRender(r.run);}catch(e){showNotif('Could not build it',e.message);btn.disabled=false;btn.textContent="Build the estimate now with what’s in";}}
+const prWhole=n=>'$'+Math.round(Number(n)||0).toLocaleString('en-US');
+function prPriced(run){
+  const r=run.result||{packages:[]};
+  return `<div class="pl-tiles" style="display:flex;gap:10px;flex-wrap:wrap"><div class="pl-pb" style="flex:1;min-width:150px"><div class="sm" style="margin:0">Cost</div><div class="pl-card-val" style="font-size:24px">${prWhole(r.cost)}</div>${run.roughTotal?`<div class="sm" style="margin:0">Rough budget was ${prWhole(run.roughTotal)}</div>`:''}</div>
+    <div class="pl-pb" style="flex:1;min-width:150px"><div class="sm" style="margin:0">Price to the homeowner</div><div class="pl-card-val" style="font-size:24px">${prWhole(r.price)}</div><div class="sm" style="margin:0">Estimate #${r.estimateNumber}, at your markup</div></div></div>
+    ${r.savings>0?`<div class="pl-banner" style="margin-top:10px"><span>Taking the best price in each package saved <b>${esMoney(r.savings)}</b> over the next-best prices.</span></div>`:''}
+    ${r.roughLeft&&r.roughLeft.length?`<div class="pl-banner" style="margin-top:10px;border-color:var(--amber,#b7791f)"><span>Still a rough number (nobody priced it): ${r.roughLeft.map(uxEsc).join(', ')}. Change those lines on the estimate when you know.</span></div>`:''}
+    ${r.crew&&r.crew.length?`<div class="sm" style="margin-top:10px">Your crew’s labor (${r.crew.map(c=>uxEsc(c.label)+' '+prWhole(c.cost)).join(', ')}) is the rough number: set it on the estimate.</div>`:''}
+    <div class="vd-mbtns" style="margin-top:12px">${run.estimateId?`<button class="btn btn-blue" onclick="esOpen('${run.estimateId}')">Open estimate #${r.estimateNumber}</button>`:''}</div>
+    <div class="pl-h" style="margin-top:14px">Best price for each package</div><div class="pl-list">${r.packages.map(p=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(p.label)}</div><div class="pl-item-d">${p.crew?'Your crew: rough number, set it on the estimate':p.rough?'No price yet: rough budget':p.winner?uxEsc(p.winner.vendor)+(p.winner.leadTime?' · '+uxEsc(p.winner.leadTime):''):'Best line by line: '+p.vendors.map(uxEsc).join(' and ')}${p.others&&p.others.length?`<br>Others: ${p.others.slice(0,3).map(o=>uxEsc(o.vendor)+' '+esMoney(o.amount)).join(', ')}`:''}</div></div><div style="text-align:right"><div class="pl-card-val">${esMoney(p.cost)}</div>${p.savings>0?`<div class="sm" style="margin:0;color:var(--green)">${esMoney(p.savings)} less</div>`:''}</div></div></div>`).join('')}</div>
+    <div class="sm" style="margin-top:10px">${run.handedOff?'✓ The job is set up: the winning subs are on their phases and purchase orders are drafted for the suppliers.':'When the homeowner signs, Eagle I puts the winning subs on their phases of the schedule (they’re asked to confirm their dates) and drafts purchase orders for the winning suppliers, for you to check and send.'}</div>
+    ${prScope(run.scope)}
+    <div class="vd-mbtns" style="margin-top:12px"><button class="btn-xs" onclick="PR.fresh=true;prRender(null)">Price it again (new plans)</button></div>`;
+}
 /* ---------- takeoffs from plans ---------- */
 const TK={};
 async function tkOpen(dealId){
@@ -3315,7 +3448,7 @@ async function plOpenDeal(id){
     <div id="pld-fit"><div class="sm">Loading…</div></div>
     <div class="pl-h">Estimates</div>
     <div id="pld-est"><div class="sm">Loading…</div></div>
-    <div class="vd-mbtns" style="margin-top:6px"${crCan('estimates')?'':' hidden'}><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button><button class="btn-xs" onclick="tkOpen('${x.id}')">📐 Takeoff from plans</button></div>
+    <div class="vd-mbtns" style="margin-top:6px"${crCan('estimates')?'':' hidden'}><button class="btn-xs p" onclick="esNew('${x.id}','construction')">＋ Construction estimate</button><button class="btn-xs" onclick="esNew('${x.id}','design_agreement')">＋ Design agreement</button><button class="btn-xs p" onclick="prOpen('${x.id}')">💰 Price this project</button><button class="btn-xs" onclick="tkOpen('${x.id}')">📐 Takeoff from plans</button></div>
     ${['signed','production','complete'].includes(x.stage)?`<div class="vd-mbtns" style="margin-top:14px"><button class="btn btn-blue" onclick="jbOpen('${x.id}')">🛠 Open the job: schedule, logs, change orders, selections</button></div>`:''}
     <div class="pl-h">Invoices</div>
     <div id="pld-inv"><div class="sm">Loading…</div></div>
@@ -4437,7 +4570,7 @@ async function plLoadNeeds(){
     el.innerHTML=items.map(i=>`<div class="pl-item ${i.kind}"><div class="pl-item-t">${uxEsc(i.title)}</div><div class="pl-tl-meta">Flagged ${plAgo(i.created_at)} ago</div>
       ${i.deal_title?`<div class="pl-item-d">${uxEsc(i.deal_title)}${i.deal_stage?' · '+uxEsc(plStage(i.deal_stage).label):''}</div>`:''}
       ${i.detail?`<div class="pl-item-d">${uxEsc(i.detail)}</div>`:''}
-      <div class="pl-acts">${i.kind==='collect'&&/^nudge:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ccNudge('${(i.dedupe_key||'').slice(6)}')">Review &amp; send</button>`:''}${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${i.kind==='email_followup'&&/^mw:fu:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ewFollow('${(i.dedupe_key||'').split(':')[2]}')">Review the follow-up</button>`:''}${i.kind==='email_reply'&&/^mw:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ewGmail('${(i.dedupe_key||'').split(':')[2]}')">Open in Gmail</button>`:''}${i.kind==='sub_question'&&!i.deal_id?`<button class="btn-xs p" onclick="crView('jobs')">Subs</button>`:''}${['change_catch','cost_forecast','schedule_risk','po_match','photo_check'].includes(i.kind)&&i.deal_id?`<button class="btn-xs p" onclick="jbOpen('${i.deal_id}')">Open the job</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
+      <div class="pl-acts">${i.kind==='collect'&&/^nudge:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ccNudge('${(i.dedupe_key||'').slice(6)}')">Review &amp; send</button>`:''}${i.kind==='update_draft'&&i.deal_id?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Read &amp; send</button>`:''}${i.kind==='pricing'&&i.deal_id?`<button class="btn-xs p" onclick="prOpen('${i.deal_id}')">Open the pricing</button>`:''}${i.kind==='email_followup'&&/^mw:fu:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ewFollow('${(i.dedupe_key||'').split(':')[2]}')">Review the follow-up</button>`:''}${i.kind==='email_reply'&&/^mw:/.test(i.dedupe_key||'')?`<button class="btn-xs p" onclick="ewGmail('${(i.dedupe_key||'').split(':')[2]}')">Open in Gmail</button>`:''}${i.kind==='sub_question'&&!i.deal_id?`<button class="btn-xs p" onclick="crView('jobs')">Subs</button>`:''}${['change_catch','cost_forecast','schedule_risk','po_match','photo_check'].includes(i.kind)&&i.deal_id?`<button class="btn-xs p" onclick="jbOpen('${i.deal_id}')">Open the job</button>`:''}${i.kind==='spend_reminder'?`<button class="btn-xs p" onclick="crView('growth')">Enter spend</button>`:i.kind==='referral'?`<button class="btn-xs p" onclick="crView('refs')">Referrals</button>`:''}${i.deal_id&&!['referral','update_draft'].includes(i.kind)?`<button class="btn-xs p" onclick="plOpenDeal('${i.deal_id}')">Open deal</button>`:''}
         <button class="btn-xs" onclick="plInboxAct(${i.id},'done')">✓ Done</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',1)">Snooze 1 day</button>
         <button class="btn-xs" onclick="plInboxAct(${i.id},'snooze',3)">3 days</button></div></div>`).join('');
@@ -4747,6 +4880,8 @@ function aiMd(t){
   const e=uxEsc(String(t||''));
   const lines=e.split('\n');let out='',list=null;
   const inl=x=>x.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>')
+    // A project's pricing: [Open the pricing](#price/<deal id>)
+    .replace(/\[([^\]]{1,48})\]\(#price\/([0-9a-f-]{36})\)/g,'<button class="btn-xs p" style="margin:4px 4px 0 0" onclick="prOpen(\'$2\')">$1</button>')
     // Links to the CRM's own screens become buttons: [Open the Calendar](#calendar)
     .replace(/\[([^\]]{1,48})\]\(#(ask|pipeline|needs|calendar|jobs|estimates|auto|team|company|reports|refs|growth|setup|billing|bin|search|newdeal|phone)\)/g,'<button class="btn-xs p" style="margin:4px 4px 0 0" onclick="aiGoScreen(\'$2\')">$1</button>');
   for(const l of lines){

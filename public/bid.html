@@ -16,7 +16,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:18.5px;line-height:1.5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-font-smoothing:antialiased}
-.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:28px 24px;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
+.card{width:100%;max-width:520px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:28px 24px;box-shadow:0 2px 4px rgba(20,32,43,.04),0 10px 28px rgba(20,32,43,.08)}
 .brand{font-size:26px;font-weight:800;text-align:center;color:var(--ink)}
 .brand span{color:var(--accent)}
 .tag{font-size:17px;color:var(--ink3);text-align:center;margin:4px 0 20px}
@@ -60,6 +60,12 @@ textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius
 .file span{font-weight:400;color:var(--ink3);font-size:16px;margin-left:auto}
 .scope{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:12px;margin-top:10px;font-size:17.5px}
 .amt{font-size:24px;font-weight:800}
+.ln{border:1.5px solid var(--bdr);border-radius:10px;padding:10px 12px;margin-top:8px}
+.ln b{display:block;font-size:17px}.ln .sp{font-size:15.5px;color:var(--ink3)}
+.ln .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.ln .row input{width:130px;padding:9px 10px;font-size:17.5px}
+.ln .q{margin:0;font-size:16px;font-weight:700;color:var(--ink2)}
+.ln .tot{margin-left:auto;font-weight:800}
 </style>
 <link rel="stylesheet" href="/eaglei-theme.css">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
@@ -75,9 +81,11 @@ textarea{width:100%;background:#fff;border:1.5px solid var(--bdr2);border-radius
     <div id="scope" class="scope" hidden></div>
     <div id="due" class="tag" style="text-align:left;margin:10px 0 0"></div>
     <div class="q" id="fh" hidden>Plans and files</div><div id="files"></div>
-    <div class="q" style="margin-top:20px">Your price ($)</div>
+    <div id="lines-w" hidden><div class="q" style="margin-top:20px">Your price for each line</div><div class="tag" style="text-align:left;margin:2px 0 0;font-size:16px">Price per unit (we work out the line total), or leave a line blank if you don't carry it.</div><div id="lines"></div></div>
+    <div class="q" style="margin-top:20px" id="amt-h">Your price ($)</div>
     <input id="amount" inputmode="decimal" placeholder="e.g. 18,500" class="amt">
-    <div class="q">Notes (what’s included, exclusions, timing)</div><textarea id="note" rows="4"></textarea>
+    <div class="q">Notes (what’s included, exclusions, substitutes)</div><textarea id="note" rows="4"></textarea>
+    <div class="q">Lead time or when you could start</div><input id="lead" placeholder="e.g. in stock, 2 weeks, can start Nov 10">
     <button class="btn" id="send" onclick="go(false,this)">Send my price</button>
     <button class="btn" style="background:#fff;color:var(--ink);border:1.5px solid var(--bdr2);margin-top:10px" onclick="go(true,this)">Pass on this one</button>
     <div class="err" id="err" role="alert"></div>
@@ -89,9 +97,12 @@ const token=location.pathname.split('/').pop();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
 let D=null;
+const num=v=>{const n=Number(String(v||'').replace(/[$,\s]/g,''));return n>0?n:null;};
+function linePrices(){return D&&D.lines?D.lines.map(l=>({i:l.i,unit_price:num((document.getElementById('lp-'+l.i)||{}).value)})).filter(x=>x.unit_price):[];}
+function reTotal(){if(!D||!D.lines)return;let t=0;for(const l of D.lines){const u=num(document.getElementById('lp-'+l.i).value);const lt=u?u*(Number(l.quantity)||1):0;t+=lt;document.getElementById('lt-'+l.i).textContent=u?money(Math.round(lt*100)/100):'';}document.getElementById('amount').value=t?Math.round(t*100)/100:'';}
 async function go(decline,btn){
   const err=document.getElementById('err');err.textContent='';btn.disabled=true;
-  try{const r=await fetch('/api/crm-public/bid/'+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:document.getElementById('amount').value,note:document.getElementById('note').value,decline})});const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
+  try{const r=await fetch('/api/crm-public/bid/'+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:document.getElementById('amount').value,note:document.getElementById('note').value,leadTime:document.getElementById('lead').value,lines:linePrices(),decline})});const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');
     document.getElementById('f').hidden=true;const el=document.getElementById('done');el.hidden=false;el.textContent=decline?`Thanks for letting ${D.company} know.`:`Thanks! ${D.company} has your price of ${money(document.getElementById('amount').value.replace(/[$,\s]/g,''))}. You can come back to this link to change it.`;}
   catch(e){err.textContent=e.message;btn.disabled=false;}
 }
@@ -103,7 +114,10 @@ fetch('/api/crm-public/bid/'+token).then(r=>r.json().then(d=>{if(!r.ok)throw new
   if(d.scope){const s=document.getElementById('scope');s.hidden=false;s.textContent=d.scope;}
   if(d.due)document.getElementById('due').textContent='Please send your price by '+new Date(d.due+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'})+'.';
   if(d.files.length){document.getElementById('fh').hidden=false;document.getElementById('files').innerHTML=d.files.map(f=>`<a class="file" href="/api/crm-public/bid/${token}/files/${f.id}" target="_blank" rel="noopener">📄 ${esc(f.filename)}<span>${Math.max(1,Math.round(f.size/1024))} KB</span></a>`).join('');}
-  if(d.amount)document.getElementById('amount').value=d.amount;if(d.note)document.getElementById('note').value=d.note;
+  if(d.lines&&d.lines.length){document.getElementById('lines-w').hidden=false;document.getElementById('amt-h').textContent='Your total ($)';
+    const had=new Map((d.linePrices||[]).map(x=>[x.i,x.unit_price]));
+    document.getElementById('lines').innerHTML=d.lines.map(l=>`<div class="ln"><b>${esc(l.name)}</b>${l.spec?`<div class="sp">${esc(l.spec)}</div>`:''}<div class="row"><span class="q">${l.quantity!=null?esc(l.quantity)+' '+esc(l.unit||''):''}</span><input id="lp-${l.i}" inputmode="decimal" placeholder="$ per ${esc(l.unit||'unit')}" aria-label="Price per ${esc(l.unit||'unit')} for ${esc(l.name)}" value="${had.get(l.i)||''}" oninput="reTotal()"><span class="tot" id="lt-${l.i}"></span></div></div>`).join('');reTotal();}
+  if(d.amount)document.getElementById('amount').value=d.amount;if(d.note)document.getElementById('note').value=d.note;if(d.leadTime)document.getElementById('lead').value=d.leadTime;
   if(d.status==='awarded'){document.getElementById('send').hidden=true;}
   document.getElementById('f').hidden=false;
 })).catch(e=>{document.getElementById('tag').textContent=e.message||'This link is no longer active.';});

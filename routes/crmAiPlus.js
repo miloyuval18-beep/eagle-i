@@ -60,6 +60,31 @@ router.post('/api/crm/estimates/:id/check', requireAuth, wrap('Failed to check t
   res.json({ review: await estAi.checkEstimate(req.tenantId, req.params.id) });
 }));
 
+// ---------- price this project (lib/crmPricing.js) ----------
+const pricing = require('../lib/crmPricing');
+router.get('/api/crm/deals/:id/pricing', requireAuth, wrap('Failed to load', async (req, res) => {
+  const d = await ownDeal(req, res); if (!d) return;
+  const runs = await pricing.listRuns(req.tenantId, d.id);
+  res.json({ deal: d, runs, run: runs[0] ? await pricing.getRun(req.tenantId, runs[0].id) : null, files: await pricing.planFiles(req.tenantId, d.id), maxFiles: pricing.MAX_FILES, ai: !!process.env.ANTHROPIC_API_KEY });
+}));
+router.post('/api/crm/deals/:id/pricing', requireAuth, wrap('Failed to start', async (req, res) => {
+  const d = await ownDeal(req, res); if (!d) return;
+  const b = req.body || {};
+  res.json({ run: await pricing.start({ tenantId: req.tenantId, dealId: d.id, fileIds: Array.isArray(b.fileIds) ? b.fileIds : null, notes: b.notes, userId: req.userId }) });
+}));
+router.get('/api/crm/pricing/:rid', requireAuth, wrap('Failed to load', async (req, res) => res.json({ run: await pricing.getRun(req.tenantId, req.params.rid) })));
+router.put('/api/crm/pricing/:rid', requireAuth, wrap('Failed to save', async (req, res) => {
+  const b = req.body || {};
+  res.json({ run: await pricing.saveRun({ tenantId: req.tenantId, id: req.params.rid, materials: b.materials, packages: b.packages, dueDate: b.dueDate }) });
+}));
+router.post('/api/crm/pricing/:rid/send', requireAuth, wrap('Failed to send', async (req, res) => {
+  const b = req.body || {};
+  if (b.materials || b.packages || b.dueDate) await pricing.saveRun({ tenantId: req.tenantId, id: req.params.rid, materials: b.materials, packages: b.packages, dueDate: b.dueDate });
+  const out = await pricing.send({ tenantId: req.tenantId, id: req.params.rid, userId: req.userId });
+  res.json({ ...out, run: await pricing.getRun(req.tenantId, req.params.rid) });
+}));
+router.post('/api/crm/pricing/:rid/build', requireAuth, wrap('Failed to build the estimate', async (req, res) => res.json({ run: await pricing.compile({ tenantId: req.tenantId, id: req.params.rid, userId: req.userId }) })));
+
 // ---------- takeoffs ----------
 router.get('/api/crm/deals/:id/takeoffs', requireAuth, wrap('Failed to load', async (req, res) => {
   const d = await ownDeal(req, res); if (!d) return;
