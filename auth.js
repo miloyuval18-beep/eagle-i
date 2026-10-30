@@ -68,6 +68,15 @@ function requireAuth(req, res, next) {
     const path = req.originalUrl.split('?')[0];
     if (/\/(oauth|google\/start|drive\/(on|connect))(\/|$)/.test(path)) return res.status(403).json({ error: { message: 'Connecting Google isn’t possible from the Eagle I admin view. The company connects its own.', code: 'view_only' } });
     if (req.viewOnly && !['GET', 'HEAD'].includes(req.method) && path !== '/api/crm/client-error') return res.status(403).json({ error: { message: 'You’re looking at this company as the Eagle I admin, so nothing can be changed here. Open it with full access from the admin page to make changes.', code: 'view_only' } });
+  } else if ((req.session.lookRole || req.session.lookUser) && /^\/(api\/crm|crm)(\/|$)/.test(req.originalUrl.split('?')[0])) {
+    // A company's owner or admin seeing their own CRM as a role or one of their people sees it
+    // ("See as", routes/crm.js): always view only, in their own company (checked on each request there).
+    req.lookAs = true; req.lookBy = req.session.userId; req.viewOnly = true;
+    if (req.session.lookUser) { req.userId = req.session.lookUser; req.viewPerson = true; } else req.lookRole = req.session.lookRole;
+    const path = req.originalUrl.split('?')[0];
+    if (!['GET', 'HEAD'].includes(req.method) && !['/api/crm/client-error', '/api/crm/look-as', '/api/crm/look-as/exit'].includes(path)) {
+      return res.status(403).json({ error: { message: 'You’re seeing the CRM as someone else sees it, so nothing can be changed here. Tap “Stop” at the top to go back to your own view.', code: 'view_only' } });
+    }
   }
   next();
 }

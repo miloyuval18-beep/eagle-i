@@ -219,8 +219,10 @@ app.use('/api/crm-public', (req, res, next) => {
 // The Eagle I admin looking at a company view only ("See as a homeowner" opens the real
 // homeowner page): nothing sent from the homeowner's or sub's pages goes through.
 app.use('/api/crm-public', (req, res, next) => {
-  if (req.session && req.session.viewAs && req.session.viewMode !== 'edit' && !['GET', 'HEAD'].includes(req.method)) {
-    return res.status(403).json({ error: { message: 'This is the Eagle I admin preview, so nothing is sent from here.', code: 'view_only' } });
+  // (Or a company's owner or admin seeing a homeowner's page from "See as": lookPortal, two hours.)
+  const looking = req.session && req.session.lookPortal && Date.now() - req.session.lookPortal < 2 * 3600 * 1000;
+  if (req.session && ((req.session.viewAs && req.session.viewMode !== 'edit') || looking) && !['GET', 'HEAD'].includes(req.method)) {
+    return res.status(403).json({ error: { message: 'This is a preview, so nothing is sent from here.', code: 'view_only' } });
   }
   next();
 });

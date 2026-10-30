@@ -24,8 +24,32 @@ function fail(res, err, what) {
 // Who is signed in and whether their company uses the CRM. Open to any
 // logged-in user so the app can offer to switch the CRM on.
 const isPlatformAdmin = async (userId) => !!((await query('SELECT is_admin FROM users WHERE id = $1', [userId])).rows[0] || {}).is_admin;
+// "See as" for a company's owner and admins: their own CRM as one of its roles or people
+// sees it, view only (auth.js). An admin can't look as the owner (or an owner's view).
+const canLook = (u) => !!u && ['owner', 'admin'].includes(u.role) && !u.disabled_at;
+async function lookOptions(by) {
+  const roles = team.ROLES.filter(r => by.role === 'owner' || r !== 'owner').map(r => ({ role: r, label: team.roleLabel(r) }));
+  const people = (await query(`SELECT id, name, email, role FROM users WHERE tenant_id = $1 AND id <> $2 AND disabled_at IS NULL AND app <> 'marketing' AND ($3 OR role <> 'owner') ORDER BY COALESCE(name, email)`,
+    [by.tenant_id, by.id, by.role === 'owner'])).rows.map(p => ({ id: p.id, name: p.name || p.email, roleLabel: team.roleLabel(p.role) }));
+  return { roles, people };
+}
+async function stopLooking(req) { delete req.session.lookRole; delete req.session.lookUser; delete req.session.lookPortal; await new Promise((ok) => req.session.save(() => ok())); }
+
 router.get('/api/crm/me', requireAuth, async (req, res) => {
   try {
+    if (req.lookAs) {
+      const by = await team.getUser(req.lookBy);
+      if (!canLook(by) || by.tenant_id !== req.tenantId) { await stopLooking(req); return res.status(401).json({ error: { message: 'Not logged in.' } }); }
+      const t = (await query('SELECT company_name, products FROM tenants WHERE id = $1', [req.tenantId])).rows[0];
+      const base = { ...(await lookOptions(by)), companyName: t.company_name, needsSetup: false, tips: { seen: [], off: true }, products: t.products || [], hasCrm: true, hasMarketing: false, viewOnly: true, lookAs: true, lookBy: by.name || by.email };
+      if (req.viewPerson) {
+        const p = await team.getUser(req.userId);
+        if (!p || p.tenant_id !== req.tenantId || p.disabled_at || (by.role !== 'owner' && p.role === 'owner')) { await stopLooking(req); return res.status(403).json({ error: { message: 'You can’t see the CRM as that person.' } }); }
+        return res.json({ ...base, userId: p.id, email: p.email, name: p.name, phone: p.phone, role: p.role, seeAs: 'user:' + p.id, seeAsName: p.name || p.email, roleLabel: team.roleLabel(p.role), canManage: team.isManager(p.role), perms: team.permsOf(p), oversight: team.oversightOf(p), aiMode: p.ai_mode || null });
+      }
+      const role = team.ROLES.includes(req.lookRole) && (by.role === 'owner' || req.lookRole !== 'owner') ? req.lookRole : 'member';
+      return res.json({ ...base, userId: by.id, email: by.email, name: by.name, phone: by.phone, role, seeAs: role, seeAsName: `a ${team.roleLabel(role).toLowerCase()}`, roleLabel: team.roleLabel(role), canManage: team.isManager(role), perms: team.permsOf({ role }), oversight: false, aiMode: by.ai_mode || null });
+    }
     if (req.adminView) {
       if (!(await isPlatformAdmin(req.adminUserId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
       const t = (await query('SELECT company_name, products FROM tenants WHERE id = $1', [req.tenantId])).rows[0];
@@ -47,11 +71,15 @@ router.get('/api/crm/me', requireAuth, async (req, res) => {
       `SELECT u.id, u.email, u.name, u.phone, u.role, u.app, u.permissions, u.oversight, u.ai_mode, u.disabled_at, u.tips, u.setup_done_at, t.company_name, t.products, t.setup_done_at AS company_setup_done FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [req.userId])).rows[0];
     if (!r || r.app === 'marketing') return res.status(401).json({ error: { message: 'Not logged in.' } });
     if (r.disabled_at) return res.status(401).json({ error: { message: 'Your account has been turned off. Ask the owner or an admin.', code: 'disabled' } });
+    // Back from looking at a homeowner's page: the homeowner pages work as usual again.
+    if (req.session.lookPortal) { delete req.session.lookPortal; await new Promise((ok) => req.session.save(() => ok())); }
     res.json({
       userId: r.id, email: r.email, name: r.name, phone: r.phone, role: r.role, roleLabel: team.roleLabel(r.role), canManage: team.isManager(r.role), perms: team.permsOf(r), oversight: team.oversightOf(r), aiMode: r.ai_mode || null, companyName: r.company_name,
       // Guided setup (crm.html #setup): the company's for its owner, a shorter one for everyone else.
       needsSetup: r.role === 'owner' ? !r.company_setup_done : !r.setup_done_at,
       tips: require('../lib/crmTips').clean(r.tips),
+      // Owners and admins can see the CRM as their roles and people see it ("See as").
+      canLookAs: ['owner', 'admin'].includes(r.role),
       products: r.products || [], hasCrm: (r.products || []).includes('crm'),
       // Team members invited to the CRM only see the CRM; the marketing dashboard is the owner's.
       hasMarketing: (r.products || []).includes('marketing') && r.role === 'owner'
@@ -115,6 +143,18 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
       // "See as Maria": exactly her, read only.
       if (!me || me.tenant_id !== req.tenantId || !(await isPlatformAdmin(req.adminUserId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
       me = { ...me, disabled_at: null, viewOnly: true, adminEdit: false };
+    } else if (req.lookAs) {
+      // "See as" by the company's own owner or admin: still theirs to look at, in their company.
+      const by = await team.getUser(req.lookBy);
+      if (!canLook(by) || by.tenant_id !== req.tenantId) { await stopLooking(req); return res.status(401).json({ error: { message: 'Not logged in.' } }); }
+      const lookPath = (req.baseUrl + req.path).toLowerCase();
+      if (/^\/api\/crm\/look-as(\/|$)/.test(lookPath)) { req.lookByUser = by; return next(); }
+      if (req.viewPerson) {
+        if (!me || me.tenant_id !== req.tenantId || (by.role !== 'owner' && me.role === 'owner')) { await stopLooking(req); return res.status(403).json({ error: { message: 'You can’t see the CRM as that person.' } }); }
+        me = { ...me, disabled_at: null, viewOnly: true };
+      } else {
+        me = { ...by, role: team.ROLES.includes(req.lookRole) && (by.role === 'owner' || req.lookRole !== 'owner') ? req.lookRole : 'member', permissions: null, viewOnly: true };
+      }
     } else if (req.adminView) {
       if (!me || !(await isPlatformAdmin(req.adminUserId))) return res.status(401).json({ error: { message: 'Not logged in.' } });
       // "See as": the role they picked (owner unless they picked another), with that role's usual permissions.
@@ -149,9 +189,43 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
   } catch (err) { fail(res, err, 'Failed to check your account'); }
 });
 
-// "See as a homeowner" for the Eagle I admin: each project's homeowner page, opened as the homeowner sees it.
+// "See as" for owners and admins (see canLook): what they can pick, picking it, and stopping.
+router.get('/api/crm/look-as', async (req, res) => {
+  try {
+    const by = req.lookByUser || req.crmUser;
+    if (!canLook(by)) return res.status(403).json({ error: { message: 'Only the owner and admins can see the CRM as someone else.' } });
+    res.json(await lookOptions(by));
+  } catch (err) { fail(res, err, 'Failed to load'); }
+});
+router.post('/api/crm/look-as', async (req, res) => {
+  try {
+    const by = req.lookByUser || req.crmUser;
+    if (!canLook(by) || req.adminView) return res.status(403).json({ error: { message: 'Only the owner and admins can see the CRM as someone else.' } });
+    const as = String((req.body || {}).as || '');
+    const opts = await lookOptions(by);
+    const m = /^user:([0-9a-f-]{36})$/i.exec(as);
+    let label;
+    if (m) {
+      const p = opts.people.find(x => x.id === m[1].toLowerCase());
+      if (!p) return res.status(404).json({ error: { message: 'You can’t see the CRM as that person.' } });
+      req.session.lookUser = p.id; delete req.session.lookRole; label = p.name;
+    } else {
+      if (!opts.roles.some(r => r.role === as)) return res.status(400).json({ error: { message: 'Pick a role.' } });
+      req.session.lookRole = as; delete req.session.lookUser; label = `a ${team.roleLabel(as).toLowerCase()}`;
+    }
+    await new Promise((ok) => req.session.save(() => ok()));
+    await require('../lib/crmAudit').log({ tenantId: by.tenant_id, actor: by, action: 'settings', detail: `${by.name || by.email} looked at the CRM as ${label} sees it (view only)` }).catch(() => {});
+    res.json({ ok: true });
+  } catch (err) { fail(res, err, 'Failed to switch'); }
+});
+router.post('/api/crm/look-as/exit', async (req, res) => {
+  try { await stopLooking(req); res.json({ ok: true }); } catch (err) { fail(res, err, 'Failed'); }
+});
+
+// "See as a homeowner" for the Eagle I admin, and for a company's owner and admins: each
+// project's homeowner page, opened as the homeowner sees it (nothing can be sent from it).
 router.get('/api/crm/admin/homeowner-pages', async (req, res) => {
-  if (!req.adminView) return res.status(403).json({ error: { message: 'Only for the Eagle I admin.' } });
+  if (!req.adminView && !canLook(req.lookByUser || (req.lookAs ? await team.getUser(req.lookBy) : req.crmUser))) return res.status(403).json({ error: { message: 'Only the owner and admins can do this.' } });
   try {
     const rows = (await query(`SELECT d.id, d.title, d.stage, c.name AS contact_name FROM crm_deals d LEFT JOIN crm_contacts c ON c.id = d.contact_id
       WHERE d.tenant_id = $1 AND d.stage <> 'lost' ORDER BY (d.stage IN ('signed', 'production')) DESC, d.updated_at DESC LIMIT 60`, [req.tenantId])).rows;
@@ -159,8 +233,10 @@ router.get('/api/crm/admin/homeowner-pages', async (req, res) => {
   } catch (err) { fail(res, err, 'Failed to load'); }
 });
 router.get('/api/crm/admin/homeowner-pages/:id', async (req, res) => {
-  if (!req.adminView) return res.status(403).json({ error: { message: 'Only for the Eagle I admin.' } });
-  try { res.json({ url: '/p/' + (await require('../lib/crmPortal').portalToken(req.tenantId, req.params.id)) + '?preview=1' }); }
+  if (!req.adminView && !canLook(req.lookAs ? await team.getUser(req.lookBy) : req.crmUser)) return res.status(403).json({ error: { message: 'Only the owner and admins can do this.' } });
+  try {
+    if (!req.adminView) { req.session.lookPortal = Date.now(); await new Promise((ok) => req.session.save(() => ok())); }
+    res.json({ url: '/p/' + (await require('../lib/crmPortal').portalToken(req.tenantId, req.params.id)) + '?preview=1' }); }
   catch (err) { fail(res, err, 'Failed to open it'); }
 });
 
@@ -172,7 +248,7 @@ router.get('/api/crm/admin/homeowner-pages/:id', async (req, res) => {
 router.get('/api/crm/setup-check', async (req, res) => {
   try {
     // The Eagle I admin looking in isn't reminded of the company's setup.
-    if (req.adminView) return res.json({ items: [] });
+    if (req.adminView || req.lookAs) return res.json({ items: [] });
     res.json({ items: await require('../lib/crmSetupCheck').check(req.crmUser) });
   } catch (err) { fail(res, err, 'Failed to check the setup'); }
 });

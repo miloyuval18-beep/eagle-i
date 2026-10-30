@@ -2732,7 +2732,7 @@ describe('the Eagle I admin: every CRM company, view only', () => {
     assert.equal((await a.get('/api/crm-public/portal/' + tok)).status, 200);
     const sent = await a.post(`/api/crm-public/portal/${tok}/messages`, { message: 'hi' });
     assert.equal(sent.status, 403); assert.equal((await sent.json()).error.code, 'view_only');
-    assert.equal((await o.get('/api/crm/admin/homeowner-pages')).status, 403, 'only in the admin view');
+    assert.equal((await o.get('/api/crm/admin/homeowner-pages')).status, 200, 'the company’s own owner can too (See as)');
     assert.equal((await makeClient().post(`/api/crm-public/portal/${tok}/messages`, { message: 'Hello from the homeowner' })).status, 200, 'the homeowner still can');
     // Full access: changes are real; Google still can't be connected; the visit is logged.
     const fe = await (await a.post('/api/admin/view-as', { tenantId: co.tenantId, mode: 'edit' })).json();
@@ -2828,5 +2828,84 @@ describe('talk or type everywhere: asked once, saved where each person can be fo
     assert.equal((await (await makeClient().get('/api/crm-public/sub-portal/' + stok)).json()).aiMode, null);
     await makeClient().post(`/api/crm-public/sub-portal/${stok}/ai-mode`, { mode: 'text' });
     assert.equal((await (await makeClient().get('/api/crm-public/sub-portal/' + stok)).json()).aiMode, 'text');
+  });
+});
+
+
+describe('See as, for a company’s owner and admins: their own CRM as a role or person sees it, view only', () => {
+  const pw = 'MemberPass123!';
+  const sql = async (q, p) => { const pool = getTestPool(); try { return (await pool.query(q, p)).rows; } finally { await pool.end(); } };
+  async function company(label) {
+    const c = makeClient(); const email = uniqueEmail(label);
+    await c.post('/api/crm-auth/signup', { type: 'company', companyName: 'Look ' + label, name: 'Owner ' + label, email, password: pw, acceptedTerms: true });
+    c.me = await (await c.get('/api/crm/me')).json();
+    c.tenantId = (await sql('SELECT tenant_id FROM users WHERE id = $1', [c.me.userId]))[0].tenant_id; trackTenant(c.tenantId);
+    return c;
+  }
+  async function member(o, role) {
+    const email = uniqueEmail('look-' + role);
+    const inv = await (await o.post('/api/crm/team/invites', { email, name: role + ' Person', role })).json();
+    const m = makeClient();
+    await m.post('/api/crm/join', { token: new URL(inv.inviteUrl).searchParams.get('token'), name: role + ' Person', password: pw });
+    m.me = await (await m.get('/api/crm/me')).json();
+    return m;
+  }
+  test('who can, as whom, what they see, nothing changed, logged, and stopping', async () => {
+    const o = await company('lookas');
+    const adm = await member(o, 'admin'), pm = await member(o, 'project_manager'), sales = await member(o, 'sales');
+    const { deal: mineD } = await (await o.post('/api/crm/deals', { name: 'Kim Lee', title: 'Lee kitchen', stage: 'signed' })).json();
+    const { deal: otherD } = await (await o.post('/api/crm/deals', { name: 'Ann Fox', title: 'Fox bath', stage: 'signed' })).json();
+    await sql('UPDATE crm_deals SET pm_user_id = $2 WHERE id = $1', [mineD.id, pm.me.userId]);
+    // Only owners and admins.
+    assert.equal(o.me.canLookAs, true); assert.equal(adm.me.canLookAs, true); assert.ok(!pm.me.canLookAs && !sales.me.canLookAs);
+    assert.equal((await pm.get('/api/crm/look-as')).status, 403);
+    assert.equal((await sales.post('/api/crm/look-as', { as: 'owner' })).status, 403);
+    // An admin can't look as the owner, or as the owner role; not themselves either.
+    const ao = await (await adm.get('/api/crm/look-as')).json();
+    assert.ok(!ao.roles.some(r => r.role === 'owner')); assert.ok(ao.roles.some(r => r.role === 'project_manager'));
+    assert.deepEqual(ao.people.map(p => p.name).sort(), ['project_manager Person', 'sales Person']);
+    assert.equal((await adm.post('/api/crm/look-as', { as: 'user:' + o.me.userId })).status, 404);
+    assert.equal((await adm.post('/api/crm/look-as', { as: 'owner' })).status, 400);
+    // The owner can look as anyone in the company.
+    const oo = await (await o.get('/api/crm/look-as')).json();
+    assert.ok(oo.roles.some(r => r.role === 'owner')); assert.ok(oo.people.some(p => p.name === 'admin Person'));
+    // As the project manager: exactly what they see, nothing can be changed.
+    assert.equal((await o.post('/api/crm/look-as', { as: 'user:' + pm.me.userId })).status, 200);
+    const asPm = await (await o.get('/api/crm/me')).json();
+    assert.equal(asPm.lookAs, true); assert.equal(asPm.viewOnly, true); assert.equal(asPm.userId, pm.me.userId); assert.equal(asPm.seeAsName, 'project_manager Person');
+    const pl = await (await o.get('/api/crm/pipeline')).json();
+    assert.ok(pl.deals.some(d => d.id === mineD.id)); assert.ok(!pl.deals.some(d => d.id === otherD.id), 'only their projects');
+    assert.equal((await o.get('/api/crm/deals/' + otherD.id)).status, 404);
+    const no = await o.post('/api/crm/deals', { name: 'Not as them' });
+    assert.equal(no.status, 403); assert.equal((await no.json()).error.code, 'view_only');
+    assert.equal((await o.patch('/api/crm/deals/' + mineD.id, { title: 'Changed' })).status, 403);
+    const ck = await (await o.get('/api/crm/checkins/today')).json();
+    assert.equal(ck.checkin, null, 'no check-in made for anyone');
+    assert.ok((await sql('SELECT detail FROM crm_audit WHERE tenant_id = $1', [o.tenantId])).some(l => /looked at the CRM as project_manager Person sees it \(view only\)/.test(l.detail)));
+    // Switching while looking, to a role: that role's permissions.
+    assert.equal((await o.post('/api/crm/look-as', { as: 'superintendent' })).status, 200);
+    const asSup = await (await o.get('/api/crm/me')).json();
+    assert.equal(asSup.role, 'superintendent'); assert.equal(asSup.perms.money, false); assert.equal(asSup.seeAsName, 'a superintendent');
+    assert.equal((await o.get('/api/crm/invoices')).status, 403, 'a superintendent doesn’t see money');
+    // Never into another company.
+    const o2 = await company('lookas2');
+    assert.equal((await o2.post('/api/crm/look-as', { as: 'user:' + pm.me.userId })).status, 404);
+    // Stopping: their own CRM again, and changes are theirs again.
+    assert.equal((await o.post('/api/crm/look-as/exit', {})).status, 200);
+    const back = await (await o.get('/api/crm/me')).json();
+    assert.ok(!back.lookAs); assert.equal(back.role, 'owner'); assert.equal(back.userId, o.me.userId);
+    assert.equal((await o.patch('/api/crm/deals/' + mineD.id, { title: 'Lee kitchen and bath' })).status, 200);
+    // An admin who stops being one mid-look is put back in their own view.
+    assert.equal((await adm.post('/api/crm/look-as', { as: 'sales' })).status, 200);
+    await sql(`UPDATE users SET role = 'member' WHERE id = $1`, [adm.me.userId]);
+    assert.equal((await adm.get('/api/crm/me')).status, 401);
+    const admBack = await (await adm.get('/api/crm/me')).json();
+    assert.equal(admBack.role, 'member'); assert.ok(!admBack.lookAs && !admBack.canLookAs);
+    // A homeowner's page from See as: as the homeowner sees it, and nothing can be sent from it while looking.
+    const { url } = await (await o.get('/api/crm/admin/homeowner-pages/' + mineD.id)).json();
+    const tok = url.split('/p/')[1].split('?')[0];
+    const ho = await o.post(`/api/crm-public/portal/${tok}/messages`, { message: 'hi' });
+    assert.equal(ho.status, 403); assert.equal((await ho.json()).error.code, 'view_only');
+    assert.equal((await pm.get('/api/crm/admin/homeowner-pages')).status, 403, 'not for a project manager');
   });
 });

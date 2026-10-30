@@ -947,6 +947,7 @@ body{background:radial-gradient(1200px 520px at 50% -160px,#fffaf0 0%,rgba(255,2
       <button onclick="crMenu(false);crView('billing')">Plan &amp; billing</button>
       <button onclick="crMenu(false);dyOpen()">My calendar &amp; morning email</button>
       <button onclick="crMenu(false);crView('team')">Team</button>
+      <button onclick="crMenu(false);lkOpen()" id="cr-lookas-btn" hidden>👁 See as someone else</button>
       <button onclick="crMenu(false);alOpen()" id="cr-activity-btn" hidden>📋 Activity log</button>
       <button onclick="crMenu(false);hpOpen()">🙋 Help me set up</button>
       <button onclick="crMenu(false);gdReset()">💡 Show the tips again</button>
@@ -1266,6 +1267,7 @@ function crApplyMe(){
   {const t=document.querySelector('.cr-tab[data-view="estimates"]');if(t)t.hidden=!crCan('money')&&!crCan('estimates');}
   {const a=document.getElementById('vd-add');if(a)a.hidden=!crCan('subs');}
   {const al=document.getElementById('cr-activity-btn');if(al)al.hidden=!crCan('team');}
+  {const lk=document.getElementById('cr-lookas-btn');if(lk)lk.hidden=!(CR.me&&CR.me.canLookAs);}
 }
 // When the owner changes someone's role or permissions, their screen follows
 // without a reload: checked on coming back to the tab, every 2 minutes, and
@@ -1561,13 +1563,32 @@ async function voHomeowners(){
 }
 async function voOpenHo(id,btn){btn.disabled=true;try{const {url}=await plApi('/api/crm/admin/homeowner-pages/'+id);location.href=url;}catch(e){btn.disabled=false;showNotif('Couldn’t open it',e.message);}}
 async function voExit(){try{await fetch('/api/admin/view-as/exit',{method:'POST'});}catch(e){}location.href='/admin';}
+/* ---------- "See as" for owners and admins (routes/crm.js look-as) ----------
+   The CRM as one of the company's roles or people sees it, or a homeowner's page; view only. */
+async function lkOpen(){
+  uxOpen(uxHead('👁 See as someone else','See the CRM exactly as one of your roles or people sees it. Nothing can be changed while you look.')+'<div id="lk-box"><div class="sm">Loading…</div></div>');
+  try{const o=await plApi('/api/crm/look-as');
+    document.getElementById('lk-box').innerHTML=`${o.people.length?`<div class="pl-h">A person on your team</div><div class="pl-list">${o.people.map(p=>`<button class="pl-card" onclick="lkGo('user:${p.id}',this)"><div class="pl-card-title">👤 ${uxEsc(p.name)}</div><div class="pl-card-sub">${uxEsc(p.roleLabel)}</div></button>`).join('')}</div>`:''}
+      <div class="pl-h">A role</div><div class="pl-list">${o.roles.map(r=>`<button class="pl-card" onclick="lkGo('${r.role}',this)"><div class="pl-card-title">${uxEsc(r.label)}</div><div class="pl-card-sub">What anyone with this role sees</div></button>`).join('')}</div>
+      <div class="pl-h">Outside the team</div><div class="pl-list"><button class="pl-card" onclick="voHomeowners()"><div class="pl-card-title">🏠 A homeowner</div><div class="pl-card-sub">A project’s homeowner page, as they see it</div></button></div>`;}
+  catch(e){document.getElementById('lk-box').innerHTML=`<div class="pl-empty">${uxEsc(e.message)}</div>`;}
+}
+async function lkGo(as,el){if(el)el.disabled=true;
+  try{await plApi('/api/crm/look-as',{body:{as}});location.href='/crm/app';}
+  catch(e){if(el)el.disabled=false;showNotif('Couldn’t switch',e.message);}}
+async function lkExit(){try{await fetch('/api/crm/look-as/exit',{method:'POST'});}catch(e){}CR.dirty=false;location.replace('/crm/app');}
 async function crInit(){
   let me;
   try{const r=await fetch('/api/crm/me');if(r.status===401){location.href='/crm/login';return;}me=await r.json();}
   catch(e){document.getElementById('pl-list').innerHTML='<div class="pl-empty">Could not reach Eagle I. Check your connection and reload.</div>';return;}
   CR.me=me;
   // The Eagle I admin looking at this company: say so, and how to stop.
-  if(me.viewOnly||me.adminEdit){const b=document.createElement('div');b.className='vo-bar'+(me.adminEdit?' edit':'');b.setAttribute('role','status');
+  // An owner or admin seeing it as one of their roles or people: say so, switch, or stop.
+  if(me.lookAs){const b=document.createElement('div');b.className='vo-bar';b.setAttribute('role','status');
+    const pick=`<label class="vo-see"><span>See as</span><select onchange="this.value==='homeowner'?(this.value='${uxEsc(me.seeAs)}',voHomeowners()):lkGo(this.value,this)" aria-label="See the CRM as"><optgroup label="A person">${(me.people||[]).map(p=>`<option value="user:${p.id}"${'user:'+p.id===me.seeAs?' selected':''}>${uxEsc(p.name)} (${uxEsc(p.roleLabel)})</option>`).join('')}</optgroup><optgroup label="A role">${(me.roles||[]).map(r=>`<option value="${r.role}"${r.role===me.seeAs?' selected':''}>${uxEsc(r.label)}</option>`).join('')}</optgroup><optgroup label="Outside the team"><option value="homeowner">Homeowner…</option></optgroup></select></label>`;
+    b.innerHTML=`<span>👁 Seeing the CRM as <b>${uxEsc(me.seeAsName)}</b> sees it · view only</span>${pick}<button onclick="lkExit()">Stop</button>`;
+    document.body.prepend(b);document.body.classList.add('view-only');}
+  else if(me.viewOnly||me.adminEdit){const b=document.createElement('div');b.className='vo-bar'+(me.adminEdit?' edit':'');b.setAttribute('role','status');
     // "See as": the CRM as each role sees it, or a project's homeowner page.
     const seeAs=`<label class="vo-see"><span>See as</span><select onchange="voSeeAs(this)" aria-label="See the CRM as"><optgroup label="A role">${(me.roles||[]).map(r=>`<option value="${r.role}"${r.role===me.seeAs?' selected':''}>${uxEsc(r.label)}</option>`).join('')}</optgroup>${(me.people||[]).length?`<optgroup label="A person on the team">${me.people.map(p=>`<option value="user:${p.id}"${'user:'+p.id===me.seeAs?' selected':''}>${uxEsc(p.name)} (${uxEsc(p.roleLabel)})</option>`).join('')}</optgroup>`:''}<optgroup label="Outside the team"><option value="homeowner">Homeowner…</option></optgroup></select></label>`;
     const who=me.seeAsName?`👁 Seeing <b>${uxEsc(me.companyName||'this company')}</b> as <b>${uxEsc(me.seeAsName)}</b> sees it · view only`:`👁 Admin view of <b>${uxEsc(me.companyName||'this company')}</b> · view only`;
