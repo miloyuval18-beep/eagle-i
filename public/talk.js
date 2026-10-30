@@ -104,30 +104,51 @@
     return { say, stop, unlock, level, get off() { return off; } };
   })();
 
-  // The host: Eagle I's lion in a suit, above the talk button. His mouth opens on the loud
-  // part of each word of the natural voice (or, with the device's own voice, in a talking
-  // rhythm); he leans in to listen, tilts his head to think, and the frame glows while he
-  // speaks. He's there by default whenever Eagle I talks: the talk area, the walk-through,
-  // and anything read aloud (floatingLion). The ✕ in the talk area removes him (everywhere,
-  // remembered on this device); "Show the lion" brings him back.
+  // The host above the talk button, there by default whenever Eagle I talks: the talk area,
+  // the walk-through, and anything read aloud (floatingLion). For now it's an animated gold
+  // circle that breathes, swells with each word of the voice, sends out rings while it
+  // listens and swirls while it thinks. The lion in a suit (his mouth opening on the loud part
+  // of each word) is kept: HOST_LOOK = 'lion' brings him back. The ✕ in the talk area hides
+  // the host (everywhere, remembered on this device); "Show …" brings it back.
+  // Which host shows: 'orb', an animated gold circle (for now), or 'lion', the lion in a
+  // suit (public/host/closed.jpg and mouth.png, kept for later). Both follow the voice the same way.
+  const HOST_LOOK = 'orb';
+  const HOST_NAME = HOST_LOOK === 'lion' ? 'the lion' : 'the circle';
   const HOST_KEY = 'eaglei_host';
   const lionOff = () => { try { return localStorage.getItem(HOST_KEY) === 'off'; } catch (e) { return false; } };
   const NO_LION = { set() {}, remove() {}, el: null };
   function lionHost(where, { closable = true } = {}) {
     style();
     const box = document.createElement('div'); box.className = 'et-hostbox';
-    box.innerHTML = `<div class="et-host" data-state="idle"><div class="et-him"><img class="et-base" src="/host/closed.jpg" alt="Eagle I's host, a lion in a suit" width="800" height="800"><img class="et-mouth" src="/host/mouth.png" alt=""></div><div class="et-ring"></div><div class="et-ring b"></div><div class="et-dots" aria-hidden="true"><i></i><i></i><i></i></div>${closable ? '<button type="button" class="et-hide" aria-label="Remove the lion">✕</button>' : ''}</div>${closable ? '<button type="button" class="et-show" hidden>🦁 Show the lion</button>' : ''}`;
+    const orb = HOST_LOOK !== 'lion';
+    const look = orb
+      ? '<div class="et-orb" role="img" aria-label="Eagle I"><div class="et-core"></div></div>'
+      : `<div class="et-him"><img class="et-base" src="/host/closed.jpg" alt="Eagle I's host, a lion in a suit" width="800" height="800"><img class="et-mouth" src="/host/mouth.png" alt=""></div>`;
+    box.innerHTML = `<div class="et-host${orb ? ' et-orbhost' : ''}" data-state="idle">${look}<div class="et-ring"></div><div class="et-ring b"></div><div class="et-dots" aria-hidden="true"><i></i><i></i><i></i></div>${closable ? `<button type="button" class="et-hide" aria-label="Hide ${HOST_NAME}">✕</button>` : ''}</div>${closable ? `<button type="button" class="et-show" hidden>${orb ? '●' : '🦁'} Show ${HOST_NAME}</button>` : ''}`;
     where.prepend(box);
-    const card = box.querySelector('.et-host'), mouth = box.querySelector('.et-mouth'), show = box.querySelector('.et-show');
+    const card = box.querySelector('.et-host'), mouth = box.querySelector('.et-mouth'), core = box.querySelector('.et-core'), show = box.querySelector('.et-show');
     if (closable) {
       const apply = () => { const off = lionOff(); card.hidden = off; show.hidden = !off; };
       box.querySelector('.et-hide').onclick = () => { try { localStorage.setItem(HOST_KEY, 'off'); } catch (e) {} apply(); };
       show.onclick = () => { try { localStorage.removeItem(HOST_KEY); } catch (e) {} apply(); };
       apply();
     }
-    let state = 'idle', open = false, flip = 0;
+    let state = 'idle', open = false, flip = 0, lvl = 0;
     const tick = () => {
       if (!box.isConnected) return;
+      // The circle: swells with how loud the voice is right now (or a talking rhythm with the device's own voice).
+      if (core) {
+        let want = 0;
+        if (state === 'speaking') {
+          const lv = cloud.level();
+          if (lv >= 0) want = Math.min(1, lv * 1.15);
+          else { const t = performance.now() / 1000; want = .35 + .3 * Math.abs(Math.sin(t * 7.3)) * (.6 + .4 * Math.sin(t * 2.1)); }
+        }
+        lvl += (want - lvl) * (want > lvl ? .45 : .18);
+        core.style.setProperty('--lv', lvl.toFixed(3));
+        requestAnimationFrame(tick);
+        return;
+      }
       let o = false;
       if (state === 'speaking') {
         const lv = cloud.level();
@@ -150,7 +171,7 @@
     const h = lionHost(wrap, { closable: false });
     return { set: h.set, remove() { wrap.hidden = true; wrap.innerHTML = ''; } };
   }
-  // Reads something aloud in Eagle I's voice with the lion showing; resolves when done.
+  // Reads something aloud in Eagle I's voice with the host showing; resolves when done.
   // Returns { stop() } at once; .done is a promise.
   function readAloud(text, { lang = 'en', rate = RATE } = {}) {
     const lion = floatingLion(); lion.set('speaking');
@@ -237,7 +258,21 @@
 @media (max-width:640px){.et-host{width:min(140px,38vw);border-radius:14px}.et-him{border-radius:12px}.et-ring{border-radius:14px}.et-hide{width:28px;height:28px;font-size:13px;top:4px;left:4px}.et-dots{top:7px;right:8px}.et-dots i{width:7px;height:7px}}
 @media (max-width:640px) and (max-height:700px){.et-host{width:min(116px,32vw)}}
 @media (min-width:641px) and (max-height:700px){.et-host{width:min(170px,48vw)}}
-@media (prefers-reduced-motion:reduce){.et-host .et-him,.et-ring,.et-dots i{animation:none!important}.et-him{transition:none}}`;
+@media (prefers-reduced-motion:reduce){.et-host .et-him,.et-ring,.et-dots i{animation:none!important}.et-him{transition:none}}
+.et-orbhost{background:none;border:0;box-shadow:none;border-radius:50%}
+.et-orbhost[data-state="speaking"]{box-shadow:none}
+.et-orbhost .et-ring{border-radius:50%;inset:9%}
+.et-orb{position:absolute;inset:9%;border-radius:50%;animation:etBreathe 4.2s ease-in-out infinite}
+.et-core{--lv:0;position:absolute;inset:0;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 34% 28%,#fff7df 0%,#f1d796 16%,#d9b25c 38%,#9c7a34 62%,#163a6b 100%);transform:scale(calc(1 + var(--lv) * .16));box-shadow:0 0 calc(14px + var(--lv) * 46px) calc(var(--lv) * 10px) rgba(231,201,131,calc(.35 + var(--lv) * .45)),inset 0 -10px 24px rgba(10,24,48,.45)}
+.et-core::before{content:"";position:absolute;inset:-25%;background:conic-gradient(from 0deg,transparent 0 20%,rgba(255,255,255,.38) 28%,transparent 40% 62%,rgba(231,201,131,.45) 72%,transparent 84%);animation:etSwirl 9s linear infinite;mix-blend-mode:soft-light}
+.et-core::after{content:"";position:absolute;left:22%;top:14%;width:30%;height:20%;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(6px)}
+.et-orbhost[data-state="thinking"] .et-core::before{animation-duration:1.6s}
+.et-orbhost[data-state="listening"] .et-orb{animation-duration:1.8s}
+.et-orbhost .et-dots{top:auto;bottom:-2px;right:50%;transform:translateX(50%)}
+.et-orbhost .et-hide{top:0;left:0}
+@keyframes etBreathe{0%,100%{transform:scale(.96)}50%{transform:scale(1.03)}}
+@keyframes etSwirl{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.et-orb,.et-core::before{animation:none!important}}`;
     document.head.appendChild(css);
   }
 
