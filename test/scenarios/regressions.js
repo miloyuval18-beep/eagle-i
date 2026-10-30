@@ -1,5 +1,5 @@
 // Bugs found in the full-CRM test pass, kept fixed.
-const { R } = require('./_local');
+const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 delete process.env.RESEND_API_KEY; delete process.env.ANTHROPIC_API_KEY;
 const sent = [];
@@ -44,7 +44,8 @@ const bids = require(R + '/lib/crmBids'); const pulse = require(R + '/lib/crmPul
     const portalTok = await portal.portalToken(t, deal.id);
     await portalAi.ask({ token: portalTok, question: 'When do you start?' });
     assert.ok((await crm.listInbox(t)).some(i => /asked a question in their portal/.test(i.title)));
-    assert.ok(sent.some(m => /^Question from Pat Lee/.test(m.subject)));
+    await endOfDay(t);
+    assert.ok(sent.some(m => /- Question from Pat Lee/.test(m.text)));
 
     // 6. Approved change orders stay visible to the homeowner.
     const co = await jobs.createCO({ tenantId: t, dealId: deal.id, title: 'Extra outlet', amount: 150 });

@@ -6,4 +6,13 @@ if (!/@(localhost|127\.0\.0\.1)(:\d+)?\//.test(url)) {
   process.exit(2);
 }
 if (!process.env.PGSSL) process.env.PGSSL = 'false';
-module.exports = { R: require('path').join(__dirname, '..', '..') };
+const R = require('path').join(__dirname, '..', '..');
+// The end of the day now, for one company: each person's one email with what was held for them (lib/crmTeamMail.js).
+// (The tests' made-up .test addresses are allowed while it runs; real made-up addresses never get email.)
+const endOfDay = async (tenantId, opts = {}) => {
+  const was = process.env.CRM_EMAIL_TEST_ADDRESSES;
+  process.env.CRM_EMAIL_TEST_ADDRESSES = opts.realTestFilter ? (was || '') : '1';
+  try { return await require(R + '/lib/crmTeamMail').processEndOfDay({ force: true, tenantId, appUrl: 'https://app.test', ...opts }); }
+  finally { if (was === undefined) delete process.env.CRM_EMAIL_TEST_ADDRESSES; else process.env.CRM_EMAIL_TEST_ADDRESSES = was; }
+};
+module.exports = { R, endOfDay };

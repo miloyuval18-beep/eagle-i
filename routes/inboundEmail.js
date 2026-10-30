@@ -39,8 +39,17 @@ const LEAD_ADDRESS_RE = /^lead-([0-9a-f]{24})@/i;
 // this notification in the tenant's own inbox goes straight back to them,
 // instead of to Eagle I's own default sending address (a dead end nobody
 // reads).
-async function forwardToTenant(tenantId, subjectPrefix, full, replyToEmail) {
+// CRM replies (to the automatic emails and price requests) wait for the end-of-day email
+// instead (lib/crmTeamMail.js), with a "Reply to them" link; they're on the deal straight away.
+async function forwardToTenant(tenantId, subjectPrefix, full, replyToEmail, { hold = null } = {}) {
   try {
+    if (hold) {
+      const row = (await query(`SELECT bp.email FROM business_profile bp WHERE bp.tenant_id = $1`, [tenantId])).rows[0];
+      if (!row || !row.email) return;
+      const TM = require('../lib/crmTeamMail');
+      await TM.later({ tenantId, to: row.email, subject: `${subjectPrefix}: ${full.subject || '(no subject)'}`, text: full.text || TM.textOf(full.html), replyTo: replyToEmail, kind: hold });
+      return;
+    }
     const row = (await query(
       `SELECT bp.email, t.company_name FROM business_profile bp
        JOIN tenants t ON t.id = bp.tenant_id WHERE bp.tenant_id = $1`, [tenantId]
@@ -162,7 +171,7 @@ async function processInboundEmail(data, { baseUrl = '' } = {}) {
     const text = full.text || htmlToText(full.html);
     const r = await require('../lib/crmPricing').recordEmailQuote({ bidId: id, fromEmail: senderAddress(full.from), subject: full.subject, text, attachments: full.attachments || [], emailId: data.email_id })
       .catch(e => { console.error('[inboundEmail] price reply failed:', e.message); return null; });
-    if (r && r.tenantId) await forwardToTenant(r.tenantId, `${r.vendor} replied about prices`, full, senderAddress(full.from));
+    if (r && r.tenantId) await forwardToTenant(r.tenantId, `${r.vendor} replied about prices`, full, senderAddress(full.from), { hold: 'pricing' });
   } else if (kind === 'crm') {
     // A reply to one of the pipeline's automatic emails (lib/crmPlaybooks.js).
     const text = full.text || htmlToText(full.html);
@@ -173,7 +182,7 @@ async function processInboundEmail(data, { baseUrl = '' } = {}) {
         await suppress(r.tenantId, r.row.contact_email);
         await require('../lib/crmPlaybooks').cancelForEmail(r.tenantId, r.row.contact_email, 'opted_out');
       }
-      await forwardToTenant(r.tenantId, (ALERT_PREFIX[cls.category] || ALERT_PREFIX.other)(r.row.contact_name), full, senderAddress(full.from) || r.row.contact_email);
+      await forwardToTenant(r.tenantId, (ALERT_PREFIX[cls.category] || ALERT_PREFIX.other)(r.row.contact_name), full, senderAddress(full.from) || r.row.contact_email, { hold: 'customer' });
     }
   } else if (kind === 'partner') {
     const result = await query(

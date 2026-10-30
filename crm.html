@@ -4801,7 +4801,7 @@ async function plLoadIntake(){
     const d=await plApi('/api/crm/intake');
     const copy=(id,label,val)=>`<label for="${id}" style="font-size:16px;font-weight:700;display:block;margin-top:10px">${label}</label><div style="display:flex;gap:6px"><input id="${id}" class="cred-input" readonly value="${uxEsc(val)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('${id}')">Copy</button></div>`;
     el.innerHTML=`<div class="pl-pb">
-      <div class="sm" style="margin-top:0">Every lead that comes in this way becomes a deal on its own, goes to the person you picked below, gets the instant reply (once you approve it), and your team gets an email right away.</div>
+      <div class="sm" style="margin-top:0">Every lead that comes in this way becomes a deal on its own, goes to the person you picked below, gets the instant reply (once you approve it), shows in Today straight away, and is in that person’s end-of-day email.</div>
       ${copy('in-form','Your inquiry form (link to it from your website, Google profile or social pages)',d.formUrl)}
       ${d.bookingUrl?copy('in-book','Your booking page: anyone can pick a site-visit time (put it on your website and Google profile)',d.bookingUrl):''}
       ${copy('in-embed','Or put the form right on your website (give this code to whoever runs your site)',d.embedCode)}

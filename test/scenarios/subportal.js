@@ -1,6 +1,6 @@
 // The subs' page: what a sub sees (and never sees), files, the job assistant,
 // messages to the office, links in their emails.
-const { R } = require('./_local');
+const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 delete process.env.RESEND_API_KEY;
 process.env.ANTHROPIC_API_KEY = 'test-only';
@@ -84,7 +84,8 @@ const PDF = (s) => Buffer.from('%PDF-1.4 ' + s);
     assert.equal(a2.forwarded, true);
     const item = (await crm.listInbox(t)).find(i => i.kind === 'sub_question');
     assert.ok(item && item.deal_id === job.id && /Coastal Tile asked about Garcia bath/.test(item.title));
-    assert.ok(sent.some(m => m.to === 'moran@sub.test' && /Can I start a day early/.test(m.text)), 'the job’s owner gets an email');
+    await endOfDay(t);
+    assert.ok(sent.some(m => m.to === 'moran@sub.test' && /Can I start a day early/.test(m.text)), 'the job’s owner gets it in their end-of-day email');
     await sp.message({ token, text: 'Tile is on site.', dealId: job.id });
     assert.ok((await crm.listInbox(t)).some(i => /Message from Coastal Tile about Garcia bath/.test(i.title)));
     assert.equal((await sp.listQuestions(t, tile.id)).length, 2);

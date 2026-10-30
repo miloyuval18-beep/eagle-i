@@ -1,7 +1,7 @@
 // The homeowner's page: it opens on an assistant for questions about the project.
 // What the assistant may see (and never sees), follow-ups with the earlier chat,
 // documents it can point to, forwarding to the team, and emailing them the link.
-const { R } = require('./_local');
+const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 delete process.env.RESEND_API_KEY;
 process.env.ANTHROPIC_API_KEY = 'test-only';
@@ -61,7 +61,8 @@ const PDF = (s) => Buffer.from('%PDF-1.4 ' + s);
     // 3. What it can't answer goes to Today and to the job's owner by email.
     assert.equal(a3.forwarded, true);
     assert.ok((await crm.listInbox(t)).some(i => i.deal_id === deal.id && /Dana Ruiz asked a question/.test(i.title)));
-    assert.ok(sent.some(m => m.to === 'pm@home.test' && /what about after that/.test(m.text)), 'the job’s owner gets an email');
+    await endOfDay(t);
+    assert.ok(sent.some(m => m.to === 'pm@home.test' && /what about after that/.test(m.text)), 'the job’s owner gets it in their end-of-day email');
     assert.equal((await portalAi.listQuestions(t, deal.id)).length, 3);
 
     // 4. Emailing them the link (and in Spanish when that's their language); never across companies.

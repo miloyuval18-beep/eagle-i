@@ -2,7 +2,7 @@
 // addresses), the short chat with Eagle I, the summary with problems raised to the
 // owners and admins (urgent ones by email), everyone's earlier days, Team / Projects /
 // Problems for owners and admins only, the full chat, and the 6pm summary once a day.
-const { R } = require('./_local');
+const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 process.env.RESEND_API_KEY = 'test-only'; process.env.ANTHROPIC_API_KEY = 'test-only';
 const sent = [];
@@ -101,7 +101,9 @@ const THU_830PM = new Date('2026-10-30T01:30:00Z');
     const probs = await ci.problems(owner);
     assert.equal(probs.length, 1); assert.equal(probs[0].urgent, true); assert.equal(probs[0].person, 'Dana Cruz');
     assert.ok((await query(`SELECT 1 FROM crm_inbox WHERE tenant_id = $1 AND kind = 'checkin_problem'`, [t])).rows.length);
-    assert.equal(mine(owner).length, 1); assert.match(mine(owner)[0].subject, /Urgent from Dana Cruz’s check-in/); assert.equal(mine(dana).length, 0);
+    // Not emailed one by one: it waits for the owner's end-of-day email (first in it), not Dana's.
+    assert.equal(mine(owner).length + mine(dana).length, 0, 'nothing one by one');
+    assert.deepEqual((await query(`SELECT to_email, urgent FROM crm_team_mail WHERE tenant_id = $1 AND subject LIKE 'Urgent from Dana Cruz%'`, [t])).rows, [{ to_email: owner.email.toLowerCase(), urgent: true }]);
     assert.equal(mine(it).length, 0, 'no urgent email to a login left out');
     // Finishing again doesn't raise it twice.
     await ci.finish(dana.id, { now: THU });
@@ -138,14 +140,19 @@ const THU_830PM = new Date('2026-10-30T01:30:00Z');
     sent.length = 0;
     // Sent late (8:30pm Central, Friday in UTC): still Thursday's progress.
     await ci.processTeamDigest({ now: THU_830PM, appUrl: 'https://app.test' });
+    assert.equal(mine(owner).length, 0, 'part of the end-of-day email, not one of its own');
+    await endOfDay(t);
+    // One email for the owner: the urgent problem first, then the day's check-ins.
     const dg = mine(owner);
-    assert.equal(dg.length, 1); assert.match(dg[0].subject, /Today’s check-ins: 3 of 3, 2 problems/);
+    assert.equal(dg.length, 1); assert.match(dg[0].subject, /^Your day at Checkin Co: \d+ updates, 1 needs you first/);
+    assert.match(dg[0].html, /Today’s check-ins: 3 of 3, 2 problems/);
+    assert.ok(dg[0].html.indexOf('Urgent from Dana Cruz') < dg[0].html.indexOf('3 of 3'), 'what needs her first');
     assert.match(dg[0].html, /Ruiz kitchen/); assert.match(dg[0].html, /<b>Olive Owner<\/b> <span[^>]*>\(stopped partway\)/);
     assert.equal((await ci.mine(owner.id))[0].status, 'done', 'her unfinished chat is wrapped up');
     assert.equal(mine(dana).length + mine(sam).length, 0, 'only owners and admins');
     assert.equal(mine(it).length, 0, 'no summary to a login left out');
     assert.ok(!(await ci.teamDay(owner, '2026-10-29')).people.some(p => p.name === 'IT Login'), 'not on the Team list');
-    sent.length = 0; await ci.processTeamDigest({ now: THU_6PM, appUrl: 'https://app.test' });
+    sent.length = 0; await ci.processTeamDigest({ now: THU_6PM, appUrl: 'https://app.test' }); await endOfDay(t);
     assert.equal(mine(owner).length, 0, 'once a day');
     assert.equal((await ci.processTeamDigest({ now: WED })).notYet, true);
     console.log('CHECKIN SCENARIO PASSED');

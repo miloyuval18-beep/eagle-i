@@ -6,7 +6,7 @@
 // put on the job, warned about when they hold up a phase, their inspections due when
 // the phase before is done, checked on when stuck; worked out for a job not priced
 // from plans; and in a project manager's daily check-in.
-const { R } = require('./_local');
+const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 process.env.ANTHROPIC_API_KEY = 'test-only'; process.env.RESEND_API_KEY = 'test-only'; delete process.env.GOOGLE_PLACES_API_KEY;
 const { query, pool } = require(R + '/db');
@@ -113,9 +113,15 @@ const noon = (day) => new Date(day + 'T17:00:00Z'); // noon Central
     assert.deepEqual(await at(O.shiftWorkdays(orderBy, -3)), { ready: 0, due: 0 });
     assert.deepEqual(await at(O.shiftWorkdays(orderBy, -2)), { ready: 1, due: 0 });
     assert.deepEqual(await at(O.shiftWorkdays(orderBy, -1)), { ready: 0, due: 0 }, 'once');
-    assert.equal(sent.length, 1); assert.equal(sent[0].to, pm.email, 'to the project manager'); assert.match(sent[0].subject, /Ready to order by/); assert.match(sent[0].html, /Nothing goes to the supplier until you send it/);
+    // In the project manager's end-of-day email (only theirs).
+    assert.equal(sent.length, 0, 'not one by one');
+    await endOfDay(t);
+    const toPm = () => sent.filter(m => m.to === pm.email);
+    assert.equal(toPm().length, 1); assert.match(toPm()[0].text, /- Ready to order by/); assert.match(toPm()[0].html, /Nothing goes to the supplier until you send it/);
+    assert.ok(!/Ready to order/.test(sent.filter(m => m.to !== pm.email).map(m => m.text).join(' ')), 'only in the project manager’s');
     assert.deepEqual(await at(orderBy), { ready: 0, due: 1 });
-    assert.match(sent[1].subject, /Order today for Lee kitchen/);
+    await endOfDay(t);
+    assert.match(toPm()[1].text, /NEEDS YOU FIRST\n- Order today for Lee kitchen/);
     assert.ok(!sent.some(m => m.to === 'sales@cabco.dev'), 'never to the supplier');
     assert.equal((await query(`SELECT status FROM crm_purchase_orders WHERE id = $1`, [po.id])).rows[0].status, 'draft');
     assert.ok((await query(`SELECT 1 FROM crm_inbox WHERE tenant_id = $1 AND kind = 'order' AND status = 'open' AND title LIKE 'Order today%'`, [t])).rows.length);
@@ -128,6 +134,7 @@ const noon = (day) => new Date(day + 'T17:00:00Z'); // noon Central
     assert.equal(ymd(po.needed_by), earlier); assert.equal(ymd(po.order_by), O.orderByFor(earlier, 10)); assert.equal(po.ready_flagged_at, null);
     sent.length = 0;
     assert.equal((await at(ymd(po.order_by))).due, 1);
+    await endOfDay(t);
     // Sent by a person: no more reminders.
     await jobs.sendPO({ tenantId: t, id: po.id, send: sender });
     assert.equal(sent[sent.length - 1].to, 'sales@cabco.dev');
@@ -142,7 +149,9 @@ const noon = (day) => new Date(day + 'T17:00:00Z'); // noon Central
     sent.length = 0;
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
     let z = await PM.processPermits({ now: noon(today), send: sender, appUrl: 'https://app.test', tenantId: t });
-    assert.equal(z.holding, 2); assert.ok(sent.every(m => m.to === pm.email)); assert.match(sent[0].html, /Apply with City of Houston now/);
+    assert.equal(z.holding, 2);
+    await endOfDay(t);
+    assert.equal(sent.length, 1, 'both in one email'); assert.equal(sent[0].to, pm.email); assert.match(sent[0].html, /Apply with City of Houston now/);
     assert.equal((await PM.processPermits({ now: noon(today), send: sender, tenantId: t })).holding, 0, 'once');
     // Approved: its warnings go.
     await PM.save({ tenantId: t, id: pl[0].id, body: { status: 'approved', permitNo: 'B-2026-1' } });

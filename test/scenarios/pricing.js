@@ -6,7 +6,7 @@
 // estimate; the person told; on signing, the winning sub on their phase and purchase
 // orders drafted; the reminder the day prices are due; building with what's in after
 // the due date; a stuck read given up on.
-const { R } = require('./_local');
+const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 process.env.ANTHROPIC_API_KEY = 'test-only'; process.env.RESEND_API_KEY = 'test-only';
 process.env.RESEND_INBOUND_DOMAIN = 'in.eaglei.dev'; process.env.GOOGLE_PLACES_API_KEY = 'test-only';
@@ -148,8 +148,11 @@ const tag = Date.now().toString(36);
     const osb = est.lines.find(l => /OSB/.test(l.description));
     assert.equal(Number(osb.unit_cost), 28); assert.equal(osb.unit, 'ea'); assert.match(osb.description, /42 sheet/);
     assert.ok(!est.lines.some(l => /Gulf|Hill|Bayou/.test(l.description)), 'no vendor names for the homeowner');
+    // In the owner's end-of-day email, not one of its own.
+    assert.ok(!sent.some(m => m.to === owner.email), 'not one by one');
+    await endOfDay(t);
     const told = sent.find(m => m.to === owner.email);
-    assert.match(told.subject, /Prices are in: Ruiz primary bath/); assert.match(told.html, /#price\//); assert.match(told.html, /Cost \$12,726/);
+    assert.match(told.text, /PRICING\n- Prices are in: Ruiz primary bath/); assert.match(told.html, /#price\//); assert.match(told.html, /Cost \$12,726/);
     await assert.rejects(P.compile({ tenantId: t, id: run.id }), /isn’t waiting/, 'built once');
     // A late change of price is kept on the bid but doesn't rebuild the estimate.
     await bids.submitBid({ token: reqOf('Gulf Lumber').token, lines: [{ i: 0, unit_price: 1 }, { i: 1, unit_price: 1 }] });

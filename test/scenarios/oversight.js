@@ -4,7 +4,7 @@
 // action needed". Sent to them, or naming them, and it's theirs as usual. An
 // email to a teammate who hasn't connected Gmail reminds that teammate, not the
 // person on copy.
-const { R } = require('./_local');
+const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 delete process.env.RESEND_API_KEY; delete process.env.ANTHROPIC_API_KEY;
 const sent = [];
@@ -96,7 +96,8 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null, at 
     await query(`UPDATE crm_mail_threads SET expects = true, importance = 'high', classified_at = now() WHERE id = $1`, [forJoe.id]);
     sent.length = 0;
     await w.processWatch({ now: NOW, onlyTenantId: t, appUrl: 'https://app.test' });
-    assert.ok(sent.some(s => s.to === joe.email && /waiting for your reply/.test(s.subject)), 'Joe is reminded');
+    await endOfDay(t);
+    assert.ok(sent.some(s => s.to === joe.email && /waiting for your reply/.test(s.text)), 'Joe is reminded');
     assert.ok(!sent.some(s => s.to === levi.email), 'Levi is not');
     const listed = await w.list(t, { userId: joe.id });
     assert.equal(listed.toReply.length, 1); assert.equal(listed.toReply[0].gmail, null); assert.equal(listed.toReply[0].seenOn, levi.email);

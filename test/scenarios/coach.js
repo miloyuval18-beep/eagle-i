@@ -1,6 +1,6 @@
 // The everyday AI helpers, with the AI stubbed: lead summaries, next moves,
 // reply drafts, overdue reminders, the voice job log, and the business tools.
-const { R } = require('./_local');
+const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 delete process.env.RESEND_API_KEY;
 process.env.ANTHROPIC_API_KEY = 'test-only';
@@ -23,8 +23,9 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     reply = (p) => /new lead just came in/.test(p) ? { lines: ['Wants: a kitchen remodel with an island', 'Budget: likely $80k–$120k (home value ~$900k), fairly sure', 'Next: call today and book a visit this week'] } : {};
     const key = await intake.getIntakeKey(t);
     await intake.submitForm({ key, body: { name: 'Maria Garcia', email: 'maria@coach.test', phone: '7135550100', address: '12 River Oaks Blvd, Houston TX 77019', message: 'Kitchen with an island, old cabinets' } });
-    for (let i = 0; i < 30 && !sent.some(m => /New lead/.test(m.subject)); i++) await wait(100);
-    const alert = sent.find(m => /New lead/.test(m.subject));
+    for (let i = 0; i < 40 && !(await query(`SELECT 1 FROM crm_team_mail WHERE tenant_id = $1 AND subject LIKE 'New lead%'`, [t])).rows.length; i++) await wait(100);
+    await endOfDay(t);
+    const alert = sent.find(m => /New lead/.test(m.text));
     assert.match(alert.text, /Wants: a kitchen remodel/); assert.match(alert.text, /In their words: Kitchen with an island/);
     const deal = (await query(`SELECT d.* FROM crm_deals d JOIN crm_contacts c ON c.id = d.contact_id WHERE c.email = 'maria@coach.test'`)).rows[0];
     assert.match(deal.lead_summary, /Budget: likely \$80k/);

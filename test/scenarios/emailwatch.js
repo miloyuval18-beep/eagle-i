@@ -2,7 +2,7 @@
 // unanswered emails, reminders for emails waiting on us, owners told when it
 // drags on, promises and deadlines as tasks, newsletters and robots skipped,
 // a colleague's answer settling it, and the morning email.
-const { R } = require('./_local');
+const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 const crypto = require('crypto');
 delete process.env.RESEND_API_KEY;
@@ -123,10 +123,16 @@ const ymd = (d) => d.toISOString().slice(0, 10);
     assert.ok(inbox.some(i => i.kind === 'email_reply' && /Urgent: Dana Ruiz is waiting/.test(i.title)));
     assert.ok(inbox.some(i => i.kind === 'email_reply' && /City Inspector/.test(i.title) && /needed by [A-Z][a-z]{2}, [A-Z][a-z]{2} \d+ ·/.test(i.detail)), 'deadline shown as a plain date');
     assert.equal((await w.list(t, { userId: sam })).toReply.find(x => x.who === 'City Inspector').deadline, DEADLINE);
-    assert.ok(sent.some(m => m.to === 'sam@levi.test' && /No reply from Gulf Framing/.test(m.subject) && /Any update on the framing price/.test(m.text)), 'Sam gets the follow-up, ready');
-    assert.ok(sent.some(m => m.to === 'sam@levi.test' && /Urgent: Dana Ruiz is waiting for your reply/.test(m.subject)));
+    // In Sam's one end-of-day email: the follow-up ready, and the urgent one first.
+    assert.equal(sent.length, 0, 'nothing one by one');
+    await endOfDay(t);
+    const sams = sent.filter(m => m.to === 'sam@levi.test');
+    assert.equal(sams.length, 1, 'one email for Sam');
+    assert.ok(/No reply from Gulf Framing/.test(sams[0].text) && /Any update on the framing price/.test(sams[0].text), 'Sam gets the follow-up, ready');
+    assert.match(sams[0].text, /NEEDS YOU FIRST\n- Urgent: Dana Ruiz is waiting for your reply/);
     sent.length = 0;
     await w.processWatch({ now: NOW, onlyTenantId: t });
+    await endOfDay(t);
     assert.equal(sent.length, 0, 'each reminder once');
 
     // 4. Sending the follow-up: same conversation, replies to Sam.
@@ -154,14 +160,16 @@ const ymd = (d) => d.toISOString().slice(0, 10);
     sent.length = 0;
     const r3 = await w.processWatch({ now: NOW, onlyTenantId: t });
     assert.equal(r3.autoSent, 0, 'never more than twice');
-    assert.ok(sent.some(m => m.to === 'sam@levi.test' && /No reply from Gulf Framing/.test(m.subject) && /2 follow-ups/.test(m.text)));
+    await endOfDay(t);
+    assert.ok(sent.some(m => m.to === 'sam@levi.test' && /No reply from Gulf Framing/.test(m.text) && /2 follow-ups/.test(m.text)));
 
     // 6. Still no reply to the customer 2 business days after the reminder: the owner hears.
     await query(`UPDATE crm_mail_threads SET nudged_at = $2 WHERE tenant_id = $1 AND thread_id = 't2'`, [t, ago(4)]);
     sent.length = 0;
     const r4 = await w.processWatch({ now: NOW, onlyTenantId: t });
     assert.ok(r4.escalated >= 1);
-    assert.ok(sent.some(m => m.to === 'pat@levi.test' && /Dana Ruiz hasn’t had a reply/.test(m.subject)));
+    await endOfDay(t);
+    assert.ok(sent.some(m => m.to === 'pat@levi.test' && /Dana Ruiz hasn’t had a reply/.test(m.text)));
     assert.ok(!sent.some(m => m.to === 'sam@levi.test' && /hasn’t had a reply/.test(m.subject)), 'the owner, not Sam again');
 
     // 7. Who sees what; the morning email; settings; other companies.
