@@ -41,6 +41,16 @@ h2{font-family:var(--brand);font-weight:700;font-size:15px;letter-spacing:.16em;
 .co.soon .go{background:transparent;color:var(--ink);border:2px solid var(--ink);padding:12px;font-size:17.5px}
 .co.soon .go:hover,.co.soon .go:focus-visible{background:var(--soft)}
 .co .what{font-size:17.5px;font-weight:700;color:var(--ink3);margin:4px 0 12px}
+/* An open company: just who they are and the way in, dark and gold like the brand. */
+.co.open{width:100%;max-width:620px;justify-self:center;background:radial-gradient(120% 90% at 50% 0%,#23201a 0%,#0e0d0b 70%);border:1px solid #3a3326;border-top:1px solid #3a3326;color:#f3ede0;text-align:center;align-items:center;padding:38px 28px 30px;box-shadow:0 18px 40px -18px rgba(22,20,15,.55)}
+.co.open .mark{width:112px;height:112px;border-radius:50%;object-fit:cover;background:#111318;border:2px solid var(--gold);box-shadow:0 0 0 6px rgba(168,146,95,.12)}
+.co.open h3{font-size:40px;margin-top:18px;background:linear-gradient(180deg,#ecc677 0%,#c9952f 55%,#9a6d1c 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.co.open .tag{font-family:var(--brand);font-weight:600;font-size:14.5px;letter-spacing:.2em;text-transform:uppercase;color:#cbb88a;margin-top:8px}
+.co.open .rule{width:56px;height:1px;background:var(--gold);opacity:.7;margin:22px auto}
+.co.open .go{width:100%;max-width:320px;background:linear-gradient(180deg,#d6ad5c,#b08a3e);color:#16140f;border-radius:999px;padding:15px 22px}
+.co.open .go:hover,.co.open .go:focus-visible{background:linear-gradient(180deg,#e2bc6c,#bd9648)}
+.co.open .site{margin-top:14px;font-size:16px;color:#a89c84;text-decoration:none}
+.co.open .site:hover,.co.open .site:focus-visible{color:#e3d6b8;text-decoration:underline}
 .co .about{color:var(--ink2);margin-bottom:12px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .chips span{background:var(--soft);border:1px solid var(--bdr);border-radius:999px;padding:4px 12px;font-size:16px;color:var(--ink2)}
@@ -56,7 +66,7 @@ a:focus-visible{outline:3px solid #f0b429;outline-offset:2px}
 .empty{background:var(--card);border:1px dashed var(--bdr);border-radius:14px;padding:22px;color:var(--ink3);text-align:center}
 .foot{text-align:center;color:var(--ink3);font-size:16.5px;margin-top:28px;line-height:1.9}
 .foot a{color:var(--gold-ink);font-weight:800}
-@media (max-width:600px){.top{padding:24px 16px 24px}.top img{width:96px;height:96px}.top h1{font-size:38px}.co{padding:20px 18px}.co h3{font-size:24px}.grid{grid-template-columns:1fr}.hq a{width:100%;text-align:center}}
+@media (max-width:600px){.co.open{padding:32px 20px 26px}.co.open h3{font-size:34px}.co.open .mark{width:96px;height:96px}.top{padding:24px 16px 24px}.top img{width:96px;height:96px}.top h1{font-size:38px}.co{padding:20px 18px}.co h3{font-size:24px}.grid{grid-template-columns:1fr}.hq a{width:100%;text-align:center}}
 </style>
 </head>
 <body>
@@ -94,13 +104,13 @@ fetch('/api/crm-portfolio').then(r => r.json()).then(d => {
     </section>`).join('');
   }
   if (!cos.length) { el.innerHTML = '<div class="empty">' + (soon.length ? 'Our companies show here once they’re open.' : 'No companies are set up yet. Open the group CRM and add them under Company → Our companies.') + '</div>'; return; }
-  el.innerHTML = cos.map(c => `<section class="co" aria-labelledby="c-${esc(c.slug)}">
-      <div class="head">${c.logo ? `<img class="logo" src="${esc(c.logo)}" alt="${esc(c.name)} logo">` : ''}<h3 id="c-${esc(c.slug)}">${esc(c.name)}</h3></div>
-      ${c.what ? `<div class="what">${esc(c.what)}</div>` : ''}
-      ${c.about ? `<div class="about">${esc(c.about)}</div>` : ''}
-      ${c.services && c.services.length ? `<div class="chips">${c.services.map(s => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
-      <div class="contact">${[c.address ? esc(c.address) : '', [c.phone ? `<a href="tel:${esc(String(c.phone).replace(/[^\d+]/g, ''))}">${esc(c.phone)}</a>` : '', c.website && site(c.website) ? `<a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(site(c.website))}</a>` : ''].filter(Boolean).join(' · ')].filter(Boolean).join('<br>')}</div>
+  el.innerHTML = cos.map(c => `<section class="co open" aria-labelledby="c-${esc(c.slug)}">
+      ${c.logo ? `<img class="mark" src="${esc(c.logo)}" alt="${esc(c.name)} logo">` : ''}
+      <h3 id="c-${esc(c.slug)}">${esc(c.name)}</h3>
+      ${c.what ? `<div class="tag">${esc(c.what)}</div>` : ''}
+      <div class="rule"></div>
       <a class="go" href="/crm/c/${encodeURIComponent(c.slug)}">Open ${esc(c.name)}</a>
+      ${c.website && site(c.website) ? `<a class="site" href="${esc(c.website)}" target="_blank" rel="noopener">${esc(site(c.website))}</a>` : ''}
     </section>`).join('');
 }).catch(() => { document.getElementById('cos').innerHTML = '<div class="empty">Couldn’t load the companies. Check your connection and refresh.</div>'; });
 </script>
