@@ -48,6 +48,20 @@ const tag = Date.now().toString(36);
 
     // The same file again: nothing new.
     await assert.rejects(tool.prepare(ctx, { chat_file_id: file }), /already in your vendors/);
+    // From the Subs & vendors screen: an Excel/CSV sheet, a business card photo, something else.
+    const vl = require(R + '/lib/crmVendorList');
+    const csv = Buffer.from('Company,Trade,Phone\nNew Roofing Co,Roofing,713-555-0199\n').toString('base64');
+    let seen = null;
+    require.cache[require.resolve(R + '/lib/anthropic')].exports.generateJSON = async (prompt, max, opts) => { seen = { prompt, opts }; return { vendors: [{ name: 'New Roofing Co', trade: 'Roofing', phone: '713-555-0199' }] }; };
+    const up = await vl.fromUpload({ tenantId: t, filename: 'subs.csv', dataBase64: csv });
+    assert.match(seen.prompt, /New Roofing Co,Roofing,713-555-0199/, 'the sheet’s rows are read'); assert.equal(seen.opts.images.length, 0);
+    assert.deepEqual([up.read, up.add.length, up.add[0].name], [1, 1, 'New Roofing Co']);
+    const png = Buffer.concat([Buffer.from([0x89]), Buffer.from('PNG\r\n\x1a\n'), Buffer.alloc(20)]).toString('base64');
+    await vl.fromUpload({ tenantId: t, filename: 'card.png', dataBase64: png });
+    assert.equal(seen.opts.images[0].mediaType, 'image/png', 'a business card photo is looked at'); assert.match(seen.prompt, /business card/);
+    await assert.rejects(vl.fromUpload({ tenantId: t, filename: 'x.docx', dataBase64: Buffer.from('hello').toString('base64') }), /PDF, an Excel or CSV sheet, or a photo/);
+    const r2 = await vl.apply(t, { add: up.add, fill: [] });
+    assert.equal(r2.added, 1);
     console.log('VENDOR LIST SCENARIO PASSED');
   } catch (e) {
     console.error('VENDOR LIST SCENARIO FAILED:', e);

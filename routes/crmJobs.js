@@ -89,6 +89,16 @@ router.post('/api/crm/deals/:id/logs', requireAuth, wrap('Failed to save the log
 
 // subs & vendors
 router.get('/api/crm/vendors', requireAuth, wrap('Failed to load vendors', async (req, res) => res.json({ vendors: await jobs.listVendors(req.tenantId) })));
+// Many at once: a PDF or Excel list, or a photo of a business card (lib/crmVendorList.js). Read first, added on "Add".
+router.post('/api/crm/vendors/file/read', requireAuth, wrap('Couldn’t read that file', async (req, res) => {
+  const b = req.body || {};
+  res.json(await require('../lib/crmVendorList').fromUpload({ tenantId: req.tenantId, filename: String(b.filename || '').slice(0, 200), dataBase64: b.dataBase64 }));
+}));
+router.post('/api/crm/vendors/file/add', requireAuth, wrap('Couldn’t add the vendors', async (req, res) => {
+  const b = req.body || {};
+  const add = (Array.isArray(b.add) ? b.add : []).slice(0, 500), fill = (Array.isArray(b.fill) ? b.fill : []).filter(f => f && /^[0-9a-f-]{36}$/i.test(String(f.id || ''))).slice(0, 500);
+  res.json({ ok: true, ...(await require('../lib/crmVendorList').apply(req.tenantId, { add, fill })) });
+}));
 router.post('/api/crm/vendors', requireAuth, wrap('Failed to save the vendor', async (req, res) => res.json({ ok: true, vendor: await jobs.saveVendor({ tenantId: req.tenantId, body: req.body }) })));
 router.patch('/api/crm/vendors/:vendorId', requireAuth, wrap('Failed to save the vendor', async (req, res) => res.json({ ok: true, vendor: await jobs.saveVendor({ tenantId: req.tenantId, id: req.params.vendorId, body: req.body }) })));
 router.delete('/api/crm/vendors/:vendorId', requireAuth, wrap('Failed to remove the vendor', async (req, res) => {

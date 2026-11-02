@@ -1116,6 +1116,16 @@ option{background:#15130f;color:var(--ink)}
 .pl-tag.warn,.pl-tag.amber{background:var(--amber-soft)!important;border-color:var(--amber-line)!important;color:#f8c995!important}
 .pl-tag.ok,.pl-tag.good,.pl-tag.gA,.pl-tag.green,.pl-tag.st-complete{background:var(--green-soft)!important;border-color:var(--green-line)!important;color:#9be8bd!important}
 .pl-tag.bad,.pl-tag.gR,.pl-tag.red,.pl-tag.urgent,.pl-tag.st-lost,.ew-tag.urgent{background:var(--red-soft)!important;border-color:var(--red-line)!important;color:#ffb8b1!important}
+
+/* Add many vendors at once */
+.vb-box{margin-top:10px;border:1.5px solid rgba(212,175,97,.45);background:linear-gradient(90deg,#15130f 0%,#15130f 55%,rgba(21,19,15,.55) 100%),url('/crm-art/setup-vendors.jpg') right center/auto 100% no-repeat,#15130f}
+.vb-t{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:26px;color:#f6ecd4}
+.vb-box .sm{max-width:62%}
+.vb-up{cursor:pointer}
+.vb-up.busy{opacity:.55;pointer-events:none}
+.vb-row{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+.vb-row input{width:22px;height:22px;margin-top:3px;flex:0 0 auto}
+@media (max-width:640px){.vb-box{background:#15130f}.vb-box .sm{max-width:none}.vb-box .vd-mbtns{flex-direction:column;align-items:stretch}.vb-box .vb-up{justify-content:center}}
 </style>
 </head>
 <body>
@@ -1249,6 +1259,15 @@ option{background:#15130f;color:var(--ink)}
       </div>
       <div class="vd-mbtns"><button class="btn btn-blue" onclick="vdAdd(this)">Save</button></div><div class="sm" id="vd-msg"></div>
     </details>
+    <div class="pl-pb vb-box" id="vb-box">
+      <div class="vb-t">Add many at once</div>
+      <div class="sm" style="margin:4px 0 0">A PDF or Excel list of your subs and suppliers, or a picture of a business card. Eagle I reads it and shows you who it found before anyone is added.</div>
+      <div class="vd-mbtns" style="margin-top:12px">
+        <label class="btn btn-blue vb-up">📄 Upload a PDF or Excel sheet<input type="file" accept="application/pdf,.pdf,.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden onchange="vbFile(this)"></label>
+        <label class="btn-xs vb-up">📇 Photo of a business card<input type="file" accept="image/*" capture="environment" hidden onchange="vbFile(this)"></label>
+      </div>
+      <div class="sm" id="vb-msg" role="status" aria-live="polite"></div>
+    </div>
     <div class="pl-list" id="vd-list" style="margin-top:8px"></div>
   </section>
   <section class="view" id="view-estimates">
@@ -4434,6 +4453,42 @@ async function vdAdd(btn){
   if(!crRequire(['vd-name']))return;btn.disabled=true;const m=document.getElementById('vd-msg');m.textContent='';
   try{await plApi('/api/crm/vendors',{body:{name:v('vd-name'),trade:v('vd-trade'),contactName:v('vd-contact'),phone:v('vd-phone'),email:v('vd-email'),licenseNo:v('vd-lic'),insuranceExpires:v('vd-ins')||null}});['vd-name','vd-trade','vd-contact','vd-phone','vd-email','vd-lic','vd-ins'].forEach(id=>document.getElementById(id).value='');jbList();}
   catch(e){m.textContent=e.message;}btn.disabled=false;
+}
+// Many vendors at once (lib/crmVendorList.js): a PDF or Excel list, or a photo of a business card.
+// Read first; the window shows who was found, each one ticked; "Add" brings in the ticked ones.
+let VB=null;
+function vbShrink(f){return new Promise((res,rej)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,2000/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.88));};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('That photo couldn’t be opened. Try taking it again.'));};im.src=u;});}
+async function vbFile(inp){
+  const f=inp.files&&inp.files[0];inp.value='';if(!f)return;
+  const m=document.getElementById('vb-msg'),btns=document.querySelectorAll('#vb-box .vb-up');
+  const photo=/^image\//.test(f.type)||/\.(jpe?g|png|heic|heif|webp)$/i.test(f.name);
+  if(!photo&&f.size>8*1024*1024){m.textContent='That file is over 8 MB. Save fewer pages, or export the sheet again.';return;}
+  btns.forEach(b=>b.classList.add('busy'));m.textContent=`Reading ${photo?'the card':f.name}… this can take up to a minute.`;
+  try{
+    const url=photo?await vbShrink(f):await flRead(f);
+    const r=await plApi('/api/crm/vendors/file/read',{body:{filename:photo?'business-card.jpg':f.name,dataBase64:String(url).split(',')[1]||''}});
+    VB=r;m.textContent='';vbReview();
+  }catch(e){m.textContent=e.message;}
+  btns.forEach(b=>b.classList.remove('busy'));
+}
+function vbReview(){
+  const r=VB;if(!r)return;
+  const line=(v)=>[v.trade,v.contactName,v.phone,v.email,v.website?v.website.replace(/^https?:\/\//,''):''].filter(Boolean).map(uxEsc).join(' · ');
+  uxOpen(uxHead('📄 Who Eagle I found',`${r.read===1?'One company':r.read+' companies'} read. Untick anyone you don’t want, then add them.`)+`
+    ${r.add.length?`<div class="pl-h">New (${r.add.length})</div><div class="pl-list">${r.add.map((v,k)=>`<label class="pl-item vb-row"><input type="checkbox" checked data-k="${k}" onchange="vbCount()"><span><b>${uxEsc(v.name)}</b>${line(v)?`<br><span class="sm" style="margin:0">${line(v)}</span>`:''}${v.notes?`<br><span class="sm" style="margin:0;color:var(--ink3)">${uxEsc(v.notes)}</span>`:''}</span></label>`).join('')}</div>`:''}
+    ${r.fill.length?`<div class="pl-h">Already here: their empty details filled in (${r.fill.length})</div><div class="sm">${r.fill.map(x=>uxEsc(x.name)).join(', ')}. Nothing you typed is changed.</div>`:''}
+    ${r.same.length?`<div class="pl-h">Already here, nothing new (${r.same.length})</div><div class="sm">${r.same.map(uxEsc).join(', ')}</div>`:''}
+    ${!r.add.length&&!r.fill.length?'<div class="pl-empty">Everyone in it is already in your vendors.</div>':''}
+    <div class="vd-mbtns" style="margin-top:16px">${r.add.length||r.fill.length?`<button class="btn btn-blue" id="vb-go" onclick="vbAdd(this)"></button>`:''}<button class="btn-xs" onclick="uxClose()">Cancel</button></div>`);
+  vbCount();
+}
+function vbCount(){const b=document.getElementById('vb-go');if(!b||!VB)return;const n=document.querySelectorAll('.vb-row input:checked').length;b.textContent=n?`Add ${n} vendor${n===1?'':'s'}${VB.fill.length?' and fill in '+VB.fill.length:''}`:(VB.fill.length?`Fill in ${VB.fill.length}`:'Nothing ticked');b.disabled=!n&&!VB.fill.length;}
+async function vbAdd(btn){
+  const add=[...document.querySelectorAll('.vb-row input:checked')].map(x=>VB.add[+x.dataset.k]).filter(Boolean);
+  btn.disabled=true;
+  try{const r=await plApi('/api/crm/vendors/file/add',{body:{add,fill:VB.fill}});CR.dirty=false;uxClose();VB=null;
+    showNotif('Vendors added',`${r.added} added${r.filled?`, ${r.filled} filled in`:''}. They’re ready for price requests.`);jbList();}
+  catch(e){btn.disabled=false;showNotif('Couldn’t add them',e.message);}
 }
 // A sub's own page: every job they're on, with an assistant for questions about the job.
 async function vdPage(id){
