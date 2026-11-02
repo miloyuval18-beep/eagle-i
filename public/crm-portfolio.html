@@ -29,11 +29,18 @@ svg.i{width:1em;height:1em;flex:none;fill:none;stroke:currentColor;stroke-width:
 
 /* ---------- header ---------- */
 .hero{position:relative;text-align:center;padding:64px 16px 150px;background:
-  radial-gradient(50% 55% at 50% 36%,rgba(12,11,9,.35) 0%,rgba(12,11,9,0) 100%),
-  linear-gradient(180deg,rgba(12,11,9,.15) 0%,rgba(12,11,9,0) 45%,rgba(12,11,9,.2) 75%,var(--bg) 100%),
+  linear-gradient(180deg,rgba(12,11,9,0) 0%,rgba(12,11,9,0) 60%,rgba(12,11,9,.25) 80%,var(--bg) 100%),
   url('/portfolio/hero.jpg') center top/max(100%,1250px) auto no-repeat var(--bg)}
 .hero h1{filter:drop-shadow(0 2px 6px rgba(0,0,0,.75))}
 .hero .lines span,.hero p{text-shadow:0 1px 3px rgba(0,0,0,.9),0 0 14px rgba(0,0,0,.6)}
+/* A soft blur only right behind each line of words, so the photo stays sharp everywhere else. */
+.hero h1,.hero .lines span,.hero p{position:relative;isolation:isolate}
+.hero .lines span{display:inline-block}
+.hero p{display:inline-block}
+.hero h1::before,.hero .lines span::before,.hero p::before{content:"";position:absolute;inset:-6px -22px;z-index:-1;border-radius:999px;
+  background:rgba(12,11,9,.28);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);
+  -webkit-mask-image:radial-gradient(closest-side,#000 62%,transparent 100%);mask-image:radial-gradient(closest-side,#000 62%,transparent 100%)}
+.hero h1{display:inline-block}
 .hero .mark{width:78px;height:78px;display:block;margin:0 auto}
 .hero h1{font-family:var(--serif);font-weight:700;font-size:56px;line-height:1.02;margin-top:8px;letter-spacing:-.005em;
   background:linear-gradient(180deg,#f6dc98 0%,#d9b260 50%,#a87a2c 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 18px rgba(0,0,0,.25)}
@@ -56,7 +63,7 @@ main{max-width:1000px;margin:-70px auto 0;padding:0 16px 40px;position:relative}
 .feat .photo::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--card) 0%,var(--card) 6%,rgba(19,17,13,.85) 30%,rgba(19,17,13,.3) 70%,rgba(19,17,13,.08) 100%)}
 .feat .body{position:relative;padding:30px 34px 30px}
 .feat .head{display:flex;align-items:center;gap:20px}
-.feat .lion{width:84px;height:84px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+.feat .lion{width:132px;height:132px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
 .feat .bar{width:1.5px;align-self:stretch;margin:6px 0;background:var(--gold-dim)}
 .feat h3{font-family:var(--serif);font-weight:700;font-size:44px;line-height:1;color:#f6efe0}
 .feat .tag{font-family:var(--serif);font-style:italic;font-weight:600;font-size:24px;color:var(--gold);margin-top:4px}
@@ -114,7 +121,7 @@ main{max-width:1000px;margin:-70px auto 0;padding:0 16px 40px;position:relative}
   main{margin-top:-56px}.hero .mark{width:64px;height:64px}.hero h1{font-size:40px}.hero p{font-size:21px}
   .hero .lines span{font-size:11.5px;letter-spacing:.18em}.hero .lines{gap:10px}
   .feat .photo{width:100%;opacity:.35}.feat .photo::after{background:linear-gradient(180deg,rgba(19,17,13,.3),var(--card) 85%)}
-  .feat .body{padding:30px 18px 24px;min-height:0}.feat .go{max-width:none}.feat .lion{width:64px;height:64px}.feat .head{gap:14px}.feat h3{font-size:36px}.feat .tag{font-size:21px}
+  .feat .body{padding:30px 18px 24px;min-height:0}.feat .go{max-width:none}.feat .lion{width:96px;height:96px}.feat .head{gap:14px}.feat h3{font-size:36px}.feat .tag{font-size:21px}
   .feat .go{font-size:17.5px;padding:15px 14px;gap:9px;white-space:nowrap}
   .soon{grid-template-columns:1fr}.sc h3{font-size:25px}
   .hq{padding:18px}.hq .go{width:100%}
