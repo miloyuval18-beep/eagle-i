@@ -94,6 +94,19 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null }) =
       [['tlevi', 'closed', 'A teammate: not tracked'], ['tmaria', 'closed', 'A teammate: not tracked']]);
     assert.deepEqual((await query(`SELECT subject FROM crm_team_mail WHERE tenant_id = $1 AND sent_at IS NULL`, [t])).rows.map(x => x.subject), ['Veronica Hemmi is waiting for your reply'], 'a customer’s stays');
     assert.equal((await thread(m1.threadId)).state, 'to_reply', 'customers untouched');
+    // Needs you is each person's own: an email reminder only for the person it's for; "still no reply" for the owners and admins.
+    const crm = require(R + '/lib/crm');
+    const levis = (await query(`INSERT INTO crm_mail_threads (tenant_id, mailbox_email, user_id, thread_id, counterpart_email, subject, last_dir, last_at, state, status)
+      VALUES ($1, $2, $3, 'tl2', 'bank@b.test', 'Loan', 'in', now(), 'to_reply', 'open') RETURNING id`, [t, levi.email, levi.id])).rows[0].id;
+    const sams = (await thread(m2.threadId)).id;
+    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'Bank is waiting for a reply', dedupeKey: `mw:re:${levis}:1` });
+    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'LJ is waiting for a reply', dedupeKey: `mw:re:${sams}:1` });
+    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'Bank still has no reply', dedupeKey: `mw:esc:${levis}:1` });
+    await crm.addInboxItem({ tenantId: t, kind: 'checkin_problem', title: 'A problem', dedupeKey: `ci:x:${tag}` });
+    const titles = async (u, all = false) => (await crm.listInbox(t, { user: u, all })).map(i => i.title).sort();
+    assert.deepEqual(await titles(sam), ['A problem', 'Bank still has no reply', 'LJ is waiting for a reply'], 'not Levi’s email');
+    assert.deepEqual(await titles(levi), ['A problem', 'Bank is waiting for a reply'], 'not about himself');
+    assert.equal((await titles(sam, true)).length, 4, 'the whole team');
     console.log('GREETED SCENARIO PASSED');
   } catch (e) {
     console.error('GREETED SCENARIO FAILED:', e);

@@ -306,7 +306,7 @@ router.get('/api/crm/pipeline', requireAuth, async (req, res) => {
   try {
     // Leads that arrived before the pipeline existed are brought in the first time it is opened.
     await crm.ensureBackfilled(req.tenantId);
-    const [pipeline, inbox, settings] = await Promise.all([crm.listPipeline(req.tenantId), crm.listInbox(req.tenantId), crm.getSettings(req.tenantId)]);
+    const [pipeline, inbox, settings] = await Promise.all([crm.listPipeline(req.tenantId), crm.listInbox(req.tenantId, { user: req.crmUser }), crm.getSettings(req.tenantId)]);
     const out = { ...pipeline, needsYou: inbox.length, settings: { paused: settings.paused } };
     // Without "See money": no deal values or totals.
     res.json(team.can(req.crmUser, 'money') ? out : { ...out, deals: team.hideMoney(out.deals), values: null, openValue: null, moneyHidden: true });
@@ -449,7 +449,7 @@ router.delete('/api/crm/deals/:id', requireAuth, team.need('delete'), async (req
 });
 
 router.get('/api/crm/inbox', requireAuth, async (req, res) => {
-  try { res.json({ items: await crm.listInbox(req.tenantId) }); } catch (err) { fail(res, err, 'Failed to load Needs you'); }
+  try { res.json({ items: await crm.listInbox(req.tenantId, { user: req.crmUser, all: req.query.all === '1' && team.can(req.crmUser, 'see_all') }) }); } catch (err) { fail(res, err, 'Failed to load Needs you'); }
 });
 
 router.post('/api/crm/inbox/:id', requireAuth, async (req, res) => {
@@ -546,7 +546,7 @@ router.get('/api/crm/today', requireAuth, async (req, res) => {
       ids = team.can(req.crmUser, 'see_all') ? null : [req.userId, ...r.below];
     }
     const [inbox, open, visits] = await Promise.all([
-      crm.listInbox(req.tenantId),
+      crm.listInbox(req.tenantId, { user: req.crmUser, all: ids === null }),
       tasks.listOpen(req.tenantId, { userIds: ids }),
       query(
         `SELECT d.id, d.title, d.site_visit_at, c.name AS contact_name, p.address FROM crm_deals d JOIN crm_contacts c ON c.id = d.contact_id
