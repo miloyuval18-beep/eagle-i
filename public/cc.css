@@ -39,7 +39,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);
 /* the house behind one card (sign-in, booking, forms) */
 body.cc-photo{background:linear-gradient(180deg,rgba(236,240,248,.35) 0%,rgba(20,22,28,.28) 100%),url('/home/house-bg.jpg') center/cover no-repeat fixed #2b2a2c}
 body.cc-photo .card{background:rgba(255,255,255,.96)}
-@media (max-width:760px){body.cc-photo{background:linear-gradient(180deg,rgba(236,240,248,.3) 0%,rgba(20,22,28,.3) 100%),url('/home/house-tall.jpg') center top/cover no-repeat fixed #2b2a2c}}
+@media (max-width:760px){body.cc-photo{background:linear-gradient(180deg,rgba(236,240,248,.3) 0%,rgba(20,22,28,.3) 100%),url('/crm-art/tip-house.jpg') center top/cover no-repeat fixed #2b2a2c}}
 
 /* the gold rule under a page's first title */
 .cc-rule{display:block;width:56px;height:3px;border-radius:3px;margin:10px auto 0;background:linear-gradient(90deg,var(--gold),var(--gold2))}
@@ -65,7 +65,7 @@ body.cc-home header{border-bottom:3px solid var(--gold)}
 body.cc-home header .brand{color:#fff}
 body.cc-home header .brand span{color:#e7c983}
 @media (max-width:760px){body.cc-proj #app>.card:first-child,body.cc-doc #doc>.card>.head,body.cc-doc #app>.co:first-child,body.cc-home header{
-  background:linear-gradient(180deg,rgba(17,19,24,.86) 0%,rgba(17,19,24,.96) 100%),url('/home/house-tall.jpg') center 35%/cover no-repeat #111318}}
+  background:linear-gradient(180deg,rgba(17,19,24,.86) 0%,rgba(17,19,24,.96) 100%),url('/crm-art/tip-house.jpg') center 35%/cover no-repeat #111318}}
 
 /* ---------- Dark and gold, everywhere (Levi Construction Group's look) ----------
    The last word on color for these pages, matching the CRM: deep charcoal, warm light
@@ -108,7 +108,7 @@ option{background:#15130f;color:var(--ink)}
 /* single cards over the evening house */
 body.cc-photo{background:linear-gradient(180deg,rgba(12,11,9,.35) 0%,rgba(12,11,9,.65) 100%),url('/portfolio/hero.jpg') center/cover no-repeat fixed #0c0b09!important}
 body.cc-photo .card{background:rgba(18,16,12,.94)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-@media (max-width:760px){body.cc-photo{background:linear-gradient(180deg,rgba(12,11,9,.3) 0%,rgba(12,11,9,.7) 100%),url('/home/house-tall.jpg') center top/cover no-repeat fixed #0c0b09!important}}
+@media (max-width:760px){body.cc-photo{background:linear-gradient(180deg,rgba(12,11,9,.3) 0%,rgba(12,11,9,.7) 100%),url('/crm-art/tip-house.jpg') center top/cover no-repeat fixed #0c0b09!important}}
 /* header bands: the gold edge glows */
 body.cc-proj #app>.card:first-child,body.cc-doc #doc>.card>.head,body.cc-doc #app>.co:first-child,body.cc-home header{border-bottom:1.5px solid rgba(212,175,97,.6)!important;background:linear-gradient(90deg,#12100c 0%,#12100c 40%,rgba(18,16,12,.7) 65%,rgba(18,16,12,.2) 100%),url('/portfolio/hero.jpg') right center/cover no-repeat #12100c!important}
 .cc-rule{background:var(--lx-btn)}
