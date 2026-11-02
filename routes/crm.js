@@ -27,10 +27,12 @@ const isPlatformAdmin = async (userId) => !!((await query('SELECT is_admin FROM 
 // "See as" for a company's owner and admins: their own CRM as one of its roles or people
 // sees it, view only (auth.js). An admin can't look as the owner (or an owner's view).
 const canLook = (u) => !!u && ['owner', 'admin'].includes(u.role) && !u.disabled_at;
+// The owner sees as anyone; an admin as the roles and people below them (not the owner, not other admins).
+const canLookAt = (by, role) => !!by && (by.role === 'owner' ? true : team.rankOf(role) < team.rankOf(by.role));
 async function lookOptions(by) {
-  const roles = team.ROLES.filter(r => by.role === 'owner' || r !== 'owner').map(r => ({ role: r, label: team.roleLabel(r) }));
-  const people = (await query(`SELECT id, name, email, role FROM users WHERE tenant_id = $1 AND id <> $2 AND disabled_at IS NULL AND app <> 'marketing' AND ($3 OR role <> 'owner') ORDER BY COALESCE(name, email)`,
-    [by.tenant_id, by.id, by.role === 'owner'])).rows.map(p => ({ id: p.id, name: p.name || p.email, roleLabel: team.roleLabel(p.role) }));
+  const roles = team.ROLES.filter(r => by.role === 'owner' || canLookAt(by, r)).map(r => ({ role: r, label: team.roleLabel(r) }));
+  const people = (await query(`SELECT id, name, email, role FROM users WHERE tenant_id = $1 AND id <> $2 AND disabled_at IS NULL AND app <> 'marketing' ORDER BY COALESCE(name, email)`,
+    [by.tenant_id, by.id])).rows.filter(p => canLookAt(by, p.role)).map(p => ({ id: p.id, name: p.name || p.email, roleLabel: team.roleLabel(p.role) }));
   return { roles, people };
 }
 async function stopLooking(req) { delete req.session.lookRole; delete req.session.lookUser; delete req.session.lookPortal; await new Promise((ok) => req.session.save(() => ok())); }
@@ -150,10 +152,10 @@ router.use('/api/crm', requireAuth, async (req, res, next) => {
       const lookPath = (req.baseUrl + req.path).toLowerCase();
       if (/^\/api\/crm\/look-as(\/|$)/.test(lookPath)) { req.lookByUser = by; return next(); }
       if (req.viewPerson) {
-        if (!me || me.tenant_id !== req.tenantId || (by.role !== 'owner' && me.role === 'owner')) { await stopLooking(req); return res.status(403).json({ error: { message: 'You can’t see the CRM as that person.' } }); }
+        if (!me || me.tenant_id !== req.tenantId || !canLookAt(by, me.role)) { await stopLooking(req); return res.status(403).json({ error: { message: 'You can’t see the CRM as that person.' } }); }
         me = { ...me, disabled_at: null, viewOnly: true };
       } else {
-        me = { ...by, role: team.ROLES.includes(req.lookRole) && (by.role === 'owner' || req.lookRole !== 'owner') ? req.lookRole : 'member', permissions: null, viewOnly: true };
+        me = { ...by, role: team.ROLES.includes(req.lookRole) && canLookAt(by, req.lookRole) ? req.lookRole : 'member', permissions: null, viewOnly: true };
       }
     } else if (req.adminView) {
       if (!me || !(await isPlatformAdmin(req.adminUserId))) return res.status(401).json({ error: { message: 'Not logged in.' } });

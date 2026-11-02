@@ -2866,6 +2866,15 @@ describe('See as, for a company’s owner and admins: their own CRM as a role or
     assert.deepEqual(ao.people.map(p => p.name).sort(), ['project_manager Person', 'sales Person']);
     assert.equal((await adm.post('/api/crm/look-as', { as: 'user:' + o.me.userId })).status, 404);
     assert.equal((await adm.post('/api/crm/look-as', { as: 'owner' })).status, 400);
+    // Only the roles and people below them: not another admin, not the admin role.
+    const adm2 = await member(o, 'admin');
+    assert.ok(!(await (await adm.get('/api/crm/look-as')).json()).people.some(p => p.id === adm2.me.userId));
+    assert.equal((await adm.post('/api/crm/look-as', { as: 'user:' + adm2.me.userId })).status, 404);
+    assert.equal((await adm.post('/api/crm/look-as', { as: 'admin' })).status, 400);
+    assert.ok(!ao.roles.some(r => r.role === 'admin'));
+    // And each project's homeowner page, as the homeowner sees it.
+    assert.equal((await adm.get('/api/crm/admin/homeowner-pages')).status, 200);
+    assert.equal((await pm.get('/api/crm/admin/homeowner-pages')).status, 403);
     // The owner can look as anyone in the company.
     const oo = await (await o.get('/api/crm/look-as')).json();
     assert.ok(oo.roles.some(r => r.role === 'owner')); assert.ok(oo.people.some(p => p.name === 'admin Person'));
