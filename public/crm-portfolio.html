@@ -57,18 +57,19 @@ main{max-width:1000px;margin:-28px auto 0;padding:0 16px 40px;position:relative}
 .feat .bar{width:1.5px;align-self:stretch;margin:6px 0;background:var(--gold-dim)}
 .feat h3{font-family:var(--serif);font-weight:700;font-size:44px;line-height:1;color:#f6efe0}
 .feat .tag{font-family:var(--serif);font-style:italic;font-weight:600;font-size:24px;color:var(--gold);margin-top:4px}
-.chips{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 0;max-width:600px}
-.chips span{font-family:var(--serif);font-weight:600;font-size:18.5px;color:var(--ink);border:1.3px solid var(--gold-dim);background:rgba(12,11,9,.55);border-radius:999px;padding:4px 16px}
-.contact{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-top:20px;font-size:16.5px;color:var(--ink2)}
-.contact > *{display:inline-flex;align-items:center;gap:8px;text-decoration:none}
-.contact svg.i{color:var(--gold);font-size:18px}
-.contact a:hover{color:#fff;text-decoration:underline}
 .go{display:flex;align-items:center;justify-content:center;gap:12px;text-decoration:none;color:#1a140a;background:var(--btn);border-radius:14px;
   font-weight:800;font-size:20px;padding:15px 24px;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 22px -8px rgba(212,175,97,.6);transition:filter .15s,transform .15s}
 .go:hover{filter:brightness(1.06);transform:translateY(-1px)}
 .go svg.i{font-size:22px;stroke-width:2}
 .feat .go{margin:26px auto 0;max-width:580px}
 
+.feat .body{padding:40px 34px 30px;min-height:330px;display:flex;flex-direction:column;justify-content:center}
+.feat .rule{width:64px;height:1px;background:var(--gold);opacity:.75;margin:28px 0 0}
+.feat .go{margin:26px 0 0;max-width:420px}
+.feat .web{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;margin-top:16px;color:var(--ink3);font-size:16.5px;text-decoration:none}
+.feat .web svg.i{color:var(--gold)}
+.feat .web:hover{color:var(--ink);text-decoration:underline}
+.feat .photo{width:58%}
 /* ---------- upcoming ---------- */
 .later{margin-top:34px}
 .soon{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
@@ -106,8 +107,8 @@ main{max-width:1000px;margin:-28px auto 0;padding:0 16px 40px;position:relative}
   .hero{padding:30px 16px 56px}.hero .mark{width:64px;height:64px}.hero h1{font-size:40px}.hero p{font-size:21px}
   .hero .lines span{font-size:11.5px;letter-spacing:.18em}.hero .lines{gap:10px}
   .feat .photo{width:100%;opacity:.35}.feat .photo::after{background:linear-gradient(180deg,rgba(19,17,13,.3),var(--card) 85%)}
-  .feat .body{padding:24px 18px 22px}.feat .lion{width:64px;height:64px}.feat .head{gap:14px}.feat h3{font-size:36px}.feat .tag{font-size:21px}
-  .chips span{font-size:17px;padding:3px 13px}.feat .go{font-size:17.5px;padding:15px 14px;gap:9px;white-space:nowrap}
+  .feat .body{padding:30px 18px 24px;min-height:0}.feat .go{max-width:none}.feat .lion{width:64px;height:64px}.feat .head{gap:14px}.feat h3{font-size:36px}.feat .tag{font-size:21px}
+  .feat .go{font-size:17.5px;padding:15px 14px;gap:9px;white-space:nowrap}
   .soon{grid-template-columns:1fr}.sc h3{font-size:25px}
   .hq{padding:18px}.hq .go{width:100%}
   .foot{font-size:18.5px}
@@ -164,8 +165,6 @@ const ICON = {
   'levish-properties': '<path d="M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13"/><path d="M13 10h3M13 13h3M13 16h3M7 12h1M7 15h1"/>'
 };
 const BUILDING = ICON['levish-properties'];
-const PIN = svg('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>');
-const PHONE = svg('<path d="M5 3.5h3.5l1.7 4.3-2.2 1.5a11 11 0 0 0 6.7 6.7l1.5-2.2 4.3 1.7V19a2 2 0 0 1-2 2A17.5 17.5 0 0 1 3 5.5a2 2 0 0 1 2-2z"/>');
 const GLOBE = svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9S14.6 18.4 12 21c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/>');
 const photo = (c) => PHOTO.has(c.slug) ? `<div class="photo" style="background-image:url('/portfolio/${esc(c.slug)}.jpg')" aria-hidden="true"></div>` : '';
 
@@ -188,19 +187,15 @@ fetch('/api/crm-portfolio').then(r => r.json()).then(d => {
   if (!cos.length) { el.innerHTML = '<div class="empty">' + (soon.length ? 'Our companies show here once they’re open.' : 'No companies are set up yet. Open the group CRM and add them under Company → Our companies.') + '</div>'; return; }
   el.innerHTML = cos.map(c => {
     const lion = c.slug === 'levi-homes' ? '/home/lion.png' : c.logo;
-    const contact = [
-      c.address ? `<span>${PIN}${esc(c.address)}</span>` : '',
-      c.phone ? `<a href="tel:${esc(String(c.phone).replace(/[^\d+]/g, ''))}">${PHONE}${esc(c.phone)}</a>` : '',
-      c.website && site(c.website) ? `<a href="${esc(c.website)}" target="_blank" rel="noopener">${GLOBE}${esc(site(c.website))}</a>` : ''
-    ].filter(Boolean).join('');
+    const web = c.website && site(c.website) ? `<a class="web" href="${esc(c.website)}" target="_blank" rel="noopener">${GLOBE}${esc(site(c.website))}</a>` : '';
     return `<section class="feat" aria-labelledby="c-${esc(c.slug)}">
       ${photo(c)}
       <div class="body">
         <div class="head">${lion ? `<img class="lion" src="${esc(lion)}" alt="${esc(c.name)} logo"><span class="bar" aria-hidden="true"></span>` : ''}
           <div><h3 id="c-${esc(c.slug)}">${esc(c.name)}</h3>${c.what ? `<div class="tag">${esc(c.what)}</div>` : ''}</div></div>
-        ${c.services && c.services.length ? `<div class="chips">${c.services.map(s => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
-        ${contact ? `<div class="contact">${contact}</div>` : ''}
+        <div class="rule" aria-hidden="true"></div>
         <a class="go" href="/crm/c/${encodeURIComponent(c.slug)}">${PERSON}Access ${esc(c.name)} CRM ${ARROW}</a>
+        ${web}
       </div>
     </section>`;
   }).join('');
