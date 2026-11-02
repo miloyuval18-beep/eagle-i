@@ -28,9 +28,12 @@ a:focus-visible{outline:3px solid #f0b429;outline-offset:3px;border-radius:8px}
 svg.i{width:1em;height:1em;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---------- header ---------- */
-.hero{position:relative;text-align:center;padding:40px 16px 70px;background:
-  linear-gradient(180deg,rgba(12,11,9,.55) 0%,rgba(12,11,9,.35) 45%,rgba(12,11,9,.85) 82%,var(--bg) 100%),
-  url('/home/house-bg.jpg') center 62%/cover no-repeat #1a1712}
+.hero{position:relative;text-align:center;padding:64px 16px 150px;background:
+  radial-gradient(50% 55% at 50% 36%,rgba(12,11,9,.35) 0%,rgba(12,11,9,0) 100%),
+  linear-gradient(180deg,rgba(12,11,9,.15) 0%,rgba(12,11,9,0) 45%,rgba(12,11,9,.2) 75%,var(--bg) 100%),
+  url('/portfolio/hero.jpg') center top/max(100%,1250px) auto no-repeat var(--bg)}
+.hero h1{filter:drop-shadow(0 2px 6px rgba(0,0,0,.75))}
+.hero .lines span,.hero p{text-shadow:0 1px 3px rgba(0,0,0,.9),0 0 14px rgba(0,0,0,.6)}
 .hero .mark{width:78px;height:78px;display:block;margin:0 auto}
 .hero h1{font-family:var(--serif);font-weight:700;font-size:56px;line-height:1.02;margin-top:8px;letter-spacing:-.005em;
   background:linear-gradient(180deg,#f6dc98 0%,#d9b260 50%,#a87a2c 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 18px rgba(0,0,0,.25)}
@@ -41,7 +44,7 @@ svg.i{width:1em;height:1em;flex:none;fill:none;stroke:currentColor;stroke-width:
 .hero .lines b{color:var(--gold);font-weight:600;margin:0 .5em}
 .hero p{font-family:var(--serif);font-style:italic;font-weight:500;font-size:24px;color:#efe5cf;margin-top:16px}
 
-main{max-width:1000px;margin:-28px auto 0;padding:0 16px 40px;position:relative}
+main{max-width:1000px;margin:-70px auto 0;padding:0 16px 40px;position:relative}
 .sec{display:flex;align-items:center;gap:18px;margin:0 0 16px 4px}
 .sec h2{font-family:var(--caps);font-weight:600;font-size:16px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);white-space:nowrap}
 .sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--gold-dim),transparent)}
@@ -104,7 +107,11 @@ main{max-width:1000px;margin:-28px auto 0;padding:0 16px 40px;position:relative}
 
 @media (max-width:900px){.soon{grid-template-columns:repeat(2,1fr)}.deco{display:none}}
 @media (max-width:640px){
-  .hero{padding:30px 16px 56px}.hero .mark{width:64px;height:64px}.hero h1{font-size:40px}.hero p{font-size:21px}
+  .hero{padding:44px 16px 120px;background:
+    radial-gradient(80% 45% at 50% 35%,rgba(12,11,9,.5) 0%,rgba(12,11,9,0) 100%),
+    linear-gradient(180deg,rgba(12,11,9,.2) 0%,rgba(12,11,9,.1) 45%,rgba(12,11,9,.4) 75%,var(--bg) 100%),
+    url('/home/house-tall.jpg') center 30%/cover no-repeat #1a1712}
+  main{margin-top:-56px}.hero .mark{width:64px;height:64px}.hero h1{font-size:40px}.hero p{font-size:21px}
   .hero .lines span{font-size:11.5px;letter-spacing:.18em}.hero .lines{gap:10px}
   .feat .photo{width:100%;opacity:.35}.feat .photo::after{background:linear-gradient(180deg,rgba(19,17,13,.3),var(--card) 85%)}
   .feat .body{padding:30px 18px 24px;min-height:0}.feat .go{max-width:none}.feat .lion{width:64px;height:64px}.feat .head{gap:14px}.feat h3{font-size:36px}.feat .tag{font-size:21px}
