@@ -77,6 +77,12 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null }) =
     th = await thread(old1.threadId);
     assert.equal(th.addressed_to, maria.email); assert.ok(await looped(old1.threadId));
     assert.equal((await query(`SELECT COUNT(*)::int AS n FROM crm_team_mail WHERE tenant_id = $1 AND sent_at IS NULL AND subject LIKE 'Floor & Decor%'`, [t])).rows[0].n, 0, 'out of Samantha’s end-of-day email');
+    // And in Maria's Needs you, not Samantha's, at the next check (it had been in Samantha's before).
+    await query(`UPDATE crm_mail_threads SET expects = true, importance = 'high' WHERE tenant_id = $1 AND thread_id = $2`, [t, old1.threadId]);
+    await query(`INSERT INTO crm_inbox (tenant_id, kind, title, dedupe_key, status) SELECT $1, 'email_reply', 'Floor & Decor is waiting for a reply', 'mw:re:' || id || ':' || (extract(epoch FROM last_at) * 1000)::bigint, 'done' FROM crm_mail_threads WHERE tenant_id = $1 AND thread_id = $2`, [t, old1.threadId]);
+    await w.processWatch({ onlyTenantId: t, now: new Date(Date.now() + 5 * 86400000), send: async () => ({}) });
+    assert.ok((await require(R + '/lib/crm').listInbox(t, { user: maria })).some(i => /Floor & Decor/.test(i.title)), 'in Maria’s Needs you');
+    assert.ok(!(await require(R + '/lib/crm').listInbox(t, { user: sam })).some(i => /Floor & Decor/.test(i.title)), 'not Samantha’s');
 
     // 7. Teammates: Maria's and Levi's emails (no Gmail connected) aren't chased like a customer's.
     const m7 = msg({ from: `Moran Levi <${levi.email}>`, to: [sam.email], subject: 'Fwd: New lead', snippet: 'Forwarded message' });
@@ -104,9 +110,10 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null }) =
     await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'Bank still has no reply', dedupeKey: `mw:esc:${levis}:1` });
     await crm.addInboxItem({ tenantId: t, kind: 'checkin_problem', title: 'A problem', dedupeKey: `ci:x:${tag}` });
     const titles = async (u, all = false) => (await crm.listInbox(t, { user: u, all })).map(i => i.title).sort();
-    assert.deepEqual(await titles(sam), ['A problem', 'Bank still has no reply', 'LJ is waiting for a reply'], 'not Levi’s email');
-    assert.deepEqual(await titles(levi), ['A problem', 'Bank is waiting for a reply'], 'not about himself');
-    assert.equal((await titles(sam, true)).length, 4, 'the whole team');
+    const mineOf = async (u, all) => (await titles(u, all)).filter(x => ['A problem', 'Bank still has no reply', 'LJ is waiting for a reply', 'Bank is waiting for a reply'].includes(x));
+    assert.deepEqual(await mineOf(sam), ['A problem', 'Bank still has no reply', 'LJ is waiting for a reply'], 'not Levi’s email');
+    assert.deepEqual(await mineOf(levi), ['A problem', 'Bank is waiting for a reply'], 'not about himself');
+    assert.equal((await mineOf(sam, true)).length, 4, 'the whole team');
     console.log('GREETED SCENARIO PASSED');
   } catch (e) {
     console.error('GREETED SCENARIO FAILED:', e);
