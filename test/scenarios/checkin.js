@@ -136,22 +136,20 @@ const THU_830PM = new Date('2026-10-30T01:30:00Z');
     // Olive starts her chat but stops partway: at 6pm it's summarized from what she said.
     turns = 0;
     assert.equal((await ci.message(owner.id, 'Walked the Ruiz job with the homeowner.', { now: THU })).done, false);
-    // 6pm: the owners' and admins' summary of the day, once.
+    // 6pm: the owners' and admins' summary of the day, once, in an email of its own (the update email went at 4pm).
     sent.length = 0;
     // Sent late (8:30pm Central, Friday in UTC): still Thursday's progress.
     await ci.processTeamDigest({ now: THU_830PM, appUrl: 'https://app.test' });
-    assert.equal(mine(owner).length, 0, 'part of the end-of-day email, not one of its own');
-    await endOfDay(t);
-    // One email for the owner: the urgent problem first, then the day's check-ins.
     const dg = mine(owner);
-    assert.equal(dg.length, 1); assert.match(dg[0].subject, /^Your day at Checkin Co: \d+ updates, 1 needs you first/);
-    assert.match(dg[0].html, /Today’s check-ins: 3 of 3, 2 problems/);
-    assert.ok(dg[0].html.indexOf('Urgent from Dana Cruz') < dg[0].html.indexOf('3 of 3'), 'what needs her first');
+    assert.equal(dg.length, 1); assert.match(dg[0].subject, /^Today’s check-ins: 3 of 3, 2 problems/);
     assert.match(dg[0].html, /Ruiz kitchen/); assert.match(dg[0].html, /<b>Olive Owner<\/b> <span[^>]*>\(stopped partway\)/);
     assert.equal((await ci.mine(owner.id))[0].status, 'done', 'her unfinished chat is wrapped up');
     assert.equal(mine(dana).length + mine(sam).length, 0, 'only owners and admins');
     assert.equal(mine(it).length, 0, 'no summary to a login left out');
     assert.ok(!(await ci.teamDay(owner, '2026-10-29')).people.some(p => p.name === 'IT Login'), 'not on the Team list');
+    // The urgent problem is first in her 4pm email.
+    sent.length = 0; await endOfDay(t);
+    assert.equal(mine(owner).length, 1); assert.match(mine(owner)[0].subject, /1 needs you first/); assert.match(mine(owner)[0].html, /Urgent from Dana Cruz/);
     sent.length = 0; await ci.processTeamDigest({ now: THU_6PM, appUrl: 'https://app.test' }); await endOfDay(t);
     assert.equal(mine(owner).length, 0, 'once a day');
     assert.equal((await ci.processTeamDigest({ now: WED })).notYet, true);

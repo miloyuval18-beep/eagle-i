@@ -1,7 +1,10 @@
 // One email a day per person: what would have been separate update emails waits for
-// the end of the day (6pm Central) and goes out together, to each person only what
+// the end of the work day (4pm Central) and goes out together, to each person only what
 // was for them, the things that need them first; nobody with nothing gets one; once;
-// tried again if sending fails; made-up test addresses never get it.
+// tried again if sending fails; made-up test addresses never get it. Only what still
+// matters: a reminder about an email answered since is left out, the same thing twice
+// is in it once. "For your information": what they were kept in the loop on. After
+// 4pm, urgent goes straight away and the rest waits for tomorrow's.
 const { R, endOfDay } = require('./_local');
 const assert = require('assert/strict');
 const sent = [];
@@ -26,10 +29,10 @@ const tag = Date.now().toString(36);
     await TM.later({ tenantId: t, to: [levi.email, dana.email], subject: 'Urgent: Plumbing permit not approved yet: Lee kitchen', text: 'Rough plumbing starts Monday.', kind: 'job', urgent: true });
     await TM.later({ tenantId: t, to: 'not an email', subject: 'x' });
 
-    // Before 6pm: nothing goes.
-    assert.deepEqual(await TM.processEndOfDay({ now: new Date('2026-11-03T22:59:00Z'), tenantId: t }), { sent: 0 }, '4:59pm Central');
+    // Before 4pm: nothing goes.
+    assert.deepEqual(await TM.processEndOfDay({ now: new Date('2026-11-03T21:59:00Z'), tenantId: t }), { sent: 0 }, '3:59pm Central');
     assert.equal(sent.length, 0);
-    // 6pm: one each, only their own.
+    // After 4pm: one each, only their own.
     process.env.CRM_EMAIL_TEST_ADDRESSES = '1';
     const r = await TM.processEndOfDay({ now: new Date('2026-11-04T00:05:00Z'), tenantId: t, appUrl: 'https://app.test' });
     delete process.env.CRM_EMAIL_TEST_ADDRESSES;
@@ -56,6 +59,44 @@ const tag = Date.now().toString(36);
     assert.equal((await endOfDay(t)).sent, 0);
     failFor = null;
     assert.equal((await endOfDay(t)).sent, 1); assert.match(sent[0].html, /Order today for Lee kitchen/);
+    // Only what still matters, once.
+    await query(`UPDATE users SET crm_loop_digest_at = NULL WHERE tenant_id = $1`, [t]); // the runs above were "tomorrow"
+    const mb = (await query(`INSERT INTO crm_mail_threads (tenant_id, mailbox_email, user_id, thread_id, counterpart_email, counterpart_name, subject, last_dir, last_at, state, status)
+      VALUES ($1, $2, $3, $4, 'kim@home.dev', 'Kim Lee', 'Tile', 'in', now(), 'to_reply', 'open'), ($1, $2, $3, $5, 'ann@home.dev', 'Ann Fox', 'Deck', 'in', now(), 'to_reply', 'open') RETURNING id`, [t, levi.email, levi.id, 'a' + tag, 'b' + tag])).rows;
+    await TM.later({ tenantId: t, to: levi.email, subject: 'Kim Lee is waiting for your reply', kind: 'customer', ref: `mw:${mb[0].id}` });
+    await TM.later({ tenantId: t, to: levi.email, subject: 'Ann Fox is waiting for your reply', kind: 'customer', ref: `mw:${mb[1].id}` });
+    await TM.later({ tenantId: t, to: levi.email, subject: 'Order today for Fox deck', kind: 'job' });
+    await TM.later({ tenantId: t, to: levi.email, subject: 'Order today for Fox deck', kind: 'job' });
+    await query(`UPDATE crm_mail_threads SET state = 'closed' WHERE id = $1`, [mb[0].id]); // Levi answered Kim before 4pm
+    // And an email he was only copied on (someone else is answering it).
+    await query(`INSERT INTO crm_mail_loop (tenant_id, user_id, mailbox_email, thread_id, from_email, from_name, to_names, subject, snippet, last_message_key, last_at)
+      VALUES ($1, $2, $3, $4, 'bo@home.dev', 'Bo Rhee', 'Dana', 'Window sizes', 'Here are the sizes', 'k1', now())`, [t, levi.id, levi.email, 'c' + tag]);
+    sent.length = 0;
+    const r2 = await endOfDay(t);
+    assert.equal(sent.length, 1); assert.equal(r2.dropped, 2, 'the answered one and the repeat');
+    assert.ok(!/Kim Lee/.test(sent[0].html), 'answered since: left out');
+    assert.match(sent[0].html, /Ann Fox is waiting/); assert.equal(sent[0].html.split('Order today for Fox deck').length, 2, 'once');
+    assert.match(sent[0].html, /For your information/); assert.match(sent[0].html, /Bo Rhee<\/b>: Window sizes/);
+    assert.match(sent[0].subject, /2 updates · 1 for your information$/);
+    // Kept in the loop only: still told, once a day.
+    sent.length = 0; await endOfDay(t); assert.equal(sent.length, 0);
+    await query(`UPDATE users SET crm_loop_digest_at = now() - interval '1 day' WHERE id = $1`, [levi.id]); // the next day
+    await query(`UPDATE crm_mail_loop SET last_at = now() WHERE tenant_id = $1`, [t]);
+    await endOfDay(t);
+    assert.equal(sent.length, 1); assert.match(sent[0].subject, /: 1 email for your information$/); assert.match(sent[0].html, /Nothing needs you today/);
+
+    // After 4pm: urgent goes straight away; the rest waits for tomorrow's email.
+    await TM.later({ tenantId: t, to: dana.email, subject: 'Leak at the Lee kitchen', kind: 'job', urgent: true });
+    await TM.later({ tenantId: t, to: dana.email, subject: 'New lead: Joe', kind: 'lead' });
+    await query(`UPDATE crm_team_mail SET created_at = '2026-11-03T23:30:00Z' WHERE tenant_id = $1 AND sent_at IS NULL`, [t]); // 5:30pm
+    sent.length = 0;
+    process.env.CRM_EMAIL_TEST_ADDRESSES = '1';
+    await TM.processEndOfDay({ now: new Date('2026-11-04T00:05:00Z'), tenantId: t, appUrl: 'https://app.test' });
+    assert.equal(sent.length, 1); assert.match(sent[0].html, /Leak/); assert.ok(!/New lead: Joe/.test(sent[0].html));
+    sent.length = 0;
+    await TM.processEndOfDay({ now: new Date('2026-11-04T22:05:00Z'), tenantId: t, appUrl: 'https://app.test' });
+    delete process.env.CRM_EMAIL_TEST_ADDRESSES;
+    assert.equal(sent.length, 1); assert.match(sent[0].html, /New lead: Joe/, 'in the next day’s');
     // A vendor's emailed reply about prices: on the deal, and in the company's end-of-day email with "Reply to them", not forwarded on its own.
     await query(`INSERT INTO business_profile (tenant_id, email) VALUES ($1, $2) ON CONFLICT (tenant_id) DO UPDATE SET email = EXCLUDED.email`, [t, `office.${tag}@mail.dev`]);
     const deal = await require(R + '/lib/crm').createDeal({ tenantId: t, name: 'Kim Lee', title: 'Lee bath', stage: 'estimate', userId: levi.id });
