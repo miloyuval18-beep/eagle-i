@@ -179,7 +179,7 @@ const ymd = (d) => d.toISOString().slice(0, 10);
     assert.ok(forSam.toReply.some(x => x.who === 'Dana Ruiz' && /mail\.google\.com/.test(x.gmail)));
     const d = await daily.digestFor({ id: sam, tenant_id: t, role: 'member' }, NOW);
     const mail = daily.renderDigest({ name: 'Sam Builder', company: 'Levi Test Homes', d, appUrl: 'https://app.test', now: NOW });
-    assert.match(mail.text, /EMAIL/); assert.match(mail.text, /Reply to Dana Ruiz: Water leaking/); assert.match(mail.subject, /email/);
+    assert.ok(!/EMAIL|Dana Ruiz/.test(mail.text) && !/email/.test(mail.subject), 'the morning email is just the day’s plan: emails to answer are in the 4pm one');
     await w.act({ tenantId: t, id: (await query(`SELECT id FROM crm_mail_threads WHERE tenant_id = $1 AND thread_id = 't5'`, [t])).rows[0].id, action: 'done' });
     assert.ok(!(await w.list(t, { userId: sam })).toReply.some(x => x.who === 'City Inspector'));
     await assert.rejects(w.saveSettings(t, { followUpDays: 30 }), /1 to 10/);

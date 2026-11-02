@@ -1521,7 +1521,7 @@ async function dyOpen(){
       <div class="vd-mbtns"><button class="btn-xs" onclick="dyReset()">Make a new link</button><span class="sm" style="margin:0">The old one stops working.</span></div>
       <div id="dy-gmail"></div>
       <div class="pl-h">Morning email</div>
-      <label class="pl-switch"><input type="checkbox" ${d.digestOn?'checked':''} onchange="dyDigest(this.checked)"><span>At 7am, Monday to Saturday: today’s visits, tasks due, phases starting, and what’s waiting for you. Nothing on? No email.</span></label>
+      <label class="pl-switch"><input type="checkbox" ${d.digestOn?'checked':''} onchange="dyDigest(this.checked)"><span>At 7am, Monday to Saturday: today’s plan (visits, phases starting, tasks due). Nothing on? No email. Emails to answer and everything else come together in one email at 4pm.</span></label>
       <div class="pl-h">Eagle I assistant</div>
       <div class="sm" style="margin-top:0">How the chat starts. You can always switch with the button at the top of the chat.</div>
       <div class="vd-mbtns"><label class="pl-switch" style="font-size:17px"><input type="radio" name="dy-ai" value="talk" ${d.aiMode==='talk'?'checked':''} ${tkCan()?'':'disabled'} onchange="dyAi('talk')"><span>🎙 Talk</span></label><label class="pl-switch" style="font-size:17px"><input type="radio" name="dy-ai" value="text" ${d.aiMode!=='talk'?'checked':''} onchange="dyAi('text')"><span>⌨️ Type</span></label></div>
@@ -3840,11 +3840,11 @@ async function lpToday(all){
     const {items}=await plApi('/api/crm/me/loop');
     if(!items.length){el.innerHTML='';return;}
     const show=all?items:items.slice(0,5);
-    el.innerHTML=`<div class="pl-h">📨 Copied on: no action needed (${items.length})</div><div class="sm" style="margin-top:0">Emails this week that weren’t sent to you and don’t use your first or last name, so nobody is waiting on you. Here so you know what’s going on; you’re never emailed about these.</div>
+    el.innerHTML=`<div class="pl-h">📨 For your information: no action needed (${items.length})</div><div class="sm" style="margin-top:0">Emails this week that need nothing from you: you were only copied, it was for someone else, or there’s nothing to answer. Here so you know what’s going on; you’re never reminded about these.</div>
       <div class="pl-list">${show.map(i=>`<div class="pl-item lp-item"><div class="pl-item-t">${uxEsc(i.subject||'(no subject)')}</div>
         <div class="pl-item-d">${uxEsc(i.from)}${i.to?' to '+uxEsc(i.to):''} · ${crWhen(i.lastAt)}${i.messages>1?' · '+i.messages+' emails':''}${i.deal?' · '+uxEsc(i.deal):''}</div>
         ${i.snippet?`<div class="pl-item-d" style="color:var(--ink)">${uxEsc(i.snippet)}</div>`:''}
-        <div class="pl-acts"><span class="pl-tag gA">No action needed</span><a class="btn-xs" href="${uxEsc(i.gmail)}" target="_blank" rel="noopener">Open in Gmail</a>${i.dealId?`<button class="btn-xs" onclick="plOpenDeal('${i.dealId}')">Its project</button>`:''}</div></div>`).join('')}</div>
+        <div class="pl-acts"><span class="pl-tag gA">${i.why==='fyi'?'Nothing to answer':i.why==='for'?'For '+uxEsc(i.to||'a teammate'):'You were copied'}</span><a class="btn-xs" href="${uxEsc(i.gmail)}" target="_blank" rel="noopener">Open in Gmail</a>${i.dealId?`<button class="btn-xs" onclick="plOpenDeal('${i.dealId}')">Its project</button>`:''}</div></div>`).join('')}</div>
       ${!all&&items.length>5?`<div class="vd-mbtns"><button class="btn-xs" onclick="lpToday(true)">Show all ${items.length}</button></div>`:''}`;
   }catch(e){el.innerHTML='';}
 }
@@ -3854,7 +3854,7 @@ async function lpLoad(dealId,elId){
   try{
     const {items}=await plApi('/api/crm/deals/'+dealId+'/loop');
     if(!items.length){el.innerHTML='';return;}
-    el.innerHTML=`<div class="pl-h">Kept in the loop</div><div class="sm" style="margin-top:0">Emails you were copied on for this project. They weren’t sent to you and don’t use your first or last name: <b>no action needed</b>. Only you see these.</div>
+    el.innerHTML=`<div class="pl-h">For your information</div><div class="sm" style="margin-top:0">Emails about this project that need nothing from you: you were only copied, it was for someone else, or there’s nothing to answer. <b>No action needed</b>. Only you see these.</div>
       <div class="pl-list">${items.map(i=>`<div class="pl-item lp-item"><div class="pl-item-t">${uxEsc(i.subject||'(no subject)')}</div>
         <div class="pl-item-d">${uxEsc(i.from)}${i.to?' to '+uxEsc(i.to):''} · ${crWhen(i.lastAt)}${i.messages>1?' · '+i.messages+' emails':''}</div>
         ${i.snippet?`<div class="pl-item-d" style="color:var(--ink)">${uxEsc(i.snippet)}</div>`:''}
@@ -4750,7 +4750,7 @@ async function ewSettings(){
   try{const d=await plApi('/api/crm/email-watch');const s=d.settings,m=crCan('settings'),dis=m?'':'disabled';
     el.innerHTML=`<div class="pl-pb"><div class="pl-card-top"><div class="pl-item-t">Who owes whom an answer</div><span class="pl-pill ${s.on?'on':''}">${s.on?'● On':'Off'}</span></div>
       <div class="sm">Eagle I reads your team’s Gmail${d.mailboxes?` (${d.mailboxes} mailbox${d.mailboxes===1?'':'es'})`:' once it’s connected (Company → Google)'} and skips newsletters, notifications and no-reply senders.</div>
-      <ul class="sm" style="margin:6px 0 0;padding-left:18px"><li>You emailed someone and asked for something; no reply after the days below: a follow-up is written for you, and you get an email. One tap sends it in the same conversation.</li><li>An important email is waiting on you: a reminder after 2 hours if urgent, the next business day for customers, subs and anything important, 2 business days otherwise.</li><li>A promise in your email (“I’ll send it Friday”) or a deadline someone gives you becomes a task on that day.</li><li>Each person’s 7am email lists what they owe and what’s overdue.</li></ul>
+      <ul class="sm" style="margin:6px 0 0;padding-left:18px"><li>You emailed someone and asked for something; no reply after the days below: a follow-up is written for you, and you get an email. One tap sends it in the same conversation.</li><li>An important email is waiting on you: a reminder after 2 hours if urgent, the next business day for customers, subs and anything important, 2 business days otherwise.</li><li>A promise in your email (“I’ll send it Friday”) or a deadline someone gives you becomes a task on that day.</li><li>Each person’s 4pm email lists what they still owe, and what they were sent for their information only.</li></ul>
       <label class="pl-switch" style="margin-top:8px"><input type="checkbox" ${s.on?'checked':''} ${dis} onchange="ewSave({on:this.checked})"><span>Watch the team’s email</span></label>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><label for="ew-days" class="sm" style="margin:0">Follow up after</label><select id="ew-days" class="cred-input" style="width:auto" ${dis} onchange="ewSave({followUpDays:+this.value})">${[1,2,3,4,5,7,10].map(n=>`<option value="${n}" ${n===s.followUpDays?'selected':''}>${n} business day${n===1?'':'s'}</option>`).join('')}</select></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><label for="ew-auto" class="sm" style="margin:0">Send follow-ups on their own</label><select id="ew-auto" class="cred-input" style="width:auto" ${dis} onchange="ewSave({autoFollowUp:this.value})"><option value="off" ${s.autoFollowUp==='off'?'selected':''}>No, I’ll review each one</option><option value="known" ${s.autoFollowUp==='known'?'selected':''}>To customers and subs in the CRM</option><option value="all" ${s.autoFollowUp==='all'?'selected':''}>To everyone</option></select></div>
