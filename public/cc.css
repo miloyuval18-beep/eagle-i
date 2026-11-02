@@ -66,11 +66,62 @@ body.cc-home header .brand{color:#fff}
 body.cc-home header .brand span{color:#e7c983}
 @media (max-width:760px){body.cc-proj #app>.card:first-child,body.cc-doc #doc>.card>.head,body.cc-doc #app>.co:first-child,body.cc-home header{
   background:linear-gradient(180deg,rgba(17,19,24,.86) 0%,rgba(17,19,24,.96) 100%),url('/home/house-tall.jpg') center 35%/cover no-repeat #111318}}
+
+/* ---------- Dark and gold, everywhere (Levi Construction Group's look) ----------
+   The last word on color for these pages, matching the CRM: deep charcoal, warm light
+   words, gold for what you can act on and for edges, the evening house behind single
+   cards. Printing stays plain paper (below). */
+:root{
+  color-scheme:dark;
+  --bg:#0c0b09;--card:#15130f;--soft:#1e1b15;
+  --ink:#f3ecdc;--ink2:#dcd0b6;--ink3:#b8ab8e;
+  --bdr:rgba(212,175,97,.28);--bdr2:rgba(212,175,97,.5);
+  --accent:#d4af61;--accent2:#e6c47c;--gold:#d4af61;--gold2:#e8c983;--gold-ink:#e2c178;--char:#0b0a08;
+  --err:#ff8a80;--ok:#5fd394;
+  --lx-btn:linear-gradient(180deg,#f2d690 0%,#dab364 45%,#b98d3c 100%);
+}
+html{background:#0c0b09}
+body{background:radial-gradient(1100px 520px at 50% -180px,rgba(212,175,97,.10) 0%,rgba(212,175,97,0) 70%) no-repeat,#0c0b09!important;color:var(--ink)}
+::selection{background:rgba(212,175,97,.35);color:#fff}
+a{color:var(--gold2)}
+h1,h2,h3,.brand{color:#f6ecd4}
+.brand span{color:var(--gold)}
+label{color:var(--ink2)}
+.card,.co,.box,.panel,.sec,.item,.row-card,.line,.choice,.opt,.slot,.day,.q,.ph{background-color:var(--card)!important;color:var(--ink)}
+.card{border:1.5px solid rgba(212,175,97,.45)!important;border-radius:18px;box-shadow:0 0 0 1px #000,0 0 36px -12px rgba(212,175,97,.4),0 26px 60px -22px rgba(0,0,0,.9)!important}
+input,textarea,select{background:#100e0b!important;color:var(--ink)!important;border-color:var(--bdr2)!important}
+input::placeholder,textarea::placeholder{color:#8f846b}
+input:focus,textarea:focus,select:focus{border-color:var(--gold)!important;box-shadow:0 0 0 3px rgba(212,175,97,.2)!important}
+input[type=checkbox],input[type=radio]{accent-color:#d4af61}
+option{background:#15130f;color:var(--ink)}
+/* buttons: gold with dark words; the outlined ones gold-edged */
+.btn:not(.o):not(.btn-o):not(.btn-l),.btn-p,.tab.active,.tab.on,.tab[aria-selected="true"]{background:var(--lx-btn)!important;color:#1a140a!important;border-color:transparent!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 20px -10px rgba(212,175,97,.7)}
+.btn.o,.btn-o,.btn-l,.gbtn{background:rgba(16,14,11,.85)!important;color:var(--ink)!important;border:1.5px solid var(--gold)!important}
+.btn.o:hover,.btn-o:hover,.btn-l:hover,.gbtn:hover{background:rgba(212,175,97,.14)!important}
+.tabs{background:#100e0b!important;border:1px solid var(--bdr)}
+.tab{color:var(--ink2)}
+.choice:hover,.choice:focus-visible{border-color:var(--gold)!important;background:#1e1b15!important}
+.note{background:rgba(212,175,97,.10)!important;border-color:rgba(212,175,97,.4)!important;color:var(--ink2)}
+.note.ok{background:rgba(95,211,148,.10)!important;border-color:rgba(95,211,148,.45)!important}
+.note.warn{background:rgba(242,168,90,.10)!important;border-color:rgba(242,168,90,.45)!important}
+.or:before,.or:after{background:var(--bdr)}
+/* single cards over the evening house */
+body.cc-photo{background:linear-gradient(180deg,rgba(12,11,9,.35) 0%,rgba(12,11,9,.65) 100%),url('/portfolio/hero.jpg') center/cover no-repeat fixed #0c0b09!important}
+body.cc-photo .card{background:rgba(18,16,12,.94)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+@media (max-width:760px){body.cc-photo{background:linear-gradient(180deg,rgba(12,11,9,.3) 0%,rgba(12,11,9,.7) 100%),url('/home/house-tall.jpg') center top/cover no-repeat fixed #0c0b09!important}}
+/* header bands: the gold edge glows */
+body.cc-proj #app>.card:first-child,body.cc-doc #doc>.card>.head,body.cc-doc #app>.co:first-child,body.cc-home header{border-bottom:1.5px solid rgba(212,175,97,.6)!important;background:linear-gradient(90deg,#12100c 0%,#12100c 40%,rgba(18,16,12,.7) 65%,rgba(18,16,12,.2) 100%),url('/portfolio/hero.jpg') right center/cover no-repeat #12100c!important}
+.cc-rule{background:var(--lx-btn)}
+table,th,td{border-color:var(--bdr)!important}
+th{color:var(--gold)}
 /* "kind" labels (ESTIMATE #12, INVOICE): small gold capitals */
 .kind{font-family:var(--caps);letter-spacing:.14em;color:var(--gold-ink)}
 /* printed: plain paper, no dark band */
 @media print{
-  body{background:#fff!important}
+  :root{color-scheme:light;--ink:#141a24;--ink2:#353d4b;--ink3:#555d69;--card:#fff}
+  html,body{background:#fff!important;color:#141a24!important}
+  .card,.co,.box,.line,.item{background:#fff!important;color:#141a24!important}
+  h1,h2,h3{color:#141a24!important}
   body.cc-doc #doc>.card>.head,body.cc-doc #app>.co:first-child{--ink:#141a24;--ink2:#353d4b;--ink3:#555d69;color:#141a24;background:none!important;margin:0;padding:0;border:0}
   body.cc-doc #doc>.card>.head .co,body.cc-doc #app>.co:first-child{color:#141a24}
   .card{box-shadow:none!important;border-top:1px solid #ccc!important}
