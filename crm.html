@@ -1126,6 +1126,12 @@ option{background:#15130f;color:var(--ink)}
 .vb-row{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
 .vb-row input{width:22px;height:22px;margin-top:3px;flex:0 0 auto}
 @media (max-width:640px){.vb-box{background:#15130f}.vb-box .sm{max-width:none}.vb-box .vd-mbtns{flex-direction:column;align-items:stretch}.vb-box .vb-up{justify-content:center}}
+
+/* finding a vendor */
+.vd-find{margin:12px 0 4px}
+.vd-find-l{display:block;font-weight:700;font-size:16.5px;margin-bottom:6px;color:var(--ink2)}
+.vd-find input{width:100%;font-size:18px}
+.vd-find .pl-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -1267,6 +1273,12 @@ option{background:#15130f;color:var(--ink)}
         <label class="btn-xs vb-up">📇 Photo of a business card<input type="file" accept="image/*" capture="environment" hidden onchange="vbFile(this)"></label>
       </div>
       <div class="sm" id="vb-msg" role="status" aria-live="polite"></div>
+    </div>
+    <div class="vd-find" id="vd-find" hidden>
+      <label for="vd-q" class="vd-find-l">Find a sub or vendor</label>
+      <input id="vd-q" class="cred-input" type="search" autocomplete="off" placeholder="Name or trade, e.g. plumber" oninput="VDF.q=this.value;vdRender()">
+      <div class="pl-chips" id="vd-trades" role="group" aria-label="Filter by trade"></div>
+      <div class="sm" id="vd-count" role="status" aria-live="polite" style="margin:6px 0 0"></div>
     </div>
     <div class="pl-list" id="vd-list" style="margin-top:8px"></div>
   </section>
@@ -4441,10 +4453,33 @@ async function jbList(){
     vdRender();
   }catch(e){el.innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
 }
+// Finding a vendor: by name, trade, contact or notes. "plumber" finds Plumbing, "electrician"
+// finds Electrical (words are compared by their root); a trade button shows just that trade.
+const VDF={q:'',trade:''};
+const vdRoot=w=>w.toLowerCase().replace(/[^a-z0-9]/g,'').replace(/(icians?|ical|ians?|ers?|ing|ors?|s)$/,'');
+const vdTrade=t=>String(t||'').trim().replace(/\s+/g,' ').replace(/^./,c=>c.toUpperCase());
+function vdMatch(v){
+  if(VDF.trade&&vdTrade(v.trade).toLowerCase()!==VDF.trade.toLowerCase())return false;
+  const words=VDF.q.trim().split(/\s+/).filter(Boolean);if(!words.length)return true;
+  const hay=[v.name,v.trade,v.contact_name,v.email,v.phone,v.notes].filter(Boolean).join(' ');
+  const roots=hay.split(/[\s,·/&()-]+/).map(vdRoot).filter(Boolean),low=hay.toLowerCase();
+  return words.every(w=>{const r=vdRoot(w);return low.includes(w.toLowerCase())||(r.length>=3&&roots.some(x=>x.startsWith(r)||r.startsWith(x)&&x.length>=4));});
+}
+function vdTradeTap(t){VDF.trade=VDF.trade===t?'':t;vdRender();}
 function vdRender(){
   const el=document.getElementById('vd-list');if(!el)return;
   const soon=d=>d&&new Date(ymdOf(d)+'T12:00:00Z')<new Date(Date.now()+30*86400000);
-  el.innerHTML=JB.vendors.length?JB.vendors.map(v=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(v.name)}</div><div class="pl-item-d">${uxEsc([v.trade,v.contact_name,v.phone,v.email].filter(Boolean).join(' · '))}</div>
+  const all=JB.vendors||[],find=document.getElementById('vd-find');
+  if(find){find.hidden=all.length<2;
+    const counts={};all.forEach(v=>{const t=vdTrade(v.trade);if(t)counts[t]=(counts[t]||0)+1;});
+    const trades=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b));
+    if(VDF.trade&&!counts[VDF.trade])VDF.trade='';
+    document.getElementById('vd-trades').innerHTML=trades.length>1?`<button class="pl-chip${VDF.trade?'':' active'}" onclick="vdTradeTap('')" aria-pressed="${!VDF.trade}">All ${all.length}</button>`+trades.map(t=>`<button class="pl-chip${VDF.trade===t?' active':''}" data-t="${uxEsc(t)}" onclick="vdTradeTap(this.dataset.t)" aria-pressed="${VDF.trade===t}">${uxEsc(t)} ${counts[t]}</button>`).join(''):'';
+  }
+  const shown=all.filter(vdMatch),filtered=VDF.q.trim()||VDF.trade;
+  const cnt=document.getElementById('vd-count');if(cnt)cnt.textContent=filtered?(shown.length?`Showing ${shown.length} of ${all.length}`:''):'';
+  if(filtered&&!shown.length){el.innerHTML=`<div class="pl-empty">No sub or vendor matches “${uxEsc(VDF.q.trim()||VDF.trade)}”. <button class="btn-xs" onclick="VDF.q='';VDF.trade='';document.getElementById('vd-q').value='';vdRender()">Show everyone</button></div>`;return;}
+  el.innerHTML=shown.length?shown.map(v=>`<div class="pl-item"><div class="pl-card-top"><div style="min-width:0"><div class="pl-item-t">${uxEsc(v.name)}</div><div class="pl-item-d">${uxEsc([v.trade,v.contact_name,v.phone,v.email].filter(Boolean).join(' · '))}</div>
     <div class="pl-tags">${v.license_no?`<span class="pl-tag">Lic. ${uxEsc(v.license_no)}</span>`:''}${v.insurance_expires?`<span class="pl-tag${soon(v.insurance_expires)?' warn':''}">Insurance to ${fdate(v.insurance_expires)}</span>`:'<span class="pl-tag warn">No insurance on file</span>'}</div></div>
     <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><button class="btn-xs p" onclick="vdPage('${v.id}')">🔗 Their page</button>${crCan('subs')?`<button class="btn-xs" onclick="vdRemove('${v.id}')" aria-label="Remove ${uxEsc(v.name)}">Remove</button>`:''}</div></div></div>`).join(''):'<div class="pl-empty">No subs or suppliers yet. Add the trades you work with so you can put them on job schedules, send them bid requests and purchase orders, and give them their own page.</div>';
 }
