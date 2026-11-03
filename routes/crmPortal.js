@@ -48,10 +48,17 @@ router.get('/api/crm/deals/:id/files', requireAuth, async (req, res) => {
   try {
     if (!(await dealInTenant(req, res))) return;
     const drive = await require('../lib/crmDrive').driveOn(req.tenantId);
-    const d = drive ? (await query('SELECT drive_folder_id FROM crm_deals WHERE id = $1', [req.params.id])).rows[0] : null;
+    const d = drive ? (await query('SELECT drive_folder_id, drive_rescanned_at FROM crm_deals WHERE id = $1', [req.params.id])).rows[0] : null;
     res.json({ files: await portal.listFiles(req.tenantId, req.params.id), folders: portal.FOLDERS, maxMb: drive ? 50 : 8,
-      drive: drive ? { on: true, folderLink: d && d.drive_folder_id ? `https://drive.google.com/drive/folders/${d.drive_folder_id}` : null } : { on: false } });
+      drive: drive ? { on: true, folderLink: d && d.drive_folder_id ? `https://drive.google.com/drive/folders/${d.drive_folder_id}` : null, checkedAt: d ? d.drive_rescanned_at : null } : { on: false } });
   } catch (err) { fail(res, err, 'Failed to load files'); }
+});
+// "Check Drive now": this project's whole Drive folder, read again straight away (lib/crmDriveProjects.js).
+router.post('/api/crm/deals/:id/files/drive-check', requireAuth, async (req, res) => {
+  try {
+    if (!(await dealInTenant(req, res))) return;
+    res.json({ ok: true, ...(await require('../lib/crmDriveProjects').rescanOne(req.tenantId, req.params.id)) });
+  } catch (err) { fail(res, err, 'Couldn’t check Google Drive'); }
 });
 
 router.post('/api/crm/deals/:id/files', requireAuth, async (req, res) => {

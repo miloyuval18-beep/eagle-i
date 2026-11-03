@@ -1666,7 +1666,7 @@ const CR_GUIDES={
   company:{icon:'🏢',steps:[
     ['Your company details','Your name, phone and address go on every email Eagle I sends. Automatic emails wait until the address is filled in.'],
     ['Connect Google','Connect your Gmail so customer emails land on the right job by themselves.'],
-    ['Google Drive','Switch on Drive and every job gets its own folder for its files. Already have project folders in Drive? “Projects already in your Drive” finds them and adds them as past projects, with their files.',null,()=>crCan('settings')],
+    ['Google Drive','Switch on Drive and every job gets its own folder for its files; anything added to a job’s folder in Drive shows up on the job by itself within about half an hour. Already have project folders in Drive? “Projects already in your Drive” finds them and adds them as past projects, with their files.',null,()=>crCan('settings')],
     ['Online payments','Let homeowners pay invoices online by card or bank.',null,()=>crCan('settings')],
     ['Homeowners and subs','At the bottom: extras for homeowners and subs who make their own Eagle I accounts. They’re off until you switch them on.']]},
   auto:{icon:'✉',steps:[
@@ -3741,7 +3741,9 @@ function flRender(){
       <div style="display:flex;gap:8px;align-items:center"><a href="/api/crm/files/${f.id}" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow-wrap:anywhere;font-weight:700">${flIcon(f)} ${uxEsc(f.caption&&f.caption!=='Receipt'?f.caption:f.filename)}</a>${shareBtn(f)}${menu(f)}</div>
       <div class="pl-tags">${f.version>1?`<span class="pl-tag gB">v${f.version}</span>`:''}${FL.folder==='all'?`<span class="pl-tag">${uxEsc(FL.folders[f.folder]||f.folder)}</span>`:''}${f.size?`<span class="pl-tag">${flSize(Number(f.size))}</span>`:''}${f.in_drive?'<span class="pl-tag auto">In Drive</span>':''}${f.sub_shared?'<span class="pl-tag gB">Subs</span>':''}<span class="pl-tag">${new Date(f.created_at).toLocaleDateString([], {month:'short',day:'numeric'})}${f.uploaded_by_name?' · '+uxEsc(f.uploaded_by_name):''}</span></div>
       ${o.length?`<details style="margin-top:4px"><summary class="sm" style="cursor:pointer;margin:0">${o.length} older version${o.length===1?'':'s'}</summary>${o.map(x=>`<div class="sm" style="margin:4px 0 0"><a href="/api/crm/files/${x.id}" target="_blank" rel="noopener">v${x.version} · ${uxEsc(x.filename)}</a> · replaced ${new Date(x.superseded_at).toLocaleDateString()}</div>`).join('')}</details>`:''}</div>`;}).join('')+'</div>':'';
-  const drive=FL.drive.on?`<div class="sm" style="margin:0 0 6px">☁️ Saved to your Google Drive${FL.drive.folderLink?` · <a href="${uxEsc(FL.drive.folderLink)}" target="_blank" rel="noopener">Open this job’s folder</a>`:' · the job’s folder is being made'}</div>`:'';
+  const ago=FL.drive.checkedAt?Math.round((Date.now()-new Date(FL.drive.checkedAt))/60000):null;
+  const drive=FL.drive.on?`<div class="sm" style="margin:0 0 6px">☁️ Saved to your Google Drive${FL.drive.folderLink?` · <a href="${uxEsc(FL.drive.folderLink)}" target="_blank" rel="noopener">Open this job’s folder</a>`:' · the job’s folder is being made'}</div>
+    ${FL.drive.folderLink?`<div class="sm" style="margin:0 0 8px">Files added to this folder in Drive show up here by themselves, about every half hour${ago==null?'':` (last checked ${ago<1?'just now':ago<60?ago+' min ago':Math.round(ago/60)+' h ago'})`}. <button class="btn-xs" onclick="flDriveCheck(this)">🔄 Check Drive now</button></div>`:''}`:'';
   el.innerHTML=drive+(cur.length?chips:'')+grid+list+(!shown.length?`<div class="sm">${cur.length?'Nothing in this folder yet.':'No files yet. Drop them here, or tap “Add files”.'}</div>`:'');
 }
 async function flUpload(dealId,input,dropped){
@@ -3767,6 +3769,11 @@ async function flUpload(dealId,input,dropped){
   if(input)input.value='';flLoad(dealId);
 }
 function flDrop(ev,dealId){ev.preventDefault();ev.currentTarget.classList.remove('fl-over');const files=[...(ev.dataTransfer&&ev.dataTransfer.files||[])];if(files.length)flUpload(dealId,null,files);}
+async function flDriveCheck(btn){btn.disabled=true;btn.textContent='Checking Drive…';
+  try{const r=await plApi('/api/crm/deals/'+FL.dealId+'/files/drive-check',{body:{}});
+    const said=[r.added?`${r.added} new file${r.added===1?'':'s'} added`:'',r.updated?`${r.updated} updated`:'',r.removed?`${r.removed} gone from Drive, taken off`:''].filter(Boolean).join(', ');
+    showNotif(said?'Drive checked':'Up to date',said||`Nothing new in this job’s Drive folder (${r.seen} file${r.seen===1?'':'s'} there).`);flLoad(FL.dealId);}
+  catch(e){showNotif('Couldn’t check Drive',e.message);btn.disabled=false;btn.textContent='🔄 Check Drive now';}}
 async function flPatch(id,body,what){try{await plApi('/api/crm/files/'+id,{method:'PATCH',body});flLoad(FL.dealId);}catch(e){showNotif('Could not '+what,e.message);}}
 function flShare(a,b,c){if(c!==undefined)return flPatch(b,{shared:c},'change it');return flPatch(a,{shared:b},'change it');}
 function flMove(id,folder){flPatch(id,{folder},'move it');}

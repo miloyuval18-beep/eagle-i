@@ -28,6 +28,8 @@ const tag = Date.now().toString(36);
     await TM.later({ tenantId: t, to: levi.email, subject: 'Rita replied', text: 'Thursday works for us.', kind: 'customer', replyTo: 'rita@home.dev' });
     await TM.later({ tenantId: t, to: [levi.email, dana.email], subject: 'Urgent: Plumbing permit not approved yet: Lee kitchen', text: 'Rough plumbing starts Monday.', kind: 'job', urgent: true });
     await TM.later({ tenantId: t, to: 'not an email', subject: 'x' });
+    // All of it during that day (the test can run at any hour, even after 4pm).
+    await query(`UPDATE crm_team_mail SET created_at = '2026-11-03T18:00:00Z' WHERE tenant_id = $1`, [t]);
 
     // Before 4pm: nothing goes.
     assert.deepEqual(await TM.processEndOfDay({ now: new Date('2026-11-03T21:59:00Z'), tenantId: t }), { sent: 0 }, '3:59pm Central');

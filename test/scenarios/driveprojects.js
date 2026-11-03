@@ -75,6 +75,29 @@ const tag = Date.now().toString(36);
     (await P.getState(t)); await query(`UPDATE app_flags SET value = jsonb_set(value, '{files_link}', '"requested"') WHERE key = $1`, [`drive_projects:${t}`]);
     await P.processFileLinks();
     assert.equal((await query(`SELECT COUNT(*)::int AS n FROM crm_files WHERE tenant_id = $1`, [t])).rows[0].n, 4);
+    // Later, in Drive: a photo added two folders down, the invoice renamed, the permit's sheet deleted.
+    // Read again (folders outside Eagle I's own drive aren't in Drive's change feed): the project follows.
+    kids['f-hemmi'].push({ id: 'f-hemmi-ph', name: 'Photos', mimeType: 'application/vnd.google-apps.folder' });
+    kids['f-hemmi-ph'] = [{ id: 'f-hemmi-ph-fr', name: 'Framing', mimeType: 'application/vnd.google-apps.folder' }];
+    kids['f-hemmi-ph-fr'] = [{ id: 'd-new', name: 'stud wall.jpg', mimeType: 'image/jpeg', size: '300000', modifiedTime: '2026-11-03T00:00:00Z' }];
+    kids['f-hemmi'].find(x => x.id === 'd-inv').name = 'Invoice 3 (paid).pdf';
+    const hemmi = (await query(`SELECT id FROM crm_deals WHERE tenant_id = $1 AND title = 'Hemmi Residence'`, [t])).rows[0].id;
+    let rr = await P.rescanOne(t, hemmi);
+    assert.deepEqual([rr.added, rr.updated, rr.removed], [1, 1, 0]);
+    const stog = (await query(`SELECT id FROM crm_deals WHERE tenant_id = $1 AND title = 'Stogner pool'`, [t])).rows[0].id;
+    kids['f-stog'] = [];
+    rr = await P.rescanOne(t, stog);
+    assert.equal(rr.removed, 1, 'gone from Drive: taken off');
+    const after = (await query(`SELECT filename, folder FROM crm_files WHERE tenant_id = $1 ORDER BY filename`, [t])).rows;
+    assert.deepEqual(after.map(x => x.filename), ['A1.pdf', 'IMG_1.jpg', 'Invoice 3 (paid).pdf', 'stud wall.jpg']);
+    assert.equal(after.find(x => x.filename === 'stud wall.jpg').folder, 'photos');
+    assert.ok((await query(`SELECT drive_rescanned_at FROM crm_deals WHERE id = $1`, [hemmi])).rows[0].drive_rescanned_at, 'when it was last read');
+    // Google not answering: nothing is taken off.
+    D.call = async () => { throw new Error('Google is down'); };
+    await assert.rejects(P.rescanOne(t, hemmi));
+    assert.equal((await query(`SELECT COUNT(*)::int AS n FROM crm_files WHERE tenant_id = $1`, [t])).rows[0].n, 4);
+    // The background round runs (no Drive connection for this test company: nothing to do).
+    assert.equal((await P.rescanDue()).errors, 0);
     console.log('DRIVE PROJECTS SCENARIO PASSED');
   } catch (e) {
     console.error('DRIVE PROJECTS SCENARIO FAILED:', e);
