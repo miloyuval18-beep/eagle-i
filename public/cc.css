@@ -114,6 +114,12 @@ body.cc-proj #app>.card:first-child,body.cc-doc #doc>.card>.head,body.cc-doc #ap
 .cc-rule{background:var(--lx-btn)}
 table,th,td{border-color:var(--bdr)!important}
 th{color:var(--gold)}
+
+/* ---------- A little more glow ---------- */
+.card{border-color:rgba(232,196,116,.75)!important;box-shadow:0 0 0 1px #000,0 0 36px -6px rgba(226,186,98,.55),0 0 90px -20px rgba(226,186,98,.45),0 26px 60px -22px rgba(0,0,0,.9)!important}
+.btn:not(.o):not(.btn-o):not(.btn-l),.btn-p,.tab.active,.tab.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 18px -2px rgba(240,204,120,.65),0 10px 26px -10px rgba(240,204,120,.8)!important}
+h1,h2,.brand{text-shadow:0 0 18px rgba(232,192,104,.3),0 2px 10px rgba(0,0,0,.5)}
+input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(232,192,104,.25),0 0 18px -4px rgba(232,192,104,.6)!important}
 /* "kind" labels (ESTIMATE #12, INVOICE): small gold capitals */
 .kind{font-family:var(--caps);letter-spacing:.14em;color:var(--gold-ink)}
 /* printed: plain paper, no dark band */
