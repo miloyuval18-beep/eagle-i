@@ -161,7 +161,7 @@ function registerAuthRoutes(app) {
       // Best-effort — signup already succeeded and the user is logged in
       // regardless of whether this send works (e.g. RESEND_API_KEY unset).
       const verifyUrl = `${req.protocol}://${req.get('host')}/verify-email.html?token=${verificationToken}`;
-      sendEmail({
+      sendEmail({ essential: true,
         to: email.toLowerCase(),
         subject: product === 'crm' ? 'Verify your Eagle I CRM email' : 'Verify your Eagle I email',
         html: `<p>Welcome to Eagle I${product === 'crm' ? ' CRM' : ''}! <a href="${verifyUrl}">Confirm your email address</a> to secure your account.</p>`,
@@ -254,7 +254,7 @@ function registerAuthRoutes(app) {
           [userId, hashToken(token), new Date(Date.now() + RESET_TOKEN_TTL_MS)]
         );
         const resetUrl = `${req.protocol}://${req.get('host')}/reset-password.html?token=${token}`;
-        sendEmail({
+        sendEmail({ essential: true,
           to: email.toLowerCase(),
           subject: 'Reset your Eagle I password',
           html: `<p>Someone requested a password reset. <a href="${resetUrl}">Reset your password</a> — this link expires in 1 hour. If this wasn't you, ignore this email.</p>`,
@@ -335,7 +335,7 @@ function registerAuthRoutes(app) {
         [hashToken(token), req.session.userId]
       );
       const verifyUrl = `${req.protocol}://${req.get('host')}/verify-email.html?token=${token}`;
-      await sendEmail({
+      await sendEmail({ essential: true,
         to: user.email,
         subject: 'Verify your Eagle I email',
         html: `<p><a href="${verifyUrl}">Confirm your email address</a> to secure your account.</p>`,
@@ -392,7 +392,7 @@ function registerAuthRoutes(app) {
         [newEmail.toLowerCase(), hashToken(token), req.session.userId]
       );
       const verifyUrl = `${req.protocol}://${req.get('host')}/verify-email.html?token=${token}`;
-      sendEmail({
+      sendEmail({ essential: true,
         to: newEmail.toLowerCase(),
         subject: 'Verify your new Eagle I email',
         html: `<p><a href="${verifyUrl}">Confirm your new email address</a>.</p>`,
