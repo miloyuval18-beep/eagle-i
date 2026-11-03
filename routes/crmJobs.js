@@ -29,6 +29,54 @@ const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } cat
 
 // Permits (lib/crmPermits.js): what the job needs and where each stands.
 const permits = require('../lib/crmPermits');
+// ---------- SOPs (lib/crmSops.js) ----------
+const sops = () => require('../lib/crmSops');
+router.get('/api/crm/sops', requireAuth, wrap('Failed to load the SOPs', async (req, res) => res.json(await sops().list(req.tenantId, { category: req.query.category ? String(req.query.category).slice(0, 20) : null }))));
+router.get('/api/crm/sops/:id', requireAuth, wrap('Failed to load the SOP', async (req, res) => {
+  const s = await sops().get(req.tenantId, req.params.id);
+  if (!s) return res.status(404).json({ error: { message: 'SOP not found.' } });
+  res.json({ sop: s });
+}));
+router.post('/api/crm/sops', requireAuth, wrap('Couldn’t write the SOP', async (req, res) => {
+  const b = req.body || {};
+  res.json({ sop: await sops().generate({ tenantId: req.tenantId, userId: req.userId, category: String(b.category || ''), kind: String(b.kind || 'project'), request: b.request, dealId: /^[0-9a-f-]{36}$/i.test(String(b.dealId || '')) ? b.dealId : null, vendorId: /^[0-9a-f-]{36}$/i.test(String(b.vendorId || '')) ? b.vendorId : null, audience: b.audience }) });
+}));
+router.post('/api/crm/sops/:id/revise', requireAuth, wrap('Couldn’t change the SOP', async (req, res) => res.json({ sop: await sops().revise({ tenantId: req.tenantId, id: req.params.id, instruction: (req.body || {}).instruction }) })));
+router.delete('/api/crm/sops/:id', requireAuth, wrap('Couldn’t delete the SOP', async (req, res) => {
+  const s = await sops().get(req.tenantId, req.params.id);
+  if (!s) return res.status(404).json({ error: { message: 'SOP not found.' } });
+  const own = (await require('../db').query('SELECT created_by FROM crm_sops WHERE id = $1', [s.id])).rows[0];
+  if (!team.isManager(req.crmUser.role) && own.created_by !== req.userId) return res.status(403).json({ error: { message: 'Only the person who made it, or a manager, can delete it.' } });
+  res.json(await sops().remove(req.tenantId, s.id));
+}));
+// Printed like the company's paper SOPs: a page to print or save as PDF.
+router.get('/api/crm/sops/:id/print', requireAuth, wrap('Failed to open the SOP', async (req, res) => {
+  const s = await sops().get(req.tenantId, req.params.id);
+  if (!s) return res.status(404).send('SOP not found.');
+  const co = (await require('../db').query(`SELECT t.company_name, bp.phone, bp.email, bp.address FROM tenants t LEFT JOIN business_profile bp ON bp.tenant_id = t.id WHERE t.id = $1`, [req.tenantId])).rows[0] || {};
+  res.set({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' }).send(sops().html(s, co));
+}));
+// Sent to a sub or vendor (or anyone): the SOP in the email itself.
+router.post('/api/crm/sops/:id/email', requireAuth, wrap('Couldn’t send the SOP', async (req, res) => {
+  const s = await sops().get(req.tenantId, req.params.id);
+  if (!s) return res.status(404).json({ error: { message: 'SOP not found.' } });
+  const to = String((req.body || {}).to || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return res.status(400).json({ error: { message: 'Type the email address to send it to.' } });
+  const db = require('../db');
+  const co = (await db.query(`SELECT t.company_name, bp.phone, bp.email, bp.address FROM tenants t LEFT JOIN business_profile bp ON bp.tenant_id = t.id WHERE t.id = $1`, [req.tenantId])).rows[0] || {};
+  const me = (await db.query('SELECT name, email FROM users WHERE id = $1', [req.userId])).rows[0] || {};
+  const note = String((req.body || {}).note || '').trim().slice(0, 2000);
+  const page = sops().html(s, co).replace(/<div class="bar">[\s\S]*?<\/div>/, '').replace('src="/home/lion.png"', `src="${require('../lib/appUrl').appUrl()}/home/lion.png"`);
+  const body = page.slice(page.indexOf('<body>') + 6, page.lastIndexOf('</body>'));
+  const style = page.slice(page.indexOf('<style>'), page.indexOf('</style>') + 8);
+  const r = await require('../lib/email').sendEmail({ to, subject: `${s.title} · ${co.company_name || ''}`.replace(/ · $/, ''), replyTo: me.email || co.email || undefined,
+    fromName: me.name ? `${me.name} · ${co.company_name || ''}`.replace(/ · $/, '') : co.company_name,
+    html: `${style}${note ? `<p style="font-family:Arial;font-size:15px;white-space:pre-wrap">${note.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</p>` : ''}${body}`,
+    text: `${s.title}\n\n${s.content.sections.map((sec, k) => `${'ABCDEFGHIJKL'[k]}. ${sec.heading}\n${sec.steps.map(st => `- ${st.title} ${st.text}${st.done ? ` Done when: ${st.done}` : ''}`).join('\n')}`).join('\n\n')}` });
+  if (s.dealId) await require('../lib/crm').logActivity({ tenantId: req.tenantId, dealId: s.dealId, kind: 'email', userId: req.userId, body: `Sent the SOP “${s.title}” to ${to}${r && r.paused ? ' (held: email is paused)' : ''}` }).catch(() => {});
+  res.json({ ok: true, paused: !!(r && r.paused) });
+}));
+
 router.post('/api/crm/deals/:id/permits', requireAuth, wrap('Failed to add the permit', async (req, res) => {
   if (!(await ownDeal(req, res))) return;
   res.json({ permit: await permits.save({ tenantId: req.tenantId, dealId: req.params.id, body: req.body, userId: req.userId }) });

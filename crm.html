@@ -1186,6 +1186,22 @@ option{background:#15130f;color:var(--ink)}
 @media (max-width:640px){.cr-nav{box-shadow:0 0 26px -6px rgba(226,186,98,.5),0 -6px 18px rgba(0,0,0,.6)!important;border-top:1px solid rgba(232,196,116,.7)!important}
   .cr-tab.active{box-shadow:0 0 18px -2px rgba(240,204,120,.75)!important}}
 input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.25),0 0 18px -4px rgba(232,192,104,.6)}
+
+/* ---------- SOPs ---------- */
+#view-sops>.sh{--shot:url('/crm-art/setup-projects.jpg')}
+.sp-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.sp-cat{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;font:inherit;color:var(--ink);cursor:pointer;padding:18px;border-radius:18px;
+  border:1.5px solid var(--glow-edge,rgba(212,175,97,.55));background:linear-gradient(160deg,#221d13 0%,#15130f 60%);box-shadow:var(--glow-halo,0 0 22px -10px rgba(212,175,97,.5))}
+.sp-cat:hover{border-color:var(--gold);transform:translateY(-1px)}
+.sp-cat .sp-ic{width:38px;height:38px;flex-basis:38px;stroke-width:1.4}
+.sp-cat b{font-family:'Cormorant Garamond',Georgia,serif;font-size:27px;line-height:1.1;color:#f6ecd4}
+.sp-cat span{color:var(--ink3);font-size:16px;line-height:1.45}
+.sp-cat em{font-style:normal;color:var(--gold2);font-weight:700;font-size:16px;margin-top:4px}
+.sp-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;cursor:pointer;color:var(--ink)}
+.sp-rt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sp-rt b{font-size:18px}
+.sp-paper{width:100%;height:70vh;border:0;border-radius:10px;background:#fff;box-shadow:0 0 0 1px rgba(212,175,97,.5),0 0 30px -10px rgba(212,175,97,.6)}
+@media (max-width:640px){.sp-cats{grid-template-columns:1fr}.sp-paper{height:62vh}}
 </style>
 </head>
 <body>
@@ -1197,6 +1213,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
     <button class="cr-menu-btn" id="cr-menu-btn" aria-haspopup="true" aria-expanded="false" onclick="crMenu()">Account ▾</button>
     <div class="cr-menu" id="cr-menu" role="menu">
       <div class="who" id="cr-who"></div>
+      <button onclick="crMenu(false);crView('sops')">📋 SOPs</button>
       <button onclick="crMenu(false);crView('auto')">Automations</button>
       <button id="cr-reports-link" onclick="crMenu(false);crView('reports')" hidden>Weekly reports</button>
       <button onclick="crMenu(false);crView('refs')">Referrals &amp; partners</button>
@@ -1257,6 +1274,10 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
     <div class="sh"><div><div class="st" id="hm-hi">Welcome</div><div class="ss" id="hm-sub">Everything that matters today, in one place.</div></div></div>
     <div id="hm-box"><div class="pl-empty">Loading…</div></div>
   </section>
+  <section class="view" id="view-sops">
+    <div class="sh"><div><div class="st">SOPs</div><div class="ss">How every kind of job is done, step by step. Eagle I writes an SOP for anything you need, a whole project, one trade’s scope to send a vendor, a crew checklist, in your company’s own SOP style, ready to print or send.</div></div></div>
+    <div id="sp-box"><div class="pl-empty">Loading…</div></div>
+  </section>
   <section class="view" id="view-needs">
     <div id="ck-banner"></div>
     <div class="sh"><div><div class="st">Today</div><div class="ss">Only what needs a person: things Eagle I flagged, your tasks, and this week's site visits. Everything else is handled on its own.</div></div></div>
@@ -1314,6 +1335,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
     <div class="sh"><div><div class="st">Jobs</div><div class="ss">Every signed job: where it stands, what's next, and what's waiting on the homeowner. A signed contract gets its schedule laid out on its own.</div></div></div>
     <div id="jb-subbar"></div>
     <div class="pl-list" id="jb-list"><div class="pl-empty">Loading…</div></div>
+    <div class="vd-mbtns" style="margin:4px 0 14px"><button class="btn-xs p" onclick="crView('sops')">📋 SOPs: how each kind of job is done</button></div>
     <div class="pl-h">Subs &amp; vendors</div>
     <details class="pl-pb" id="vd-add"><summary style="cursor:pointer;font-weight:800">＋ Add a sub or vendor</summary>
       <div class="pl-form" style="margin-top:8px">
@@ -1764,6 +1786,7 @@ function crView(v){
   document.body.classList.toggle('on-ask',v==='ask');
   document.body.classList.toggle('on-start',v==='start');
   if(v==='home')hmLoad();
+  if(v==='sops')spLoad();
   if(v==='pipeline')plLoad();
   if(v==='needs'){plLoadNeeds();clLoad('cl-box');lpToday();}
   if(v==='calendar')cvLoad();
@@ -1906,7 +1929,7 @@ async function crInit(){
   // An email link to a job (#job/<deal id>): orders to send, permits.
   const jobDeal=start==='job'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||'')?hashParts[1]:null;
   // A new company (or a new person) is walked through setting up first.
-  crView(me.needsSetup?'start':priceDeal||jobDeal?'pipeline':['home','ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'home');
+  crView(me.needsSetup?'start':priceDeal||jobDeal?'pipeline':['home','sops','ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'home');
   if(priceDeal&&!me.needsSetup)prOpen(priceDeal);
   if(jobDeal&&!me.needsSetup)jbOpen(jobDeal);
   // Important things not set up yet: a reminder each time the CRM is opened (a slim bar when they came from a link to something).
@@ -3919,7 +3942,7 @@ async function hmLoad(){
   // Jump to: every other tab
   const J=[['pipeline','Pipeline','Every job you’re selling','/portfolio/levish-properties.jpg',true],['needs','Today','Flagged, tasks and visits','/portfolio/hero.jpg',true],['calendar','Calendar','Visits, phases, deliveries','/portfolio/group-blueprint.jpg',true],
     ['jobs','Jobs','Schedules, subs and files','/crm-art/setup-vendors.jpg',true],['estimates','Money','Estimates and invoices','/portfolio/levi-homes.jpg',crCan('money')||crCan('estimates')],['ask','Ask Eagle I','Ask anything, or talk','/crm-art/setup-emails.jpg',true],
-    ['checkin','Check-ins','What everyone did today','/crm-art/setup-projects.jpg',true],['team','Team','People and permissions','/crm-art/tip-house.jpg',crCan('team')],['auto','Automations','Emails that send themselves','/crm-art/setup-emails.jpg',crCan('emails')],['company','Company','Details, Google and Drive','/portfolio/hero.jpg',crCan('settings')]];
+    ['checkin','Check-ins','What everyone did today','/crm-art/setup-projects.jpg',true],['sops','SOPs','How every job is done','/portfolio/group-blueprint.jpg',true],['team','Team','People and permissions','/crm-art/tip-house.jpg',crCan('team')],['auto','Automations','Emails that send themselves','/crm-art/setup-emails.jpg',crCan('emails')],['company','Company','Details, Google and Drive','/portfolio/hero.jpg',crCan('settings')]];
   const card=(title,icon,body,empty,foot='')=>`<section class="hm-card"><h2 class="hm-h">${hmI(icon)}${title}</h2>${body||`<div class="hm-empty">${empty}</div>`}${foot}</section>`;
   box.innerHTML=`<div class="hm-tiles">${tiles}</div>
     <div class="hm-grid">
@@ -3929,6 +3952,88 @@ async function hmLoad(){
     </div>
     <section class="hm-jumpw"><h2 class="hm-h">${hmI('stage')}Jump to</h2><div class="hm-jump">${J.filter(x=>x[4]).map(([v,t,sub,img])=>`<button class="hm-j" style="--img:url('${img}')" onclick="crView('${v}')"><b>${t}</b><span>${sub}</span></button>`).join('')}</div></section>`;
 }
+/* ---------- SOPs (lib/crmSops.js) ---------- */
+const SP={cat:null,data:null,deals:null,vendors:null};
+const SP_ICON={kitchen:'<path d="M4 10h16v10H4z"/><path d="M4 14h16M9 10v10M7 6h3M14 6h3M8.5 6V4M15.5 6V4"/>',bath:'<path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M6 12V6a2 2 0 0 1 4 0M7 19l-1 2M17 19l1 2"/>',
+  whole_house:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M9 19.5v-4h6v4M9 12.5h2M13 12.5h2"/>',additions:'<path d="M3 20h18M4 20v-9l6-5 6 5v9"/><path d="M16 11h5v9M18.5 14v4M16.5 16h4"/>',
+  new_construction:'<path d="M4 21V9h4v12M8 9l6-5v17M14 21h6V11h-6"/><path d="M2 21h20"/>',structural:'<path d="M3 7h18M3 17h18M6 7v10M18 7v10M6 7l12 10M18 7 6 17"/>',all:'<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12l1.5 1.5L15 10M10 17h5"/>'};
+const SP_HINT={kitchen:'e.g. Full kitchen remodel SOP; or the cabinet installer’s scope for the Thomas kitchen; or how we protect floors during demo',bath:'e.g. Shower waterproofing checklist for the tile sub; or a full primary bath remodel SOP',
+  whole_house:'e.g. How we phase a whole-house remodel while the family lives there',additions:'e.g. Tying a second-story addition into the existing roof: framer’s scope',new_construction:'e.g. Foundation pour day checklist; or the full new-build SOP from lot to keys',
+  structural:'e.g. Removing a load-bearing wall: engineer, shoring, beam install and inspection',all:'e.g. How we close out every job and hand over to the homeowner'};
+async function spLoad(){
+  const box=document.getElementById('sp-box');if(!box)return;
+  try{SP.data=await plApi('/api/crm/sops');}catch(e){box.innerHTML=`<div class="pl-empty">${uxEsc(e.message)}</div>`;return;}
+  if(!SP.cat){spCats();return;}
+  spCat(SP.cat);
+}
+function spIc(k){return `<svg class="hm-i sp-ic" viewBox="0 0 24 24" aria-hidden="true">${SP_ICON[k]||SP_ICON.all}</svg>`;}
+function spCats(){SP.cat=null;const d=SP.data,box=document.getElementById('sp-box');
+  const ref=d.sops.filter(x=>x.reference);
+  box.innerHTML=`<div class="sp-cats">${d.categories.filter(c=>c.key!=='all').map(c=>`<button class="sp-cat" onclick="spCat('${c.key}')">${spIc(c.key)}<b>${uxEsc(c.label)}</b><span>${uxEsc(c.about)}</span><em>${c.count?c.count+' SOP'+(c.count===1?'':'s'):'Make the first one'} ›</em></button>`).join('')}
+    <button class="sp-cat" onclick="spCat('all')">${spIc('all')}<b>Company SOPs</b><span>${uxEsc(d.categories.find(c=>c.key==='all').about)}</span><em>${(d.categories.find(c=>c.key==='all').count)} SOP${d.categories.find(c=>c.key==='all').count===1?'':'s'} ›</em></button></div>
+    ${ref.length?`<div class="pl-h" style="margin-top:20px">Your company’s SOP style</div><div class="sm" style="margin-top:0">Every SOP Eagle I writes follows ${ref.length===1?'this one':'these'}: lettered sections, numbered steps, “Done when”, initials, and your rules.</div><div class="pl-list">${ref.map(spRow).join('')}</div>`:''}`;
+  scrollTo(0,0);}
+function spRow(x){return `<button class="pl-item sp-row" onclick="spOpen('${x.id}')"><span class="sp-rt"><b>${uxEsc(x.title)}</b><span class="sm" style="margin:0">${uxEsc([x.kindLabel,x.deal,x.vendor,x.reference?'Your company’s own SOP':'',x.createdBy?'by '+x.createdBy:'',x.updatedAt?fdate(x.updatedAt):''].filter(Boolean).join(' · '))}</span></span><span class="hm-chev" aria-hidden="true">›</span></button>`;}
+async function spCat(key){
+  SP.cat=key;const d=SP.data,c=d.categories.find(x=>x.key===key),box=document.getElementById('sp-box');
+  const mine=d.sops.filter(x=>x.category===key&&!x.reference),shared=key==='all'?[]:d.sops.filter(x=>x.category==='all');
+  box.innerHTML=`<button class="btn-xs" onclick="spCats()">← All kinds of work</button>
+    <section class="hm-card sp-make" style="margin-top:12px"><h2 class="hm-h">${spIc(key)}${uxEsc(c.label)}</h2><div class="sm" style="margin-top:-4px">${uxEsc(c.about)}</div>
+      <div class="pl-h" style="margin-top:14px">Make an SOP</div>
+      <div class="pl-form">
+        <div class="full"><label for="sp-req">What should it cover?</label><textarea id="sp-req" class="cred-input" rows="3" placeholder="${uxEsc(SP_HINT[key]||'')}"></textarea></div>
+        <div><label for="sp-kind">What kind</label><select id="sp-kind" class="cred-input">${Object.entries(d.kinds).map(([k,l])=>`<option value="${k}">${uxEsc(l)}</option>`).join('')}</select></div>
+        <div><label for="sp-deal">For a project <span class="sm">(optional)</span></label><select id="sp-deal" class="cred-input"><option value="">Any project</option></select></div>
+        <div><label for="sp-vendor">For a sub or vendor <span class="sm">(optional)</span></label><select id="sp-vendor" class="cred-input"><option value="">No one in particular</option></select></div>
+        <div><label for="sp-aud">Who reads it <span class="sm">(optional)</span></label><input id="sp-aud" class="cred-input" placeholder="e.g. the tile crew, the PM, the homeowner"></div>
+      </div>
+      <div class="vd-mbtns" style="margin-top:12px"><button class="btn btn-blue" onclick="spMake(this)">✦ Write the SOP</button></div><div class="sm" id="sp-msg" role="status" aria-live="polite"></div>
+    </section>
+    <div class="pl-h">${mine.length?`${uxEsc(c.label)} SOPs (${mine.length})`:'No SOPs here yet'}</div>
+    ${mine.length?`<div class="pl-list">${mine.map(spRow).join('')}</div>`:`<div class="sm">The ones you make show here, ready to print, change or send.</div>`}
+    ${shared.length?`<div class="pl-h" style="margin-top:18px">Company SOPs (every kind of work)</div><div class="pl-list">${shared.map(spRow).join('')}</div>`:''}`;
+  scrollTo(0,0);
+  try{
+    if(!SP.deals)SP.deals=((await plApi('/api/crm/pipeline')).deals||[]).filter(x=>!['lost'].includes(x.stage)).sort((a,b)=>String(a.title).localeCompare(String(b.title)));
+    if(!SP.vendors)SP.vendors=((await plApi('/api/crm/vendors')).vendors||[]).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    const ds=document.getElementById('sp-deal'),vs=document.getElementById('sp-vendor');
+    if(ds)ds.innerHTML='<option value="">Any project</option>'+SP.deals.map(x=>`<option value="${x.id}">${uxEsc(x.title)}${x.contact_name?' · '+uxEsc(x.contact_name):''}</option>`).join('');
+    if(vs)vs.innerHTML='<option value="">No one in particular</option>'+SP.vendors.map(v=>`<option value="${v.id}">${uxEsc(v.name)}${v.trade?' ('+uxEsc(v.trade)+')':''}</option>`).join('');
+  }catch(e){}
+}
+async function spMake(btn){
+  const v=id=>(document.getElementById(id)||{}).value||'';const m=document.getElementById('sp-msg');
+  if(!v('sp-req').trim()){m.textContent='Say what the SOP should cover first.';document.getElementById('sp-req').focus();return;}
+  btn.disabled=true;m.textContent='Writing it in your company’s SOP style… this takes about a minute.';
+  try{const r=await plApi('/api/crm/sops',{body:{category:SP.cat,kind:v('sp-kind'),request:v('sp-req'),dealId:v('sp-deal')||null,vendorId:v('sp-vendor')||null,audience:v('sp-aud')}});
+    CR.dirty=false;m.textContent='';await spLoad();spOpen(r.sop.id);}
+  catch(e){m.textContent=e.message;}btn.disabled=false;
+}
+async function spOpen(id){
+  uxOpen(uxHead('📋 Loading the SOP…'));
+  let s;try{s=(await plApi('/api/crm/sops/'+id)).sop;}catch(e){uxOpen(uxHead('Couldn’t open the SOP',uxEsc(e.message)));return;}
+  const url='/api/crm/sops/'+id+'/print';
+  uxOpen(uxHead('📋 '+uxEsc(s.title),uxEsc([s.categoryLabel,s.kindLabel,s.deal,s.vendor].filter(Boolean).join(' · ')))+`
+    <div class="vd-mbtns" style="margin:0 0 10px"><a class="btn btn-blue" href="${url}" target="_blank" rel="noopener" style="text-decoration:none">🖨 Print or save as PDF</a><button class="btn-xs" onclick="spEmailForm('${id}')">✉ Send it</button><button class="btn-xs" onclick="spChangeForm('${id}')">✎ Change it</button>${s.reference?'':`<button class="btn-xs" onclick="spDelete('${id}')">Delete</button>`}</div>
+    <div id="sp-act"></div>
+    <iframe class="sp-paper" src="${url}" title="${uxEsc(s.title)}"></iframe>`);
+  SP.open=s;
+}
+function spEmailForm(id){const s=SP.open||{};const el=document.getElementById('sp-act');if(!el)return;
+  el.innerHTML=`<div class="pl-pb" style="margin-bottom:10px"><div class="pl-form"><div class="full"><label for="sp-to">Send it to</label><input id="sp-to" class="cred-input" type="email" inputmode="email" value="${uxEsc(s.vendorEmail||'')}" placeholder="name@company.com"></div><div class="full"><label for="sp-note">A note on top <span class="sm">(optional)</span></label><textarea id="sp-note" class="cred-input" rows="2" placeholder="e.g. Please read before you start and sign the last page."></textarea></div></div><div class="vd-mbtns"><button class="btn btn-blue" onclick="spEmail('${id}',this)">Send</button></div><div class="sm" id="sp-emsg"></div></div>`;
+  document.getElementById('sp-to').focus();}
+async function spEmail(id,btn){const to=document.getElementById('sp-to').value,note=document.getElementById('sp-note').value,m=document.getElementById('sp-emsg');
+  if(!confirm(`Send “${(SP.open||{}).title}” to ${to}?`))return;btn.disabled=true;
+  try{const r=await plApi('/api/crm/sops/'+id+'/email',{body:{to,note}});CR.dirty=false;m.textContent=r.paused?'Saved to send: email is paused right now, so it goes out once email is turned back on.':'Sent to '+to+'.';showNotif(r.paused?'Held':'Sent',r.paused?'Email is paused right now.':'The SOP is on its way to '+to+'.');}
+  catch(e){m.textContent=e.message;}btn.disabled=false;}
+function spChangeForm(id){const el=document.getElementById('sp-act');if(!el)return;
+  el.innerHTML=`<div class="pl-pb" style="margin-bottom:10px"><label for="sp-chg" style="font-weight:700">What should change?</label><textarea id="sp-chg" class="cred-input" rows="3" placeholder="e.g. Add a step to photograph the waterproofing before tile; make it shorter for the crew; add a Spanish line under each step"></textarea><div class="vd-mbtns" style="margin-top:8px"><button class="btn btn-blue" onclick="spChange('${id}',this)">✦ Change it</button></div><div class="sm" id="sp-cmsg"></div></div>`;
+  document.getElementById('sp-chg').focus();}
+async function spChange(id,btn){const t=document.getElementById('sp-chg').value,m=document.getElementById('sp-cmsg');if(!t.trim()){m.textContent='Say what to change.';return;}
+  btn.disabled=true;m.textContent='Changing it… about a minute.';
+  try{await plApi('/api/crm/sops/'+id+'/revise',{body:{instruction:t}});CR.dirty=false;spLoad();spOpen(id);}catch(e){m.textContent=e.message;btn.disabled=false;}}
+async function spDelete(id){if(!confirm('Delete this SOP? This can’t be undone.'))return;
+  try{await plApi('/api/crm/sops/'+id,{method:'DELETE'});uxClose();showNotif('Deleted','The SOP is gone.');spLoad();}catch(e){showNotif('Couldn’t delete it',e.message);}}
 async function plOpenDeal(id){
   uxOpen(uxHead('Loading…'));
   let d;
