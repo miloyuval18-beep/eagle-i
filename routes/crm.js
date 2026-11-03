@@ -538,6 +538,11 @@ router.get('/api/crm/summary', requireAuth, async (req, res) => {
 
 // Everything that needs this person today: exceptions, their open tasks (and
 // unassigned ones), and site visits coming up this week.
+// Home: one person's whole picture on the first screen (lib/crmHome.js).
+router.get('/api/crm/home', requireAuth, async (req, res) => {
+  try { res.json(await require('../lib/crmHome').home(req.crmUser)); } catch (err) { fail(res, err, 'Failed to load Home'); }
+});
+
 router.get('/api/crm/today', requireAuth, async (req, res) => {
   try {
     // "My team": the owner and admins see everyone's; a project manager or

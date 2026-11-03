@@ -1132,6 +1132,43 @@ option{background:#15130f;color:var(--ink)}
 .vd-find-l{display:block;font-weight:700;font-size:16.5px;margin-bottom:6px;color:var(--ink2)}
 .vd-find input{width:100%;font-size:18px}
 .vd-find .pl-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+
+/* ---------- Home ---------- */
+#view-home>.sh{--shot:url('/portfolio/hero.jpg')}
+.hm-i{width:22px;height:22px;flex:0 0 22px;fill:none;stroke:var(--gold);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.hm-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 18px}
+.hm-tile{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;cursor:pointer;font:inherit;color:var(--ink);border:1.5px solid rgba(212,175,97,.45);border-radius:16px;padding:14px 16px;
+  background:linear-gradient(135deg,#221d13,#15130f);box-shadow:0 0 22px -12px rgba(212,175,97,.55)}
+.hm-tile:hover{border-color:var(--gold)}
+.hm-tile b{font-family:'Montserrat','Inter',sans-serif;font-weight:700;font-size:34px;line-height:1;color:#f2d690;font-variant-numeric:lining-nums tabular-nums}
+.hm-tile span{font-size:16px;color:var(--ink2);font-weight:600}
+.hm-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px;align-items:start}
+.hm-card{border:1.5px solid rgba(212,175,97,.4);border-radius:18px;background:linear-gradient(180deg,#1a1712 0%,#15130f 70%);padding:16px 16px 10px;margin-bottom:16px;box-shadow:0 0 26px -16px rgba(212,175,97,.55)}
+.hm-h{display:flex;align-items:center;gap:10px;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:28px;color:#f6ecd4;margin:0 0 8px}
+.hm-h .hm-i{width:26px;height:26px;flex-basis:26px}
+.hm-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;color:var(--ink);background:none;border:0;border-top:1px solid var(--bdr);padding:12px 4px;cursor:pointer}
+.hm-card .hm-row:first-of-type{border-top:0}
+.hm-row:hover{background:rgba(212,175,97,.06)}
+.hm-row.urgent .hm-i{stroke:#ff8a80}
+.hm-rt{flex:1;min-width:0;display:flex;flex-direction:column}
+.hm-rtt{font-weight:700;font-size:17.5px;line-height:1.35}
+.hm-rs{font-size:16px;color:var(--ink3);line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.hm-chev{color:var(--gold);font-size:26px;line-height:1}
+.hm-empty{color:var(--ink3);padding:8px 4px 12px;font-size:17px}
+.hm-more{display:block;width:100%;margin:6px 0 4px;background:none;border:0;color:var(--gold2);font:inherit;font-weight:700;font-size:16.5px;cursor:pointer;text-align:right}
+.hm-jumpw{margin-top:4px}
+.hm-jump{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.hm-j{position:relative;overflow:hidden;min-height:110px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:2px;text-align:left;cursor:pointer;font:inherit;color:#f6ecd4;padding:14px 16px;
+  border:1.5px solid rgba(212,175,97,.45);border-radius:16px;background:linear-gradient(180deg,rgba(15,14,11,.15) 0%,rgba(15,14,11,.88) 72%),var(--img) center/cover no-repeat #15130f;box-shadow:0 0 22px -14px rgba(212,175,97,.6)}
+.hm-j:hover{border-color:var(--gold);transform:translateY(-1px)}
+.hm-j b{font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;line-height:1.05;text-shadow:0 2px 8px rgba(0,0,0,.7)}
+.hm-j span{font-size:15.5px;color:#e3d8bf;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+@media (max-width:860px){.hm-grid{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .hm-tiles{grid-template-columns:1fr 1fr;gap:10px}.hm-tile{padding:12px 14px}.hm-tile b{font-size:34px}
+  .hm-jump{grid-template-columns:1fr 1fr;gap:10px}.hm-j{min-height:96px;padding:12px}.hm-j b{font-size:22px}.hm-j span{font-size:14.5px}
+  .cr-tab[data-view="ask"]{display:none}
+}
 </style>
 </head>
 <body>
@@ -1171,6 +1208,7 @@ option{background:#15130f;color:var(--ink)}
     </div>
   </div>
   <nav class="cr-nav" id="cr-nav" aria-label="CRM sections">
+    <button class="cr-tab" data-view="home" onclick="crView('home')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button>
     <button class="cr-tab" data-view="ask" onclick="crView('ask')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.9 5 5.1 1.9-5.1 1.9L12 17.4l-1.9-5.1L5 10.4l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Ask</button>
     <button class="cr-tab" data-view="pipeline" onclick="crView('pipeline')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Pipeline</button>
     <button class="cr-tab" data-view="needs" onclick="crView('needs')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.4 2.4 4.8-5"/></svg>Today<span class="tbadge" id="pl-needs-badge">0</span></button>
@@ -1198,6 +1236,10 @@ option{background:#15130f;color:var(--ink)}
     <div class="pl-list" id="pl-list"><div class="pl-empty">Loading your pipeline…</div></div>
   </section>
   <section class="view" id="view-checkin"><div id="ck-box"><div class="pl-empty">Loading…</div></div></section>
+  <section class="view" id="view-home">
+    <div class="sh"><div><div class="st" id="hm-hi">Welcome</div><div class="ss" id="hm-sub">Everything that matters today, in one place.</div></div></div>
+    <div id="hm-box"><div class="pl-empty">Loading…</div></div>
+  </section>
   <section class="view" id="view-needs">
     <div id="ck-banner"></div>
     <div class="sh"><div><div class="st">Today</div><div class="ss">Only what needs a person: things Eagle I flagged, your tasks, and this week's site visits. Everything else is handled on its own.</div></div></div>
@@ -1704,6 +1746,7 @@ function crView(v){
   if(typeof aiMount==='function')aiMount(v==='ask');
   document.body.classList.toggle('on-ask',v==='ask');
   document.body.classList.toggle('on-start',v==='start');
+  if(v==='home')hmLoad();
   if(v==='pipeline')plLoad();
   if(v==='needs'){plLoadNeeds();clLoad('cl-box');lpToday();}
   if(v==='calendar')cvLoad();
@@ -1846,7 +1889,7 @@ async function crInit(){
   // An email link to a job (#job/<deal id>): orders to send, permits.
   const jobDeal=start==='job'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||'')?hashParts[1]:null;
   // A new company (or a new person) is walked through setting up first.
-  crView(me.needsSetup?'start':priceDeal||jobDeal?'pipeline':['ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'ask');
+  crView(me.needsSetup?'start':priceDeal||jobDeal?'pipeline':['home','ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'home');
   if(priceDeal&&!me.needsSetup)prOpen(priceDeal);
   if(jobDeal&&!me.needsSetup)jbOpen(jobDeal);
   // Important things not set up yet: a reminder each time the CRM is opened (a slim bar when they came from a link to something).
@@ -3797,6 +3840,68 @@ function plNextStep(x,n){
   const go={tasks:['See tasks',"document.getElementById('pld-task').scrollIntoView({block:'center'})"],invoices:['See invoices',"document.getElementById('pld-inv').scrollIntoView({block:'center'})"],estimates:['See estimates',"document.getElementById('pld-est').scrollIntoView({block:'center'})"],job:['Open the job',`jbOpen('${x.id}')`],stage:['Change the stage',"document.getElementById('pld-stage').focus()"]}[n.action];
   const contact=n.action==='contact'?(x.contact_phone?`<a class="btn-xs p" href="tel:${uxEsc(x.contact_phone)}">📞 Call</a>`:'')+(x.contact_email?`<a class="btn-xs" href="mailto:${uxEsc(x.contact_email)}">✉️ Email</a>`:''):'';
   return `<div class="nx nx-${n.tone}"><div class="nx-l">Next step</div><div class="nx-t">${uxEsc(n.text)}</div>${go||contact?`<div class="vd-mbtns" style="margin-top:8px">${go?`<button class="btn-xs p" onclick="${go[1]}">${go[0]}</button>`:''}${contact}</div>`:''}</div>`;
+}
+/* ---------- Home: one person's whole picture (lib/crmHome.js) ---------- */
+const HM_ICON={
+  alert:'<path d="M12 3 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.1"/>',task:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12.3 2.4 2.4 4.6-4.9"/>',
+  mail:'<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>',visit:'<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  phase:'<path d="M3 20h18M5 20V9l7-5 7 5v11"/><path d="M9 20v-6h6v6"/>',order:'<path d="M3 7h13v9H3zM16 10h3.5L21 13v3h-5"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/>',
+  permit:'<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',lead:'<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4.2 4-6.5 8-6.5s7.2 2.3 8 6.5"/>',
+  money:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/>',stage:'<path d="M4 12h12M12 6l6 6-6 6"/>',note:'<path d="M5 4h14v16H5z"/><path d="M8.5 9h7M8.5 13h7M8.5 17h4"/>',
+  file:'<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/>',checkin:'<path d="M4 6h16v10H8l-4 4z"/><path d="M8.5 11h7"/>',fyi:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/>'
+};
+const hmI=(k)=>`<svg class="hm-i" viewBox="0 0 24 24" aria-hidden="true">${HM_ICON[k]||HM_ICON.note}</svg>`;
+const hmWhen=(d)=>{if(!d)return'';const t=new Date(d),now=new Date(),diff=(t-now)/86400000;const day=t.toLocaleDateString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric'});
+  const same=t.toLocaleDateString('en-CA',{timeZone:'America/Chicago'})===now.toLocaleDateString('en-CA',{timeZone:'America/Chicago'});
+  const tm=t.toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'});return same?'Today '+tm:Math.abs(diff)<7?day+(/T00:00|T05:00|T06:00/.test(String(d))?'':' '+tm):day;};
+function hmRow({icon,title,sub,go,tag,urgent}){return `<button class="hm-row${urgent?' urgent':''}" onclick="${go}">${hmI(icon)}<span class="hm-rt"><span class="hm-rtt">${uxEsc(title)}${tag?` <span class="pl-tag${urgent?' bad':''}">${uxEsc(tag)}</span>`:''}</span>${sub?`<span class="hm-rs">${uxEsc(sub)}</span>`:''}</span><span class="hm-chev" aria-hidden="true">›</span></button>`;}
+const hmDeal=(id)=>id?`plOpenDeal('${id}')`:`crView('needs')`;
+const hmJob=(id)=>id?`jbOpen('${id}')`:`crView('jobs')`;
+async function hmLoad(){
+  const box=document.getElementById('hm-box');if(!box)return;
+  const first=String((CR.me&&CR.me.name)||'').split(/\s+/)[0];
+  const h=+new Date().toLocaleString('en-US',{timeZone:'America/Chicago',hour:'numeric',hour12:false});
+  document.getElementById('hm-hi').textContent=`${h<12?'Good morning':h<17?'Good afternoon':'Good evening'}${first?', '+first:''}`;
+  let d;try{d=await plApi('/api/crm/home');}catch(e){box.innerHTML=`<div class="pl-empty">${uxEsc(e.message)}</div>`;return;}
+  const n=d.needs,r=d.reminders,c=d.counts;
+  const day=new Date().toLocaleDateString('en-US',{timeZone:'America/Chicago',weekday:'long',month:'long',day:'numeric'});
+  const bits=[c.needsYou?`${c.needsYou} thing${c.needsYou===1?'':'s'} need${c.needsYou===1?'s':''} you`:'nothing urgent',c.toReply?`${c.toReply} email${c.toReply===1?'':'s'} to answer`:'',r.visits.length?`${r.visits.length} visit${r.visits.length===1?'':'s'} this week`:''].filter(Boolean);
+  document.getElementById('hm-sub').textContent=`${day}. ${bits.join(', ').replace(/^./,x=>x.toUpperCase())}.`;
+  const tile=(num,label,go,icon)=>`<button class="hm-tile" onclick="${go}">${hmI(icon)}<b>${num}</b><span>${label}</span></button>`;
+  const tiles=[tile(c.needsYou,'Need you',"crView('needs')",'alert'),tile(c.toReply,'Emails to answer',"crView('needs')",'mail'),
+    tile(c.selling,c.sellingValue!=null&&c.sellingValue>0?`Being sold · ${plMoney(c.sellingValue)}`:'Being sold',"crView('pipeline')",'stage'),tile(c.jobs,'Jobs underway',"crView('jobs')",'phase')].join('');
+  // Needs you first
+  const needs=[
+    ...n.flagged.map(i=>hmRow({icon:i.urgent?'alert':i.kind==='email_reply'||i.kind==='email_followup'?'mail':'alert',title:i.title,sub:[i.deal,i.detail&&i.detail.split('\n')[0]].filter(Boolean).join(' · '),go:hmDeal(i.dealId),urgent:i.urgent,tag:i.urgent?'Urgent':''})),
+    ...n.overdue.map(k=>hmRow({icon:'task',title:k.title,sub:[k.deal,'was due '+hmWhen(k.due)].filter(Boolean).join(' · '),go:k.dealId?hmDeal(k.dealId):"crView('needs')",tag:'Overdue',urgent:true})),
+    ...n.today.map(k=>hmRow({icon:'task',title:k.title,sub:[k.deal,'due today'].filter(Boolean).join(' · '),go:k.dealId?hmDeal(k.dealId):"crView('needs')"})),
+    ...n.toReply.filter(x=>!n.flagged.some(i=>i.title.startsWith(x.who))).map(x=>hmRow({icon:'mail',title:`${x.who} is waiting for your reply`,sub:x.reason||x.subject,go:"crView('needs')",urgent:x.urgent,tag:x.urgent?'Urgent':''}))
+  ];
+  const more=n.flaggedTotal+n.overdueTotal-Math.min(n.flagged.length+n.overdue.length,needs.length);
+  // Reminders: the next few days
+  const rem=[
+    ...r.visits.map(v=>hmRow({icon:'visit',title:`Site visit: ${v.title}`,sub:[hmWhen(v.at),v.contact,v.address].filter(Boolean).join(' · '),go:hmDeal(v.dealId)})),
+    ...r.tasks.map(k=>hmRow({icon:'task',title:k.title,sub:[k.deal,'due '+hmWhen(k.due)].filter(Boolean).join(' · '),go:k.dealId?hmDeal(k.dealId):"crView('needs')"})),
+    ...r.phases.map(p=>hmRow({icon:'phase',title:`${p.title} starts`,sub:[p.deal,hmWhen(p.start)].filter(Boolean).join(' · '),go:hmJob(p.dealId)})),
+    ...r.orders.map(o=>hmRow({icon:'order',title:`Send the order: ${o.title}`,sub:[o.vendor,o.deal,'order by '+hmWhen(o.orderBy)].filter(Boolean).join(' · '),go:hmJob(o.dealId)})),
+    ...r.permits.map(p=>hmRow({icon:'permit',title:`${p.title}: ${p.status==='needed'?'not applied for yet':p.status==='corrections'?'corrections asked for':'waiting on the city'}`,sub:p.deal,go:hmJob(p.dealId)}))
+  ];
+  const setup=(typeof SETUP_R!=='undefined'&&SETUP_R.items&&SETUP_R.items.length)?`<button class="hm-row" onclick="remOpen()">${hmI('fyi')}<span class="hm-rt"><span class="hm-rtt">${SETUP_R.items.length} thing${SETUP_R.items.length===1?'':'s'} to set up</span><span class="hm-rs">${uxEsc(SETUP_R.items.slice(0,3).map(x=>x.title).join(' · '))}</span></span><span class="hm-chev">›</span></button>`:'';
+  // Updates
+  const ups=d.updates.map(u=>hmRow({icon:u.icon,title:u.text,sub:[u.deal,u.who,hmWhen(u.at)].filter(Boolean).join(' · '),go:u.link?`crView('checkin');CK.tab='team';ckLoad()`:u.dealId?hmDeal(u.dealId):"crView('pipeline')"}));
+  if(c.fyi)ups.push(hmRow({icon:'fyi',title:`${c.fyi} email${c.fyi===1?'':'s'} for your information`,sub:'You were copied, or it was for someone else. Nothing needed from you.',go:"crView('needs')"}));
+  // Jump to: every other tab
+  const J=[['pipeline','Pipeline','Every job you’re selling','/portfolio/levish-properties.jpg',true],['needs','Today','Flagged, tasks and visits','/portfolio/hero.jpg',true],['calendar','Calendar','Visits, phases, deliveries','/portfolio/group-blueprint.jpg',true],
+    ['jobs','Jobs','Schedules, subs and files','/crm-art/setup-vendors.jpg',true],['estimates','Money','Estimates and invoices','/portfolio/levi-homes.jpg',crCan('money')||crCan('estimates')],['ask','Ask Eagle I','Ask anything, or talk','/crm-art/setup-emails.jpg',true],
+    ['checkin','Check-ins','What everyone did today','/crm-art/setup-projects.jpg',true],['team','Team','People and permissions','/crm-art/tip-house.jpg',crCan('team')],['auto','Automations','Emails that send themselves','/crm-art/setup-emails.jpg',crCan('emails')],['company','Company','Details, Google and Drive','/portfolio/hero.jpg',crCan('settings')]];
+  const card=(title,icon,body,empty,foot='')=>`<section class="hm-card"><h2 class="hm-h">${hmI(icon)}${title}</h2>${body||`<div class="hm-empty">${empty}</div>`}${foot}</section>`;
+  box.innerHTML=`<div class="hm-tiles">${tiles}</div>
+    <div class="hm-grid">
+      <div>${card('Needs you first','alert',needs.slice(0,10).join(''),'Nothing needs you right now. Nice.',more>0?`<button class="hm-more" onclick="crView('needs')">See all ${n.flaggedTotal+n.overdueTotal} in Today ›</button>`:'')}
+        ${card('Reminders','task',setup+rem.slice(0,10).join(''),'Nothing coming up in the next few days.')}</div>
+      <div>${card('Updates','note',ups.join(''),'Nothing new in the last few days. Updates from your projects, check-ins, customers’ emails and payments show here.')}</div>
+    </div>
+    <section class="hm-jumpw"><h2 class="hm-h">${hmI('stage')}Jump to</h2><div class="hm-jump">${J.filter(x=>x[4]).map(([v,t,sub,img])=>`<button class="hm-j" style="--img:url('${img}')" onclick="crView('${v}')"><b>${t}</b><span>${sub}</span></button>`).join('')}</div></section>`;
 }
 async function plOpenDeal(id){
   uxOpen(uxHead('Loading…'));
