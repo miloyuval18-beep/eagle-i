@@ -121,6 +121,7 @@ input[type=text].nm{width:100%;border:1.5px solid var(--bdr2);border-radius:8px;
 <div class="foot">Powered by Eagle I CRM</div>
 </div>
 <script src="/talk.js"></script>
+<script src="/cc-tips.js"></script>
 <script>
 (()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
 
@@ -138,7 +139,7 @@ const T={en:{loading:'Loading your project…',invalid:'This link is not valid.'
   needs:'{n} thing{s} waiting for you',needsBtn:'Take a look',
   qWeek:'What’s happening this week?',qDone:'When will it be finished?',qNext:'What’s next?',qWait:'What’s waiting for my OK?',qPick:'What do I still need to pick?',qPaid:'What do I owe right now?',qDocs:'Where are my plans and contract?',qWarr:'What warranties do I have?',qPicked:'What have I picked so far?',qVisit:'When is the next visit?',qChanged:'What changes have I approved?',qTeam:'How do I reach my team?',punch:'Finishing touches',punchIntro:'What’s left before we’re done. We tick each one off as it’s finished.',
   coHist:'Your change orders',coApproved:'Approved by {n} on {d}',coDeclined:'Declined',coNet:'Total change to your price',
-  selections:'Your selections',allowance:'Allowance {a}',chooseBy:'· choose by {d}',over:'({a} over)',choose:'Choose',pickFirst:'Pick one of the options first.',savedOver:'Saved. That’s {a} over the allowance; your team will send a change order for the difference.',saved:'Saved. Thank you!',
+  selections:'Your selections',allowance:'Allowance {a}',chooseBy:'· choose by {d}',over:'({a} over)',choose:'Choose',pickFirst:'Pick one of the options first.',coName:'Type your full name to approve.',coSure:'Approve change order #{n}? {what}',coNo:'Decline change order #{n}? Your team will be told.',selSure:'Pick “{x}”? Your team is told straight away.',savedOver:'Saved. That’s {a} over the allowance; your team will send a change order for the difference.',saved:'Saved. Thank you!',
   schedule:'Schedule',inProgress:'· in progress',shift:'Dates can shift with weather, inspections and deliveries. Your team will keep this up to date.',
   uploading:'Uploading {n} photo{s}…',tooBig:'{f} is over 8 MB.',upFail:'Upload failed.',added:'Added {n} photo{s}. Your team can see {them} now.',
   status:{new:'Getting started',qualified:'Getting started',site_visit:'Site visit',design_agreement:'Design',in_design:'Design',proposal:'Proposal',signed:'Getting ready to build',production:'Under construction',complete:'Complete',lost:'Closed'},
@@ -154,7 +155,7 @@ es:{loading:'Cargando su proyecto…',invalid:'Este enlace no es válido.',nextV
   needs:'{n} cosa{s} esperando su respuesta',needsBtn:'Ver',
   qWeek:'¿Qué pasa esta semana?',qDone:'¿Cuándo se termina?',qNext:'¿Qué sigue?',qWait:'¿Qué espera mi aprobación?',qPick:'¿Qué me falta escoger?',qPaid:'¿Cuánto debo ahora?',qDocs:'¿Dónde están mis planos y el contrato?',qWarr:'¿Qué garantías tengo?',qPicked:'¿Qué he escogido hasta ahora?',qVisit:'¿Cuándo es la próxima visita?',qChanged:'¿Qué cambios he aprobado?',qTeam:'¿Cómo contacto a mi equipo?',punch:'Detalles finales',punchIntro:'Lo que falta antes de terminar. Vamos marcando cada punto cuando queda listo.',
   coHist:'Sus órdenes de cambio',coApproved:'Aprobada por {n} el {d}',coDeclined:'Rechazada',coNet:'Cambio total a su precio',
-  selections:'Sus selecciones',allowance:'Presupuesto asignado {a}',chooseBy:'· escoger antes del {d}',over:'({a} de más)',choose:'Escoger',pickFirst:'Primero escoja una de las opciones.',savedOver:'Guardado. Son {a} por encima del presupuesto asignado; su equipo le enviará una orden de cambio por la diferencia.',saved:'Guardado. ¡Gracias!',
+  selections:'Sus selecciones',allowance:'Presupuesto asignado {a}',chooseBy:'· escoger antes del {d}',over:'({a} de más)',choose:'Escoger',pickFirst:'Primero escoja una de las opciones.',coName:'Escriba su nombre completo para aprobar.',coSure:'¿Aprueba la orden de cambio #{n}? {what}',coNo:'¿Rechaza la orden de cambio #{n}? Se le avisará a su equipo.',selSure:'¿Escoge “{x}”? Se le avisa a su equipo enseguida.',savedOver:'Guardado. Son {a} por encima del presupuesto asignado; su equipo le enviará una orden de cambio por la diferencia.',saved:'Guardado. ¡Gracias!',
   schedule:'Calendario',inProgress:'· en curso',shift:'Las fechas pueden cambiar por el clima, las inspecciones y las entregas. Su equipo lo mantendrá al día.',
   uploading:'Subiendo {n} foto{s}…',tooBig:'{f} pesa más de 8 MB.',upFail:'No se pudo subir.',added:'Se agregaron {n} foto{s}. Su equipo ya puede verla{s}.',
   status:{new:'Comenzando',qualified:'Comenzando',site_visit:'Visita al sitio',design_agreement:'Diseño',in_design:'Diseño',proposal:'Propuesta',signed:'Preparando la obra',production:'En construcción',complete:'Terminado',lost:'Cerrado'},
@@ -182,9 +183,16 @@ async function load(){
   try{
     const r=await fetch('/api/crm-public/portal/'+token);const d=await r.json();
     if(!r.ok)throw new Error((d.error&&d.error.message)||t('invalid'));
-    P=d.portal;if(P.lang==='es'&&!chosenLang)L='es';setLangBtn();render();setupTalk();
+    P=d.portal;if(P.lang==='es'&&!chosenLang)L='es';setLangBtn();render();setupTalk();if(!PREVIEW)homeTips();
   }catch(e){document.getElementById('app').innerHTML='<div class="card">'+esc(e.message)+'</div>';document.getElementById('msgs').innerHTML=`<div class="hello"><p>${esc(e.message)}</p></div>`;}
 }
+// First-time tips (public/cc-tips.js), after the talk-or-type question.
+function homeTips(){const co=(P&&P.company&&P.company.name)||'your builder';
+  ccTips({key:'portal',lang:()=>L,button:'#lang-btn',blocked:()=>!!document.querySelector('.et-shade,.et-tour'),steps:[
+    {en:['Your project page',`Your private page for your project with ${co}. Only people with this link can open it, so keep it to yourself.`],es:['La página de su proyecto',`Su página privada para su proyecto con ${co}. Solo quien tenga este enlace puede abrirla; no la comparta.`]},
+    {el:'#t-ask',en:['Ask anything','✦ Project questions: ask in your own words, by typing or with 🎙 Talk. Answers come from your project records; anything it can’t answer goes straight to your team.'],es:['Pregunte lo que quiera','✦ Preguntas del proyecto: pregunte con sus propias palabras, escribiendo o con 🎙 Hablar. Las respuestas vienen de su proyecto; lo que no sepa va directo a su equipo.']},
+    {el:'#t-proj',en:['My project','The schedule, updates from your team, photos, estimates, invoices and things for you to pick. A number on this tab means something is waiting for you.'],es:['Mi proyecto','El calendario, las novedades de su equipo, fotos, presupuestos, facturas y lo que tiene que elegir. Un número en esta pestaña significa que algo le espera.']},
+    {en:['Write to your team','At the bottom of My project you can message your team any time. “Español” at the top switches the language. Tap ? to see these tips again.'],es:['Escriba a su equipo','Al final de Mi proyecto puede escribir a su equipo cuando quiera. “English” arriba cambia el idioma. Toque ? para ver estos consejos otra vez.']}]});}
 function render(){
   const p=P,photos=p.files.filter(f=>f.kind==='photo'),docs=p.files.filter(f=>f.kind!=='photo');
   document.title=p.project.title+' · '+(p.company.name||'');
@@ -312,13 +320,19 @@ function mic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition
   r.onresult=e=>{let s='';for(const x of e.results)s+=x[0].transcript;q.value=start+s;grow(q);};r.onend=()=>{REC=null;b.classList.remove('rec');};b.classList.add('rec');r.start();}
 document.getElementById('mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
 async function answerCO(id,approve,btn){
-  const out=document.getElementById('co-msg');btn.disabled=true;out.textContent='';
+  const out=document.getElementById('co-msg');out.textContent='';
+  const c=((P&&P.job&&P.job.changeOrders)||[]).find(x=>x.id===id)||{},nm=document.getElementById('co-'+id);
+  if(approve&&nm&&nm.value.trim().length<2){out.textContent=t('coName');out.style.color='var(--err)';nm.focus();return;}
+  const what=c.amount!=null?t(c.amount>=0?'adds':'credits',{a:money(Math.abs(c.amount))}):'';
+  if(!confirm(approve?t('coSure',{n:c.number||'',what}):t('coNo',{n:c.number||''})))return;
+  btn.disabled=true;
   try{const r=await fetch(`/api/crm-public/portal/${token}/change-orders/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({approve,name:(document.getElementById('co-'+id)||{}).value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);await load();}
   catch(e){out.textContent=e.message||t('cantSave');out.style.color='var(--err)';btn.disabled=false;}
 }
 async function choose(id,btn){
   const pick=document.querySelector(`input[name="sel-${id}"]:checked`);const out=document.getElementById('sel-msg');
   if(!pick){out.textContent=t('pickFirst');out.style.color='var(--err)';return;}
+  const lab=(pick.closest('label')||{}).innerText||'';if(!confirm(t('selSure',{x:lab.trim().split('\n')[0].slice(0,80)})))return;
   btn.disabled=true;
   try{const r=await fetch(`/api/crm-public/portal/${token}/selections/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:+pick.value})});const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);await load();const o=document.getElementById('sel-msg');if(o){o.textContent=d.over>0?t('savedOver',{a:money(d.over)}):t('saved');o.style.color='var(--ok)';}}
   catch(e){out.textContent=e.message||t('cantSave');out.style.color='var(--err)';btn.disabled=false;}

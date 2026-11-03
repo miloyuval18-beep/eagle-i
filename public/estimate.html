@@ -76,6 +76,7 @@ input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 
   <div class="card no-print" id="act" hidden></div>
   <div class="foot no-print">Sent with Eagle I CRM</div>
 </div>
+<script src="/cc-tips.js"></script>
 <script>
 (()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
 
@@ -86,11 +87,11 @@ const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,
 const T={en:{theWork:'The work',included:'What’s included',notIncluded:'Not included',timeline:'Timeline',nextSteps:'Next steps',whyUs:'Why us',price:'Price',estimate:'Estimate',design_agreement:'Design agreement',from:'{k} from {co}',accepted:'Accepted',declined:'Declined',expired:'Expired',draftPreview:'Draft preview',updating:'Being updated',preparedFor:'Prepared for {n}',validUntil:'Valid until {d}',other:'Other',subtotal:'Subtotal',tax:'Tax ({p}%)',total:'Total',dueAtSigning:'Due at signing ({p}%)',terms:'Terms',acceptedBy:'Accepted by {n} on {d}',
   download:'⬇ Download PDF',print:'Print',previewNote:'This is how your customer sees it. Opening it yourself doesn’t count as a view.',ready:'Ready to go ahead?',typeName:'Type your full name to accept',iAccept:'I accept this {k} for {t}{terms}.',andTerms:' and its terms',acceptBtn:'Accept {k}',notGoing:'Not going ahead? Let us know',anything:'Anything we should know? (optional)',decline:'Decline',
   nextDeposit:'Next: the deposit',depositAsk:'To get started, {co} asks for {a} now.',payDeposit:'Pay the deposit',beingUpdated:'This estimate is being updated. You’ll get an email when the new version is ready.',expiredMsg:'This estimate has expired. Please contact {co}{ph} for an updated one.',at:' at {p}',
-  tick:'Tick the box to confirm.',thanks:'<b>Thank you!</b> {co} has been notified and will be in touch about next steps.',thanksDecline:'Thanks for letting us know. We’ve passed it on.',loading:'Loading your estimate…',oops:'Something went wrong. Please try again.'},
+  tick:'Tick the box to confirm.',needName:'Type your full name to sign.',sure:'Accept and sign this for {total}? It becomes your agreement with {co}.',thanks:'<b>Thank you!</b> {co} has been notified and will be in touch about next steps.',thanksDecline:'Thanks for letting us know. We’ve passed it on.',loading:'Loading your estimate…',oops:'Something went wrong. Please try again.'},
 es:{theWork:'El trabajo',included:'Qué incluye',notIncluded:'No incluye',timeline:'Tiempo',nextSteps:'Siguientes pasos',whyUs:'Por qué nosotros',price:'Precio',estimate:'Presupuesto',design_agreement:'Acuerdo de diseño',from:'{k} de {co}',accepted:'Aceptado',declined:'Rechazado',expired:'Vencido',draftPreview:'Vista previa del borrador',updating:'En revisión',preparedFor:'Preparado para {n}',validUntil:'Válido hasta el {d}',other:'Otros',subtotal:'Subtotal',tax:'Impuesto ({p}%)',total:'Total',dueAtSigning:'A pagar al firmar ({p}%)',terms:'Términos',acceptedBy:'Aceptado por {n} el {d}',
   download:'⬇ Descargar PDF',print:'Imprimir',previewNote:'Así lo ve su cliente. Abrirlo usted mismo no cuenta como una vista.',ready:'¿Listo para seguir adelante?',typeName:'Escriba su nombre completo para aceptar',iAccept:'Acepto este {k} por {t}{terms}.',andTerms:' y sus términos',acceptBtn:'Aceptar {k}',notGoing:'¿No va a seguir adelante? Avísenos',anything:'¿Algo que debamos saber? (opcional)',decline:'Rechazar',
   nextDeposit:'Siguiente paso: el depósito',depositAsk:'Para empezar, {co} solicita {a} ahora.',payDeposit:'Pagar el depósito',beingUpdated:'Este presupuesto se está actualizando. Recibirá un correo cuando la nueva versión esté lista.',expiredMsg:'Este presupuesto venció. Por favor comuníquese con {co}{ph} para obtener uno actualizado.',at:' al {p}',
-  tick:'Marque la casilla para confirmar.',thanks:'<b>¡Gracias!</b> Le avisamos a {co} y se comunicarán con usted para los siguientes pasos.',thanksDecline:'Gracias por avisarnos. Ya se lo hicimos saber al equipo.',loading:'Cargando su presupuesto…',oops:'Algo salió mal. Por favor intente de nuevo.'}};
+  tick:'Marque la casilla para confirmar.',needName:'Escriba su nombre completo para firmar.',sure:'¿Acepta y firma esto por {total}? Será su acuerdo con {co}.',thanks:'<b>¡Gracias!</b> Le avisamos a {co} y se comunicarán con usted para los siguientes pasos.',thanksDecline:'Gracias por avisarnos. Ya se lo hicimos saber al equipo.',loading:'Cargando su presupuesto…',oops:'Algo salió mal. Por favor intente de nuevo.'}};
 let L=(()=>{const q=new URLSearchParams(location.search).get('lang');if(q)return q==='es'?'es':'en';try{const s=localStorage.getItem('eaglei_lang');if(s)return s;}catch(e){}return /^es/i.test(navigator.language||'')?'es':'en';})();
 let chosenLang=!!new URLSearchParams(location.search).get('lang');try{if(localStorage.getItem('eaglei_lang'))chosenLang=true;}catch(e){}
 const t=(k,v)=>String((T[L]||T.en)[k]??T.en[k]??k).replace(/\{(\w+)\}/g,(m,x)=>(v||{})[x]??'');
@@ -162,6 +163,8 @@ function showDecline(){document.getElementById('dec').hidden=false;}
 async function accept(){
   const err=document.getElementById('err'),b=document.getElementById('acc');err.textContent='';
   if(!document.getElementById('ag').checked){err.textContent=t('tick');return;}
+  const nm=document.getElementById('nm');if(nm.value.trim().length<2){err.textContent=t('needName');nm.focus();return;}
+  if(!confirm(t('sure',{total:money(E.total),co:E.company.name}).replace(/<[^>]+>/g,'')))return;
   b.disabled=true;
   try{const d=await api(`/api/crm-public/estimates/${token}/accept`,{name:document.getElementById('nm').value});E=d.estimate;render();banner(t('thanks',{co:esc(E.company.name)}),'ok');}
   catch(x){err.textContent=x.message;b.disabled=false;}
@@ -211,7 +214,7 @@ function pdf(){
   doc.save(`${(c.name||'Estimate').replace(/[^a-z0-9]+/gi,'-')}-${e.number}.pdf`);
 }
 (async()=>{
-  try{const d=await api('/api/crm-public/estimates/'+token);E=d.estimate;PREVIEW=!!d.preview;if(E.lang==='es'&&!chosenLang){L='es';setLangBtn();}render();}
+  try{const d=await api('/api/crm-public/estimates/'+token);E=d.estimate;PREVIEW=!!d.preview;if(E.lang==='es'&&!chosenLang){L='es';setLangBtn();}render();if(!PREVIEW&&E.status!=='accepted'&&E.status!=='declined'){const co=E.company.name;ccTips({key:'estimate',lang:()=>L,button:'#lang-btn',steps:[{en:['Your estimate from '+co,'Read it top to bottom: the work, what’s included and not, the timeline and the price. Questions? Call or email '+co+' before you decide.'],es:['Su presupuesto de '+co,'Léalo completo: el trabajo, lo que incluye y no incluye, el tiempo y el precio. ¿Dudas? Llame o escriba a '+co+' antes de decidir.']},{en:['To go ahead','At the bottom, tick the box, type your full name and tap Accept. It asks you once more before anything is signed. Not for you? You can decline and say why.'],es:['Para seguir adelante','Al final, marque la casilla, escriba su nombre completo y toque Aceptar. Le pregunta una vez más antes de firmar. ¿No le conviene? Puede rechazarlo y decir por qué.']}]});}}
   catch(x){document.getElementById('doc').innerHTML='<div class="card">'+esc(x.message)+'</div>';}
 })();
 </script>

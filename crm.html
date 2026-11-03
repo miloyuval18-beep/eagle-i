@@ -1206,6 +1206,11 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
 /* The camera buttons: on phones and tablets only */
 .cam-only{display:none!important}
 @media (pointer:coarse){.cam-only{display:inline-flex!important}}
+/* A button whose save or send is still going: dimmed, with a small spinner, taps ignored. */
+[aria-busy="true"]{opacity:.7;cursor:progress;position:relative}
+[aria-busy="true"]::after{content:"";display:inline-block;width:.9em;height:.9em;margin-left:.5em;vertical-align:-.1em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:crSpin .8s linear infinite}
+@keyframes crSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){[aria-busy="true"]::after{animation:none}}
 .gb-i{display:block;padding:0}
 .gb-i summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:14px 16px;cursor:pointer;list-style:none;font-size:18px}
 .gb-i summary::-webkit-details-marker{display:none}
@@ -1544,9 +1549,11 @@ document.addEventListener('input',e=>{
   const el=e.target;if(!el||!el.matches)return;
   if(el.matches('#ux-modal input:not([type=search]):not([type=checkbox]),#ux-modal textarea,#ux-modal select'))CR.dirty=true;
   if(el.matches('#ux-modal textarea[id],#ai-in'))crDraftSave(el);
+  // Typing on a screen (not in a window): leaving it asks first, until something is saved.
+  if(!el.closest('#ux-modal')&&el.closest('.view.active')&&el.matches('input:not([type=search]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea')&&el.id!=='ai-in')CR.vDirty=CR.view;
 });
 document.addEventListener('change',e=>{if(e.target&&e.target.matches&&e.target.matches('#ux-modal input,#ux-modal select'))CR.dirty=true;});
-window.addEventListener('beforeunload',e=>{const a=document.getElementById('ai-in');if(CR.dirty||(a&&a.value.trim().length>=15)){e.preventDefault();e.returnValue='';}});
+window.addEventListener('beforeunload',e=>{const a=document.getElementById('ai-in');if(CR.dirty||CR.vDirty||(a&&a.value.trim().length>=15)){e.preventDefault();e.returnValue='';}});
 const uxHead=(title,sub)=>`<div class="vd-mh"><div><div class="vd-mt">${title}</div>${sub?`<div class="sm">${sub}</div>`:''}</div><button class="btn-xs" onclick="uxClose()" aria-label="Close">✕</button></div>`;
 let toastTimer=null;
 // "Undo" for 10 seconds after a change; fn puts it back.
@@ -1681,7 +1688,9 @@ const CR_GUIDES={
     ['Its stage','Change the stage as things move along. Eagle I sends that stage’s emails (only the ones you turned on) and asks first if a move looks wrong.'],
     ['Notes and tasks','Add a note after a call or visit (🎤 to talk it), and tasks for what’s next.'],
     ['Estimates and invoices','Start an estimate or an invoice from here. They’re sent from your company, and you always see who it goes to first.',null,()=>crCan('estimates')||crCan('invoices')],
-    ['The homeowner’s page','Further down: a private page for the homeowner with updates, visits, estimates and photos. Post an update there to keep them in the loop.']]},
+    ['Files','Add plans, photos, contracts and more under Project files, or 📷 take a photo; “Sort it for me” files them by kind. Tick “Share with the homeowner” for the ones they should see.'],
+    ['The homeowner’s page','Further down: a private page for the homeowner with updates, visits, estimates and photos. Post an update there to keep them in the loop.'],
+    ['Not sure what to do next?','Tap “What should I do next?” under Coach. Every email asks you first, showing who it goes to, before anything is sent.']]},
   co:{icon:'🏢',steps:[
     ['Each company in the group','Every company has its own profile: what it does, how to reach it, and its own projects and files. The team, roles and permissions are the same for all of them.'],
     ['Its projects','Jobs going, deals being sold and finished projects for this company. Tap one to open it. “Add a deal” here puts the new deal under this company.'],
@@ -1700,7 +1709,10 @@ const CR_GUIDES={
     ['The schedule','Each phase has dates and who’s doing it. Change the dates and the sub is asked to confirm them.'],
     ['Daily logs and photos','Write what happened today, or say it with 🎤, and add photos. You choose what the homeowner can see.'],
     ['Changes and selections','Change orders go to the homeowner to approve online. Selections are things they need to choose, like tile or fixtures.'],
-    ['Purchase orders','Order materials from a supplier and track deliveries.',null,()=>crCan('subs')]]},
+    ['Purchase orders','Order materials from a supplier and track deliveries.',null,()=>crCan('subs')],
+    ['Money on the job','At the top: the contract, what it should cost, what’s spent and the margin. 📷 Snap a receipt and the cost lands on the job. No estimate in Eagle I? Type the expected total cost.',null,()=>crCan('money')],
+    ['Getting paid','Payment schedule: each payment is invoiced when its phase is marked done. The invoice waits in Today for one tap; nothing goes to the homeowner on its own unless you switch that on.',null,()=>crCan('money')],
+    ['Punch list and permits','Walk the job recording a video or photos and say what needs fixing: Eagle I writes the punch list. Add each permit to track it until it’s approved.']]},
   estimate:{icon:'🧾',steps:[
     ['Your estimate','Add a line for each part of the work, or pick from your cost catalog. Totals add up as you go.'],
     ['Check it','Tap “Check” and Eagle I looks for missing items and prices that seem off.'],
@@ -1734,6 +1746,17 @@ const CR_GUIDES={
   takeoff:{icon:'📐',steps:[['Quantities from a plan','Add one plan sheet. Eagle I reads the scale and the dimensions and lists the quantities with how sure it is. Tick each number you’ve checked; only ticked ones can go on an estimate.']]},
   design:{icon:'🎨',steps:[['Show them the new design','Take or add a photo of their room and describe the new look. Eagle I makes a picture of that room with the new design, to talk around with the homeowner. It’s an idea, not a plan to build from.']]},
   driveprojects:{icon:'📁',steps:[['Projects found in your Drive','Each one is a folder that looks like a customer project. Untick any that aren’t, then add them. They come in as history: nobody gets an email, and each links to its Drive folder.']]},
+  calitem:{icon:'📅',steps:[['One thing on the calendar','What it is, when, and who’s on it. To move it, pick a new day under “Move it” (you can undo it). If a sub is on it, they’re asked to confirm the new dates. Tap “Open the deal” for the whole project.']]},
+  calday:{icon:'📅',steps:[['One day','Everything on this day. Tap one to open it, or “＋ Add on this day” for something new.']]},
+  handover:{icon:'🤝',steps:[['Hand over their work','Pick who takes over each kind of open work. Nothing is deleted and their history keeps their name. “Skip” leaves it with them.']]},
+  coedit:{icon:'🏢',steps:[['A company in your group','Its name, what it does, how to reach it and its website show on its profile. “Take off the list” asks first, and its projects and files stay.']]},
+  ckday:{icon:'📝',steps:[['One check-in','What they said that day and what Eagle I filed from it on each job. “See the full chat” shows it word for word.']]},
+  followup:{icon:'✉',steps:[['Follow up on an email','Eagle I wrote a short, polite follow-up in the same conversation. Read it and change anything you like. It asks before it sends. Rather write it yourself? “Answer in Gmail instead”.']]},
+  homeowners:{icon:'🏠',steps:[['See as a homeowner','Pick a project and its homeowner page opens exactly as they see it. You’re only looking: nothing changes and nothing is sent.']]},
+  help:{icon:'🙋',steps:[['Get a person to help','Leave your phone number and a good time. Someone from Eagle I calls you, usually within one business day, and sets things up with you. It’s free.']]},
+  devices:{icon:'📱',steps:[['Where you’re signed in','Every phone and computer signed in as you. Lost a phone or used someone else’s computer? Tap “Sign out everywhere else”.']]},
+  problem:{icon:'🆘',steps:[['Report a problem','Say what happened in your own words. Eagle I adds which screen you were on and any error, so you don’t have to.']]},
+  nudge:{icon:'💵',steps:[['A payment reminder','Eagle I wrote a polite reminder about this overdue invoice. Read it, change anything, and tap “Send reminder” (it asks first). Not the right time? “Skip this one”.']]},
   vendorlist:{icon:'📄',steps:[['Check who was found','These are the companies Eagle I read from your file. Untick anyone you don’t want. People already in your vendors only get their empty details filled in; nothing you typed changes.']]}
 };
 const GD={q:[],on:false};
@@ -1751,7 +1774,7 @@ function crGuide(key){
     gdRender();
   },350);
 }
-const GD_WINDOWS={loop:'lpLoad',deal:'plOpenDeal',job:'jbOpen',estimate:'esOpen',newdeal:'plNewDeal',caladd:'cvEdit',sub:'vdPage',search:'srOpen',bin:'binOpen',mycal:'dyOpen',activity:'alOpen',sop:'spOpen',lookas:'lkOpen',price:'prOpen',takeoff:'tkOpen',design:'vzOpen',driveprojects:'dpReview',vendorlist:'vbReview'};
+const GD_WINDOWS={loop:'lpLoad',deal:'plOpenDeal',job:'jbOpen',estimate:'esOpen',newdeal:'plNewDeal',caladd:'cvEdit',sub:'vdPage',search:'srOpen',bin:'binOpen',mycal:'dyOpen',activity:'alOpen',sop:'spOpen',lookas:'lkOpen',price:'prOpen',takeoff:'tkOpen',design:'vzOpen',driveprojects:'dpReview',vendorlist:'vbReview',calitem:'cvOpen',calday:'cvPick',handover:'tmHandover',coedit:'cpEdit',ckday:'ckChat',followup:'ewFollow',homeowners:'voHomeowners',help:'hpCall',devices:'dvOpen',problem:'rpOpenProblem',nudge:'ccNudge'};
 function gdStillThere(key){
   if(GD_WINDOWS[key]){const m=document.getElementById('ux-modal');return !!(m&&m.style.display!=='none')||key==='search';}
   // A screen's tip: that screen is the one showing, with no window open over it.
@@ -1819,7 +1842,7 @@ async function gdReset(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&GD.on)gdDone();});
 // The windows that open over a screen get their tips once they've opened.
 window.addEventListener('load',()=>{
-  for(const [fn,key] of [['plOpenDeal','deal'],['jbOpen','job'],['esOpen','estimate'],['plNewDeal','newdeal'],['cvEdit','caladd'],['vdPage','sub'],['srOpen','search'],['binOpen','bin'],['dyOpen','mycal'],['alOpen','activity'],['spOpen','sop'],['lkOpen','lookas'],['prOpen','price'],['tkOpen','takeoff'],['vzOpen','design'],['dpReview','driveprojects'],['vbReview','vendorlist']]){
+  for(const [fn,key] of [['plOpenDeal','deal'],['jbOpen','job'],['esOpen','estimate'],['plNewDeal','newdeal'],['cvEdit','caladd'],['vdPage','sub'],['srOpen','search'],['binOpen','bin'],['dyOpen','mycal'],['alOpen','activity'],['spOpen','sop'],['lkOpen','lookas'],['prOpen','price'],['tkOpen','takeoff'],['vzOpen','design'],['dpReview','driveprojects'],['vbReview','vendorlist'],['cvOpen','calitem'],['cvPick','calday'],['tmHandover','handover'],['cpEdit','coedit'],['ckChat','ckday'],['ewFollow','followup'],['voHomeowners','homeowners'],['hpCall','help'],['dvOpen','devices'],['rpOpenProblem','problem'],['ccNudge','nudge']]){
     const orig=window[fn];if(typeof orig!=='function')continue;
     window[fn]=function(...a){const r=orig.apply(this,a);Promise.resolve(r).then(()=>crGuide(key)).catch(()=>{});return r;};
   }
@@ -1835,6 +1858,8 @@ function crMark(){
   const ic=document.querySelector('link[rel="icon"]');if(ic){ic.type=logo?'image/png':'image/svg+xml';ic.href=logo||'/lcg-mark.svg';}
 }
 function crView(v){
+  if(CR.vDirty&&CR.vDirty!==v&&CR.view===CR.vDirty&&!confirm('You typed something on this screen that isn’t saved yet. Leave without saving?'))return;
+  CR.vDirty=null;
   CR.view=v;setTimeout(()=>crTip(v),0);setTimeout(crMark,0);
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
   document.querySelectorAll('.cr-tab').forEach(t=>{t.classList.toggle('active',t.dataset.view===v);t.setAttribute('aria-current',t.dataset.view===v?'page':'false');});
@@ -2528,7 +2553,7 @@ async function catAdd(btn){
   try{await plApi('/api/crm/catalog',{body:{name:v('cat-name'),category:v('cat-cat'),unit:v('cat-unit'),unit_cost:v('cat-cost'),markup_pct:v('cat-mk')}});await esLoad();}
   catch(e){msg.textContent=e.message;btn.disabled=false;}
 }
-async function catRemove(id){try{await plApi('/api/crm/catalog/'+id,{method:'DELETE'});esLoad();}catch(e){showNotif('Could not remove',e.message);}}
+async function catRemove(id){if(!confirm('Remove this item from your cost catalog? Estimates that already use it keep their lines.'))return;try{await plApi('/api/crm/catalog/'+id,{method:'DELETE'});esLoad();}catch(e){showNotif('Could not remove',e.message);}}
 async function esNew(dealId,kind){
   try{const {estimate}=await plApi('/api/crm/deals/'+dealId+'/estimates',{body:{kind}});esOpen(estimate.id);}catch(e){showNotif('Could not start the estimate',e.message);}
 }
@@ -2764,7 +2789,11 @@ function tmInviteRole(){const r=document.getElementById('tm-role').value;documen
 async function tmBoss(id,boss){try{await plApi('/api/crm/team/'+id,{method:'PATCH',body:{reportsTo:boss||null}});showNotif('Saved',boss?TMN[id]+' now reports to '+tmName(boss)+'.':TMN[id]+' reports to the owner and admins.');tmLoad();}catch(e){showNotif('Could not change that',e.message);tmLoad();}}
 async function tmVis(v){try{await plApi('/api/crm/team-settings',{method:'PATCH',body:{visibility:v}});showNotif('Saved',v==='everyone'?'Everyone can now see everyone’s schedule.':'People now see the schedules of those above and below them.');tmLoad();}catch(e){showNotif('Could not save',e.message);tmLoad();}}
 async function tmInvite(btn){
-  const msg=document.getElementById('tm-msg');btn.disabled=true;msg.textContent='';
+  const msg=document.getElementById('tm-msg');msg.textContent='';
+  const nm=document.getElementById('tm-name'),em=document.getElementById('tm-email');
+  if(!nm.value.trim()){msg.textContent='Type their name first.';nm.focus();return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em.value.trim())){msg.textContent='That email doesn’t look right. Check it and try again.';em.focus();return;}
+  btn.disabled=true;
   try{
     const r=await plApi('/api/crm/team/invites',{body:{name:document.getElementById('tm-name').value,email:document.getElementById('tm-email').value,role:document.getElementById('tm-role').value,reportsTo:document.getElementById('tm-boss').value||null}});
     await tmLoad();
@@ -2870,7 +2899,7 @@ async function alOpen(more){
       ${items.length>=60?'<div class="vd-mbtns"><button class="btn-xs" onclick="alOpen(true)">Show older</button></div>':''}`);
   }catch(e){uxOpen(uxHead('Couldn’t load the activity log',uxEsc(e.message)));}
 }
-async function tmCancel(id){try{await plApi('/api/crm/team/invites/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not cancel',e.message);}}
+async function tmCancel(id){if(!confirm('Cancel this invitation? Their link stops working. You can invite them again any time.'))return;try{await plApi('/api/crm/team/invites/'+id,{method:'DELETE'});tmLoad();}catch(e){showNotif('Could not cancel',e.message);}}
 
 
 /* ---------- setup reminders ----------
@@ -3407,7 +3436,7 @@ async function prSendAsk(btn){
       <div class="vd-mbtns" style="margin-top:14px"><button class="btn btn-blue" onclick="prSend(this)">Send ${n} request${n===1?'':'s'}</button><button class="btn-xs" onclick="prRender(PR.run)">← Back</button></div>`);
   }catch(e){showNotif('Could not save',e.message);btn.disabled=false;}
 }
-async function prSend(btn){btn.disabled=true;btn.textContent='Sending…';
+async function prSend(btn){const n=(btn.textContent.match(/\d+/)||[''])[0];if(!confirm(`Send ${n?n+' ':''}price request${n==='1'?'':'s'} now? Each sub and supplier you ticked gets an email from your company.`))return;btn.disabled=true;btn.textContent='Sending…';
   try{const r=await plApi('/api/crm/pricing/'+PR.run.id+'/send',{body:{}});prRender(r.run);showNotif('Sent',`${r.sent.length} price request${r.sent.length===1?'':'s'} went out.${r.skipped.length?` Not sent: ${r.skipped.map(s=>s.name+' ('+s.why+')').join(', ')}.`:''}`);}
   catch(e){showNotif('Could not send',e.message);btn.disabled=false;btn.textContent='Send';}}
 function prWaiting(run){
@@ -3831,7 +3860,20 @@ function crNetBanner(){
 window.addEventListener('offline',crNetBanner);
 window.addEventListener('online',()=>{crNetBanner();crOutboxFlush();});
 setTimeout(()=>{crNetBanner();crOutboxFlush();},1500);
+// A second tap while the first is still saving or sending does nothing: the button that
+// started a change ignores taps until the server answers (no double invoices, emails or deals).
+let CR_TAP=null;
+document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('button,.btn,.btn-xs');
+  if(b&&+b.dataset.busy>0){e.preventDefault();e.stopImmediatePropagation();return;}
+  CR_TAP=b?{b,at:Date.now()}:null;},true);
 async function plApi(url,opts){
+  const method=(opts&&(opts.method||(opts.body!==undefined?'POST':'GET')))||'GET';
+  const tap=method!=='GET'&&CR_TAP&&Date.now()-CR_TAP.at<1500?CR_TAP.b:null;
+  if(tap){tap.dataset.busy=String((+tap.dataset.busy||0)+1);tap.setAttribute('aria-busy','true');}
+  try{const r=await plApiSend(url,opts);if(method!=='GET')CR.vDirty=null;return r;}
+  finally{if(tap){const n=(+tap.dataset.busy||1)-1;if(n>0)tap.dataset.busy=String(n);else{delete tap.dataset.busy;tap.removeAttribute('aria-busy');}}}
+}
+async function plApiSend(url,opts){
   let r;
   try{r=await fetch(url,opts&&opts.body!==undefined?{method:opts.method||'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(opts.body)}:(opts||{}));}
   catch(netErr){
@@ -5087,7 +5129,9 @@ async function jcReceipt(dealId,input){
   input.value='';
 }
 async function jcAdd(dealId,btn){
-  const v=id=>document.getElementById(id).value;btn.disabled=true;
+  const v=id=>document.getElementById(id).value;
+  if(/^\s*-/.test(v('jc-amt'))&&!confirm('That amount has a minus sign, so it counts as money back (a refund or a return). Is that right?'))return;
+  btn.disabled=true;
   try{await plApi('/api/crm/deals/'+dealId+'/costs',{body:{category:v('jc-cat'),amount:v('jc-amt'),hours:v('jc-hrs'),rate:v('jc-rate'),vendorName:v('jc-vendor'),costDate:v('jc-date')||null,description:v('jc-desc')}});jcLoad(dealId);}
   catch(e){document.getElementById('jc-msg').textContent=e.message;btn.disabled=false;}
 }
@@ -5196,7 +5240,7 @@ async function ivCreate(dealId,btn,send){
     plOpenDeal(dealId);
   }catch(e){msg.textContent=e.message;btn.disabled=false;ivLoad(dealId);}
 }
-async function ivSend(id,dealId,btn){btn.disabled=true;try{const r=await plApi('/api/crm/invoices/'+id+'/send',{body:{}});showNotif('Invoice sent','To '+r.to);}catch(e){showNotif('Could not send',e.message);}ivRefresh(dealId);}
+async function ivSend(id,dealId,btn){const d=crDeal(dealId);if(d.contact_email!==undefined?!crAskSend('this invoice',d.contact_name,d.contact_email):!confirm('Send this invoice to the homeowner now?'))return;btn.disabled=true;try{const r=await plApi('/api/crm/invoices/'+id+'/send',{body:{}});showNotif('Invoice sent','To '+r.to);}catch(e){showNotif('Could not send',e.message);}ivRefresh(dealId);}
 async function ivPaid(id,dealId,via){try{await plApi('/api/crm/invoices/'+id+'/paid',{body:{via}});showNotif('Payment recorded','');}catch(e){showNotif('Could not record it',e.message);}ivRefresh(dealId);}
 async function ivVoid(id,dealId){if(!confirm('Cancel this invoice? The homeowner will see it as cancelled.'))return;try{await plApi('/api/crm/invoices/'+id+'/void',{body:{}});}catch(e){showNotif('Could not cancel',e.message);}ivRefresh(dealId);}
 function ivCopy(token){const u=location.origin+'/i/'+token;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>showNotif('Copied',u)).catch(()=>prompt('Copy this link',u));}
@@ -5296,6 +5340,9 @@ async function plStageChanged(id,sel){
 }
 async function plSaveDeal(id,btn){
   const v=k=>document.getElementById(k).value;
+  // A site visit set to a time that's already gone is usually a typo (wrong month or year).
+  const vis=document.getElementById('pld-visit'),was=crDeal(id).site_visit_at;
+  if(vis&&vis.value&&new Date(vis.value)<new Date()&&(!was||Math.abs(new Date(was)-new Date(vis.value))>60000)&&!confirm('That site visit time has already passed ('+new Date(vis.value).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})+'). Save it anyway?'))return;
   btn.disabled=true;
   try{
     await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{...(document.getElementById('pld-sub')?{subsidiaryId:v('pld-sub')||null}:{}),title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),language:v('pld-lang'),source:v('pld-source'),siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{}),...(document.getElementById('pld-pm')?{pmUserId:v('pld-pm')||null}:{})}});
@@ -5386,7 +5433,7 @@ async function ewFollow(id){
 }
 async function ewRedraft(id){const b=document.getElementById('ew-b'),s=document.getElementById('ew-send');if(!b)return;b.value='Writing it…';if(s)s.disabled=true;
   try{const r=await plApi('/api/crm/email-watch/'+id+'/draft',{body:{}});b.value=r.draft.body;document.getElementById('ew-s').value=r.draft.subject;}catch(e){b.value='';document.getElementById('ew-msg').textContent=e.message;}if(s)s.disabled=false;}
-async function ewSend(id,btn){btn.disabled=true;
+async function ewSend(id,btn){const x=ewFind(id);if(!crAskSend('this follow-up',x&&x.who,x?x.email:'?'))return;btn.disabled=true;
   try{const r=await plApi('/api/crm/email-watch/'+id+'/follow-up',{body:{subject:document.getElementById('ew-s').value,body:document.getElementById('ew-b').value}});uxClose();showNotif('Follow-up sent','To '+r.to);plLoadNeeds();}
   catch(e){document.getElementById('ew-msg').textContent=e.message;btn.disabled=false;}}
 async function ewAct(id,action,days){try{await plApi('/api/crm/email-watch/'+id+'/act',{body:{action,days}});plLoadNeeds();}catch(e){showNotif('Could not do that',e.message);}}

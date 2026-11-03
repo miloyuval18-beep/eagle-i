@@ -65,8 +65,9 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
 <link rel="stylesheet" href="/cc.css">
 </head>
 <body class="cc-home">
-<header><div class="brand">Eagle I <span id="kind-label"></span></div><button class="btn o sm" onclick="signOut()">Sign out</button></header>
+<header><div class="brand">Eagle I <span id="kind-label"></span></div><div style="display:flex;align-items:center"><button class="btn o sm" id="so-btn" onclick="signOut()">Sign out</button></div></header>
 <main id="app"><div class="sub">Loading…</div></main>
+<script src="/cc-tips.js"></script>
 <script>
 const $=(id)=>document.getElementById(id);
 const esc=(s)=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -90,6 +91,17 @@ const niceDay=(s)=>new Date(s).toLocaleString('en-US',{weekday:'short',month:'sh
 
 // ---------- guided setup ----------
 function steps(){return isSub()?['biz','insurance','email','list']:['you','email','list'];}
+// First-time tips (public/cc-tips.js) once setup is done.
+function acctTips(){const sub=isSub();
+  ccTips({key:sub?'acct-sub':'acct-home',button:'#so-btn',steps:sub?[
+    {en:['Your builders','Every builder who has your email shows up here once it’s confirmed. Tap one to open your page with them: your jobs, dates, plans and bid requests.']},
+    {en:['A builder sent you a link?','Tap “Add it here” and paste it, so that builder is on this list too.']},
+    {en:['Your insurance','Put in when your liability insurance runs out (and upload the certificate if you see the button). Builders need a current one before you start a job; you both get a reminder before it expires.']},
+    {en:['Your details','Your business, trade and phone. Builders see these. Tap ? at the top to see these tips again.']}]:[
+    {en:['Your projects','Every project your builder has with your email shows up here once it’s confirmed. Tap one for updates, visits, estimates, invoices, photos and messages.']},
+    {en:['Waiting for you','Anything your builder needs from you (something to sign, approve, choose or pay) is listed here, oldest first.']},
+    {en:['A builder sent you a link?','Tap “Add it here” and paste it, so that project is on this list too.']},
+    {en:['Your details','Your name, phone and address, so your builder can reach you. Tap ? at the top to see these tips again.']}]});}
 function render(){
   const a=D.account,el=$('app');
   const banner=q.get('confirmed')==='1'?'<div class="note ok">✓ Your email is confirmed.</div>':q.get('confirmed')==='0'?'<div class="note warn">That confirmation link didn’t work (it may be old). Send a new one below.</div>':'';
@@ -101,6 +113,7 @@ function render(){
     ${isSub()?insuranceHtml():''}
     <div class="card"><h2>Your details</h2>${detailsHtml()}<div class="btns"><button class="btn" onclick="saveDetails(this)">Save</button></div><div class="err" id="det-err"></div></div>
     <div class="card"><h2>Password</h2><label for="pw-cur">Current password</label><input id="pw-cur" type="password" autocomplete="current-password"><label for="pw-new">New password <span class="opt">(at least 8 characters)</span></label><input id="pw-new" type="password" autocomplete="new-password"><div class="btns"><button class="btn o" onclick="changePw(this)">Change password</button></div><div class="err" id="pw-err"></div></div>`;
+  acctTips();
 }
 function setupHtml(){
   const st=steps(),k=st[Math.min(STEP,st.length-1)],a=D.account;

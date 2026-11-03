@@ -97,11 +97,19 @@ textarea.box{width:100%;border:1px solid var(--bdr2);border-radius:10px;padding:
   <section id="v-jobs" class="jobs" hidden></section>
 </main>
 <script src="/talk.js"></script>
+<script src="/cc-tips.js"></script>
 <script>
 (()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
 const token=location.pathname.split('/').pop();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+// First-time tips (public/cc-tips.js), after the talk-or-type question.
+function subTips(){const co=(V&&V.company&&V.company.name)||'the builder';
+  ccTips({key:'subpage',lang:()=>L,button:'#lang-btn',blocked:()=>!!document.querySelector('.et-shade,.et-tour'),steps:[
+    {en:['Your jobs with '+co,'Your private page for the work you do with them. Keep the link to yourself. It never shows the homeowner’s phone or email, or anyone else’s prices.'],es:['Sus trabajos con '+co,'Su página privada para el trabajo que hace con ellos. No comparta el enlace. Nunca muestra el teléfono ni el correo del cliente, ni precios de otros.']},
+    {el:'#t-ask',en:['Ask about the job','Ask in your own words, typing or with 🎙 Talk: when you start, the address, the plans, what the homeowner picked. Anything it can’t answer goes to the office.'],es:['Pregunte del trabajo','Pregunte con sus palabras, escribiendo o con 🎙 Hablar: cuándo empieza, la dirección, los planos, lo que escogió el cliente. Lo que no sepa va a la oficina.']},
+    {el:'#t-jobs',en:['My jobs','Each job: your dates, the address, plans and files, your purchase orders and bids. When your dates are set or changed, tap “Confirm these dates” so the office knows you’ll be there.'],es:['Mis trabajos','Cada trabajo: sus fechas, la dirección, planos y archivos, sus órdenes de compra y cotizaciones. Cuando le pongan o cambien fechas, toque “Confirmar estas fechas” para que la oficina sepa que va.']},
+    {en:['Write to the office','Each job has a box at the bottom to message the office. “Español” at the top switches the language. Tap ? to see these tips again.'],es:['Escriba a la oficina','Cada trabajo tiene un cuadro al final para escribir a la oficina. “English” arriba cambia el idioma. Toque ? para ver estos consejos otra vez.']}]});}
 const T={en:{askTab:'Ask about the job',jobsTab:'My jobs',badge:'✦ Job assistant',hi:'Hi {n}',intro:'Ask anything about your jobs with {co}: dates, the address, the plans, what the homeowner picked, what’s changed. I answer from the job records; anything else goes straight to the office.',all:'All my jobs',ph:'Ask about your job…',hint:'Answers come from the job records. Questions I can’t answer go to the office.',
   q1:'When do I start?',q2:'What’s the address?',q3:'Send me the plans',q4:'What did the homeowner pick?',q5:'What changed since I bid?',q6:'Who do I call on site?',looking:'Looking…',fwd:'The office has your question too.',oops:'Something went wrong. Please try again.',
   none:'No jobs here yet. When {co} puts you on a job, it shows up here.',bidding:'Bidding',onjob:'On the job',addr:'Address',area:'Area',yourPhases:'Your work',schedule:'Whole schedule',files:'Plans & files',selections:'What the homeowner picked',notyet:'not chosen yet',changes:'Approved changes',pos:'Your purchase orders',bid:'Your bid',punch:'Punch list for your trade',call:'Who to call',confirm:'Confirm these dates',bidLink:'Send or change your price',due:'due {d}',needed:'needed {d}',map:'Open in Maps',msgTeam:'Message the office',send:'Send',sent:'Sent. The office will get back to you.',confirmed:'✓ confirmed'},
@@ -201,7 +209,7 @@ function mic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition
 (async()=>{
   document.getElementById('mic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
   paint();
-  try{const r=await fetch('/api/crm-public/sub-portal/'+token);const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);V=d;if(V.jobs.length===1)JOB=V.jobs[0].id;paint();setupTalk();}
+  try{const r=await fetch('/api/crm-public/sub-portal/'+token);const d=await r.json();if(!r.ok)throw new Error(d.error&&d.error.message);V=d;if(V.jobs.length===1)JOB=V.jobs[0].id;paint();setupTalk();if(!new URLSearchParams(location.search).has('preview'))subTips();}
   catch(e){document.getElementById('msgs').innerHTML=`<div class="hello"><p>${esc(e.message||t('oops'))}</p></div>`;}
 })();
 </script>

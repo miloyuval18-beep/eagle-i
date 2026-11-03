@@ -76,18 +76,22 @@ textarea{width:100%;background:var(--card);border:1.5px solid var(--bdr2);border
   </div>
   <div id="done" hidden class="ok"></div>
 </main>
+<script src="/cc-tips.js"></script>
 <script>
 const token=location.pathname.split('/').pop();
 const fd=d=>new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'});
 let D=null;
 function done(yes){document.getElementById('f').hidden=true;const el=document.getElementById('done');el.hidden=false;el.textContent=yes?`Thanks! ${D.company} has you down for ${fd(D.start)}.`:`Thanks for letting us know. ${D.company} will reach out to find another time${D.companyPhone?' (or call '+D.companyPhone+')':''}.`;}
 async function answer(yes,btn){
-  const err=document.getElementById('err');err.textContent='';btn.disabled=true;
+  const err=document.getElementById('err');err.textContent='';
+  const note=document.getElementById('note');
+  if(!yes&&note&&!note.value.trim()){err.textContent='Say which days work for you in the box, so the office can find new dates.';note.focus();return;}
+  btn.disabled=true;
   try{const r=await fetch('/api/crm-public/sub/'+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({yes,note:document.getElementById('note').value})});const d=await r.json();if(!r.ok)throw new Error((d.error&&d.error.message)||'Something went wrong. Please try again.');done(yes);}
   catch(e){err.textContent=e.message;btn.disabled=false;}
 }
 fetch('/api/crm-public/sub/'+token).then(r=>r.json().then(d=>{if(!r.ok)throw new Error(d.error&&d.error.message);
-  D=d;document.getElementById('co').textContent=d.company;document.getElementById('tag').textContent=`Hi ${d.vendor}`;
+  D=d;document.getElementById('co').textContent=d.company;ccTips({key:'subdates',steps:[{en:['Can you make these dates?','Tap “I’ll be there” if they work. If not, tap “Can’t make it” and write which days work for you, so the office can find new dates.']}]});document.getElementById('tag').textContent=`Hi ${d.vendor}`;
   document.getElementById('what').textContent=`${d.phase} · ${d.job}`;
   document.getElementById('when').textContent=d.start===d.end?fd(d.start):`${fd(d.start)} to ${fd(d.end)}`;
   document.getElementById('where').textContent=d.address||'';

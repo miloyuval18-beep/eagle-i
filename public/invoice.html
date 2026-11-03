@@ -35,6 +35,7 @@ h1{font-size:23px;line-height:1.3;margin:4px 0;overflow-wrap:anywhere}
 </head>
 <body class="cc-doc">
 <div class="wrap"><button type="button" class="lang" id="lang-btn" onclick="toggleLang()">Español</button><div class="card" id="app">Loading…</div><div class="foot">Sent with Eagle I CRM</div></div>
+<script src="/cc-tips.js"></script>
 <script>
 (()=>{const f=window.fetch.bind(window);window.fetch=(u,o={})=>{try{if(String(u).startsWith('/api/crm-public')&&typeof L!=='undefined'&&L==='es')o={...o,headers:{...(o.headers||{}),'X-Lang':'es'}};}catch(e){}return f(u,o);};})();
 
@@ -77,7 +78,7 @@ async function load(){
   try{
     const r=await fetch('/api/crm-public/invoices/'+token+(session?'?session='+encodeURIComponent(session):''));const d=await r.json();
     if(!r.ok)throw new Error((d.error&&d.error.message)||t('invalid'));
-    I=d.invoice;if(I.lang==='es'&&!chosenLang){L='es';setLangBtn();}render(I);
+    I=d.invoice;if(I.lang==='es'&&!chosenLang){L='es';setLangBtn();}render(I);if(I.status!=='paid'&&I.status!=='void'){const co=(I.company||{}).name||'your builder';ccTips({key:'invoice',lang:()=>L,button:'#lang-btn',steps:[{en:['Your invoice','What it’s for, how much, and when it’s due. If you see a Pay button you can pay online, by card or bank. Otherwise pay '+co+' the way you agreed, and they mark it paid.'],es:['Su factura','De qué es, cuánto y cuándo vence. Si ve un botón de Pagar, puede pagar en línea con tarjeta o banco. Si no, pague a '+co+' como acordaron y ellos la marcan como pagada.']}]});}
     if(session)history.replaceState(null,'',location.pathname);
   }catch(e){document.getElementById('app').textContent=e.message;}
 }
