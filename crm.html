@@ -126,7 +126,7 @@ select{width:auto;cursor:pointer}
 @media(max-width:520px){.es-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.cr-tab{padding:10px 8px;font-size:17px}.cr-nav{padding:0 6px;gap:0}.cr-company{display:none}}
 @media(max-width:600px){.vd-modal{padding:0;align-items:stretch}.vd-modal-box{border-radius:0;max-height:100vh;height:100%;padding:16px}.st{font-size:23px}}
-/* ---------- Pipeline (CRM) ---------- */
+/* ---------- Customers (CRM) ---------- */
 .pl-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
 .pl-tile{border:1px solid var(--bdr2);border-radius:var(--r2);background:var(--bg3);padding:10px 12px;min-width:0}
 .pl-tile-v{font-family:var(--fh);font-size:22px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
@@ -1167,7 +1167,6 @@ option{background:#15130f;color:var(--ink)}
 @media (max-width:640px){
   .hm-tiles{grid-template-columns:1fr 1fr;gap:10px}.hm-tile{padding:12px 14px}.hm-tile b{font-size:34px}
   .hm-jump{grid-template-columns:1fr 1fr;gap:10px}.hm-j{min-height:96px;padding:12px}.hm-j b{font-size:22px}.hm-j span{font-size:14.5px}
-  .cr-tab[data-view="ask"]{display:none}
 }
 
 /* ---------- A little more glow ---------- */
@@ -1211,6 +1210,15 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
 [aria-busy="true"]::after{content:"";display:inline-block;width:.9em;height:.9em;margin-left:.5em;vertical-align:-.1em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:crSpin .8s linear infinite}
 @keyframes crSpin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){[aria-busy="true"]::after{animation:none}}
+.cr-subnav{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.cr-subnav:empty{display:none}
+.cr-subnav button{font:inherit;font-weight:700;font-size:16.5px;min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid var(--lx-gold-dim,rgba(212,175,97,.4));background:transparent;color:var(--ink2,inherit);cursor:pointer}
+.cr-subnav button.on{background:var(--lx-btn,linear-gradient(180deg,#f2d690,#dab364 45%,#b98d3c));color:#16130c;border-color:transparent}
+.cr-mh{font-size:12.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--lx-gold,#d4af61);padding:12px 14px 4px;border-top:1px solid rgba(212,175,97,.18);margin-top:4px}
+.cr-mh:first-of-type{border-top:0;margin-top:0}
+.cr-menu .cr-out{margin-top:6px;border-top:1px solid rgba(212,175,97,.18)}
+#hm-today{scroll-margin-top:72px}
+.hm-today-h{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:30px;line-height:1.1;margin:22px 0 8px;color:var(--lx-ink,#f6ecd4);scroll-margin-top:90px}
 .gb-i{display:block;padding:0}
 .gb-i summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:14px 16px;cursor:pointer;list-style:none;font-size:18px}
 .gb-i summary::-webkit-details-marker{display:none}
@@ -1232,40 +1240,33 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
     <button class="cr-menu-btn" id="cr-menu-btn" aria-haspopup="true" aria-expanded="false" onclick="crMenu()">Account ▾</button>
     <div class="cr-menu" id="cr-menu" role="menu">
       <div class="who" id="cr-who"></div>
-      <button onclick="crMenu(false);crView('sops')">📋 SOPs</button>
-      <button onclick="crMenu(false);crView('auto')">Automations</button>
-      <button id="cr-reports-link" onclick="crMenu(false);crView('reports')" hidden>Weekly reports</button>
-      <button onclick="crMenu(false);crView('refs')">Referrals &amp; partners</button>
-      <button onclick="crMenu(false);crView('growth')">Marketing &amp; backlog</button>
-      <button onclick="crMenu(false);crView('setup')">Import &amp; setup</button>
-      <button onclick="crMenu(false);crView('billing')">Plan &amp; billing</button>
-      <button onclick="crMenu(false);dyOpen()">My calendar &amp; morning email</button>
-      <button onclick="crMenu(false);crView('team')">Team</button>
-      <button onclick="crMenu(false);lkOpen()" id="cr-lookas-btn" hidden>👁 See as someone else</button>
-      <button onclick="crMenu(false);alOpen()" id="cr-activity-btn" hidden>📋 Activity log</button>
-      <button onclick="crMenu(false);hpOpen()">🙋 Help me set up</button>
-      <button onclick="crMenu(false);gbOpen()">📖 How Eagle I works</button>
-      <button onclick="crMenu(false);gdReset()">💡 Show the tips again</button>
-      <button onclick="crMenu(false);crView('start')">✓ Guided setup</button>
-      <button onclick="crMenu(false);binOpen()">🗑 Recycle bin</button>
-      <button onclick="crMenu(false);crPauseAll()" id="cr-pause-btn" hidden>⏸ Pause all automatic emails</button>
-      <button onclick="crMenu(false);crSimple()" id="cr-simple-btn">Simple view: fewer tabs</button>
+      <div class="cr-mh">Me</div>
+      <button onclick="crMenu(false);dyOpen()">📅 My calendar &amp; morning email</button>
+      <button onclick="crMenu(false);ckOpen('mine')">📝 My daily check-in</button>
       <button onclick="crMenu(false);dvOpen()">📱 Devices signed in</button>
+      <a href="/forgot-password.html">🔑 Change password</a>
+      <div class="cr-mh">Company</div>
+      <button onclick="crMenu(false);crView('company')">🏢 Company details</button>
+      <button onclick="crMenu(false);crView('team')">👥 Team</button>
+      <button onclick="crMenu(false);crView('auto')">✉ Automations</button>
+      <button onclick="crMenu(false);cpOpen('')">🏘 Our companies</button>
+      <button onclick="crMenu(false);crView('setup')">📄 Import &amp; setup</button>
+      <button onclick="crMenu(false);crView('billing')">💳 Plan &amp; billing</button>
+      <button onclick="crMenu(false);binOpen()">🗑 Recycle bin</button>
       <a href="/api/crm/export/all" id="cr-export" hidden onclick="crMenu(false);showNotif('Preparing your download','Your browser saves a .zip of spreadsheets in a moment.')">⬇ Download all my data</a>
+      <div class="cr-mh">Reports</div>
+      <button onclick="crMenu(false);crView(crCan('reports')?'reports':'refs')">📈 Reports, referrals &amp; marketing</button>
+      <div class="cr-mh">Help</div>
+      <button onclick="crMenu(false);gbOpen()">📖 How Eagle I works</button>
+      <button onclick="crMenu(false);hpOpen()">🙋 Help me set up</button>
       <button onclick="crMenu(false);rpOpenProblem()">🆘 Report a problem</button>
-      <button onclick="crMenu(false);crView('company')">Company details</button>
-      <button onclick="crMenu(false);cpOpen('')">🏢 Our companies</button>
-      <button onclick="crMenu(false);ckOpen('mine')">📝 Daily check-in</button>
       <a href="/marketing" id="cr-mkt" hidden>Open Eagle I marketing</a>
-      <a href="/forgot-password.html">Change password</a>
-      <button onclick="crSignOut()">Sign out</button>
+      <button onclick="crSignOut()" class="cr-out">Sign out</button>
     </div>
   </div>
   <nav class="cr-nav" id="cr-nav" aria-label="CRM sections">
-    <button class="cr-tab" data-view="home" onclick="crView('home')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button>
-    <button class="cr-tab" data-view="ask" onclick="crView('ask')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.9 5 5.1 1.9-5.1 1.9L12 17.4l-1.9-5.1L5 10.4l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Ask</button>
-    <button class="cr-tab" data-view="pipeline" onclick="crView('pipeline')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Pipeline</button>
-    <button class="cr-tab" data-view="needs" onclick="crView('needs')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.4 2.4 4.8-5"/></svg>Today<span class="tbadge" id="pl-needs-badge">0</span></button>
+    <button class="cr-tab" data-view="home" onclick="crView('home')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home<span class="tbadge" id="pl-needs-badge">0</span></button>
+    <button class="cr-tab" data-view="pipeline" onclick="crView('pipeline')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Customers</button>
     <button class="cr-tab" data-view="calendar" onclick="crView('calendar')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M7.5 14h2M11 14h2M14.5 14h2M7.5 17h2M11 17h2"/></svg>Calendar</button>
     <button class="cr-tab" data-view="jobs" onclick="crView('jobs')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Jobs</button>
     <button class="cr-tab" data-view="estimates" onclick="crView('estimates')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v.01M17.5 14.5v.01"/></svg>Money</button>
@@ -1279,30 +1280,26 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
   </div>
   <section class="view" id="view-ask"><div id="ask-host" class="ask-host"></div></section>
   <section class="view" id="view-pipeline">
-    <div class="sh"><div><div class="st">Pipeline</div><div class="ss">Every job you're selling, from first contact to finished project. Move a deal to a new stage and Eagle I sends that stage's emails for you, once you've approved them in Automations.</div></div>
+    <div class="sh"><div><div class="st">Customers</div><div class="ss">Every job you're selling, from first contact to finished project. Move a deal to a new stage and Eagle I sends that stage's emails for you, once you've approved them in Automations.</div></div>
       <button class="btn btn-blue" onclick="plNewDeal()">＋ Add a deal</button></div>
     <div id="pl-subbar"></div>
     <div id="pl-setup-banner"></div>
     <div id="pl-paused-banner"></div>
     <div class="pl-strip" id="pl-strip"></div>
-    <div class="pl-stages" id="pl-stages" role="tablist" aria-label="Pipeline stages"></div>
+    <div class="pl-stages" id="pl-stages" role="tablist" aria-label="Customer stages"></div>
     <input type="text" class="cred-input" id="pl-search" placeholder="Search by name, email, phone or address…" aria-label="Search deals" oninput="plRender()" style="margin-bottom:10px">
-    <div class="pl-list" id="pl-list"><div class="pl-empty">Loading your pipeline…</div></div>
+    <div class="pl-list" id="pl-list"><div class="pl-empty">Loading your customers…</div></div>
   </section>
   <section class="view" id="view-checkin"><div id="ck-box"><div class="pl-empty">Loading…</div></div></section>
   <section class="view" id="view-home">
     <div class="sh"><div><div class="st" id="hm-hi">Welcome</div><div class="ss" id="hm-sub">Everything that matters today, in one place.</div></div></div>
     <div id="hm-box"><div class="pl-empty">Loading…</div></div>
-  </section>
-  <section class="view" id="view-sops">
-    <div class="sh"><div><div class="st">SOPs</div><div class="ss">How every kind of job is done, step by step. Eagle I writes an SOP for anything you need, a whole project, one trade’s scope to send a vendor, a crew checklist, in your company’s own SOP style, ready to print or send.</div></div></div>
-    <div id="sp-box"><div class="pl-empty">Loading…</div></div>
-  </section>
-  <section class="view" id="view-needs">
+    <!-- Today: what needs a person (it was its own tab) -->
+    <div id="hm-today">
+    <h2 class="hm-today-h">Today</h2>
     <div id="ck-banner"></div>
-    <div class="sh"><div><div class="st">Today</div><div class="ss">Only what needs a person: things Eagle I flagged, your tasks, and this week's site visits. Everything else is handled on its own.</div></div></div>
     <div id="cl-box"></div>
-    <div class="pl-h" style="margin-top:0">Needs you</div>
+    <div class="pl-h hm-sec" style="margin-top:4px">Needs you</div>
     <div class="pl-list" id="pl-needs"><div class="pl-empty">Loading…</div></div>
     <div class="pl-h" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>📬 Email</span><span id="ew-allwrap"></span></div>
     <div id="ew-box"></div>
@@ -1312,8 +1309,13 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
       <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="td-new" class="cred-input" placeholder="Add a task…" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')tdAdd()"><input id="td-due" type="date" class="cred-input" style="width:auto" aria-label="Due date"><button class="btn-xs p" onclick="tdAdd()">Add</button></div>
     </div>
     <div class="pl-list" id="td-tasks"></div>
-    <div class="pl-h">Site visits this week</div>
-    <div class="pl-list" id="td-visits"></div>
+    </div>
+    <div id="hm-rest"></div>
+  </section>
+  <section class="view" id="view-sops">
+    <nav class="cr-subnav" id="sn-sops" aria-label="Sections"></nav>
+    <div class="sh"><div><div class="st">SOPs</div><div class="ss">How every kind of job is done, step by step. Eagle I writes an SOP for anything you need, a whole project, one trade’s scope to send a vendor, a crew checklist, in your company’s own SOP style, ready to print or send.</div></div></div>
+    <div id="sp-box"><div class="pl-empty">Loading…</div></div>
   </section>
   <section class="view" id="view-auto">
     <div class="sh"><div><div class="st">Automations</div><div class="ss">Each playbook sends emails when a deal reaches its stage. Nothing sends until you approve the exact wording. After that it runs on its own for every deal that enters the stage. If you change the wording, it switches off until you approve the new version.</div></div></div>
@@ -1352,10 +1354,10 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
   </section>
   <section class="view" id="view-co"><div id="co-box"><div class="pl-empty">Loading…</div></div></section>
   <section class="view" id="view-jobs">
+    <nav class="cr-subnav" id="sn-jobs" aria-label="Sections"></nav>
     <div class="sh"><div><div class="st">Jobs</div><div class="ss">Every signed job: where it stands, what's next, and what's waiting on the homeowner. A signed contract gets its schedule laid out on its own.</div></div></div>
     <div id="jb-subbar"></div>
     <div class="pl-list" id="jb-list"><div class="pl-empty">Loading…</div></div>
-    <div class="vd-mbtns" style="margin:4px 0 14px"><button class="btn-xs p" onclick="crView('sops')">📋 SOPs: how each kind of job is done</button></div>
     <div class="pl-h">Subs &amp; vendors</div>
     <details class="pl-pb" id="vd-add"><summary style="cursor:pointer;font-weight:800">＋ Add a sub or vendor</summary>
       <div class="pl-form" style="margin-top:8px">
@@ -1433,6 +1435,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
     <div class="pl-list" id="dup-list"></div>
   </section>
   <section class="view" id="view-growth">
+    <nav class="cr-subnav" id="sn-growth" aria-label="Sections"></nav>
     <div class="sh"><div><div class="st">Marketing &amp; backlog</div><div class="ss">Which channels bring in signed work and what each one costs, and how far out you’re booked, so you know when to spend more on ads and when to ease off.</div></div></div>
     <div id="mk-backlog"><div class="sm">Loading…</div></div>
     <div class="pl-card-top" style="margin-top:18px"><div class="pl-h" style="margin:0">Where your work comes from</div><select id="mk-months" aria-label="Period" onchange="mkLoad()" style="width:auto"><option value="3">3 months</option><option value="6">6 months</option><option value="12" selected>12 months</option><option value="24">24 months</option></select></div>
@@ -1442,6 +1445,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
     <div id="mk-spend"></div>
   </section>
   <section class="view" id="view-refs">
+    <nav class="cr-subnav" id="sn-refs" aria-label="Sections"></nav>
     <div class="sh"><div><div class="st">Referrals &amp; partners</div><div class="ss">Every past client and every trade partner gets their own link. Anyone who comes in through it is credited to them, and when that job signs Eagle I reminds you to thank them. Finished jobs get a review request and a home file with care reminders on their own.</div></div></div>
     <div class="pl-strip" id="rf-tot"></div>
     <div id="rf-settings"></div>
@@ -1463,6 +1467,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
     <div class="pl-list" id="rf-clients"></div>
   </section>
   <section class="view" id="view-reports">
+    <nav class="cr-subnav" id="sn-reports" aria-label="Sections"></nav>
     <div class="sh"><div><div class="st">Weekly reports</div><div class="ss">Every Monday morning: what went well, what needs attention, what each person worked on, and what to focus on. Written from your CRM records; every number comes from what was logged.</div></div>
       <button class="btn btn-blue" onclick="rpNow(this)">This week so far</button></div>
     <div id="rp-view"></div>
@@ -1474,6 +1479,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
   </section>
   <section class="view" id="view-team">
     <div class="sh"><div><div class="st">Team</div><div class="ss">Everyone at your company who uses Eagle I CRM, what each person does, and who they report to. People see the schedules of those above and below them.</div></div></div>
+    <div class="vd-mbtns" style="margin:0 0 12px"><button class="btn-xs" id="cr-lookas-btn" hidden onclick="lkOpen()">👁 See as someone else</button><button class="btn-xs" id="cr-activity-btn" hidden onclick="alOpen()">📋 Activity log: who changed what</button></div>
     <div id="tm-invite"></div>
     <div id="tm-join"></div>
     <div id="tm-sees"></div>
@@ -1527,6 +1533,9 @@ function uxClose(){
   const m=document.getElementById('ux-modal');if(!m||m.style.display==='none')return;
   if(CR.dirty&&!confirm('You have changes that aren’t saved. Close anyway?'))return;
   CR.dirty=false;m.style.display='none';
+  // A screen's tip waits while a window is open over it (the setup reminders on the first
+  // visit): once the window is closed, it shows, unless another window opened straight away.
+  setTimeout(()=>{if(m.style.display==='none'&&!GD.on&&CR.view)crGuide(CR.view);},400);
 }
 /* Unsaved work: typing in a window marks it changed (a save clears it), and
    longer text is kept as a draft in this browser for a week, so a reload or
@@ -1583,7 +1592,6 @@ const crCanManage=()=>!!(CR.me&&CR.me.canManage);
 const crCan=(k)=>!!(CR.me&&CR.me.perms&&CR.me.perms[k]);
 // Menus and tabs that depend on permissions.
 function crApplyMe(){
-  document.getElementById('cr-reports-link').hidden=!crCan('reports');
   document.getElementById('cr-export').hidden=!crCan('data');
   // Money (estimates, invoices, cash flow) only for people who may see or make them.
   {const t=document.querySelector('.cr-tab[data-view="estimates"]');if(t)t.hidden=!crCan('money')&&!crCan('estimates');}
@@ -1651,10 +1659,11 @@ const CR_GUIDES={
     ['Your jobs underway','Every signed job, where it stands, and what’s next.','#jb-list'],
     ['Open a job','Tap a job for its schedule, daily logs and photos, change orders, selections and purchase orders.'],
     ['Your subs and suppliers','Below the jobs is your list of subs and suppliers. Tap “🔗 Their page” to send a sub their private page with their dates and plans.'],
+    ['SOPs are here too','Tap “📋 SOPs” at the top of this screen for your step-by-step guides for each kind of work.','#sn-jobs'],
     ['Find one, or add many','Type a name or a trade (plumber, tile…) in the search box to find a sub fast. To add a whole list, upload a PDF or Excel sheet, or take a photo of a business card: Eagle I shows who it found before anyone is added.']]},
   estimates:{icon:'💵',steps:[
     ['Estimates and money','Your estimates are here, along with invoices, cash flow and job costs if your role can see money.','#es-list'],
-    ['Start an estimate from a deal','Open the customer’s deal (in Pipeline) and tap “＋ Construction estimate”. Add lines from your cost catalog, then send it.'],
+    ['Start an estimate from a deal','Open the customer’s deal (in Customers) and tap “＋ Construction estimate”. Add lines from your cost catalog, then send it.'],
     ['A signed estimate is locked','Once the homeowner signs, it can’t be changed by accident. To change it, make a revision.'],
     ['Invoices','Open a deal and use “＋ New invoice”. You’ll see who owes what here, with overdue ones flagged.',null,()=>crCan('money')]]},
   team:{icon:'👥',steps:[
@@ -1694,7 +1703,7 @@ const CR_GUIDES={
   co:{icon:'🏢',steps:[
     ['Each company in the group','Every company has its own profile: what it does, how to reach it, and its own projects and files. The team, roles and permissions are the same for all of them.'],
     ['Its projects','Jobs going, deals being sold and finished projects for this company. Tap one to open it. “Add a deal” here puts the new deal under this company.'],
-    ['Pick a company anywhere','On Pipeline and Jobs, the Company box at the top shows just one company’s projects, or all of them.']]},
+    ['Pick a company anywhere','On Customers and Jobs, the Company box at the top shows just one company’s projects, or all of them.']]},
   checkin:{icon:'📝',steps:[
     ['Your daily check-in','Every weekday at 3:30 you get an email to check in. Eagle I asks a few quick questions about your day: projects, what got done, anything stuck. About two minutes.'],
     ['Talk or type','Answer however is easier. Eagle I puts it on the right jobs for you as you go.','#ck-mode'],
@@ -1727,10 +1736,12 @@ const CR_GUIDES={
   mycal:{icon:'📱',steps:[['Your calendar on your phone','Add Eagle I to your phone’s calendar so your visits and job dates are there. The link is private to you: don’t share it.']]},
   activity:{icon:'📋',steps:[['Who changed what','Every change to the team, deletes, imports and settings, newest first. Pick a person to see only theirs.']]},
   home:{icon:'🏠',steps:[
-    ['Your home screen','Eagle I opens here every time: what matters today, on one page. Come back to it from Home in the menu bar.'],
-    ['Needs you first','What Eagle I flagged for you, tasks that are late or due today, and emails waiting for your answer. Urgent ones are at the top. Tap one to open it.'],
-    ['Reminders and updates','Reminders are the next few days: site visits, tasks, job phases starting, orders to send and permits still waiting. Updates are what happened lately on your projects.'],
-    ['Go anywhere from here','The numbers at the top and the pictures under “Jump to” open that screen. Not sure how something works? Account → 📖 How Eagle I works has every guide.','.hm-jumpw']]},
+    ['Your home screen','Eagle I opens here every time: what matters today, on one page. The numbers at the top open what they count.'],
+    ['Needs you','What Eagle I flagged for you. When it’s taken care of, tap ✓ Done. Not now? Snooze it and it comes back later. Tapped by mistake? Undo.','#pl-needs'],
+    ['Your email','📬 Email lists the emails waiting for your answer (Eagle I can draft the reply), and the ones you were only copied on, marked “No action needed”.'],
+    ['Your tasks','Type a task in the box and tap Add. Tick it when it’s done.','#td-new'],
+    ['Reminders and updates','Further down: the next few days (site visits, tasks, job phases, orders, permits), and what happened lately on your projects.'],
+    ['Everything else','The bar at the bottom has Customers, Calendar, Jobs and Money. Settings, reports and help are under Account at the top. ✦ Ask Eagle I is on every screen.','.hm-jumpw']]},
   sops:{icon:'📋',steps:[
     ['How every job is done','An SOP is a step-by-step guide to doing a job the same way every time. Pick a kind of work, or Company SOPs for rules that apply to every job.'],
     ['Ask for any SOP','Inside a kind of work, say in plain words what it should cover, pick what kind it is (a full project, one trade’s scope for a vendor, a crew checklist…) and tap “✦ Write the SOP”. It takes about a minute.'],
@@ -1802,8 +1813,12 @@ function gdRender(){
   setTimeout(()=>{const ok=document.getElementById('gd-ok');if(ok)ok.focus({preventScroll:true});},50);
 }
 // Every guide in one place (Account → How Eagle I works), to read again any time.
-const GB_SCREENS=[['home','Home'],['needs','Today'],['pipeline','Pipeline'],['calendar','Calendar'],['jobs','Jobs, subs & vendors'],['estimates','Money'],['ask','Ask Eagle I'],['checkin','Daily check-in'],['sops','SOPs'],['team','Team'],['auto','Automations'],['company','Company details'],['setup','Import & setup'],['refs','Referrals & partners'],['growth','Marketing & backlog'],['reports','Weekly reports'],['billing','Plan & billing'],['co','Our companies']];
-const GB_WINDOWS=[['deal','A customer (deal)','Tap any card in Pipeline'],['newdeal','Adding a customer','Pipeline → ＋ Add a deal'],['estimate','An estimate','On a deal → ＋ Construction estimate'],['price','Pricing a project from plans','On a deal → 💰 Price this project'],['takeoff','Takeoff from plans','On a deal → 📐 Takeoff from plans'],['design','Showing the new design','On a deal → 🎨 Show them the new design'],['job','A job','Jobs → tap a job, or “Open the job” on a deal'],['sub','A sub’s private page','Jobs → tap a sub or vendor'],['vendorlist','Adding many vendors from a file','Jobs → 📄 Upload a PDF or Excel sheet'],['sop','One SOP','SOPs → open any SOP'],['caladd','Adding to the calendar','Calendar → ＋ Add'],['mycal','Your calendar on your phone','Account → My calendar & morning email'],['loop','Emails you’re copied on','On a deal or a job → For your information'],['driveprojects','Projects found in your Drive','Company details → Google Drive'],['lookas','See as someone else','Account → 👁 See as someone else'],['search','Search','🔍 at the top'],['bin','Recycle bin','Account → 🗑 Recycle bin'],['activity','Who changed what','Account → 📋 Activity log']];
+const GB_SCREENS=[['home','Home (and Today)'],['pipeline','Customers'],['calendar','Calendar'],['jobs','Jobs, subs & vendors'],['estimates','Money'],['sops','SOPs (under Jobs)'],['ask','Ask Eagle I'],['checkin','Daily check-in'],['team','Team'],['auto','Automations'],['company','Company details'],['setup','Import & setup'],['reports','Weekly reports'],['refs','Referrals & partners'],['growth','Marketing & backlog'],['billing','Plan & billing'],['co','Our companies']];
+const GB_WINDOWS=[['deal','A customer (deal)','Tap any card in Customers'],['newdeal','Adding a customer','Customers → ＋ Add a deal'],['estimate','An estimate','On a deal → ＋ Construction estimate'],['price','Pricing a project from plans','On a deal → 💰 Price this project'],['takeoff','Takeoff from plans','On a deal → 📐 Takeoff from plans'],['design','Showing the new design','On a deal → 🎨 Show them the new design'],['job','A job','Jobs → tap a job, or “Open the job” on a deal'],['sub','A sub’s private page','Jobs → tap a sub or vendor'],['vendorlist','Adding many vendors from a file','Jobs → 📄 Upload a PDF or Excel sheet'],['sop','One SOP','Jobs → SOPs → open any SOP'],['caladd','Adding to the calendar','Calendar → ＋ Add'],['mycal','Your calendar on your phone','Account → My calendar & morning email'],['loop','Emails you’re copied on','On Home, and on a deal or a job → For your information'],['driveprojects','Projects found in your Drive','Company details → Google Drive'],['lookas','See as someone else','Account → Team → 👁 See as someone else'],['search','Search','🔍 at the top'],['bin','Recycle bin','Account → 🗑 Recycle bin'],['activity','Who changed what','Account → Team → 📋 Activity log'],
+  ['calday','One day on the calendar','Calendar → tap a day'],['calitem','One thing on the calendar','Calendar → tap anything on it'],['nudge','A payment reminder','Home → Needs you → an overdue invoice'],
+  ['followup','Following up on an email','Home → Needs you → no reply yet'],['ckday','One check-in','Daily check-in → an earlier day, or Team'],['handover','Handing over someone’s work','Team → a person → Hand over their work'],
+  ['coedit','A company in your group','Account → Our companies → Edit'],['homeowners','See as a homeowner','Team → 👁 See as someone else → A homeowner'],
+  ['devices','Devices signed in','Account → Devices signed in'],['help','Getting a person to help','Account → Help me set up'],['problem','Reporting a problem','Account → Report a problem']];
 function gbSteps(k){const g=CR_GUIDES[k];return g?g.steps.filter(x=>!x[3]||x[3]()):[];}
 function gbItem(k,name,where,go){const g=CR_GUIDES[k],st=gbSteps(k);if(!g||!st.length)return '';
   const said=[name,where,...st.map(x=>x[0]+' '+x[1])].join(' ').toLowerCase();
@@ -1816,7 +1831,7 @@ function gbOpen(){
     <div class="pl-h">Screens</div><div class="pl-list gb-list">${GB_SCREENS.filter(([k])=>document.getElementById('view-'+k)).map(([k,n])=>gbItem(k,n,'',true)).join('')}</div>
     <div class="pl-h" style="margin-top:18px">Windows that open on a screen</div><div class="pl-list gb-list">${GB_WINDOWS.map(([k,n,w])=>gbItem(k,n,w,false)).join('')}</div>
     <div class="sm" id="gb-none" hidden>Nothing matches. Try another word, or ask Eagle I.</div>
-    <div class="vd-mbtns" style="margin-top:16px"><button class="btn-xs" onclick="uxClose();hpOpen()">🙋 Still stuck? Get help</button><button class="btn-xs" onclick="uxClose();gdReset()">💡 Show each screen’s tips again</button></div>`);
+    <div class="vd-mbtns" style="margin-top:16px"><button class="btn-xs" onclick="uxClose();hpOpen()">🙋 Still stuck? Get help</button><button class="btn-xs" onclick="uxClose();gdReset()">💡 Show each screen’s tips again</button><button class="btn-xs" onclick="uxClose();crView('start')">✓ Guided setup</button></div>`);
 }
 function gbFind(q){q=String(q||'').toLowerCase().trim();let n=0;document.querySelectorAll('.gb-i').forEach(x=>{const on=!q||q.split(/\s+/).every(w=>x.dataset.s.includes(w));x.style.display=on?'':'none';if(on)n++;x.open=!!q&&on&&n<=3;});const e=document.getElementById('gb-none');if(e)e.hidden=n>0;}
 function gdStep(d){
@@ -1831,10 +1846,10 @@ function gdDone(){
   const next=GD.q.shift();if(next)crGuide(next);
 }
 function gdOff(){
-  if(!confirm('Stop showing tips? You can turn them back on any time from Account → “Show the tips again”.'))return;
+  if(!confirm('Stop showing tips? You can turn them back on any time from Account → How Eagle I works → “Show each screen’s tips again”.'))return;
   gdClose();GD.q=[];if(CR.me)CR.me.tips={...(CR.me.tips||{seen:[]}),off:true};
   fetch('/api/crm/me/tips',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({off:true,seen:GD.key})}).catch(()=>{});
-  showNotif('Tips are off','Turn them back on from Account → “Show the tips again”.');
+  showNotif('Tips are off','Turn them back on from Account → How Eagle I works → “Show each screen’s tips again”.');
 }
 async function gdReset(){
   try{const r=await plApi('/api/crm/me/tips',{body:{reset:true}});CR.me.tips=r.tips;showNotif('Tips are back on','Each screen shows its tips again the next time you open it.');crGuide(CR.view);}catch(e){showNotif('Could not do that',e.message);}
@@ -1848,8 +1863,7 @@ window.addEventListener('load',()=>{
   }
 });
 // Simple view: only Ask, Today, Calendar and Jobs in the menu bar.
-function crSimpleApply(){let on=false;try{on=localStorage.getItem('simple')==='1';}catch(e){}document.body.classList.toggle('simple',on);const b=document.getElementById('cr-simple-btn');if(b)b.textContent=on?'Full view: all tabs':'Simple view: fewer tabs';return on;}
-function crSimple(){let on=false;try{on=localStorage.getItem('simple')==='1';localStorage.setItem('simple',on?'':'1');}catch(e){}const now=crSimpleApply();showNotif(now?'Simple view':'Full view',now?'Pipeline and Money are hidden from the menu bar. Switch back any time from Account.':'All tabs are back.');if(now&&['pipeline','estimates'].includes(CR.view))crView('needs');}
+function crSimpleApply(){try{localStorage.removeItem('simple');}catch(e){}document.body.classList.remove('simple');return false;}
 // The top bar's logo: the company being looked at (its profile, or the one picked), else the group's.
 function crMark(){
   const c=(CR.view==='co'&&CR.coSlug&&sbList().find(x=>x.slug===CR.coSlug))||(CR.sub&&sbList().find(x=>x.id===CR.sub))||null;
@@ -1857,20 +1871,33 @@ function crMark(){
   document.querySelectorAll('.cr-brand').forEach(b=>{if(logo)b.style.setProperty('--cr-logo',`url('${logo.replace(/'/g,'')}')`);else b.style.removeProperty('--cr-logo');});
   const ic=document.querySelector('link[rel="icon"]');if(ic){ic.type=logo?'image/png':'image/svg+xml';ic.href=logo||'/lcg-mark.svg';}
 }
+// The switcher at the top of screens that share one place: Jobs and SOPs; the three reports.
+const CR_SUBNAV={jobs:[['jobs','🛠 Jobs & subs'],['sops','📋 SOPs']],reports:[['reports','📈 Weekly reports',()=>crCan('reports')],['refs','🤝 Referrals & partners'],['growth','📣 Marketing & backlog']]};
+function crSubnav(v){
+  const g=CR_SUBNAV[CR_TAB_OF[v]||v];const el=document.getElementById('sn-'+v);if(!g||!el)return;
+  const items=g.filter(x=>!x[2]||x[2]());
+  el.innerHTML=items.length>1?items.map(([k,l])=>`<button type="button" class="${k===v?'on':''}" ${k===v?'aria-current="page"':''} onclick="crView('${k}')">${l}</button>`).join(''):'';
+}
+// Screens that live inside another tab: Today is part of Home, SOPs part of Jobs, and the
+// three reports screens share one place in the Account menu.
+const CR_TAB_OF={sops:'jobs',refs:'reports',growth:'reports'};
 function crView(v){
+  // Today is the middle of Home now: old links and buttons still land there.
+  let toToday=false;if(v==='needs'){v='home';toToday=true;}
   if(CR.vDirty&&CR.vDirty!==v&&CR.view===CR.vDirty&&!confirm('You typed something on this screen that isn’t saved yet. Leave without saving?'))return;
   CR.vDirty=null;
   CR.view=v;setTimeout(()=>crTip(v),0);setTimeout(crMark,0);
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
-  document.querySelectorAll('.cr-tab').forEach(t=>{t.classList.toggle('active',t.dataset.view===v);t.setAttribute('aria-current',t.dataset.view===v?'page':'false');});
+  const tab=CR_TAB_OF[v]||v;
+  document.querySelectorAll('.cr-tab').forEach(t=>{t.classList.toggle('active',t.dataset.view===tab);t.setAttribute('aria-current',t.dataset.view===tab?'page':'false');});
+  crSubnav(v);
   if(VN){try{VN.stop();}catch(e){}}
   if(typeof aiMount==='function')aiMount(v==='ask');
   document.body.classList.toggle('on-ask',v==='ask');
   document.body.classList.toggle('on-start',v==='start');
-  if(v==='home')hmLoad();
+  if(v==='home'){CR.toToday=toToday;hmLoad();plLoadNeeds();clLoad('cl-box');lpToday();ckBanner();}
   if(v==='sops')spLoad();
   if(v==='pipeline')plLoad();
-  if(v==='needs'){plLoadNeeds();clLoad('cl-box');lpToday();}
   if(v==='calendar')cvLoad();
   if(v==='auto')plLoadAuto();
   if(v==='company'){coLoad();afLoad();}
@@ -1882,7 +1909,6 @@ function crView(v){
   if(v==='jobs')jbList();
   if(v==='co')cpLoad();
   if(v==='checkin')ckLoad();
-  if(v==='needs')ckBanner();
   if(v==='refs')rfLoad();
   if(v==='growth')mkLoad();
   if(v==='setup')suLoad();
@@ -2287,7 +2313,7 @@ async function clLoad(elId){
   let hidden=false;try{hidden=!!localStorage.getItem('cl-hide');}catch(e){}
   try{
     const c=await plApi('/api/crm/checklist');
-    const practice=crCan('data')?(c.practice.on?`<div class="sm" style="margin-top:8px">Practice customers are in your pipeline (marked “practice”). <button class="btn-xs" onclick="clPractice(false)">Remove the practice customers</button></div>`
+    const practice=crCan('data')?(c.practice.on?`<div class="sm" style="margin-top:8px">Practice customers are in Customers (marked “practice”). <button class="btn-xs" onclick="clPractice(false)">Remove the practice customers</button></div>`
       :c.done<c.total?`<div class="sm" style="margin-top:8px">Want to try things first? <button class="btn-xs" onclick="clPractice(true)">Add 4 practice customers</button> You can remove them with one tap.</div>`:''):'';
     if(c.done>=c.total){el.innerHTML=practice?`<div class="cl">${practice}</div>`:'';return;}
     if(hidden){el.innerHTML=`<div class="sm" style="margin:0 0 12px"><button class="btn-xs" onclick="try{localStorage.removeItem('cl-hide')}catch(e){};clLoad('${elId}')">Show the getting-started list (${c.done} of ${c.total} done)</button></div>`;return;}
@@ -2299,7 +2325,7 @@ async function clLoad(elId){
 }
 async function clPractice(on){
   if(!on&&!confirm('Remove all the practice customers and everything on them?'))return;
-  try{const r=await plApi('/api/crm/practice',on?{body:{}}:{method:'DELETE'});showNotif(on?'Practice customers added':'Practice customers removed',on?'Find them in the Pipeline, marked “practice”. Nothing is ever emailed to them.':'');crView(CR.view);}
+  try{const r=await plApi('/api/crm/practice',on?{body:{}}:{method:'DELETE'});showNotif(on?'Practice customers added':'Practice customers removed',on?'Find them in Customers, marked “practice”. Nothing is ever emailed to them.':'');crView(CR.view);}
   catch(e){showNotif('Could not do that',e.message);}
 }
 /* ---------- search everything (lib/crmSearch.js) ---------- */
@@ -3036,7 +3062,7 @@ async function stLoad(){
       const co=(await plApi('/api/crm/company').catch(()=>({company:{}}))).company||{};ST.coMissing=[(co.address||'').trim().length<8?'business address':null,!co.phone?'company phone':null].filter(Boolean);
       body=`<div class="ss">These go out on their own at the right moment, from your company, with your name and phone. Each one is ticked; untick any you don’t want. You can read and change the wording any time under Account → Automations.</div>
       <div style="margin-top:10px">${ST.emails.map(e=>`<label class="pl-switch tm-perm"><input type="checkbox" class="st-em" value="${e.id}" ${e.on?'checked disabled':'checked'} onchange="stLabel()"><span><b>${uxEsc(e.name)}</b>${e.on?' <span class="pl-tag gB">On</span>':''}<br><span class="sm">${uxEsc(e.what||'')}${e.emails>1?' ('+e.emails+' emails)':''}</span></span></label>`).join('')}</div>
-      <div class="st-warn">⚠ <b>Once on, these go to your customers by themselves</b>, from your company and signed with your name. Nothing goes to people already in your pipeline straight away: each one starts the next time it fits (a new lead comes in, a visit is booked, an invoice is sent…). Not sure about the wording? Read them first.${ST.coMissing.length?`<br><br><b>Your ${ST.coMissing.join(' and ')} ${ST.coMissing.length===1?'is':'are'} missing.</b> ${ST.coMissing.includes('business address')?'The emails wait until the address is filled in (the law requires it). ':''}Add ${ST.coMissing.length===1?'it':'them'} in Account → Company details.`:''}</div>
+      <div class="st-warn">⚠ <b>Once on, these go to your customers by themselves</b>, from your company and signed with your name. Nothing goes to people already in Customers straight away: each one starts the next time it fits (a new lead comes in, a visit is booked, an invoice is sent…). Not sure about the wording? Read them first.${ST.coMissing.length?`<br><br><b>Your ${ST.coMissing.join(' and ')} ${ST.coMissing.length===1?'is':'are'} missing.</b> ${ST.coMissing.includes('business address')?'The emails wait until the address is filled in (the law requires it). ':''}Add ${ST.coMissing.length===1?'it':'them'} in Account → Company details.`:''}</div>
       <div class="vd-mbtns"><button class="btn-xs" onclick="crView('auto')">Read each one first</button></div>
       <div class="pl-h">Homeowners and subs</div><div class="sm" style="margin-top:0">Homeowners and subs can make their own free Eagle I account with the email you have for them. Their projects and jobs with you show up there by themselves, the same pages you already share.</div>`;}
     if(k==='myteam'){const d=await crLoadTeam();const m=d.members.find(x=>x.id===me.userId)||{};const boss=m.reports_to?tmName(m.reports_to):'';const under=d.members.filter(x=>x.reports_to===me.userId);
@@ -3049,7 +3075,7 @@ async function stLoad(){
     <div class="pl-pb"><div class="pl-item-t" style="font-size:21px">${uxEsc(ST_TITLE[k])}</div>${body}
     <div class="vd-mbtns" style="margin-top:16px;align-items:center"><button class="btn btn-blue" id="st-go" onclick="stNext(this)">${last?'Finish':'Save and continue'}</button>${ST.step>0?'<button class="btn-xs" onclick="stSetStep(ST.step-1);stLoad()">← Back</button>':''}${last?'':'<button class="btn-xs" onclick="stSetStep(ST.step+1);stLoad()">Skip this step</button>'}</div><div class="sm" id="st-err" style="color:var(--red)"></div></div>
     <div class="st-warn" style="margin-top:14px;background:var(--bg4);border-color:#c9d8e8">🙋 <b>Stuck?</b> Eagle I can walk you through it, talking or typing. <button class="btn-xs p" onclick="hpOpen()">Help me set up</button> <button class="btn-xs" onclick="hpCall()">📞 Request a call</button></div>
-    <div class="sm" style="margin-top:14px">Want to do this later? <button class="btn-xs" onclick="stFinish(true)">Skip setup for now</button> You can come back to it from Account → Guided setup.</div>`;
+    <div class="sm" style="margin-top:14px">Want to do this later? <button class="btn-xs" onclick="stFinish(true)">Skip setup for now</button> You can come back to it from Account → How Eagle I works → Guided setup.</div>`;
   window.scrollTo(0,0);
   stLabel();
   if(after)after();
@@ -3142,7 +3168,7 @@ async function stNext(btn){
     if(k==='data'){
       const picked=[...document.querySelectorAll('.st-pp:checked')].map(c=>(ST.found||[])[+c.dataset.i]).filter(Boolean);
       const nc=picked.filter(p=>p.kind==='customer').length,ns=picked.length-nc;
-      if(picked.length&&!confirm(`Add ${[nc?nc+' customer'+(nc===1?'':'s'):'',ns?ns+' sub'+(ns===1?'':'s')+' and supplier'+(ns===1?'':'s'):''].filter(Boolean).join(' and ')}?\n\n${nc?'Customers go in your Pipeline as new leads. ':''}${ns?'Subs go in your subs list. ':''}Nobody is emailed now, and automatic emails only start for one when you move it to another stage.${picked.length>25?'\n\nThat’s a lot of people: have a quick look that they’re all right.':''}\n\nYou can undo this from Account → Import & setup.`)){btn.disabled=false;return;}
+      if(picked.length&&!confirm(`Add ${[nc?nc+' customer'+(nc===1?'':'s'):'',ns?ns+' sub'+(ns===1?'':'s')+' and supplier'+(ns===1?'':'s'):''].filter(Boolean).join(' and ')}?\n\n${nc?'They go in Customers as new leads. ':''}${ns?'Subs go in your subs list. ':''}Nobody is emailed now, and automatic emails only start for one when you move it to another stage.${picked.length>25?'\n\nThat’s a lot of people: have a quick look that they’re all right.':''}\n\nYou can undo this from Account → Import & setup.`)){btn.disabled=false;return;}
       if(picked.length){const r=await plApi('/api/crm/setup/from-email',{body:{customers:picked.filter(p=>p.kind==='customer'),subs:picked.filter(p=>p.kind==='sub')}});
         showNotif('Added '+r.added,'Undo it any time from Account → Import & setup.');}
     }
@@ -3160,14 +3186,14 @@ async function stNext(btn){
 async function stFinish(skipped){
   try{await plApi('/api/crm/setup/done',{body:{}});}catch(e){showNotif('Could not save',e.message);return;}
   CR.me.needsSetup=false;stSetStep(0);
-  showNotif(skipped?'Setup skipped':'You’re all set',skipped?'Come back to it any time from Account → Guided setup.':'Ask Eagle I anything, or open Today to see what needs you.');
+  showNotif(skipped?'Setup skipped':'You’re all set',skipped?'Come back to it any time from Account → How Eagle I works → Guided setup.':'Ask Eagle I anything, or open Home to see what needs you.');
   crView(stOwner()?'needs':'ask');
 }
 // After an emailed invitation the step refreshes to list them; a link to pass on by hand stays on screen to copy.
 async function stInvite(btn){await tmInvite(btn);const m=document.getElementById('tm-msg');if(m&&/^Invitation sent/.test(m.textContent))setTimeout(()=>stLoad(),1500);}
 function stCopy(){const url=location.origin+'/crm/login?code='+encodeURIComponent(ST.code||'');try{navigator.clipboard.writeText(url);showNotif('Copied','Send it by text or email: '+url);}catch(e){prompt('Copy this link:',url);}}
 function stGoogle(){location.href='/api/crm/google/oauth/start';}
-async function stPractice(btn){btn.disabled=true;try{await plApi('/api/crm/practice',{body:{}});showNotif('Practice customers added','Look around in Pipeline. Remove them with one tap when you’re done.');stLoad();}catch(e){showNotif('Could not add them',e.message);btn.disabled=false;}}
+async function stPractice(btn){btn.disabled=true;try{await plApi('/api/crm/practice',{body:{}});showNotif('Practice customers added','Look around in Customers. Remove them with one tap when you’re done.');stLoad();}catch(e){showNotif('Could not add them',e.message);btn.disabled=false;}}
 
 /* ---------- letting people join with the company code ---------- */
 async function tmJoinLoad(){
@@ -3828,7 +3854,7 @@ function dpReview(){
 }
 function dpCount(){const b=document.getElementById('dp-go');if(!b)return;const n=document.querySelectorAll('.vb-row input[data-f]:checked').length;b.textContent=n?`Add ${n} project${n===1?'':'s'}`:'Nothing ticked';b.disabled=!n;}
 async function dpAdd(btn){btn.disabled=true;const ids=[...document.querySelectorAll('.vb-row input[data-f]:checked')].map(x=>x.dataset.f);
-  try{const r=await plApi('/api/crm/drive/projects/add',{body:{folderIds:ids}});CR.dirty=false;uxClose();showNotif('Projects added',`${r.added} added to the Pipeline${r.skipped?`, ${r.skipped} were already there`:''}.`);}
+  try{const r=await plApi('/api/crm/drive/projects/add',{body:{folderIds:ids}});CR.dirty=false;uxClose();showNotif('Projects added',`${r.added} added to Customers${r.skipped?`, ${r.skipped} were already there`:''}.`);}
   catch(e){btn.disabled=false;showNotif('Couldn’t add them',e.message);}}
 async function dvEnable(btn){btn.disabled=true;const m=document.getElementById('dv-msg');m.textContent='Setting up “Eagle I Projects” in your Drive…';try{await plApi('/api/crm/drive/enable',{body:{}});showNotif('Google Drive is on','Each job gets its folder over the next few minutes.');dvLoad();}catch(e){m.textContent=e.message;btn.disabled=false;}}
 async function dvSync(btn){btn.disabled=true;try{const r=await plApi('/api/crm/drive/sync',{body:{}});showNotif('Synced',`${r.pushed} sent to Drive, ${r.added} new from Drive.`);}catch(e){showNotif('Could not sync',e.message);}dvLoad();}
@@ -3907,7 +3933,7 @@ async function plLoad(){
   try{
     PL.data=await plApi('/api/crm/pipeline');setTimeout(crPauseLabel,0);
     plRender();plBadge(PL.data.needsYou);
-  }catch(e){const el=document.getElementById('pl-list');if(el)el.innerHTML='<div class="pl-empty">Could not load your pipeline: '+uxEsc(e.message)+'</div>';}
+  }catch(e){const el=document.getElementById('pl-list');if(el)el.innerHTML='<div class="pl-empty">Could not load your customers: '+uxEsc(e.message)+'</div>';}
 }
 function plBadge(n){
   const b=document.getElementById('pl-needs-badge');if(b){b.textContent=n;b.classList.toggle('on',n>0);}
@@ -3980,7 +4006,7 @@ async function plSaveNew(btn,anyway){
   btn.disabled=true;
   // Already in the pipeline? Say so before making a second one.
   if(!anyway){try{const {matches}=await plApi('/api/crm/deals/duplicates',{body:{name:v('pln-name'),email:v('pln-email'),phone:v('pln-phone'),address:v('pln-address')}});
-    if(matches.length){btn.disabled=false;document.getElementById('pln-err').innerHTML=`<div class="pl-banner" style="display:block"><b>This may already be in your pipeline:</b>${matches.map(m=>`<div style="margin-top:8px">“${uxEsc(m.title)}” · ${uxEsc(m.name)} · ${uxEsc(m.stage)} <span class="sm">(${uxEsc(m.why)})</span> <button class="btn-xs p" onclick="CR.dirty=false;uxClose();plOpenDeal('${m.id}')">Open that deal</button></div>`).join('')}<div class="vd-mbtns"><button class="btn-xs" onclick="plSaveNew(this,true)">It’s different: add a new one anyway</button></div></div>`;return;}}catch(e){}}
+    if(matches.length){btn.disabled=false;document.getElementById('pln-err').innerHTML=`<div class="pl-banner" style="display:block"><b>This may already be in Customers:</b>${matches.map(m=>`<div style="margin-top:8px">“${uxEsc(m.title)}” · ${uxEsc(m.name)} · ${uxEsc(m.stage)} <span class="sm">(${uxEsc(m.why)})</span> <button class="btn-xs p" onclick="CR.dirty=false;uxClose();plOpenDeal('${m.id}')">Open that deal</button></div>`).join('')}<div class="vd-mbtns"><button class="btn-xs" onclick="plSaveNew(this,true)">It’s different: add a new one anyway</button></div></div>`;return;}}catch(e){}}
   try{
     const r=await plApi('/api/crm/deals',{body:{...(document.getElementById('pln-sub')?{subsidiaryId:v('pln-sub')||null}:{}),name:v('pln-name'),phone:v('pln-phone'),email:v('pln-email'),address:v('pln-address'),title:v('pln-title'),value:v('pln-value'),stage:v('pln-stage'),source:v('pln-source'),note:v('pln-note'),ownerUserId:document.getElementById('pln-owner')?v('pln-owner'):undefined}});
     uxClose();showNotif('Deal added',r.deal.title);await plLoad();
@@ -4027,14 +4053,6 @@ async function hmLoad(){
   const tile=(num,label,go,icon)=>`<button class="hm-tile" onclick="${go}">${hmI(icon)}<b>${num}</b><span>${label}</span></button>`;
   const tiles=[tile(c.needsYou,'Need you',"crView('needs')",'alert'),tile(c.toReply,'Emails to answer',"crView('needs')",'mail'),
     tile(c.selling,c.sellingValue!=null&&c.sellingValue>0?`Being sold · ${plMoney(c.sellingValue)}`:'Being sold',"crView('pipeline')",'stage'),tile(c.jobs,'Jobs underway',"crView('jobs')",'phase')].join('');
-  // Needs you first
-  const needs=[
-    ...n.flagged.map(i=>hmRow({icon:i.urgent?'alert':i.kind==='email_reply'||i.kind==='email_followup'?'mail':'alert',title:i.title,sub:[i.deal,i.detail&&i.detail.split('\n')[0]].filter(Boolean).join(' · '),go:hmDeal(i.dealId),urgent:i.urgent,tag:i.urgent?'Urgent':''})),
-    ...n.overdue.map(k=>hmRow({icon:'task',title:k.title,sub:[k.deal,'was due '+hmWhen(k.due)].filter(Boolean).join(' · '),go:k.dealId?hmDeal(k.dealId):"crView('needs')",tag:'Overdue',urgent:true})),
-    ...n.today.map(k=>hmRow({icon:'task',title:k.title,sub:[k.deal,'due today'].filter(Boolean).join(' · '),go:k.dealId?hmDeal(k.dealId):"crView('needs')"})),
-    ...n.toReply.filter(x=>!n.flagged.some(i=>i.title.startsWith(x.who))).map(x=>hmRow({icon:'mail',title:`${x.who} is waiting for your reply`,sub:x.reason||x.subject,go:"crView('needs')",urgent:x.urgent,tag:x.urgent?'Urgent':''}))
-  ];
-  const more=n.flaggedTotal+n.overdueTotal-Math.min(n.flagged.length+n.overdue.length,needs.length);
   // Reminders: the next few days
   const rem=[
     ...r.visits.map(v=>hmRow({icon:'visit',title:`Site visit: ${v.title}`,sub:[hmWhen(v.at),v.contact,v.address].filter(Boolean).join(' · '),go:hmDeal(v.dealId)})),
@@ -4048,17 +4066,22 @@ async function hmLoad(){
   const ups=d.updates.map(u=>hmRow({icon:u.icon,title:u.text,sub:[u.deal,u.who,hmWhen(u.at)].filter(Boolean).join(' · '),go:u.link?`crView('checkin');CK.tab='team';ckLoad()`:u.dealId?hmDeal(u.dealId):"crView('pipeline')"}));
   if(c.fyi)ups.push(hmRow({icon:'fyi',title:`${c.fyi} email${c.fyi===1?'':'s'} for your information`,sub:'You were copied, or it was for someone else. Nothing needed from you.',go:"crView('needs')"}));
   // Jump to: every other tab
-  const J=[['pipeline','Pipeline','Every job you’re selling','/portfolio/levish-properties.jpg',true],['needs','Today','Flagged, tasks and visits','/portfolio/hero.jpg',true],['calendar','Calendar','Visits, phases, deliveries','/portfolio/group-blueprint.jpg',true],
-    ['jobs','Jobs','Schedules, subs and files','/crm-art/setup-vendors.jpg',true],['estimates','Money','Estimates and invoices','/portfolio/levi-homes.jpg',crCan('money')||crCan('estimates')],['ask','Ask Eagle I','Ask anything, or talk','/crm-art/setup-emails.jpg',true],
-    ['checkin','Check-ins','What everyone did today','/crm-art/setup-projects.jpg',true],['sops','SOPs','How every job is done','/portfolio/group-blueprint.jpg',true],['team','Team','People and permissions','/crm-art/tip-house.jpg',crCan('team')],['auto','Automations','Emails that send themselves','/crm-art/setup-emails.jpg',crCan('emails')],['company','Company','Details, Google and Drive','/portfolio/hero.jpg',crCan('settings')]];
+  // Jump to: the other screens (the tabs, plus what's in the Account menu)
+  const J=[['pipeline','Customers','Everyone you’re selling to','/portfolio/levish-properties.jpg',true],['calendar','Calendar','Visits, phases, deliveries','/portfolio/group-blueprint.jpg',true],
+    ['jobs','Jobs','Schedules, subs and files','/crm-art/setup-vendors.jpg',true],['estimates','Money','Estimates and invoices','/portfolio/levi-homes.jpg',crCan('money')||crCan('estimates')],
+    ['sops','SOPs','How every job is done','/portfolio/group-blueprint.jpg',true],['checkin','Check-ins','What everyone did today','/crm-art/setup-projects.jpg',true],
+    [crCan('reports')?'reports':'refs','Reports','Weekly reports, referrals, marketing','/crm-art/tip-house.jpg',true],['ask','Ask Eagle I','Ask anything, or talk','/crm-art/setup-emails.jpg',true]];
   const card=(title,icon,body,empty,foot='')=>`<section class="hm-card"><h2 class="hm-h">${hmI(icon)}${title}</h2>${body||`<div class="hm-empty">${empty}</div>`}${foot}</section>`;
-  box.innerHTML=`<div class="hm-tiles">${tiles}</div>
-    <div class="hm-grid">
-      <div>${card('Needs you first','alert',needs.slice(0,10).join(''),'Nothing needs you right now. Nice.',more>0?`<button class="hm-more" onclick="crView('needs')">See all ${n.flaggedTotal+n.overdueTotal} in Today ›</button>`:'')}
-        ${card('Reminders','task',setup+rem.slice(0,10).join(''),'Nothing coming up in the next few days.')}</div>
+  // Top: the numbers. Middle (in the page): Today, what needs a person. Bottom: what's coming, what happened, and the other screens.
+  box.innerHTML=`<div class="hm-tiles">${tiles}</div>`;
+  const rest=document.getElementById('hm-rest');
+  if(rest)rest.innerHTML=`<div class="hm-grid" style="margin-top:18px">
+      <div>${card('Reminders','task',setup+rem.slice(0,10).join(''),'Nothing coming up in the next few days.')}</div>
       <div>${card('Updates','note',ups.join(''),'Nothing new in the last few days. Updates from your projects, check-ins, customers’ emails and payments show here.')}</div>
     </div>
     <section class="hm-jumpw"><h2 class="hm-h">${hmI('stage')}Jump to</h2><div class="hm-jump">${J.filter(x=>x[4]).map(([v,t,sub,img])=>`<button class="hm-j" style="--img:url('${img}')" onclick="crView('${v}')"><b>${t}</b><span>${sub}</span></button>`).join('')}</div></section>`;
+  // Came from a "Today" link or a number at the top: straight to that part, once the page has its size.
+  if(CR.toToday){CR.toToday=false;requestAnimationFrame(()=>{const t=document.getElementById('hm-today');if(t)t.scrollIntoView({block:'start'});});}
 }
 /* ---------- SOPs (lib/crmSops.js) ---------- */
 const SP={cat:null,data:null,deals:null,vendors:null};
@@ -4256,7 +4279,7 @@ async function plOpenDeal(id){
 }
 /* ---------- the companies in the group (lib/crmSubsidiaries.js) ----------
    One team for all of them; each company has its own profile, projects and files.
-   The company picked on Pipeline and Jobs is remembered on this device. */
+   The company picked on Customers and Jobs is remembered on this device. */
 async function sbLoad(){
   try{CR.subs=(await plApi('/api/crm/subsidiaries')).companies||[];}catch(e){CR.subs=CR.subs||[];}
   if(CR.sub===undefined){try{CR.sub=localStorage.getItem('cr-sub')||'';}catch(e){CR.sub='';}}
@@ -4564,7 +4587,7 @@ async function lfLoad(dealId){
     const r=d.referrer;
     el.innerHTML=`<div class="pl-pb">
       <label for="lf-ref" style="font-size:15px;font-weight:700;display:block">Referred by</label>
-      ${r&&r.kind==='client'?`<div class="sm" style="margin-top:2px">👤 ${uxEsc(r.name)} (a past client)</div>`:`<div style="display:flex;gap:6px"><select id="lf-ref" onchange="lfSetRef('${dealId}',this.value)"><option value="">Nobody / not sure</option>${d.partners.map(p=>`<option value="${p.id}"${r&&r.id===p.id?' selected':''}>${uxEsc(p.name)}${p.company?' · '+uxEsc(p.company):''}</option>`).join('')}</select></div>${d.partners.length?'':'<div class="sm">Add realtors, designers and architects under Account → Referrals &amp; partners.</div>'}`}
+      ${r&&r.kind==='client'?`<div class="sm" style="margin-top:2px">👤 ${uxEsc(r.name)} (a past client)</div>`:`<div style="display:flex;gap:6px"><select id="lf-ref" onchange="lfSetRef('${dealId}',this.value)"><option value="">Nobody / not sure</option>${d.partners.map(p=>`<option value="${p.id}"${r&&r.id===p.id?' selected':''}>${uxEsc(p.name)}${p.company?' · '+uxEsc(p.company):''}</option>`).join('')}</select></div>${d.partners.length?'':'<div class="sm">Add realtors, designers and architects under Account → Reports → Referrals &amp; partners.</div>'}`}
       <label for="lf-link" style="font-size:15px;font-weight:700;display:block;margin-top:10px">This client’s own referral link</label>
       <div style="display:flex;gap:6px"><input id="lf-link" class="cred-input" readonly value="${uxEsc(d.referralLink)}" onclick="this.select()"><button class="btn-xs" onclick="plCopy('lf-link')">Copy</button></div>
       <div class="sm">Anyone who comes in through it is credited to them. The “Job complete” emails include it.</div>
@@ -5479,7 +5502,8 @@ function tdRender(d){
   const wrap=document.getElementById('td-allwrap');
   if(wrap)wrap.innerHTML=crLeads()&&CR.team.length>1?`<label class="pl-switch" style="font-size:16px;font-weight:400"><input type="checkbox" ${TD.all?'checked':''} onchange="TD.all=this.checked;plLoadNeeds()"> ${crCan('see_all')?'Whole team':'Me and the people under me'}</label>`:'';
   document.getElementById('td-tasks').innerHTML=d.tasks.length?d.tasks.map(t=>tdRow(t,true)).join(''):'<div class="pl-empty">No open tasks.</div>';
-  document.getElementById('td-visits').innerHTML=d.visits.length?d.visits.map(v=>`<button class="pl-card" onclick="plOpenDeal('${v.id}')"><div class="pl-card-title">📅 ${new Date(v.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div><div class="pl-card-sub">${uxEsc(v.contact_name)} · ${uxEsc(v.title)}${v.address?' · '+uxEsc(v.address):''}</div></button>`).join(''):'<div class="pl-empty">No site visits booked this week.</div>';
+  // This week's visits are under Reminders on Home now.
+  if(document.getElementById('td-visits'))document.getElementById('td-visits').innerHTML=d.visits.length?d.visits.map(v=>`<button class="pl-card" onclick="plOpenDeal('${v.id}')"><div class="pl-card-title">📅 ${new Date(v.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div><div class="pl-card-sub">${uxEsc(v.contact_name)} · ${uxEsc(v.title)}${v.address?' · '+uxEsc(v.address):''}</div></button>`).join(''):'<div class="pl-empty">No site visits booked this week.</div>';
 }
 async function tdAdd(dealId){
   const ti=document.getElementById(dealId?'pld-task':'td-new'),du=document.getElementById(dealId?'pld-task-due':'td-due'),as=document.getElementById('pld-task-who');
@@ -5490,7 +5514,7 @@ async function tdAdd(dealId){
     if(dealId)plOpenDeal(dealId);else plLoadNeeds();
   }catch(e){showNotif('Could not add the task',e.message);}
 }
-async function tdDone(id,done,quiet){try{await plApi('/api/crm/tasks/'+id,{method:'PATCH',body:{done}});if(CR.view==='needs')plLoadNeeds();if(done&&!quiet)crUndo('Marked done.',()=>tdDone(id,false,true));}catch(e){showNotif('Could not save',e.message);}}
+async function tdDone(id,done,quiet){try{await plApi('/api/crm/tasks/'+id,{method:'PATCH',body:{done}});if(CR.view==='home')plLoadNeeds();if(done&&!quiet)crUndo('Marked done.',()=>tdDone(id,false,true));}catch(e){showNotif('Could not save',e.message);}}
 
 async function plInboxAct(id,action,days){
   try{await plApi('/api/crm/inbox/'+id,{body:{action,days}});plLoadNeeds();
@@ -5709,7 +5733,7 @@ function aiMd(t){
     // A project's pricing: [Open the pricing](#price/<deal id>)
     .replace(/\[([^\]]{1,48})\]\(#price\/([0-9a-f-]{36})\)/g,'<button class="btn-xs p" style="margin:4px 4px 0 0" onclick="prOpen(\'$2\')">$1</button>')
     // Links to the CRM's own screens become buttons: [Open the Calendar](#calendar)
-    .replace(/\[([^\]]{1,48})\]\(#(ask|pipeline|needs|calendar|jobs|estimates|auto|team|company|reports|refs|growth|setup|billing|bin|search|newdeal|phone)\)/g,'<button class="btn-xs p" style="margin:4px 4px 0 0" onclick="aiGoScreen(\'$2\')">$1</button>');
+    .replace(/\[([^\]]{1,48})\]\(#(ask|home|sops|pipeline|needs|calendar|jobs|estimates|auto|team|company|reports|refs|growth|setup|billing|bin|search|newdeal|phone)\)/g,'<button class="btn-xs p" style="margin:4px 4px 0 0" onclick="aiGoScreen(\'$2\')">$1</button>');
   for(const l of lines){
     const b=/^\s*(?:[-•*]|\d+\.)\s+(.*)$/.exec(l);
     if(b){if(!list){out+='<ul>';list=1;}out+='<li>'+inl(b[1])+'</li>';continue;}
@@ -5754,7 +5778,7 @@ async function aiHome(){
     const g=h.glance||{},inl=document.getElementById('ai-panel').classList.contains('inline');
     const tile=(n,l,v)=>`<button class="ai-glance-t" onclick="crView('${v}')"><b>${n}</b><span>${l}</span></button>`;
     el.innerHTML=`<div class="ai-hello"><div class="g">${uxEsc(h.greeting)}</div><div class="s">Ask me anything about your jobs and numbers. I can read plans, draft estimates, email anyone, book visits${h.drive?', find files in your Google Drive':''}, and file what happened today.</div>
-      ${inl&&g.openDeals!=null?`<div class="ai-glance">${tile(g.needsYou,'need you','needs')}${tile(g.visitsToday,'visits today','needs')}${tile(g.openDeals,'deals in the pipeline','pipeline')}${g.openValue==null?'':tile('$'+Math.round((g.openValue||0)/1000)+'k','being sold','pipeline')}${tile(g.jobs,'jobs underway','jobs')}${g.overdueInvoices?tile(g.overdueInvoices,'invoices overdue','estimates'):''}</div>`:''}
+      ${inl&&g.openDeals!=null?`<div class="ai-glance">${tile(g.needsYou,'need you','needs')}${tile(g.visitsToday,'visits today','needs')}${tile(g.openDeals,'customers being sold to','pipeline')}${g.openValue==null?'':tile('$'+Math.round((g.openValue||0)/1000)+'k','being sold','pipeline')}${tile(g.jobs,'jobs underway','jobs')}${g.overdueInvoices?tile(g.overdueInvoices,'invoices overdue','estimates'):''}</div>`:''}
       ${h.ai?'':'<div class="ai-off">The assistant needs its AI key on the server (ANTHROPIC_API_KEY) before it can answer. Everything else in Eagle I works without it.</div>'}
       <div id="cl-box-ai" style="max-width:680px;margin:18px auto 0;text-align:left"></div>
       <div class="ai-chips">${h.chips.map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div>
