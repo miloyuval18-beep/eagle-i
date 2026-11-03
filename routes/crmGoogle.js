@@ -98,6 +98,18 @@ router.post('/api/crm/drive/sync', requireAuth, managersOnly, async (req, res) =
   try { const r = await require('../lib/crmDrive').processDriveSync(); res.json({ ok: true, ...r, status: await require('../lib/crmDrive').status(req.tenantId) }); } catch (err) { fail(res, err, 'Failed to sync'); }
 });
 
+// Projects from the folders already in Google Drive (lib/crmDriveProjects.js): read on the
+// background tick, shown for the owner or an admin to tick, then made into projects.
+router.get('/api/crm/drive/projects', requireAuth, managersOnly, async (req, res) => {
+  try { res.json((await require('../lib/crmDriveProjects').getState(req.tenantId)) || { status: 'none' }); } catch (err) { fail(res, err, 'Failed to load'); }
+});
+router.post('/api/crm/drive/projects/find', requireAuth, managersOnly, async (req, res) => {
+  try { res.json(await require('../lib/crmDriveProjects').request(req.tenantId, req.userId)); } catch (err) { fail(res, err, 'Failed to start'); }
+});
+router.post('/api/crm/drive/projects/add', requireAuth, managersOnly, async (req, res) => {
+  try { res.json({ ok: true, ...(await require('../lib/crmDriveProjects').apply(req.tenantId, Array.isArray((req.body || {}).folderIds) ? req.body.folderIds.slice(0, 500) : [], { userId: req.userId })) }); } catch (err) { fail(res, err, 'Failed to add the projects'); }
+});
+
 // ---------- email watch (lib/crmEmailWatch.js) ----------
 // Everyone sees their own; the owner/admins can see everyone's (?all=1).
 const watch = require('../lib/crmEmailWatch');

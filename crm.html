@@ -3613,8 +3613,36 @@ async function dvLoad(){
   el.innerHTML=`<div class="pl-h" style="font-size:17px">Google Drive</div>
     <div class="pl-card-top"><div><div class="pl-item-t">${d.sharedDrive?'Shared drive':'Folder'} “Eagle I Projects”${d.account?` <span class="sm" style="margin:0;font-weight:400">in ${uxEsc(d.account)}’s Drive</span>`:''}</div><div class="pl-item-d">${d.inDrive} file${d.inDrive===1?'':'s'} in Drive${d.waiting?` · ${d.waiting} still copying over`:''}${d.syncedAt?' · checked '+new Date(d.syncedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):''}</div></div><span class="pl-pill ${d.error?'need':'on'}">${d.error?'Needs a look':'● On'}</span></div>
     ${d.error?`<div class="pl-banner" style="margin-top:8px"><span>${uxEsc(d.error)}</span></div>`:''}
+    ${manage?`<div class="pl-pb vb-box" style="margin-top:12px"><div class="vb-t">Projects already in your Drive</div><div class="sm" style="margin:4px 0 0">Eagle I looks through your Google Drive for the folders you keep per job and adds them as projects: the homeowner, the address and how far along each one is. You pick which ones first. Nothing in Drive is moved or changed.</div><div class="vd-mbtns" style="margin-top:12px"><button class="btn btn-blue" onclick="dpFind(this)">Find projects in my Drive</button></div><div class="sm" id="dp-msg" role="status" aria-live="polite"></div></div>`:''}
     <div class="vd-mbtns">${d.link?`<a class="btn-xs p" href="${uxEsc(d.link)}" target="_blank" rel="noopener">Open in Drive</a>`:''}${manage?`<button class="btn-xs" onclick="dvSync(this)">Sync now</button><button class="btn-xs" onclick="dvDisable()">Switch off</button>`:''}</div>`;
 }
+// Projects from the folders already in Drive (lib/crmDriveProjects.js): read on the server
+// (a minute or two), then a window to tick which become projects.
+let DP=null,DP_T=null;
+async function dpFind(btn){const m=document.getElementById('dp-msg');if(btn)btn.disabled=true;
+  try{await plApi('/api/crm/drive/projects/find',{body:{}});m.textContent='Looking through your Drive… this takes a minute or two. You can keep working; it opens here when it’s ready.';dpWait();}
+  catch(e){m.textContent=e.message;if(btn)btn.disabled=false;}}
+async function dpWait(){clearTimeout(DP_T);
+  try{const s=await plApi('/api/crm/drive/projects');const m=document.getElementById('dp-msg');
+    if(s.status==='requested'||s.status==='reading'){DP_T=setTimeout(dpWait,8000);return;}
+    if(s.status==='failed'){if(m)m.textContent='Couldn’t read the Drive: '+s.error;return;}
+    if(s.status==='done'){DP=s;if(m)m.textContent='';dpReview();}
+  }catch(e){DP_T=setTimeout(dpWait,15000);}}
+const DP_STAGE={in_design:'Plans and design',proposal:'Proposal',signed:'Contract signed',production:'Being built',complete:'Finished',lost:'Didn’t go ahead',new:'New',qualified:'Qualified',site_visit:'Site visit',design_agreement:'Design agreement'};
+function dpReview(){
+  const s=DP;if(!s)return;const ps=(s.projects||[]).filter(p=>!p.dealId);
+  uxOpen(uxHead('📁 Projects found in your Drive',`${s.folders} folders and ${s.files} files looked at. ${ps.length?`${ps.length} look like customer projects. Untick any that aren’t, then add them.`:'No new customer projects found.'}`)+`
+    <div class="pl-list">${ps.map((p,k)=>`<label class="pl-item vb-row"><input type="checkbox" ${p.already?'':'checked'} data-f="${uxEsc(p.folderId)}" onchange="dpCount()"><span><b>${uxEsc(p.title)}</b> <span class="pl-tag">${uxEsc(DP_STAGE[p.stage]||p.stage)}</span>${p.company?` <span class="pl-tag">${uxEsc(p.company)}</span>`:''}${p.already?' <span class="pl-tag warn">Already a project with this name</span>':''}
+      <br><span class="sm" style="margin:0">${uxEsc([p.homeowner,p.address].filter(Boolean).join(' · ')||'')}</span>
+      <br><span class="sm" style="margin:0;color:var(--ink3)">📁 ${uxEsc(p.folder)} · ${p.files} file${p.files===1?'':'s'}${p.last?' · last changed '+uxEsc(p.last):''}${p.why?' · '+uxEsc(p.why):''} · <a href="${uxEsc(p.link)}" target="_blank" rel="noopener">Open in Drive</a></span></span></label>`).join('')}</div>
+    <div class="vd-mbtns" style="margin-top:16px">${ps.length?'<button class="btn btn-blue" id="dp-go" onclick="dpAdd(this)"></button>':''}<button class="btn-xs" onclick="uxClose()">Close</button><button class="btn-xs" onclick="uxClose();dpFind()">Look again</button></div>
+    <div class="sm" style="margin-top:8px">They come in as history: no automatic emails go to anyone. Each project links to its Drive folder.</div>`);
+  dpCount();
+}
+function dpCount(){const b=document.getElementById('dp-go');if(!b)return;const n=document.querySelectorAll('.vb-row input[data-f]:checked').length;b.textContent=n?`Add ${n} project${n===1?'':'s'}`:'Nothing ticked';b.disabled=!n;}
+async function dpAdd(btn){btn.disabled=true;const ids=[...document.querySelectorAll('.vb-row input[data-f]:checked')].map(x=>x.dataset.f);
+  try{const r=await plApi('/api/crm/drive/projects/add',{body:{folderIds:ids}});CR.dirty=false;uxClose();showNotif('Projects added',`${r.added} added to the Pipeline${r.skipped?`, ${r.skipped} were already there`:''}.`);}
+  catch(e){btn.disabled=false;showNotif('Couldn’t add them',e.message);}}
 async function dvEnable(btn){btn.disabled=true;const m=document.getElementById('dv-msg');m.textContent='Setting up “Eagle I Projects” in your Drive…';try{await plApi('/api/crm/drive/enable',{body:{}});showNotif('Google Drive is on','Each job gets its folder over the next few minutes.');dvLoad();}catch(e){m.textContent=e.message;btn.disabled=false;}}
 async function dvSync(btn){btn.disabled=true;try{const r=await plApi('/api/crm/drive/sync',{body:{}});showNotif('Synced',`${r.pushed} sent to Drive, ${r.added} new from Drive.`);}catch(e){showNotif('Could not sync',e.message);}dvLoad();}
 async function dvDisable(){if(!confirm('Stop using Google Drive? Nothing is deleted: files stay in Drive, and copies kept in Eagle I stay here.'))return;try{await plApi('/api/crm/drive/disable',{body:{}});dvLoad();}catch(e){showNotif('Could not switch it off',e.message);}}
