@@ -70,6 +70,7 @@ const tag = Date.now().toString(36);
     assert.deepEqual(fl.map(x => [x.title, x.filename, x.folder, x.in_drive_only]), [
       ['Hemmi Residence', 'A1.pdf', 'plans', true], ['Hemmi Residence', 'IMG_1.jpg', 'photos', true], ['Hemmi Residence', 'Invoice 3.pdf', 'other', true], ['Stogner pool', 'Permit.pdf', 'permits', true]]);
     assert.equal((await P.getState(t)).files_link, 'done');
+    assert.equal((await query(`SELECT drive_source_folder_id FROM crm_deals WHERE tenant_id = $1 AND title = 'Hemmi Residence'`, [t])).rows[0].drive_source_folder_id, 'f-hemmi', 'where it came from');
     assert.equal((await query(`SELECT drive_folder_id FROM crm_deals WHERE tenant_id = $1 AND title = 'Hemmi Residence'`, [t])).rows[0].drive_folder_id, 'f-hemmi', 'its Drive home');
     // Again: nothing twice.
     (await P.getState(t)); await query(`UPDATE app_flags SET value = jsonb_set(value, '{files_link}', '"requested"') WHERE key = $1`, [`drive_projects:${t}`]);
@@ -85,17 +86,30 @@ const tag = Date.now().toString(36);
     let rr = await P.rescanOne(t, hemmi);
     assert.deepEqual([rr.added, rr.updated, rr.removed], [1, 1, 0]);
     const stog = (await query(`SELECT id FROM crm_deals WHERE tenant_id = $1 AND title = 'Stogner pool'`, [t])).rows[0].id;
-    kids['f-stog'] = [];
+    kids['f-stog'].push({ id: 'd-site', name: 'Site plan.pdf', mimeType: 'application/pdf', size: '2000' });
+    assert.equal((await P.rescanOne(t, stog)).added, 1);
+    kids['f-stog'] = kids['f-stog'].filter(x => x.id !== 'd-permit');
     rr = await P.rescanOne(t, stog);
     assert.equal(rr.removed, 1, 'gone from Drive: taken off');
-    const after = (await query(`SELECT filename, folder FROM crm_files WHERE tenant_id = $1 ORDER BY filename`, [t])).rows;
-    assert.deepEqual(after.map(x => x.filename), ['A1.pdf', 'IMG_1.jpg', 'Invoice 3 (paid).pdf', 'stud wall.jpg']);
+    let after = (await query(`SELECT filename, folder FROM crm_files WHERE tenant_id = $1 ORDER BY filename`, [t])).rows;
+    assert.deepEqual(after.map(x => x.filename), ['A1.pdf', 'IMG_1.jpg', 'Invoice 3 (paid).pdf', 'Site plan.pdf', 'stud wall.jpg']);
+    // Eagle I made the project a folder of its own (empty): its files are still read from the folder it came from.
+    await query(`UPDATE crm_deals SET drive_folder_id = 'eagle-hemmi', drive_folders = '{"main":"eagle-hemmi","plans":"eagle-hemmi-plans"}' WHERE id = $1`, [hemmi]);
+    rr = await P.rescanOne(t, hemmi);
+    assert.deepEqual([rr.added, rr.removed, rr.seen], [0, 0, 4]);
+    // Drive answering with nothing (an access problem, the wrong folder): nothing is taken off.
+    const saved = kids['f-hemmi']; kids['f-hemmi'] = [];
+    rr = await P.rescanOne(t, hemmi);
+    assert.equal(rr.removed, 0, 'an empty answer never empties a project');
+    kids['f-hemmi'] = saved;
+    after = (await query(`SELECT filename, folder FROM crm_files WHERE tenant_id = $1 ORDER BY filename`, [t])).rows;
+    assert.equal(after.length, 5);
     assert.equal(after.find(x => x.filename === 'stud wall.jpg').folder, 'photos');
     assert.ok((await query(`SELECT drive_rescanned_at FROM crm_deals WHERE id = $1`, [hemmi])).rows[0].drive_rescanned_at, 'when it was last read');
     // Google not answering: nothing is taken off.
     D.call = async () => { throw new Error('Google is down'); };
     await assert.rejects(P.rescanOne(t, hemmi));
-    assert.equal((await query(`SELECT COUNT(*)::int AS n FROM crm_files WHERE tenant_id = $1`, [t])).rows[0].n, 4);
+    assert.equal((await query(`SELECT COUNT(*)::int AS n FROM crm_files WHERE tenant_id = $1`, [t])).rows[0].n, 5);
     // The background round runs (no Drive connection for this test company: nothing to do).
     assert.equal((await P.rescanDue()).errors, 0);
     console.log('DRIVE PROJECTS SCENARIO PASSED');

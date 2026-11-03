@@ -48,7 +48,7 @@ router.get('/api/crm/deals/:id/files', requireAuth, async (req, res) => {
   try {
     if (!(await dealInTenant(req, res))) return;
     const drive = await require('../lib/crmDrive').driveOn(req.tenantId);
-    const d = drive ? (await query('SELECT drive_folder_id, drive_rescanned_at FROM crm_deals WHERE id = $1', [req.params.id])).rows[0] : null;
+    const d = drive ? (await query('SELECT COALESCE(drive_source_folder_id, drive_folder_id) AS drive_folder_id, drive_rescanned_at FROM crm_deals WHERE id = $1', [req.params.id])).rows[0] : null;
     res.json({ files: await portal.listFiles(req.tenantId, req.params.id), folders: portal.FOLDERS, maxMb: drive ? 50 : 8,
       drive: drive ? { on: true, folderLink: d && d.drive_folder_id ? `https://drive.google.com/drive/folders/${d.drive_folder_id}` : null, checkedAt: d ? d.drive_rescanned_at : null } : { on: false } });
   } catch (err) { fail(res, err, 'Failed to load files'); }
