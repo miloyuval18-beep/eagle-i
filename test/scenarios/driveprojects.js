@@ -59,6 +59,22 @@ const tag = Date.now().toString(36);
     assert.match((await query(`SELECT body FROM crm_activities WHERE tenant_id = $1 AND body LIKE 'Found in Google Drive%' LIMIT 1`, [t])).rows[0].body, /drive\.google\.com\/drive\/folders\//);
     // Again: nothing twice.
     assert.equal((await P.apply(t, ['f-hemmi'])).added, 0);
+    // Their files on each project: listed, sorted by subfolder and name, opened from Drive (nothing copied).
+    const kids = { 'f-hemmi': [{ id: 'f-hemmi-p', name: 'Plans', mimeType: 'application/vnd.google-apps.folder' }, { id: 'd-inv', name: 'Invoice 3.pdf', mimeType: 'application/pdf', size: '120000', modifiedTime: '2026-10-28T00:00:00Z', webViewLink: 'https://drive/x' }, { id: 'd-pic', name: 'IMG_1.jpg', mimeType: 'image/jpeg', size: '900000', modifiedTime: '2026-10-29T00:00:00Z' }],
+      'f-hemmi-p': [{ id: 'd-a1', name: 'A1.pdf', mimeType: 'application/pdf', size: '5000000', modifiedTime: '2026-10-30T00:00:00Z' }], 'f-stog': [{ id: 'd-permit', name: 'Permit.pdf', mimeType: 'application/pdf', size: '1000' }] };
+    D.driveOn = async () => ({ tenant_id: t, drive_shared_id: 'eagle' });
+    D.call = async (conn, method, path, { params } = {}) => { const m = /^'([^']+)' in parents/.exec(params.q || ''); return { files: m ? (kids[m[1]] || []) : [] }; };
+    assert.equal((await P.getState(t)).files_link, 'requested', 'asked for when they were added');
+    await P.processFileLinks();
+    const fl = (await query(`SELECT d.title, f.filename, f.folder, f.data IS NULL AS in_drive_only FROM crm_files f JOIN crm_deals d ON d.id = f.deal_id WHERE f.tenant_id = $1 ORDER BY d.title, f.filename`, [t])).rows;
+    assert.deepEqual(fl.map(x => [x.title, x.filename, x.folder, x.in_drive_only]), [
+      ['Hemmi Residence', 'A1.pdf', 'plans', true], ['Hemmi Residence', 'IMG_1.jpg', 'photos', true], ['Hemmi Residence', 'Invoice 3.pdf', 'other', true], ['Stogner pool', 'Permit.pdf', 'permits', true]]);
+    assert.equal((await P.getState(t)).files_link, 'done');
+    assert.equal((await query(`SELECT drive_folder_id FROM crm_deals WHERE tenant_id = $1 AND title = 'Hemmi Residence'`, [t])).rows[0].drive_folder_id, 'f-hemmi', 'its Drive home');
+    // Again: nothing twice.
+    (await P.getState(t)); await query(`UPDATE app_flags SET value = jsonb_set(value, '{files_link}', '"requested"') WHERE key = $1`, [`drive_projects:${t}`]);
+    await P.processFileLinks();
+    assert.equal((await query(`SELECT COUNT(*)::int AS n FROM crm_files WHERE tenant_id = $1`, [t])).rows[0].n, 4);
     console.log('DRIVE PROJECTS SCENARIO PASSED');
   } catch (e) {
     console.error('DRIVE PROJECTS SCENARIO FAILED:', e);
