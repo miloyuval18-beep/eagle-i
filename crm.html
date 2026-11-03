@@ -1202,6 +1202,10 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
 .sp-rt b{font-size:18px}
 .sp-paper{width:100%;height:70vh;border:0;border-radius:10px;background:#fff;box-shadow:0 0 0 1px rgba(212,175,97,.5),0 0 30px -10px rgba(212,175,97,.6)}
 @media (max-width:640px){.sp-cats{grid-template-columns:1fr}.sp-paper{height:62vh}}
+
+/* The camera buttons: on phones and tablets only */
+.cam-only{display:none!important}
+@media (pointer:coarse){.cam-only{display:inline-flex!important}}
 </style>
 </head>
 <body>
@@ -1389,7 +1393,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
         <div><label for="pr-brand">Brand</label><input id="pr-brand" class="cred-input"></div>
         <div><label for="pr-price">Homeowner price ($) *</label><input id="pr-price" class="cred-input" inputmode="decimal"></div>
         <div><label for="pr-unit">Per</label><select id="pr-unit"><option value="ea">each</option><option value="sf">sq ft</option><option value="lf">lin ft</option><option value="ls">job</option></select></div>
-        <div><label for="pr-photo">Photo</label><input id="pr-photo" type="file" accept="image/*"></div>
+        <div><label for="pr-photo">Photo</label><input id="pr-photo" type="file" accept="image/*" onchange="prPhotoName()"><label class="btn-xs cam-only" style="cursor:pointer;margin-top:6px">📷 Take a photo<input id="pr-photo-cam" type="file" accept="image/*" capture="environment" hidden onchange="prPhotoName()"></label><div class="sm" id="pr-photo-name" style="margin:4px 0 0"></div></div>
         <div class="full"><label for="pr-style">Style, in a few words</label><input id="pr-style" class="cred-input" placeholder="e.g. handmade look, glossy, warm white"></div>
         <div class="full"><label for="pr-link">Link (optional)</label><input id="pr-link" class="cred-input" type="url" inputmode="url"></div>
       </div>
@@ -3578,11 +3582,11 @@ async function prLoad(){
   catch(e){el.innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
 }
 async function prAdd(btn){
-  const v=id=>document.getElementById(id).value;const ph=document.getElementById('pr-photo').files[0];const m=document.getElementById('pr-msg');
+  const v=id=>document.getElementById(id).value;const ph=document.getElementById('pr-photo-cam').files[0]||document.getElementById('pr-photo').files[0];const m=document.getElementById('pr-msg');
   btn.disabled=true;
   try{let photoBase64=null;if(ph){const f=await prepFile(ph);if(f.size>4*1024*1024)throw new Error('That photo is over 4 MB.');photoBase64=await flRead(f);}
     await plApi('/api/crm/products',{body:{name:v('pr-name'),category:v('pr-cat'),brand:v('pr-brand'),price:v('pr-price'),unit:v('pr-unit')||'ea',style:v('pr-style'),link:v('pr-link'),photoBase64}});
-    ['pr-name','pr-brand','pr-price','pr-style','pr-link'].forEach(id=>document.getElementById(id).value='');document.getElementById('pr-photo').value='';m.textContent='Added.';prLoad();}
+    ['pr-name','pr-brand','pr-price','pr-style','pr-link'].forEach(id=>document.getElementById(id).value='');document.getElementById('pr-photo').value='';document.getElementById('pr-photo-cam').value='';document.getElementById('pr-photo-name').textContent='';m.textContent='Added.';prLoad();}
   catch(e){m.textContent=e.message;}btn.disabled=false;
 }
 async function prDel(id){if(!confirm('Remove this product from your catalog?'))return;try{await plApi('/api/crm/products/'+id,{method:'DELETE'});prLoad();}catch(e){showNotif('Could not remove it',e.message);}}
@@ -5550,6 +5554,7 @@ crInit();
     <div class="ai-att" id="ai-att"></div>
     <div class="ai-comp">
       <label class="ai-ib" title="Attach plans or photos" aria-label="Attach plans or photos">📎<input type="file" accept="application/pdf,image/*,.csv,.txt" multiple hidden onchange="aiAttach(this)"></label>
+      <label class="ai-ib cam-only" title="Take a photo" aria-label="Take a photo">📷<input type="file" accept="image/*" capture="environment" hidden onchange="aiAttach(this)"></label>
       <textarea id="ai-in" rows="1" placeholder="Ask Eagle I anything…" aria-label="Message Eagle I" oninput="aiGrow(this)" onkeydown="aiKey(event)"></textarea>
       <button class="ai-ib" id="ai-mic" onclick="aiMic()" title="Talk" aria-label="Talk" hidden>🎤</button>
       <button class="ai-send" id="ai-go" onclick="aiSend()" aria-label="Send">↑</button>
@@ -5629,6 +5634,7 @@ function aiGrow(t){t.style.height='36px';const h=Math.min(140,Math.max(36,t.scro
 function aiKey(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();aiSend();}}
 function aiScroll(){const b=document.getElementById('ai-body');b.scrollTop=b.scrollHeight;}
 function aiAttRender(){document.getElementById('ai-att').innerHTML=AI.files.map((f,i)=>`<span class="ai-file">${f.uploading?'⏳':'📄'} ${uxEsc(f.filename)}<button onclick="AI.files.splice(${i},1);aiAttRender()" aria-label="Remove">✕</button></span>`).join('');}
+function prPhotoName(){const f=(document.getElementById('pr-photo-cam').files[0]||document.getElementById('pr-photo').files[0]);document.getElementById('pr-photo-name').textContent=f?'📷 '+(f.name||'Photo')+' ready':'';}
 async function aiAttach(input){
   for(let f of [...input.files].slice(0,5)){
     try{f=await prepFile(f);}catch(e){showNotif('Can’t attach that photo',e.message);continue;}

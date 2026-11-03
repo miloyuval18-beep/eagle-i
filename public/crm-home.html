@@ -58,6 +58,7 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,78,121,.12)}
 .gd-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
 .gd-off{display:block;margin:8px auto 0;background:none;border:0;color:var(--ink3);font-family:var(--f);font-size:14.5px;text-decoration:underline;cursor:pointer}
 [hidden]{display:none!important}
+.cam-only{display:none!important}@media (pointer:coarse){.cam-only{display:inline-flex!important}}
 </style>
 <link rel="stylesheet" href="/eaglei-theme.css">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
@@ -151,12 +152,12 @@ function insuranceHtml(){
   const L=I.latest;
   return `<div class="card"><h2>Your insurance certificate</h2><div class="sub">${esc(I.builders.join(', '))} ${I.builders.length===1?'gets':'get'} it from here, with the date it runs out.</div>
     ${L?`<div class="note ok">✓ On file: ${esc(L.filename)}, runs out ${new Date(String(L.expires).slice(0,10)+'T12:00:00Z').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}.</div>`:''}
-    <label for="ins-file">${L?'Upload a newer one':'Certificate (PDF or a photo)'}</label><input id="ins-file" type="file" accept="application/pdf,image/*">
+    <label for="ins-file">${L?'Upload a newer one':'Certificate (PDF or a photo)'}</label><input id="ins-file" type="file" accept="application/pdf,image/*"><label class="btn o cam-only" style="cursor:pointer;margin-top:8px">📷 Take a photo of it<input id="ins-cam" type="file" accept="image/*" capture="environment" style="display:none" onchange="document.getElementById('ins-cam-name').textContent=this.files[0]?'📷 Photo ready':''"></label><div class="sub" id="ins-cam-name"></div>
     <label for="ins-exp">Runs out on</label><input id="ins-exp" type="date">
     <div class="btns"><button class="btn" onclick="upIns(this)">Upload</button></div><div class="err" id="ins-err"></div></div>`;
 }
 async function upIns(btn){
-  const f=$('ins-file').files[0],err=$('ins-err');err.textContent='';
+  const f=($('ins-cam')&&$('ins-cam').files[0])||$('ins-file').files[0],err=$('ins-err');err.textContent='';
   if(!f){err.textContent='Pick the certificate file.';return;}
   if(f.size>8*1024*1024){err.textContent='That file is over 8 MB. Take a smaller photo, or save it as a PDF.';return;}
   if(!$('ins-exp').value){err.textContent='Pick the date it runs out (it’s on the certificate).';return;}

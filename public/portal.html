@@ -95,6 +95,7 @@ input[type=text].nm{width:100%;border:1.5px solid var(--bdr2);border-radius:8px;
 #app{padding-top:16px}
 @media(max-width:420px){.chips{grid-template-columns:1fr}.hello h1{font-size:25px}}
 [hidden]{display:none!important}
+.cam-only{display:none!important}@media (pointer:coarse){.cam-only{display:inline-flex!important}}
 </style>
 <link rel="stylesheet" href="/eaglei-theme.css">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
@@ -127,7 +128,7 @@ const token=location.pathname.split('/').pop();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fileUrl=id=>`/api/crm-public/portal/${token}/files/${id}`;
-const T={en:{loading:'Loading your project…',invalid:'This link is not valid.',nextVisit:'Next visit',updates:'Updates',noUpdates:'Updates from your team will show up here.',photos:'Photos',noPhotos:'No photos yet.',addPhotos:'📷 Add your photos',projectPhoto:'Project photo',documents:'Documents',
+const T={en:{loading:'Loading your project…',invalid:'This link is not valid.',nextVisit:'Next visit',updates:'Updates',noUpdates:'Updates from your team will show up here.',photos:'Photos',noPhotos:'No photos yet.',takePhoto:'Take a photo',addPhotos:'🖼 Add your photos',projectPhoto:'Project photo',documents:'Documents',
   message:'Message {co}',us:'us',msgPh:'Questions, changes, anything on your mind…',yourMsg:'Your message',sendMsg:'Send message',sent:'Sent. Your team will get back to you soon.',cantSend:'Could not send. Please try again.',
   homeFile:'Your home file',homeIntro:'What went into your home, with warranties and care. Keep this link; it’s yours.',installed:'installed {d}',goodThrough:'good through {d}',warrantyThrough:'warranty through {d}',care:'Care',careEvery:'Care every {n} month{s}',
   refTitle:'Know someone planning a project?',refIntro:'Share your personal link. Anyone who reaches out through it is credited to you, so {co} can say thank you.',we:'we',share:'Share',copied:'Copied',
@@ -143,7 +144,7 @@ const T={en:{loading:'Loading your project…',invalid:'This link is not valid.'
   status:{new:'Getting started',qualified:'Getting started',site_visit:'Site visit',design_agreement:'Design',in_design:'Design',proposal:'Proposal',signed:'Getting ready to build',production:'Under construction',complete:'Complete',lost:'Closed'},
   estKind:{construction:'Estimate',design_agreement:'Design agreement'},estStatus:{accepted:'Accepted',declined:'Declined',draft:'Being updated',sent:'Waiting for you'},
   cat:{finish:'Finish',appliance:'Appliance',system:'System',warranty:'Warranty',other:'Other'}},
-es:{loading:'Cargando su proyecto…',invalid:'Este enlace no es válido.',nextVisit:'Próxima visita',updates:'Novedades',noUpdates:'Aquí aparecerán las novedades de su equipo.',photos:'Fotos',noPhotos:'Todavía no hay fotos.',addPhotos:'📷 Agregar sus fotos',projectPhoto:'Foto del proyecto',documents:'Documentos',
+es:{loading:'Cargando su proyecto…',invalid:'Este enlace no es válido.',nextVisit:'Próxima visita',updates:'Novedades',noUpdates:'Aquí aparecerán las novedades de su equipo.',photos:'Fotos',noPhotos:'Todavía no hay fotos.',takePhoto:'Tomar una foto',addPhotos:'🖼 Agregar sus fotos',projectPhoto:'Foto del proyecto',documents:'Documentos',
   message:'Escriba a {co}',us:'nosotros',msgPh:'Preguntas, cambios, lo que tenga en mente…',yourMsg:'Su mensaje',sendMsg:'Enviar mensaje',sent:'Enviado. Su equipo le responderá pronto.',cantSend:'No se pudo enviar. Por favor intente de nuevo.',
   homeFile:'El expediente de su casa',homeIntro:'Lo que se instaló en su casa, con garantías y mantenimiento. Guarde este enlace; es suyo.',installed:'instalado el {d}',goodThrough:'válida hasta el {d}',warrantyThrough:'garantía hasta el {d}',care:'Mantenimiento',careEvery:'Mantenimiento cada {n} mes{es}',
   refTitle:'¿Conoce a alguien que esté planeando un proyecto?',refIntro:'Comparta su enlace personal. Quien se comunique a través de él quedará registrado como su recomendación, para que {co} pueda darle las gracias.',we:'nosotros',share:'Compartir',copied:'Copiado',
@@ -203,7 +204,7 @@ function render(){
   ${jobHtml(p)}
   <div class="card"><h2>${esc(t('updates'))}</h2>${p.updates.length?p.updates.map(u=>`<div class="up"><div class="up-b">${esc(u.body)}</div><div class="up-m">${esc(u.author||p.company.name)} · ${new Date(u.createdAt).toLocaleDateString(loc(), {month:'short',day:'numeric',year:'numeric'})}</div></div>`).join(''):`<div class="empty">${esc(t('noUpdates'))}</div>`}</div>
   <div class="card"><h2>${esc(t('photos'))}</h2>${photos.length?`<div class="grid">${photos.map(f=>`<a href="${fileUrl(f.id)}" target="_blank" rel="noopener" title="${esc(f.caption||f.filename)}"><img src="${fileUrl(f.id)}" alt="${esc(f.caption||t('projectPhoto'))}" loading="lazy"></a>`).join('')}</div>`:`<div class="empty">${esc(t('noPhotos'))}</div>`}
-    <div style="margin-top:12px"><label class="btn btn-o" style="cursor:pointer">${esc(t('addPhotos'))}<input type="file" accept="image/*" multiple style="display:none" onchange="upload(this)"></label><div class="msg" id="up-msg"></div></div></div>
+    <div style="margin-top:12px"><div style="display:flex;flex-wrap:wrap;gap:8px"><label class="btn btn-o" style="cursor:pointer">${esc(t('addPhotos'))}<input type="file" accept="image/*" multiple style="display:none" onchange="upload(this)"></label><label class="btn btn-o cam-only" style="cursor:pointer">📷 ${esc(t('takePhoto'))}<input type="file" accept="image/*" capture="environment" style="display:none" onchange="upload(this)"></label></div><div class="msg" id="up-msg"></div></div></div>
   ${docs.length||p.estimates.length?`<div class="card"><h2>${esc(t('documents'))}</h2>
     ${p.estimates.map(e=>`<div class="row"><a href="${esc(e.link)}${L==='es'?'?lang=es':''}">${esc(tm('estKind',e.kindKey,e.kind))} #${esc(e.number)}: ${esc(e.title)}</a><span class="tag">${esc(tm('estStatus',e.statusKey,e.status))} · ${money(e.total)}</span></div>`).join('')}
     ${docs.map(f=>`<div class="row"><a href="${fileUrl(f.id)}" target="_blank" rel="noopener">${esc(f.caption||f.filename)}</a><span class="tag">${esc(ftag(f))}</span></div>`).join('')}</div>`:''}
