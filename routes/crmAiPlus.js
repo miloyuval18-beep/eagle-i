@@ -108,6 +108,15 @@ router.get('/api/crm/deals/:id/outlook', requireAuth, wrap('Failed to load', asy
   ]);
   res.json({ ...o, catches, punch, photos, bills: bills.rows, ai: !!process.env.ANTHROPIC_API_KEY });
 }));
+// The expected total cost of a job without an accepted estimate (lib/crmForecast.js). Money permission.
+router.patch('/api/crm/deals/:id/cost-budget', requireAuth, require('../lib/crmTeam').need('money'), wrap('Failed to save the expected cost', async (req, res) => {
+  const d = await ownDeal(req, res); if (!d) return;
+  const v = (req.body || {}).costBudget;
+  const n = v === null || v === '' ? null : Number(String(v).replace(/[$,\s]/g, ''));
+  if (n !== null && !(Number.isFinite(n) && n >= 0 && n < 1e11)) { const e = new Error('Type the expected total cost as a number, like 27150.'); e.status = 400; throw e; }
+  await query('UPDATE crm_deals SET cost_budget = $2 WHERE id = $1', [d.id, n]);
+  res.json({ ok: true, costBudget: n });
+}));
 router.post('/api/crm/change-catches/:sid/draft', requireAuth, wrap('Failed to draft the change order', async (req, res) => res.json(await catcher.draftFromSuggestion({ tenantId: req.tenantId, id: req.params.sid, userId: req.userId }))));
 router.post('/api/crm/change-catches/:sid/dismiss', requireAuth, wrap('Failed', async (req, res) => res.json(await catcher.dismissSuggestion({ tenantId: req.tenantId, id: req.params.sid }))));
 

@@ -3442,6 +3442,8 @@ async function pqLoad(dealId){
 }
 
 /* ---------- the job's outlook, change catches, punch list, photos ---------- */
+async function joBudget(dealId,btn){const v=document.getElementById('jo-budget').value;btn.disabled=true;
+  try{await plApi('/api/crm/deals/'+dealId+'/cost-budget',{method:'PATCH',body:{costBudget:v}});CR.dirty=false;showNotif('Saved','The projected margin uses it now.');joLoad(dealId);}catch(e){showNotif('Could not save',e.message);}btn.disabled=false;}
 async function joLoad(dealId){
   const el=document.getElementById('jo-box');if(!el)return;
   try{
@@ -3457,7 +3459,14 @@ async function joLoad(dealId){
       <div class="sm" style="margin-top:2px">${r.plannedFinish?`Planned finish ${fdate(r.plannedFinish)}`:''}${r.likelyFinish&&r.likelyFinish!==r.plannedFinish?` · likely <b>${fdate(r.likelyFinish)}</b>`:''}${r.changeOrderDays?` · change orders added ${r.changeOrderDays} day${r.changeOrderDays===1?'':'s'}`:''}</div>
       ${r.reasons.length?'<ul style="margin:6px 0 0 18px;font-size:17px;line-height:1.5">'+r.reasons.map(x=>`<li${x.level==='bad'?' style="color:var(--red)"':''}>${uxEsc(x.text)}</li>`).join('')+'</ul>':'<div class="sm">Nothing is pushing the finish date right now.</div>'}`:`<div class="sm" style="margin-top:8px">${uxEsc(r.why)}</div>`;
     const bills=o.bills.length?`<details style="margin-top:10px"><summary class="sm" style="cursor:pointer;font-weight:700">🧾 Bills matched to purchase orders (${o.bills.length})</summary><div class="pl-list" style="margin-top:6px">${o.bills.map(b=>`<div class="pl-item" style="padding:8px 10px"><div class="pl-item-t">${esMoney(b.amount)} · ${uxEsc(b.vendor_name||'')}</div><div class="pl-item-d">${uxEsc(b.match_note||'')}</div></div>`).join('')}</div></details>`:'';
-    el.innerHTML=`<div class="cc-box">${costHtml}${riskHtml}${bills}</div>`;
+    // Money: the job's figures, and its expected total cost when there's no accepted estimate.
+    const m=o.money||null;
+    const moneyHtml=m&&m.contract?`<div class="ai-tiles three" style="margin-top:10px">
+        <div class="pl-tile"><div class="pl-tile-v">${esMoney(m.contract).replace(/\.\d\d$/,'')}</div><div class="pl-tile-l">Contract</div></div>
+        <div class="pl-tile"><div class="pl-tile-v">${esMoney(m.paid).replace(/\.\d\d$/,'')}</div><div class="pl-tile-l">Paid · ${Math.round(m.paid/m.contract*100)}% collected</div></div>
+        <div class="pl-tile"><div class="pl-tile-v" style="color:${m.contract-m.paid>0?'var(--red)':'var(--ink)'}">${esMoney(Math.max(0,m.contract-m.paid)).replace(/\.\d\d$/,'')}</div><div class="pl-tile-l">Still owed</div></div></div>`:'';
+    const budgetHtml=crCan('money')&&(!c.ready||c.fromBudget)?`<div class="pl-form" style="margin-top:10px;grid-template-columns:1fr auto;align-items:end"><div><label for="jo-budget">Expected total cost</label><input id="jo-budget" class="cred-input" inputmode="decimal" placeholder="e.g. 27150" value="${m&&m.costBudget!=null?m.costBudget:''}"></div><button class="btn-xs p" onclick="joBudget('${dealId}',this)">Save</button></div><div class="sm" style="margin-top:2px">For a job without an accepted estimate in Eagle I: what you expect it to cost in all, for the projected profit and margin.</div>`:'';
+    el.innerHTML=`<div class="cc-box">${costHtml}${moneyHtml}${budgetHtml}${riskHtml}${bills}</div>`;
     const ce=document.getElementById('jc-catch');
     if(ce)ce.innerHTML=o.catches.length?`<div class="pl-h">✨ Possible change orders</div><div class="pl-list">${o.catches.map(s=>`<div class="pl-item" style="border-left:4px solid var(--amber)"><div class="pl-item-t">${uxEsc(s.title)}${s.amount!=null?' · about '+esMoney(s.amount).replace(/\.\d\d$/,''):''}</div>
       <div class="pl-item-d">${s.quote?'“'+uxEsc(s.quote)+'”':''} <span class="sm" style="margin:0">From ${({email:'an email',portal:'a portal message',log:'a site log'})[s.source]||'a message'}${s.priced_from?' · priced from '+uxEsc(s.priced_from):''}</span></div>
