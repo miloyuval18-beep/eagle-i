@@ -1206,6 +1206,16 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
 /* The camera buttons: on phones and tablets only */
 .cam-only{display:none!important}
 @media (pointer:coarse){.cam-only{display:inline-flex!important}}
+.gb-i{display:block;padding:0}
+.gb-i summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:14px 16px;cursor:pointer;list-style:none;font-size:18px}
+.gb-i summary::-webkit-details-marker{display:none}
+.gb-i summary::after{content:"›";margin-left:auto;color:var(--lx-gold,#c9a45c);font-size:22px;transition:transform .2s}
+.gb-i[open] summary::after{transform:rotate(90deg)}
+.gb-i summary .sm{flex-basis:100%;padding-left:34px}
+.gb-ic{width:24px;text-align:center}
+.gb-steps{margin:0 16px 12px 50px;padding:0;display:grid;gap:10px;font-size:17px;line-height:1.5}
+.gb-steps li span{display:block;color:var(--ink2,inherit)}
+.gb-i .btn-xs{margin:0 16px 14px 50px}
 </style>
 </head>
 <body>
@@ -1229,6 +1239,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
       <button onclick="crMenu(false);lkOpen()" id="cr-lookas-btn" hidden>👁 See as someone else</button>
       <button onclick="crMenu(false);alOpen()" id="cr-activity-btn" hidden>📋 Activity log</button>
       <button onclick="crMenu(false);hpOpen()">🙋 Help me set up</button>
+      <button onclick="crMenu(false);gbOpen()">📖 How Eagle I works</button>
       <button onclick="crMenu(false);gdReset()">💡 Show the tips again</button>
       <button onclick="crMenu(false);crView('start')">✓ Guided setup</button>
       <button onclick="crMenu(false);binOpen()">🗑 Recycle bin</button>
@@ -1621,7 +1632,8 @@ const CR_GUIDES={
   needs:{icon:'✅',steps:[
     ['Start your day here','Today shows only what needs a person: things Eagle I noticed, your tasks, and this week’s site visits. Everything else runs on its own.'],
     ['Handle it, or snooze it','When something is taken care of, tap ✓ Done. Not now? Tap Snooze and it comes back later. Tapped by mistake? Undo.'],
-    ['Your to-do list','Your tasks are below. Type a new one in the box and tap Add. Tick the box when it’s done.','#td-new']]},
+    ['Your to-do list','Your tasks are below. Type a new one in the box and tap Add. Tick the box when it’s done.','#td-new'],
+    ['Your email','📬 Email lists the emails waiting for your answer (Eagle I can draft the reply), and the ones you were only copied on, marked “No action needed”.']]},
   calendar:{icon:'📅',steps:[
     ['It fills itself','Site visits, job schedules, tasks, deliveries, payments due and more appear here on their own. You don’t have to type them in.'],
     ['Look at it your way','Choose Month, Week or List. Use ‹ and › to move, and “Today” to come back.','#cv-seg'],
@@ -1631,7 +1643,8 @@ const CR_GUIDES={
   jobs:{icon:'🛠',steps:[
     ['Your jobs underway','Every signed job, where it stands, and what’s next.','#jb-list'],
     ['Open a job','Tap a job for its schedule, daily logs and photos, change orders, selections and purchase orders.'],
-    ['Your subs and suppliers','Below the jobs is your list of subs and suppliers. Tap “🔗 Their page” to send a sub their private page with their dates and plans.']]},
+    ['Your subs and suppliers','Below the jobs is your list of subs and suppliers. Tap “🔗 Their page” to send a sub their private page with their dates and plans.'],
+    ['Find one, or add many','Type a name or a trade (plumber, tile…) in the search box to find a sub fast. To add a whole list, upload a PDF or Excel sheet, or take a photo of a business card: Eagle I shows who it found before anyone is added.']]},
   estimates:{icon:'💵',steps:[
     ['Estimates and money','Your estimates are here, along with invoices, cash flow and job costs if your role can see money.','#es-list'],
     ['Start an estimate from a deal','Open the customer’s deal (in Pipeline) and tap “＋ Construction estimate”. Add lines from your cost catalog, then send it.'],
@@ -1646,6 +1659,7 @@ const CR_GUIDES={
   company:{icon:'🏢',steps:[
     ['Your company details','Your name, phone and address go on every email Eagle I sends. Automatic emails wait until the address is filled in.'],
     ['Connect Google','Connect your Gmail so customer emails land on the right job by themselves.'],
+    ['Google Drive','Switch on Drive and every job gets its own folder for its files. Already have project folders in Drive? “Projects already in your Drive” finds them and adds them as past projects, with their files.',null,()=>crCan('settings')],
     ['Online payments','Let homeowners pay invoices online by card or bank.',null,()=>crCan('settings')],
     ['Homeowners and subs','At the bottom: extras for homeowners and subs who make their own Eagle I accounts. They’re off until you switch them on.']]},
   auto:{icon:'✉',steps:[
@@ -1654,7 +1668,7 @@ const CR_GUIDES={
     ['Read them here','You can read every automatic email here. Only people allowed to change automatic emails can switch them on or change the wording.','#pl-playbooks',()=>!crCan('emails')],
     ['See what’s coming up','The list shows every automatic email due this week.','#pl-upcoming'],
     ['Skip one','Tap Skip on any you don’t want sent.',null,()=>crCan('emails')],
-    ['Need a break?','Account → “Pause all automatic emails” stops everything until you turn it back on.',null,()=>crCan('emails')]]},
+    ['Need a break?','The switch at the top of this screen pauses every automatic email at once, until you turn it back on.',null,()=>crCan('emails')]]},
   reports:{icon:'📈',steps:[['Weekly reports','A short summary of each week: new leads, how fast you answered, what you signed. It’s emailed to the owner and admins every Monday.']]},
   refs:{icon:'🤝',steps:[['Referrals and partners','Keep track of who sends you customers, and thank them. Happy homeowners get a link to refer friends.']]},
   growth:{icon:'📣',steps:[['Marketing and backlog','Where your leads come from, what each one cost, and how many weeks of work you have booked, so you know when to market harder.']]},
@@ -1680,7 +1694,7 @@ const CR_GUIDES={
   loop:{icon:'📨',steps:[
     ['Kept in the loop','These are emails about this project you were only copied on. No action needed: nobody is waiting on you, so there are no reminders and nothing goes on your calendar.','#pld-loop .lp-item,#jb-loop .lp-item'],
     ['When it is for you','If an email is sent to your address or uses your first or last name, it counts as yours like any other: reminders, calendar and all.'],
-    ['On Today','Today lists everything you were copied on this week, each marked “No action needed”. You’re never emailed about these: only about what needs you.']]},
+    ['On Today','Today lists everything you were copied on this week, each marked “No action needed”. They’re listed once in your 4pm email under “For your information”, and you’re never reminded about them.']]},
   job:{icon:'🛠',steps:[
     ['The job','Everything for one signed job, top to bottom.'],
     ['The schedule','Each phase has dates and who’s doing it. Change the dates and the sub is asked to confirm them.'],
@@ -1699,7 +1713,28 @@ const CR_GUIDES={
   search:{icon:'🔍',steps:[['Search everything','Type at least two letters: a name, an address, an invoice number, a sub. Tap a result to open it.']]},
   bin:{icon:'🗑',steps:[['Nothing is gone for good','Anything deleted in the last 30 days is here. Tap “Put back” to bring it back exactly as it was.']]},
   mycal:{icon:'📱',steps:[['Your calendar on your phone','Add Eagle I to your phone’s calendar so your visits and job dates are there. The link is private to you: don’t share it.']]},
-  activity:{icon:'📋',steps:[['Who changed what','Every change to the team, deletes, imports and settings, newest first. Pick a person to see only theirs.']]}
+  activity:{icon:'📋',steps:[['Who changed what','Every change to the team, deletes, imports and settings, newest first. Pick a person to see only theirs.']]},
+  home:{icon:'🏠',steps:[
+    ['Your home screen','Eagle I opens here every time: what matters today, on one page. Come back to it from Home in the menu bar.'],
+    ['Needs you first','What Eagle I flagged for you, tasks that are late or due today, and emails waiting for your answer. Urgent ones are at the top. Tap one to open it.'],
+    ['Reminders and updates','Reminders are the next few days: site visits, tasks, job phases starting, orders to send and permits still waiting. Updates are what happened lately on your projects.'],
+    ['Go anywhere from here','The numbers at the top and the pictures under “Jump to” open that screen. Not sure how something works? Account → 📖 How Eagle I works has every guide.','.hm-jumpw']]},
+  sops:{icon:'📋',steps:[
+    ['How every job is done','An SOP is a step-by-step guide to doing a job the same way every time. Pick a kind of work, or Company SOPs for rules that apply to every job.'],
+    ['Ask for any SOP','Inside a kind of work, say in plain words what it should cover, pick what kind it is (a full project, one trade’s scope for a vendor, a crew checklist…) and tap “✦ Write the SOP”. It takes about a minute.'],
+    ['Your company’s style','Every SOP follows the one under “Your company’s SOP style”: lettered sections, numbered steps, “Done when” and initials. Open it and tap “✎ Change it” to make it match how you work.'],
+    ['Print it or send it','Open any SOP to print it, save it as a PDF, change it, or send it to the people it’s for.']]},
+  sop:{icon:'📋',steps:[
+    ['One SOP','This is how it looks printed. Scroll inside it to read it all.'],
+    ['Print or save','“🖨 Print or save as PDF” opens it on its own page, ready for your printer or to save.'],
+    ['Send it','“✉ Send it to…” already ticks the people it’s meant for. Tick anyone else, add a note, and each one gets their own email with it.'],
+    ['Change it','“✎ Change it”: say what to change in plain words (add a step, take something out, make it shorter) and Eagle I rewrites it in the same style.']]},
+  lookas:{icon:'👁',steps:[['See what others see','Pick a role, a person or a homeowner, and the CRM opens the way they see it. You can look but not change anything. Tap “Stop” in the bar at the top to come back to your own view.']]},
+  price:{icon:'💰',steps:[['Price a project from its plans','Add the plans and Eagle I writes the scope, the material list and a rough budget, then lines up subs and suppliers to ask for prices. You check each step; nothing is sent until you press Send.']]},
+  takeoff:{icon:'📐',steps:[['Quantities from a plan','Add one plan sheet. Eagle I reads the scale and the dimensions and lists the quantities with how sure it is. Tick each number you’ve checked; only ticked ones can go on an estimate.']]},
+  design:{icon:'🎨',steps:[['Show them the new design','Take or add a photo of their room and describe the new look. Eagle I makes a picture of that room with the new design, to talk around with the homeowner. It’s an idea, not a plan to build from.']]},
+  driveprojects:{icon:'📁',steps:[['Projects found in your Drive','Each one is a folder that looks like a customer project. Untick any that aren’t, then add them. They come in as history: nobody gets an email, and each links to its Drive folder.']]},
+  vendorlist:{icon:'📄',steps:[['Check who was found','These are the companies Eagle I read from your file. Untick anyone you don’t want. People already in your vendors only get their empty details filled in; nothing you typed changes.']]}
 };
 const GD={q:[],on:false};
 function crTip(v){crGuide(v);}
@@ -1716,7 +1751,7 @@ function crGuide(key){
     gdRender();
   },350);
 }
-const GD_WINDOWS={loop:'lpLoad',deal:'plOpenDeal',job:'jbOpen',estimate:'esOpen',newdeal:'plNewDeal',caladd:'cvEdit',sub:'vdPage',search:'srOpen',bin:'binOpen',mycal:'dyOpen',activity:'alOpen'};
+const GD_WINDOWS={loop:'lpLoad',deal:'plOpenDeal',job:'jbOpen',estimate:'esOpen',newdeal:'plNewDeal',caladd:'cvEdit',sub:'vdPage',search:'srOpen',bin:'binOpen',mycal:'dyOpen',activity:'alOpen',sop:'spOpen',lookas:'lkOpen',price:'prOpen',takeoff:'tkOpen',design:'vzOpen',driveprojects:'dpReview',vendorlist:'vbReview'};
 function gdStillThere(key){
   if(GD_WINDOWS[key]){const m=document.getElementById('ux-modal');return !!(m&&m.style.display!=='none')||key==='search';}
   // A screen's tip: that screen is the one showing, with no window open over it.
@@ -1743,6 +1778,24 @@ function gdRender(){
     <button class="gd-off" onclick="gdOff()">Don’t show tips anymore</button></div></div>`;
   setTimeout(()=>{const ok=document.getElementById('gd-ok');if(ok)ok.focus({preventScroll:true});},50);
 }
+// Every guide in one place (Account → How Eagle I works), to read again any time.
+const GB_SCREENS=[['home','Home'],['needs','Today'],['pipeline','Pipeline'],['calendar','Calendar'],['jobs','Jobs, subs & vendors'],['estimates','Money'],['ask','Ask Eagle I'],['checkin','Daily check-in'],['sops','SOPs'],['team','Team'],['auto','Automations'],['company','Company details'],['setup','Import & setup'],['refs','Referrals & partners'],['growth','Marketing & backlog'],['reports','Weekly reports'],['billing','Plan & billing'],['co','Our companies']];
+const GB_WINDOWS=[['deal','A customer (deal)','Tap any card in Pipeline'],['newdeal','Adding a customer','Pipeline → ＋ Add a deal'],['estimate','An estimate','On a deal → ＋ Construction estimate'],['price','Pricing a project from plans','On a deal → 💰 Price this project'],['takeoff','Takeoff from plans','On a deal → 📐 Takeoff from plans'],['design','Showing the new design','On a deal → 🎨 Show them the new design'],['job','A job','Jobs → tap a job, or “Open the job” on a deal'],['sub','A sub’s private page','Jobs → tap a sub or vendor'],['vendorlist','Adding many vendors from a file','Jobs → 📄 Upload a PDF or Excel sheet'],['sop','One SOP','SOPs → open any SOP'],['caladd','Adding to the calendar','Calendar → ＋ Add'],['mycal','Your calendar on your phone','Account → My calendar & morning email'],['loop','Emails you’re copied on','On a deal or a job → For your information'],['driveprojects','Projects found in your Drive','Company details → Google Drive'],['lookas','See as someone else','Account → 👁 See as someone else'],['search','Search','🔍 at the top'],['bin','Recycle bin','Account → 🗑 Recycle bin'],['activity','Who changed what','Account → 📋 Activity log']];
+function gbSteps(k){const g=CR_GUIDES[k];return g?g.steps.filter(x=>!x[3]||x[3]()):[];}
+function gbItem(k,name,where,go){const g=CR_GUIDES[k],st=gbSteps(k);if(!g||!st.length)return '';
+  const said=[name,where,...st.map(x=>x[0]+' '+x[1])].join(' ').toLowerCase();
+  return `<details class="pl-item gb-i" data-s="${uxEsc(said)}"><summary><span class="gb-ic" aria-hidden="true">${g.icon}</span><b>${uxEsc(name)}</b>${where?`<span class="sm" style="margin:0">${uxEsc(where)}</span>`:''}</summary>
+    <ol class="gb-steps">${st.map(x=>`<li><b>${uxEsc(x[0])}</b><span>${uxEsc(x[1])}</span></li>`).join('')}</ol>
+    ${go?`<button class="btn-xs p" onclick="uxClose();crView('${k}')">Go to ${uxEsc(name)} ›</button>`:''}</details>`;}
+function gbOpen(){
+  uxOpen(uxHead('📖 How Eagle I works','Every screen and window, step by step. Tap one to read its guide.')+`
+    <input class="cred-input" type="search" placeholder="Search: invoice, SOP, calendar, vendor…" aria-label="Search the guides" oninput="gbFind(this.value)" style="margin-bottom:12px">
+    <div class="pl-h">Screens</div><div class="pl-list gb-list">${GB_SCREENS.filter(([k])=>document.getElementById('view-'+k)).map(([k,n])=>gbItem(k,n,'',true)).join('')}</div>
+    <div class="pl-h" style="margin-top:18px">Windows that open on a screen</div><div class="pl-list gb-list">${GB_WINDOWS.map(([k,n,w])=>gbItem(k,n,w,false)).join('')}</div>
+    <div class="sm" id="gb-none" hidden>Nothing matches. Try another word, or ask Eagle I.</div>
+    <div class="vd-mbtns" style="margin-top:16px"><button class="btn-xs" onclick="uxClose();hpOpen()">🙋 Still stuck? Get help</button><button class="btn-xs" onclick="uxClose();gdReset()">💡 Show each screen’s tips again</button></div>`);
+}
+function gbFind(q){q=String(q||'').toLowerCase().trim();let n=0;document.querySelectorAll('.gb-i').forEach(x=>{const on=!q||q.split(/\s+/).every(w=>x.dataset.s.includes(w));x.style.display=on?'':'none';if(on)n++;x.open=!!q&&on&&n<=3;});const e=document.getElementById('gb-none');if(e)e.hidden=n>0;}
 function gdStep(d){
   if(d>0&&GD.i>=GD.steps.length-1)return gdDone(false);
   GD.i=Math.max(0,Math.min(GD.steps.length-1,GD.i+d));gdRender();
@@ -1766,7 +1819,7 @@ async function gdReset(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&GD.on)gdDone();});
 // The windows that open over a screen get their tips once they've opened.
 window.addEventListener('load',()=>{
-  for(const [fn,key] of [['plOpenDeal','deal'],['jbOpen','job'],['esOpen','estimate'],['plNewDeal','newdeal'],['cvEdit','caladd'],['vdPage','sub'],['srOpen','search'],['binOpen','bin'],['dyOpen','mycal'],['alOpen','activity']]){
+  for(const [fn,key] of [['plOpenDeal','deal'],['jbOpen','job'],['esOpen','estimate'],['plNewDeal','newdeal'],['cvEdit','caladd'],['vdPage','sub'],['srOpen','search'],['binOpen','bin'],['dyOpen','mycal'],['alOpen','activity'],['spOpen','sop'],['lkOpen','lookas'],['prOpen','price'],['tkOpen','takeoff'],['vzOpen','design'],['dpReview','driveprojects'],['vbReview','vendorlist']]){
     const orig=window[fn];if(typeof orig!=='function')continue;
     window[fn]=function(...a){const r=orig.apply(this,a);Promise.resolve(r).then(()=>crGuide(key)).catch(()=>{});return r;};
   }
@@ -2889,8 +2942,10 @@ const ST={step:0};
 const stOwner=()=>CR.me&&CR.me.role==='owner';
 const stSteps=()=>stOwner()?['you','google','company','team','data','emails']:['you','myteam','google'];
 const ST_TITLE={you:'About you',company:'Your company',team:'Your team',google:'Your email and calendar',data:'Your customers and subs',emails:'Automatic emails',myteam:'Your team'};
-function stGetStep(){try{const n=parseInt(localStorage.getItem('stStep')||'0',10);return isNaN(n)?0:n;}catch(e){return 0;}}
-function stSetStep(n){ST.step=n;try{localStorage.setItem('stStep',String(n));}catch(e){}}
+// Each person's own place in setup (two people on one computer don't share it).
+const stKey=()=>'stStep:'+((CR.me&&(CR.me.userId||CR.me.email))||'');
+function stGetStep(){try{const n=parseInt(localStorage.getItem(stKey())||'0',10);return isNaN(n)?0:n;}catch(e){return 0;}}
+function stSetStep(n){ST.step=n;try{localStorage.setItem(stKey(),String(n));}catch(e){}}
 function crSetupBanner(){
   let el=document.getElementById('st-banner');
   const show=CR.me&&CR.me.needsSetup&&CR.view!=='start';
@@ -4019,6 +4074,7 @@ async function spOpen(id){
   const url='/api/crm/sops/'+id+'/print';
   uxOpen(uxHead('📋 '+uxEsc(s.title),uxEsc([s.categoryLabel,s.kindLabel,s.deal,s.vendor].filter(Boolean).join(' · ')))+`
     <div class="vd-mbtns" style="margin:0 0 10px"><a class="btn-xs" href="${url}" target="_blank" rel="noopener" style="text-decoration:none">🖨 Print or save as PDF</a><button class="btn btn-blue" onclick="spEmailForm('${id}')">✉ Send it to…</button><button class="btn-xs" onclick="spChangeForm('${id}')">✎ Change it</button>${s.reference?'':`<button class="btn-xs" onclick="spDelete('${id}')">Delete</button>`}</div>
+    <div class="sm" style="margin:0 0 10px">Send it: the people it’s for are already ticked. Change it: say in plain words what to add, take out or fix, and Eagle I rewrites it in the same style.</div>
     <div id="sp-act"></div>
     <iframe class="sp-paper" src="${url}" title="${uxEsc(s.title)}"></iframe>`);
   SP.open=s;
@@ -4871,6 +4927,7 @@ async function jbOpen(dealId){
     ${d.schedule.length?sched:`<div class="sm">No schedule yet.</div><div class="vd-mbtns"><input type="date" id="jb-start" class="cred-input" style="width:auto" aria-label="Start date"><button class="btn-xs p" onclick="jbTemplate(this)">Lay it out from my template</button></div>`}
     <div class="vd-mbtns"><button class="btn-xs" onclick="jbAddItem()">＋ Add a phase</button>${d.schedule.length&&crCan('settings')?'<button class="btn-xs" onclick="jbSaveTpl()">Save as my template</button>':''}</div>
     <div class="pl-h">Daily log</div>
+    <div class="sm" style="margin-top:-4px">What happened on site today, in a few words or by talking: who was there, what got done, any problems. It’s kept on the job by date; tick “Share with homeowner” to show it on their page. “✨ File it for me” also moves the phases you mention and adds follow-up tasks.</div>
     <textarea id="jb-log" class="cred-input" rows="3" placeholder="What happened on site today?"></textarea>
     <div class="es-grid" style="grid-template-columns:1fr auto;align-items:center"><input id="jb-crew" class="cred-input" placeholder="Who was on site (optional)"><label class="pl-switch" style="font-size:16px"><input type="checkbox" id="jb-share"> Share with homeowner</label></div>
     <div class="vd-mbtns" style="margin-top:6px"><button class="btn-xs p" onclick="jbLog(this)">Save log</button>${window.SpeechRecognition||window.webkitSpeechRecognition?'<button class="btn-xs" id="jb-mic" onclick="jbMic()">🎤 Talk</button>':''}<button class="btn-xs" onclick="jbVoiceFile(this)" title="Turns what you wrote or said into the log, moves the phases you mention, and adds follow-up tasks">✨ File it for me</button></div><div class="sm" id="jb-voice-out"></div>
@@ -5002,7 +5059,7 @@ async function jcLoad(dealId){
     const {summary:s,costs,categories}=await plApi('/api/crm/deals/'+dealId+'/costs');
     const tile=(v,l,warn)=>`<div class="pl-tile"${warn?' style="border-color:var(--red)"':''}><div class="pl-tile-v">${uxEsc(v)}</div><div class="pl-tile-l">${uxEsc(l)}</div></div>`;
     el.innerHTML=`<div class="pl-strip">${tile(esMoney(s.contract),'Contract')}${tile(s.hasBudget?esMoney(s.budget):'—','Budgeted cost')}${tile(esMoney(s.actual),'Spent so far',s.overPace)}${tile(s.marginPct==null?'—':s.marginPct+'%','Projected margin')}</div>
-      ${s.progressPct!=null&&s.spentPct!=null?`<div class="sm" style="margin-top:0">Work done ${s.progressPct}% · budget spent ${s.spentPct}%${s.overPace?' · <b style="color:var(--red)">spending is ahead of the work</b>':''}</div>`:s.hasBudget?'':'<div class="sm" style="margin-top:0">No accepted construction estimate yet, so there’s no cost budget to compare against.</div>'}
+      ${s.progressPct!=null&&s.spentPct!=null?`<div class="sm" style="margin-top:0">Work done ${s.progressPct}% · budget spent ${s.spentPct}%${s.overPace?' · <b style="color:var(--red)">spending is ahead of the work</b>':''}</div>`:s.hasBudget?'':'<div class="sm" style="margin-top:0">No accepted construction estimate yet. Type the expected total cost under “Where this job is heading” to see the margin.</div>'}
       ${s.committed?`<div class="sm">${esMoney(s.committed)} more is ordered on purchase orders not yet received.</div>`:''}
       <div class="sm">Invoiced ${esMoney(s.invoiced)} · collected ${esMoney(s.collected)}</div>
       <div class="vd-mbtns"><label class="btn btn-blue" style="cursor:pointer">📷 Snap a receipt<input type="file" accept="image/*" capture="environment" style="display:none" onchange="jcReceipt('${dealId}',this)"></label></div>
