@@ -37,6 +37,20 @@ const tag = Date.now().toString(36);
     // In this category: it and the company's own.
     assert.deepEqual((await S.list(t, { category: 'bath' })).sops.map(x => x.title).sort(), ['Define the Scope of Work Checklist', 'Shower Waterproofing Checklist']);
     assert.equal((await S.list(t, { category: 'kitchen' })).sops.length, 1);
+    // Who it goes to: written for Gulf Tile → Gulf Tile ticked; the homeowner and the PM there to add.
+    await query(`UPDATE crm_contacts SET email = 'kim@home.test' WHERE id = (SELECT contact_id FROM crm_deals WHERE id = $1)`, [deal.id]);
+    await query(`UPDATE crm_deals SET pm_user_id = $2 WHERE id = $1`, [deal.id, u.id]);
+    const other = (await query(`INSERT INTO crm_vendors (tenant_id, name, trade, email) VALUES ($1, 'Bayou Plumbing', 'Plumbing', 'p@bayou.test') RETURNING id`, [t])).rows[0];
+    await query(`INSERT INTO crm_job_items (tenant_id, deal_id, title, vendor_id, position) VALUES ($1, $2, 'Rough plumbing', $3, 1)`, [t, deal.id, other.id]);
+    const tick = (rs) => rs.filter(r => r.suggested).map(r => r.email).sort();
+    let rs = await S.recipients(t, await S.get(t, s.id));
+    assert.deepEqual(tick(rs), ['tile@gulf.test'], 'a vendor’s scope: that vendor');
+    assert.ok(rs.some(r => r.email === 'kim@home.test' && r.label === 'Homeowner') && rs.some(r => r.email === u.email && /Project manager/.test(r.label)), 'others there to add');
+    await query(`UPDATE crm_sops SET kind = 'client' WHERE id = $1`, [s.id]);
+    assert.deepEqual(tick(await S.recipients(t, await S.get(t, s.id))), ['kim@home.test', 'tile@gulf.test'].filter(e => e !== 'tile@gulf.test' || true).sort(), 'a homeowner guide: the homeowner (and the vendor it was written for)');
+    await query(`UPDATE crm_sops SET kind = 'project', vendor_id = NULL WHERE id = $1`, [s.id]);
+    assert.deepEqual(tick(await S.recipients(t, await S.get(t, s.id))), [u.email, 'p@bayou.test'].sort(), 'a full project SOP: the PM and the project’s subs');
+    await query(`UPDATE crm_sops SET kind = 'trade', vendor_id = $2 WHERE id = $1`, [s.id, v.id]);
     // Changed.
     const s2 = await S.revise({ tenantId: t, id: s.id, instruction: 'Add a step to photograph the pan' });
     assert.match(prompts[1], /Add a step to photograph the pan/); assert.equal(s2.content.sections[0].steps[0].title, 'Photograph the pan.');

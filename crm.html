@@ -4018,18 +4018,41 @@ async function spOpen(id){
   let s;try{s=(await plApi('/api/crm/sops/'+id)).sop;}catch(e){uxOpen(uxHead('Couldn’t open the SOP',uxEsc(e.message)));return;}
   const url='/api/crm/sops/'+id+'/print';
   uxOpen(uxHead('📋 '+uxEsc(s.title),uxEsc([s.categoryLabel,s.kindLabel,s.deal,s.vendor].filter(Boolean).join(' · ')))+`
-    <div class="vd-mbtns" style="margin:0 0 10px"><a class="btn btn-blue" href="${url}" target="_blank" rel="noopener" style="text-decoration:none">🖨 Print or save as PDF</a><button class="btn-xs" onclick="spEmailForm('${id}')">✉ Send it</button><button class="btn-xs" onclick="spChangeForm('${id}')">✎ Change it</button>${s.reference?'':`<button class="btn-xs" onclick="spDelete('${id}')">Delete</button>`}</div>
+    <div class="vd-mbtns" style="margin:0 0 10px"><a class="btn-xs" href="${url}" target="_blank" rel="noopener" style="text-decoration:none">🖨 Print or save as PDF</a><button class="btn btn-blue" onclick="spEmailForm('${id}')">✉ Send it to…</button><button class="btn-xs" onclick="spChangeForm('${id}')">✎ Change it</button>${s.reference?'':`<button class="btn-xs" onclick="spDelete('${id}')">Delete</button>`}</div>
     <div id="sp-act"></div>
     <iframe class="sp-paper" src="${url}" title="${uxEsc(s.title)}"></iframe>`);
   SP.open=s;
 }
-function spEmailForm(id){const s=SP.open||{};const el=document.getElementById('sp-act');if(!el)return;
-  el.innerHTML=`<div class="pl-pb" style="margin-bottom:10px"><div class="pl-form"><div class="full"><label for="sp-to">Send it to</label><input id="sp-to" class="cred-input" type="email" inputmode="email" value="${uxEsc(s.vendorEmail||'')}" placeholder="name@company.com"></div><div class="full"><label for="sp-note">A note on top <span class="sm">(optional)</span></label><textarea id="sp-note" class="cred-input" rows="2" placeholder="e.g. Please read before you start and sign the last page."></textarea></div></div><div class="vd-mbtns"><button class="btn btn-blue" onclick="spEmail('${id}',this)">Send</button></div><div class="sm" id="sp-emsg"></div></div>`;
-  document.getElementById('sp-to').focus();}
-async function spEmail(id,btn){const to=document.getElementById('sp-to').value,note=document.getElementById('sp-note').value,m=document.getElementById('sp-emsg');
-  if(!confirm(`Send “${(SP.open||{}).title}” to ${to}?`))return;btn.disabled=true;
-  try{const r=await plApi('/api/crm/sops/'+id+'/email',{body:{to,note}});CR.dirty=false;m.textContent=r.paused?'Saved to send: email is paused right now, so it goes out once email is turned back on.':'Sent to '+to+'.';showNotif(r.paused?'Held':'Sent',r.paused?'Email is paused right now.':'The SOP is on its way to '+to+'.');}
-  catch(e){m.textContent=e.message;}btn.disabled=false;}
+// Send it: everyone it could go to, the ones it's meant for already ticked.
+async function spEmailForm(id){const el=document.getElementById('sp-act');if(!el)return;
+  el.innerHTML='<div class="pl-pb" style="margin-bottom:10px"><div class="sm">Finding who it’s for…</div></div>';
+  let list=[];try{list=(await plApi('/api/crm/sops/'+id+'/recipients')).recipients||[];}catch(e){el.innerHTML=`<div class="pl-pb"><div class="sm">${uxEsc(e.message)}</div></div>`;return;}
+  SP.rcpt=list;
+  const row=(r,k)=>`<label class="pl-item vb-row sp-rc" data-g="${r.group}" data-s="${uxEsc((r.name+' '+r.label+' '+r.email).toLowerCase())}"><input type="checkbox" data-k="${k}" ${r.suggested?'checked':''} onchange="spCount()"><span><b>${uxEsc(r.name)}</b> <span class="pl-tag">${uxEsc(r.label)}</span><br><span class="sm" style="margin:0">${uxEsc(r.email)}</span></span></label>`;
+  const grp=(g,title)=>{const xs=list.map((r,k)=>[r,k]).filter(([r])=>r.group===g);return xs.length?`<div class="pl-h" style="margin-top:12px">${title} (${xs.length})</div><div class="pl-list sp-rcl">${xs.map(([r,k])=>row(r,k)).join('')}</div>`:'';};
+  const nSug=list.filter(r=>r.suggested).length;
+  el.innerHTML=`<div class="pl-pb" style="margin-bottom:10px">
+    <div class="pl-item-t" style="font-size:19px">Who should get it?</div>
+    <div class="sm" style="margin-top:2px">${nSug?`The ${nSug===1?'person':nSug+' people'} it’s meant for ${nSug===1?'is':'are'} ticked. Tick anyone else who needs it.`:'Tick who needs it.'} Each gets their own email with the SOP in it.</div>
+    ${list.length>8?`<input class="cred-input" type="search" placeholder="Find a person, a trade or a vendor" oninput="spFilter(this.value)" style="margin-top:10px">`:''}
+    ${grp('project','On this project')}${grp('team','Your team')}${grp('vendors','Subs and vendors')}
+    <div class="pl-form" style="margin-top:12px"><div class="full"><label for="sp-to">Someone else <span class="sm">(email, optional)</span></label><input id="sp-to" class="cred-input" type="email" inputmode="email" placeholder="name@company.com, another@company.com" oninput="spCount()"></div>
+      <div class="full"><label for="sp-note">A note on top <span class="sm">(optional)</span></label><textarea id="sp-note" class="cred-input" rows="2" placeholder="e.g. Please read before you start and sign the last page."></textarea></div></div>
+    <div class="vd-mbtns"><button class="btn btn-blue" id="sp-send" onclick="spEmail('${id}',this)"></button><button class="btn-xs" onclick="document.getElementById('sp-act').innerHTML=''">Cancel</button></div><div class="sm" id="sp-emsg" role="status" aria-live="polite"></div></div>`;
+  spCount();el.scrollIntoView({behavior:'smooth',block:'start'});}
+function spFilter(q){q=String(q||'').toLowerCase().trim();document.querySelectorAll('.sp-rc').forEach(x=>{x.style.display=!q||x.dataset.s.includes(q)||x.querySelector('input').checked?'':'none';});}
+function spPicked(){const typed=((document.getElementById('sp-to')||{}).value||'').split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean);
+  return [...new Set([...[...document.querySelectorAll('.sp-rc input:checked')].map(x=>SP.rcpt[+x.dataset.k].email),...typed.map(x=>x.toLowerCase())])];}
+function spCount(){const b=document.getElementById('sp-send');if(!b)return;const n=spPicked().length;b.textContent=n?`Send to ${n} ${n===1?'person':'people'}`:'Pick who to send it to';b.disabled=!n;}
+async function spEmail(id,btn){const to=spPicked(),note=document.getElementById('sp-note').value,m=document.getElementById('sp-emsg');
+  if(!to.length)return;
+  const names=to.map(e=>{const r=(SP.rcpt||[]).find(x=>x.email===e);return r?r.name:e;});
+  if(!confirm(`Send “${(SP.open||{}).title}” to ${names.length<=4?names.join(', '):names.slice(0,3).join(', ')+' and '+(names.length-3)+' more'}?`))return;
+  btn.disabled=true;m.textContent='Sending…';
+  try{const r=await plApi('/api/crm/sops/'+id+'/email',{body:{to,note}});CR.dirty=false;
+    const bits=[r.sent?`Sent to ${r.sent}`:'',r.held?`${r.held} saved to send once email is turned back on (it’s paused right now)`:'',r.failed&&r.failed.length?`Couldn’t send to ${r.failed.join(', ')}`:''].filter(Boolean);
+    m.textContent=bits.join('. ')+'.';showNotif(r.sent?'Sent':'Held',bits[0]||'Done');if(!(r.failed&&r.failed.length))btn.textContent='Done';}
+  catch(e){m.textContent=e.message;btn.disabled=false;}}
 function spChangeForm(id){const el=document.getElementById('sp-act');if(!el)return;
   el.innerHTML=`<div class="pl-pb" style="margin-bottom:10px"><label for="sp-chg" style="font-weight:700">What should change?</label><textarea id="sp-chg" class="cred-input" rows="3" placeholder="e.g. Add a step to photograph the waterproofing before tile; make it shorter for the crew; add a Spanish line under each step"></textarea><div class="vd-mbtns" style="margin-top:8px"><button class="btn btn-blue" onclick="spChange('${id}',this)">✦ Change it</button></div><div class="sm" id="sp-cmsg"></div></div>`;
   document.getElementById('sp-chg').focus();}

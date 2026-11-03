@@ -56,25 +56,43 @@ router.get('/api/crm/sops/:id/print', requireAuth, wrap('Failed to open the SOP'
   const co = (await require('../db').query(`SELECT t.company_name, bp.phone, bp.email, bp.address FROM tenants t LEFT JOIN business_profile bp ON bp.tenant_id = t.id WHERE t.id = $1`, [req.tenantId])).rows[0] || {};
   res.set({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' }).send(sops().html(s, co));
 }));
-// Sent to a sub or vendor (or anyone): the SOP in the email itself.
+// Who it can go to, the right people ticked (lib/crmSops.js recipients).
+router.get('/api/crm/sops/:id/recipients', requireAuth, wrap('Failed to load', async (req, res) => {
+  const s = await sops().get(req.tenantId, req.params.id);
+  if (!s) return res.status(404).json({ error: { message: 'SOP not found.' } });
+  res.json({ recipients: await sops().recipients(req.tenantId, s) });
+}));
+// Sent to the people picked (and anyone typed in): each their own email, the SOP in it.
 router.post('/api/crm/sops/:id/email', requireAuth, wrap('Couldn’t send the SOP', async (req, res) => {
   const s = await sops().get(req.tenantId, req.params.id);
   if (!s) return res.status(404).json({ error: { message: 'SOP not found.' } });
-  const to = String((req.body || {}).to || '').trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return res.status(400).json({ error: { message: 'Type the email address to send it to.' } });
+  const b = req.body || {};
+  const list = [...new Set((Array.isArray(b.to) ? b.to : String(b.to || '').split(/[,;\s]+/)).map(e => String(e || '').trim().toLowerCase()).filter(Boolean))];
+  const bad = list.filter(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+  if (bad.length) return res.status(400).json({ error: { message: `That email address doesn’t look right: ${bad[0]}` } });
+  if (!list.length) return res.status(400).json({ error: { message: 'Pick who to send it to.' } });
+  if (list.length > 40) return res.status(400).json({ error: { message: 'Send it to 40 people or fewer at a time.' } });
   const db = require('../db');
   const co = (await db.query(`SELECT t.company_name, bp.phone, bp.email, bp.address FROM tenants t LEFT JOIN business_profile bp ON bp.tenant_id = t.id WHERE t.id = $1`, [req.tenantId])).rows[0] || {};
   const me = (await db.query('SELECT name, email FROM users WHERE id = $1', [req.userId])).rows[0] || {};
-  const note = String((req.body || {}).note || '').trim().slice(0, 2000);
+  const note = String(b.note || '').trim().slice(0, 2000);
   const page = sops().html(s, co).replace(/<div class="bar">[\s\S]*?<\/div>/, '').replace('src="/home/lion.png"', `src="${require('../lib/appUrl').appUrl()}/home/lion.png"`);
   const body = page.slice(page.indexOf('<body>') + 6, page.lastIndexOf('</body>'));
   const style = page.slice(page.indexOf('<style>'), page.indexOf('</style>') + 8);
-  const r = await require('../lib/email').sendEmail({ to, subject: `${s.title} · ${co.company_name || ''}`.replace(/ · $/, ''), replyTo: me.email || co.email || undefined,
-    fromName: me.name ? `${me.name} · ${co.company_name || ''}`.replace(/ · $/, '') : co.company_name,
-    html: `${style}${note ? `<p style="font-family:Arial;font-size:15px;white-space:pre-wrap">${note.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</p>` : ''}${body}`,
-    text: `${s.title}\n\n${s.content.sections.map((sec, k) => `${'ABCDEFGHIJKL'[k]}. ${sec.heading}\n${sec.steps.map(st => `- ${st.title} ${st.text}${st.done ? ` Done when: ${st.done}` : ''}`).join('\n')}`).join('\n\n')}` });
-  if (s.dealId) await require('../lib/crm').logActivity({ tenantId: req.tenantId, dealId: s.dealId, kind: 'email', userId: req.userId, body: `Sent the SOP “${s.title}” to ${to}${r && r.paused ? ' (held: email is paused)' : ''}` }).catch(() => {});
-  res.json({ ok: true, paused: !!(r && r.paused) });
+  const text = `${s.title}\n\n${s.content.sections.map((sec, k) => `${'ABCDEFGHIJKL'[k]}. ${sec.heading}\n${sec.steps.map(st => `- ${st.title} ${st.text}${st.done ? ` Done when: ${st.done}` : ''}`).join('\n')}`).join('\n\n')}`;
+  const esc = (x) => String(x).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  let sent = 0, held = 0;
+  const failed = [];
+  for (const to of list) {
+    try {
+      const r = await require('../lib/email').sendEmail({ to, subject: `${s.title} · ${co.company_name || ''}`.replace(/ · $/, ''), replyTo: me.email || co.email || undefined,
+        fromName: me.name ? `${me.name} · ${co.company_name || ''}`.replace(/ · $/, '') : co.company_name,
+        html: `${style}${note ? `<p style="font-family:Arial;font-size:15px;white-space:pre-wrap">${esc(note)}</p>` : ''}${body}`, text: `${note ? note + '\n\n' : ''}${text}` });
+      if (r && r.paused) held++; else sent++;
+    } catch (e) { failed.push(to); }
+  }
+  if (s.dealId) await require('../lib/crm').logActivity({ tenantId: req.tenantId, dealId: s.dealId, kind: 'email', userId: req.userId, body: `Sent the SOP “${s.title}” to ${list.length === 1 ? list[0] : list.length + ' people'}${held ? ' (held: email is paused)' : ''}` }).catch(() => {});
+  res.json({ ok: !failed.length, sent, held, failed, paused: held > 0 && !sent });
 }));
 
 router.post('/api/crm/deals/:id/permits', requireAuth, wrap('Failed to add the permit', async (req, res) => {
