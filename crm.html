@@ -2753,7 +2753,7 @@ function remBanner(){
   el.innerHTML=`<span>⚙️ ${n===1?'One important thing isn’t':n+' important things aren’t'} set up yet: ${uxEsc(SETUP_R.items[0].title.toLowerCase())}${n>1?' and more':''}.</span><button class="btn-xs p" onclick="remOpen()">See ${n===1?'it':'them'}</button><button class="btn-xs" onclick="this.parentNode.remove()" aria-label="Hide until next time">Later</button>`;
 }
 // Each reminder's picture (public/crm-art/).
-const REM_ART={projects:'setup-projects',drive:'setup-projects',vendors:'setup-vendors',team:'setup-vendors',emails:'setup-emails',my_gmail:'setup-emails',google:'setup-emails'};
+const REM_ART={payments:'setup-projects',my_calendar:'setup-emails',projects:'setup-projects',drive:'setup-projects',vendors:'setup-vendors',team:'setup-vendors',emails:'setup-emails',my_gmail:'setup-emails',google:'setup-emails'};
 function remOpen(){
   const n=SETUP_R.items.length;if(!n)return;
   const words=['One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
@@ -2784,6 +2784,8 @@ function remGo(go){
   else if(go==='vendors')crView('jobs');
   else if(go==='auto')crView('auto');
   else if(go==='start')crView('start');
+  else if(go==='company-pay'){crView('company');at('pay-box');}
+  else if(go==='mycal')dyOpen();
 }
 async function remSkip(key){
   const it=SETUP_R.items.find(x=>x.key===key);if(!it)return;

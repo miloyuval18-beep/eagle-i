@@ -16,7 +16,8 @@ const tag = Date.now().toString(36);
     const keys = async (u) => (await S.check(await team.getUser(u.id))).map(i => i.key);
 
     // A new company: everything the owner can set up, most important first; no Google yet, so not "your own email" too.
-    assert.deepEqual(await keys(owner), ['google', 'address', 'projects', 'team', 'vendors', 'contact', 'emails']);
+    // (Olive has a name but no phone yet: that one's hers.)
+    assert.deepEqual(await keys(owner), ['google', 'address', 'projects', 'team', 'vendors', 'contact', 'payments', 'emails', 'name']);
     const first = (await S.check(await team.getUser(owner.id)))[0];
     assert.ok(first.title && first.why && first.steps.length >= 2 && first.go && first.button, 'a guide and a place to go');
 
@@ -34,6 +35,24 @@ const tag = Date.now().toString(36);
     assert.ok(k.includes('drive'), 'Google connected but Drive off');
     assert.ok(k.includes('my_gmail'), 'signed in with Google, but not this person');
     assert.ok(!k.includes('team'), 'there are two people now');
+
+    // Their own: a name and phone; the calendar on their phone once there's something on it.
+    await query(`UPDATE users SET phone = '713-555-0111' WHERE id = $1`, [owner.id]);
+    assert.ok(!(await keys(owner)).includes('name'), 'name and phone in');
+    assert.ok(!(await keys(owner)).includes('my_calendar'), 'no projects yet: not worth it');
+    await query(`INSERT INTO crm_deals (tenant_id, title, stage) VALUES ($1, 'Lee kitchen', 'new')`, [t]).catch(async () => {
+      await require(R + '/lib/crm').createDeal({ tenantId: t, name: 'Kim Lee', title: 'Lee kitchen', stage: 'new' });
+    });
+    assert.ok((await keys(owner)).includes('my_calendar'));
+    const tok = await require(R + '/lib/crmDaily').calendarToken(owner.id);
+    await require(R + '/lib/crmDaily').calendarFor(tok);
+    await new Promise(r => setTimeout(r, 200));
+    assert.ok(!(await keys(owner)).includes('my_calendar'), 'their phone fetched it');
+    // Online payments: until Stripe is ready.
+    assert.ok((await keys(owner)).includes('payments'));
+    await query(`UPDATE tenants SET stripe_connect_ready = true WHERE id = $1`, [t]);
+    assert.ok(!(await keys(owner)).includes('payments'));
+    assert.ok(!(await keys(sam)).includes('payments'), 'not for a member');
 
     // "We don't need this": gone for them, not for anyone else; can be brought back.
     await S.skip(owner.id, 'drive'); await S.skip(owner.id, 'drive');
