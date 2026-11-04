@@ -125,6 +125,10 @@ router.get('/api/crm/email-watch', requireAuth, async (req, res) => {
     res.json({ settings: await watch.settings(req.tenantId), mailboxes: conn, all, ...(await watch.list(req.tenantId, { userId: req.userId, all })) });
   } catch (err) { fail(res, err, 'Failed to load'); }
 });
+// Maybe needs you: my emails Eagle I wasn't sure about.
+router.get('/api/crm/me/maybe', requireAuth, async (req, res) => {
+  try { res.json({ items: await watch.maybeList(req.tenantId, { userId: req.userId }) }); } catch (err) { fail(res, err, 'Failed to load'); }
+});
 router.patch('/api/crm/email-watch/settings', requireAuth, managersOnly, async (req, res) => {
   try { res.json({ settings: await watch.saveSettings(req.tenantId, req.body || {}) }); } catch (err) { fail(res, err, 'Failed to save'); }
 });

@@ -127,6 +127,22 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null }) =
     await crm.actOnInbox({ tenantId: t, id: bank.id, action: 'reopen' });
     assert.equal((await query('SELECT status FROM crm_mail_threads WHERE id = $1', [levis])).rows[0].status, 'open');
     assert.ok((await titles(levi)).includes('Bank is waiting for a reply'), 'undo brings it back');
+    // Maybe needs you: not flagged, no Needs you item, until the person says yes; no closes it; Undo puts it back.
+    const mb = (await query(`INSERT INTO crm_mail_threads (tenant_id, mailbox_email, user_id, thread_id, counterpart_email, counterpart_name, subject, last_dir, last_at, state, status, expects, classified_at)
+      VALUES ($1, $2, $3, 'tmaybe', 'sup@x.test', 'Supplier', 'Tile', 'in', now(), 'maybe', 'open', true, now()) RETURNING id`, [t, sam.email, sam.id])).rows[0].id;
+    assert.deepEqual((await w.maybeList(t, { userId: sam.id })).map(x => x.subject), ['Tile']);
+    assert.equal((await w.maybeList(t, { userId: levi.id })).length, 0, 'only theirs');
+    assert.ok(!(await titles(sam)).includes('Supplier is waiting for a reply'), 'a maybe isn’t flagged');
+    assert.equal((await w.processWatch({ onlyTenantId: t, send: async () => {} })).reminders, 0, 'no reminders for a maybe');
+    await w.act({ tenantId: t, id: mb, action: 'yes' });
+    assert.ok((await titles(sam)).includes('Supplier is waiting for a reply'), 'yes: in Needs you now');
+    assert.equal((await w.maybeList(t, { userId: sam.id })).length, 0);
+    await w.act({ tenantId: t, id: mb, action: 'maybe' });
+    assert.ok(!(await titles(sam)).includes('Supplier is waiting for a reply'), 'undo: back to maybe');
+    assert.equal((await w.maybeList(t, { userId: sam.id })).length, 1);
+    await w.act({ tenantId: t, id: mb, action: 'no' });
+    assert.equal((await w.maybeList(t, { userId: sam.id })).length, 0, 'no: cleared');
+    assert.equal((await query('SELECT state FROM crm_mail_threads WHERE id = $1', [mb])).rows[0].state, 'closed');
     console.log('GREETED SCENARIO PASSED');
   } catch (e) {
     console.error('GREETED SCENARIO FAILED:', e);

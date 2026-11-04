@@ -1511,6 +1511,7 @@ body.on-home .ai-fab{display:none}
     <div class="pl-list" id="pl-needs"><div class="pl-empty">Loading…</div></div>
     <div class="pl-h" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>📬 Email</span><span id="ew-allwrap"></span></div>
     <div id="ew-box"></div>
+    <div id="mb-today"></div>
     <div id="lp-today"></div>
     <div class="pl-h" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>Your tasks</span><span id="td-allwrap"></span></div>
     <div class="pl-pb" style="padding:10px">
@@ -1954,6 +1955,7 @@ const CR_GUIDES={
     ['Your dashboard','Eagle I opens here every time. Each tile opens what it says: your leads, active projects, Ask Eagle I, draws due, orders, quotes, takeoffs and more. Tools for one project ask which project first.','.db-r1'],
     ['Needs you','What Eagle I flagged for you. When it’s taken care of, tap ✓ Done. Not now? Snooze it and it comes back later. Tapped by mistake? Undo.','#pl-needs'],
     ['Your email','📬 Email lists the emails waiting for your answer (Eagle I can draft the reply), and the ones you were only copied on, marked “No action needed”.'],
+    ['Maybe needs you','Emails Eagle I wasn’t sure about. It doesn’t flag them or send reminders. Tap “Yes, it needs me” and it moves to Needs you, or “No, nothing needed” and it’s cleared.','#mb-today .mb-item',()=>!!document.querySelector('#mb-today .mb-item')],
     ['Your tasks','Type a task in the box and tap Add. Tick it when it’s done.','#td-new'],
     ['Reminders and updates','Further down: the next few days (site visits, tasks, job phases, orders, permits), and what happened lately on your projects.'],
     ['Everything else','The bar at the bottom has Customers, Calendar, Jobs, Ask and Money. Ask is Eagle I on its own page, with your past chats; the ✦ button opens it over any screen. Settings, reports and help are under Account at the top.',null,()=>!crPm()],
@@ -2112,7 +2114,7 @@ function crView(v){
   document.body.classList.toggle('on-ask',v==='ask');
   document.body.classList.toggle('on-start',v==='start');
   document.body.classList.toggle('on-home',v==='home');
-  if(v==='home'){CR.toToday=toToday;hmLoad();plLoadNeeds();clLoad('cl-box');lpToday();ckBanner();}
+  if(v==='home'){CR.toToday=toToday;hmLoad();plLoadNeeds();clLoad('cl-box');mbToday();lpToday();ckBanner();}
   if(v==='sops')spLoad();
   if(v==='pipeline')plLoad();
   if(v==='calendar')cvLoad();
@@ -4819,6 +4821,27 @@ async function ckBanner(){
   try{const d=await plApi('/api/crm/checkins/today');const c=d.checkin;
     el.innerHTML=!c||c.status==='done'?'':`<div class="nx" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div class="nx-l">Daily check-in</div><div class="nx-t">${c.status==='started'?'Finish today’s check-in':'How did today go? Two minutes with Eagle I.'}</div></div><button class="btn btn-blue" onclick="ckOpen('mine')">${c.status==='started'?'Keep going':'Start my check-in'}</button></div>`;
   }catch(e){el.innerHTML='';}
+}
+/* ---------- Maybe needs you: emails Eagle I wasn't sure about ---------- */
+async function mbToday(){
+  const el=document.getElementById('mb-today');if(!el)return;
+  try{
+    const {items}=await plApi('/api/crm/me/maybe');
+    if(!items.length){el.innerHTML='';return;}
+    el.innerHTML=`<div class="pl-h">🤔 Maybe needs you (${items.length})</div><div class="sm" style="margin-top:0">Eagle I isn’t sure these need an answer, so it didn’t flag them. Take a quick look and tell it. No reminders are sent for these.</div>
+      <div class="pl-list">${items.map(i=>`<div class="pl-item mb-item"><div class="pl-item-t">${uxEsc(i.subject||'(no subject)')}</div>
+        <div class="pl-item-d">${uxEsc(i.who)}${i.state==='maybe'&&i.reason?' · '+uxEsc(i.reason):''} · ${crWhen(i.lastAt)}${i.deal?' · '+uxEsc(i.deal):''}</div>
+        ${i.snippet?`<div class="pl-item-d" style="color:var(--ink)">${uxEsc(i.snippet)}</div>`:''}
+        <div class="pl-acts"><button class="btn-xs p" onclick="mbDecide('${i.id}','yes',this)">Yes, it needs me</button><button class="btn-xs" onclick="mbDecide('${i.id}','no',this)">No, nothing needed</button>${i.gmail?`<a class="btn-xs" href="${uxEsc(i.gmail)}" target="_blank" rel="noopener">Open in Gmail</a>`:''}${i.dealId?`<button class="btn-xs" onclick="plOpenDeal('${i.dealId}')">Its project</button>`:''}</div></div>`).join('')}</div>`;
+  }catch(e){el.innerHTML='';}
+}
+async function mbDecide(id,answer,btn){
+  try{
+    const r=await plApi('/api/crm/email-watch/'+id+'/act',{body:{action:answer}});
+    const row=btn&&btn.closest('.mb-item');if(row)row.remove();
+    mbToday();if(answer==='yes')plLoadNeeds();
+    crUndo(answer==='yes'?(r.state==='waiting'?'Watching for their answer':'Added to Needs you'):'Cleared: nothing needed',async()=>{await plApi('/api/crm/email-watch/'+id+'/act',{body:{action:'maybe'}});mbToday();plLoadNeeds();});
+  }catch(e){showNotif('Could not save',e.message);}
 }
 /* ---------- Today: everything I was only copied on this week ---------- */
 const LP={home:[],all:false,deal:null};
