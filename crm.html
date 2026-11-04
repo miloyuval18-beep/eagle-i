@@ -1260,8 +1260,58 @@ html body .ai-hello.llm .ai-chip{border-radius:16px;padding:14px 16px;font-size:
 .ai-panel:not(.inline) .ai-menu-l{display:none}
 /* ---------- Home dashboard (dbHtml): Levi Construction Group's look ---------- */
 #view-home>.sh{display:none}
+#view-home{overflow-x:clip}
 .db{--g:#d4af61;--g2:#f2d690;--gdim:rgba(212,175,97,.42);--card:#14120e;display:grid;gap:16px;margin:0 0 8px}
 .db button{font:inherit;color:inherit;text-align:left;cursor:pointer;white-space:normal}
+/* ---------- Home dashboard: the flashy layer (the mockup's lighting) ---------- */
+.db{position:relative;isolation:isolate}
+.db::before{content:"";position:absolute;inset:-40px 0;z-index:-1;pointer-events:none;
+  background:radial-gradient(900px 420px at 50% 34%,rgba(232,186,92,.20),transparent 70%),radial-gradient(700px 300px at 50% 100%,rgba(232,186,92,.10),transparent 70%)}
+/* every card: a bright gold edge, a halo, a light from the top */
+.db-t,.db-p,.db-g,.db-box,.db-hero{border:2px solid transparent!important;
+  background-clip:padding-box,border-box!important;background-origin:border-box!important;
+  box-shadow:0 0 0 1px #000,0 0 18px rgba(232,186,92,.38),0 0 44px -8px rgba(232,186,92,.55),inset 0 1px 0 rgba(255,236,190,.22)!important}
+.db-t,.db-g,.db-box{background-clip:padding-box,padding-box,border-box!important;background-image:radial-gradient(120% 80% at 50% -10%,rgba(255,214,130,.13),transparent 60%),linear-gradient(180deg,#1b1711,#0d0b08),linear-gradient(160deg,#fff0c2,#e2b75a 28%,#8a6420 55%,#e9c46e 78%,#fff0c2)!important}
+.db-p{background-image:linear-gradient(180deg,#17130d,#0d0b08),linear-gradient(160deg,#fff0c2,#e2b75a 28%,#8a6420 55%,#e9c46e 78%,#fff0c2)!important}
+.db-hero{background-image:linear-gradient(90deg,#0b0a08 0%,rgba(11,10,8,.9) 30%,rgba(11,10,8,.3) 62%,rgba(11,10,8,0) 100%),url('/dash/hero.jpg'),linear-gradient(160deg,#fff0c2,#e2b75a 28%,#8a6420 55%,#e9c46e 78%,#fff0c2)!important;
+  background-size:auto,cover,auto!important;background-position:0 0,right center,0 0!important;background-repeat:no-repeat!important;
+  background-clip:padding-box,padding-box,border-box!important}
+.db-t:hover,.db-p:hover,.db-g:hover,.db-st:hover{transform:translateY(-3px);box-shadow:0 0 0 1px #000,0 0 26px rgba(255,214,130,.6),0 0 70px -6px rgba(232,186,92,.75),inset 0 1px 0 rgba(255,236,190,.3)!important}
+/* gold, glowing words and icons */
+.db-tt b,.db-pb b,.db-gt b,.db-stt b,.db-pr b,.db-prio h2,.db-vbt b{background:linear-gradient(180deg,#fffaf0 0%,#f7e3b4 55%,#e3bd6c 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 10px rgba(240,200,110,.28))}
+.db-co{filter:drop-shadow(0 0 18px rgba(240,200,110,.45))}
+.db-role{text-shadow:0 0 16px rgba(240,200,110,.55)}
+.db-hl{border-left-width:4px;box-shadow:-10px 0 18px -12px rgba(240,200,110,.9)}
+.db-i{stroke:#f4cf7c;stroke-width:1.7;filter:drop-shadow(0 0 4px rgba(255,210,120,.9)) drop-shadow(0 0 12px rgba(232,186,92,.6))}
+.db-chev{color:#f4cf7c;text-shadow:0 0 10px rgba(255,210,120,.8)}
+/* the Ask circle: rings of light that breathe */
+.db-ask{border:3px solid #f4cf7c;box-shadow:0 0 0 6px rgba(232,186,92,.16),0 0 0 14px rgba(232,186,92,.07),0 0 40px 6px rgba(255,205,110,.65),0 0 110px 10px rgba(232,186,92,.38),inset 0 0 50px rgba(255,205,110,.35);animation:dbGlow 3.2s ease-in-out infinite}
+.db-ask::after{content:"";position:absolute;inset:-18px;border-radius:50%;border:1.5px solid rgba(255,220,150,.35);box-shadow:0 0 24px rgba(255,210,120,.35);pointer-events:none}
+.db-ask b{text-shadow:0 0 16px rgba(255,220,150,.7)}
+.db-mic{width:54px;height:54px;stroke:#ffe3a3;filter:drop-shadow(0 0 8px #ffd27a) drop-shadow(0 0 22px rgba(255,200,100,.9))}
+.db-wave i{background:linear-gradient(180deg,#fff2c9,#f0c060);box-shadow:0 0 6px rgba(255,210,120,.9)}
+@keyframes dbGlow{50%{box-shadow:0 0 0 8px rgba(232,186,92,.2),0 0 0 18px rgba(232,186,92,.09),0 0 56px 10px rgba(255,205,110,.8),0 0 140px 16px rgba(232,186,92,.45),inset 0 0 60px rgba(255,205,110,.45)}}
+@media (prefers-reduced-motion:reduce){.db-ask{animation:none}}
+/* due soon: glowing red */
+.db-t.hot{background-clip:padding-box,padding-box,border-box!important;background-image:radial-gradient(120% 80% at 50% -10%,rgba(255,140,120,.22),transparent 60%),linear-gradient(180deg,#6a1a12,#300b07),linear-gradient(160deg,#ffd0c4,#e2574a 35%,#7a140d 60%,#ff8a78)!important;
+  box-shadow:0 0 0 1px #000,0 0 20px rgba(255,80,60,.5),0 0 52px -6px rgba(255,70,50,.65),inset 0 1px 0 rgba(255,200,190,.25)!important}
+.db-t.hot .db-tt b{background:linear-gradient(180deg,#fff,#ffd9d0);-webkit-background-clip:text;background-clip:text}
+.db-pill{box-shadow:0 0 12px rgba(240,200,110,.35)}
+.db-pill.bad{background:linear-gradient(180deg,#ff4a3a,#c8180c);box-shadow:0 0 14px rgba(255,60,40,.7),inset 0 1px 0 rgba(255,255,255,.3)}
+.db-pill.ok{background:linear-gradient(180deg,#38c25b,#13802c);box-shadow:0 0 14px rgba(60,220,100,.6),inset 0 1px 0 rgba(255,255,255,.3)}
+.db-pr.bad{background:linear-gradient(90deg,#7a1c12,#3a0d08)!important;box-shadow:0 0 18px rgba(255,70,50,.45)}
+.db-pr em{box-shadow:0 0 12px rgba(240,200,110,.6)}
+.db-pr.bad em{box-shadow:0 0 12px rgba(255,70,50,.8)}
+.db-pr{border-color:rgba(240,200,110,.6)}
+/* photos: a little gloss and a gold line where the photo meets the label */
+.db-pi,.db-gi,.db-sti,.db-vbi{position:relative;filter:saturate(1.1) contrast(1.05)}
+.db-pi::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,240,210,.12),transparent 40%,rgba(0,0,0,.25))}
+.db-pb{border-top:1.5px solid rgba(240,200,110,.7);box-shadow:0 -1px 12px rgba(240,200,110,.35)}
+.db-vbb{box-shadow:0 0 22px rgba(255,205,110,.6),0 0 60px -10px rgba(255,205,110,.6),inset 0 1px 0 rgba(255,255,255,.5)!important}
+/* Laptops: first-row tiles put the icon above the words, so titles get the whole width. */
+@media (min-width:1101px) and (max-width:1320px){.db-r1 .db-t{flex-direction:column;align-items:flex-start;gap:8px;padding:16px}.db-r1 .db-t .db-tt{align-self:stretch}.db-r1 .db-t>.db-chev{display:none}.db-r1 .db-tt b{font-size:22px}}
+.db-pill{white-space:nowrap}
+@media (max-width:640px){.db-pill{white-space:normal}}
 /* Home's dashboard gets more room on a big screen. */
 @media (min-width:1200px){body.on-home .wrap{max-width:1320px}}
 /* Home has the big Ask circle: no floating button there. */
