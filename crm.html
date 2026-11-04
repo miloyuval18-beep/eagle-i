@@ -1223,7 +1223,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(232,192,104,.2
 body.pm .pm-hide{display:none!important}
 body:not(.pm) .pm-only{display:none!important}
 body.pm .cr-tab[data-view=pipeline]{display:none}
-body.pm .cr-tab[data-view=home]{order:1}body.pm .cr-tab[data-view=jobs]{order:2}body.pm .cr-tab[data-view=calendar]{order:3}body.pm .cr-tab[data-view=estimates]{order:4}
+body.pm .cr-tab[data-view=home]{order:1}body.pm .cr-tab[data-view=jobs]{order:2}body.pm .cr-tab[data-view=calendar]{order:3}body.pm .cr-tab[data-view=ask]{order:4}body.pm .cr-tab[data-view=estimates]{order:5}
 .gb-i{display:block;padding:0}
 .gb-i summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:14px 16px;cursor:pointer;list-style:none;font-size:18px}
 .gb-i summary::-webkit-details-marker{display:none}
@@ -1275,6 +1275,7 @@ body.pm .cr-tab[data-view=home]{order:1}body.pm .cr-tab[data-view=jobs]{order:2}
     <button class="cr-tab" data-view="pipeline" onclick="crView('pipeline')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Customers</button>
     <button class="cr-tab" data-view="calendar" onclick="crView('calendar')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M7.5 14h2M11 14h2M14.5 14h2M7.5 17h2M11 17h2"/></svg>Calendar</button>
     <button class="cr-tab" data-view="jobs" onclick="crView('jobs')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Jobs</button>
+    <button class="cr-tab pm-only" data-view="ask" onclick="crView('ask')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.9 5 5.1 1.9-5.1 1.9L12 17.4l-1.9-5.1L5 10.4l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Ask</button>
     <button class="cr-tab" data-view="estimates" onclick="crView('estimates')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v.01M17.5 14.5v.01"/></svg>Money</button>
   </nav>
 </header>
@@ -1596,7 +1597,7 @@ const CR={me:null,view:'pipeline',team:[]};
 const crCanManage=()=>!!(CR.me&&CR.me.canManage);
 // What this person may do: their permissions checklist (Account → Team).
 const crCan=(k)=>!!(CR.me&&CR.me.perms&&CR.me.perms[k]);
-// Project managers get the job-running version: Home, Jobs, Calendar and Money, and none of
+// Project managers get the job-running version: Home, Jobs, Calendar, Ask and Money, and none of
 // the selling, marketing or company-setup screens they don't use. Everything they're allowed
 // to do is still there (Customers from Home and 🔍 Search; reports in Account if allowed).
 const crPm=()=>!!(CR.me&&CR.me.role==='project_manager');
@@ -1754,7 +1755,7 @@ const CR_GUIDES={
     ['Your tasks','Type a task in the box and tap Add. Tick it when it’s done.','#td-new'],
     ['Reminders and updates','Further down: the next few days (site visits, tasks, job phases, orders, permits), and what happened lately on your projects.'],
     ['Everything else','The bar at the bottom has Customers, Calendar, Jobs and Money. Settings, reports and help are under Account at the top. ✦ Ask Eagle I is on every screen.','.hm-jumpw',()=>!crPm()],
-    ['Everything else','The bar at the bottom has Jobs, Calendar and Money. A customer’s details are one tap away from their job, or under “Jump to”. Help is under Account at the top. ✦ Ask Eagle I is on every screen.','.hm-jumpw',()=>crPm()]]},
+    ['Everything else','The bar at the bottom has Jobs, Calendar, Ask and Money. Ask opens Eagle I on its own page; the ✦ button opens it over any screen. A customer’s details are one tap away from their job, or under “Jump to”. Help is under Account at the top.','.hm-jumpw',()=>crPm()]]},
   sops:{icon:'📋',steps:[
     ['How every job is done','An SOP is a step-by-step guide to doing a job the same way every time. Pick a kind of work, or Company SOPs for rules that apply to every job.'],
     ['Ask for any SOP','Inside a kind of work, say in plain words what it should cover, pick what kind it is (a full project, one trade’s scope for a vendor, a crew checklist…) and tap “✦ Write the SOP”. It takes about a minute.'],
