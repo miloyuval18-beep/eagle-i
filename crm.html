@@ -1890,7 +1890,7 @@ const CR_GUIDES={
     ['Your company details','Your name, phone and address go on every email Eagle I sends. Automatic emails wait until the address is filled in.'],
     ['Connect Google','Connect your Gmail so customer emails land on the right job by themselves.'],
     ['Google Drive','Switch on Drive and every job gets its own folder for its files; anything added to a job’s folder in Drive shows up on the job by itself within about half an hour. Already have project folders in Drive? “Projects already in your Drive” finds them and adds them as past projects, with their files.',null,()=>crCan('settings')],
-    ['Online payments','Let homeowners pay invoices online by card or bank.',null,()=>crCan('settings')],
+    ['Online payments','Let homeowners pay invoices online by card or bank, or say you take payments in QuickBooks.',null,()=>crCan('settings')&&!(PL.data&&PL.data.settings&&PL.data.settings.paymentsTool)],
     ['Homeowners and subs','At the bottom: extras for homeowners and subs who make their own Eagle I accounts. They’re off until you switch them on.']]},
   auto:{icon:'✉',steps:[
     ['Emails that send themselves','Follow-ups, visit reminders, invoice reminders and thank-yous go out on their own at the right time.'],
@@ -3493,12 +3493,21 @@ async function gwDisconnect(){if(!confirm('Stop reading your team’s email? Ema
 async function payLoad(){
   const el=document.getElementById('pay-box');if(!el)return;
   try{
+    if(!PL.data)await plLoad();
+    const tool=PL.data&&PL.data.settings&&PL.data.settings.paymentsTool;
+    // Payments taken somewhere else (QuickBooks…): no Stripe, no reminders about it.
+    if(tool){el.innerHTML=`<div class="pl-pb"><div class="pl-item-t">Payments are handled in ${uxEsc(tool)}</div><div class="pl-item-d">Eagle I won’t offer online payments or remind anyone to set them up. Invoices and payments stay in ${uxEsc(tool)}.</div>${crCan('settings')?`<div class="vd-mbtns"><button class="btn-xs" onclick="payTool(null)">Take payments through Eagle I instead</button></div>`:''}</div>`;return;}
     const st=await plApi('/api/crm/payments'+(location.search.includes('stripe=return')?'?refresh=1':''));
-    if(!st.available){el.innerHTML='<div class="pl-banner"><span>Online payments aren’t set up on the Eagle I server yet. Invoices still work: homeowners see how to pay, and you mark checks and cash as paid.</span></div>';return;}
+    if(!st.available){el.innerHTML='<div class="pl-banner"><span>Online payments aren’t set up on the Eagle I server yet. Invoices still work: homeowners see how to pay, and you mark checks and cash as paid.</span></div>'+(crCan('settings')?'<div class="vd-mbtns"><button class="btn-xs" onclick="payTool()">We take payments in QuickBooks or another program</button></div>':'');return;}
     el.innerHTML=st.ready?'<div class="pl-pb"><div class="pl-card-top"><div><div class="pl-item-t">Stripe connected</div><div class="pl-item-d">Homeowners can pay invoices by card or bank transfer. Money goes straight to your Stripe account.</div></div><span class="pl-pill on">● On</span></div></div>'
       :`<div class="pl-pb"><div class="pl-item-t">${st.accountId?'Finish setting up Stripe':'Take payments online'}</div><div class="sm">Connect your company’s Stripe account so homeowners can pay deposits and invoices by card or bank transfer. Money goes straight to you; Stripe’s usual fees apply.</div>
-        ${crCan('settings')?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="payConnect(this)">${st.accountId?'Continue with Stripe':'Connect Stripe'}</button>${st.accountId?'<button class="btn-xs" onclick="payRefresh()">I finished, check again</button>':''}</div>`:'<div class="sm">Ask your account owner or an admin to connect it.</div>'}</div>`;
+        ${crCan('settings')?`<div class="vd-mbtns"><button class="btn btn-blue" onclick="payConnect(this)">${st.accountId?'Continue with Stripe':'Connect Stripe'}</button>${st.accountId?'<button class="btn-xs" onclick="payRefresh()">I finished, check again</button>':''}<button class="btn-xs" onclick="payTool()">We take payments in QuickBooks or another program</button></div>`:'<div class="sm">Ask your account owner or an admin to connect it.</div>'}</div>`;
   }catch(e){el.innerHTML='<div class="sm">'+uxEsc(e.message)+'</div>';}
+}
+async function payTool(tool){
+  if(tool===undefined){tool=(prompt('Which program do you take payments in?','QuickBooks')||'').trim();if(!tool)return;}
+  try{await plApi('/api/crm/settings',{method:'PATCH',body:{paymentsTool:tool}});await plLoad();payLoad();showNotif('Saved',tool?`Payments are handled in ${tool}`:'Online payments through Eagle I are back');}
+  catch(e){showNotif('Could not save',e.message);}
 }
 async function payConnect(btn){btn.disabled=true;try{const r=await plApi('/api/crm/payments/connect',{body:{}});location.href=r.url;}catch(e){showNotif('Could not open Stripe',e.message);btn.disabled=false;}}
 async function payRefresh(){try{await plApi('/api/crm/payments?refresh=1');}catch(e){}payLoad();}

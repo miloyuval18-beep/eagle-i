@@ -794,9 +794,11 @@ describe('CRM core (lib/crm.js)', () => {
     assert.equal(crm.leadStatusForStage('new'), 'new');
   });
   test('settings fall back to safe defaults', () => {
-    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], scheduleTemplate: null, minJobValue: null, booking: null, referralReward: null, reviewUrl: null, warrantyMonths: null, monthlyCapacity: null, backlogLowWeeks: null, backlogHighWeeks: null, backfilledAt: null });
+    assert.deepEqual(crm.normalizeSettings(null), { paused: false, weeklySummary: true, waitingMinutes: 30, leadOwnerUserId: null, stageLabels: {}, hiddenStages: [], scheduleTemplate: null, minJobValue: null, booking: null, referralReward: null, reviewUrl: null, warrantyMonths: null, monthlyCapacity: null, backlogLowWeeks: null, backlogHighWeeks: null, paymentsTool: null, backfilledAt: null });
     assert.equal(crm.normalizeSettings({ waitingMinutes: 7 }).waitingMinutes, 30);
     assert.equal(crm.normalizeSettings({ waitingMinutes: '60' }).waitingMinutes, 60);
+    assert.equal(crm.normalizeSettings({ paymentsTool: '  QuickBooks ' }).paymentsTool, 'QuickBooks');
+    assert.equal(crm.normalizeSettings({ paymentsTool: '   ' }).paymentsTool, null);
   });
   test('median handles odd, even and empty lists', () => {
     assert.equal(crm.median([5, 1, 3]), 3);

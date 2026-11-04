@@ -309,7 +309,7 @@ router.get('/api/crm/pipeline', requireAuth, async (req, res) => {
     // Leads that arrived before the pipeline existed are brought in the first time it is opened.
     await crm.ensureBackfilled(req.tenantId);
     const [pipeline, inbox, settings] = await Promise.all([crm.listPipeline(req.tenantId), crm.listInbox(req.tenantId, { user: req.crmUser }), crm.getSettings(req.tenantId)]);
-    const out = { ...pipeline, needsYou: inbox.length, settings: { paused: settings.paused } };
+    const out = { ...pipeline, needsYou: inbox.length, settings: { paused: settings.paused, paymentsTool: settings.paymentsTool } };
     // Without "See money": no deal values or totals.
     res.json(team.can(req.crmUser, 'money') ? out : { ...out, deals: team.hideMoney(out.deals), values: null, openValue: null, moneyHidden: true });
   } catch (err) { fail(res, err, 'Failed to load the pipeline'); }
@@ -516,6 +516,10 @@ router.patch('/api/crm/settings', requireAuth, team.need('emails'), async (req, 
   if (b.waitingMinutes !== undefined) patch.waitingMinutes = b.waitingMinutes;
   if (b.stageLabels !== undefined) patch.stageLabels = b.stageLabels;
   if (b.hiddenStages !== undefined) patch.hiddenStages = b.hiddenStages;
+  if (b.paymentsTool !== undefined) {
+    if (!team.can(req.crmUser, 'settings')) return res.status(403).json({ error: { message: 'Only someone who can change company details can change this.' } });
+    patch.paymentsTool = b.paymentsTool || null;
+  }
   try {
     if (b.leadOwnerUserId !== undefined) {
       if (b.leadOwnerUserId && !(await query('SELECT 1 FROM users WHERE id = $1 AND tenant_id = $2', [b.leadOwnerUserId, req.tenantId])).rows.length) {
