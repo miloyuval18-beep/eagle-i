@@ -38,6 +38,11 @@ router.get('/api/crm/me/loop', requireAuth, wrap('Failed to load', async (req, r
   const items = await require('../lib/crmEmailWatch').loopRecent({ tenantId: req.tenantId, userId: req.userId, days: 7 });
   res.json({ items: team.can(req.crmUser, 'money') ? items : team.hideMoney(items), on: team.oversightOf(req.crmUser) });
 }));
+// Mark emails I was kept in the loop on as read (they leave my lists); { ids } or every one; read: false undoes.
+router.post('/api/crm/me/loop/read', requireAuth, wrap('Failed to save', async (req, res) => {
+  const b = req.body || {};
+  res.json(await require('../lib/crmEmailWatch').loopRead({ tenantId: req.tenantId, userId: req.userId, ids: Array.isArray(b.ids) ? b.ids : null, read: b.read !== false }));
+}));
 // What I was copied on for this project. Mine only: it came from my mailbox.
 router.get('/api/crm/deals/:id/loop', requireAuth, wrap('Failed to load', async (req, res) => {
   const items = await require('../lib/crmEmailWatch').loopFor({ tenantId: req.tenantId, userId: req.userId, dealId: req.params.id });

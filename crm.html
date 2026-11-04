@@ -1926,6 +1926,7 @@ const CR_GUIDES={
   loop:{icon:'📨',steps:[
     ['Kept in the loop','These are emails about this project you were only copied on. No action needed: nobody is waiting on you, so there are no reminders and nothing goes on your calendar.','#pld-loop .lp-item,#jb-loop .lp-item'],
     ['When it is for you','If an email is sent to your address or uses your first or last name, it counts as yours like any other: reminders, calendar and all.'],
+    ['Mark as read','Read one? Tap “✓ Mark as read” and it’s gone from your lists. If a new email comes in on that conversation, it shows up again. Tapped by mistake? Tap Undo.'],
     ['On Today','Today lists everything you were copied on this week, each marked “No action needed”. They’re listed once in your 4pm email under “For your information”, and you’re never reminded about them.']]},
   job:{icon:'🛠',steps:[
     ['The job','Everything for one signed job, top to bottom.'],
@@ -4820,31 +4821,44 @@ async function ckBanner(){
   }catch(e){el.innerHTML='';}
 }
 /* ---------- Today: everything I was only copied on this week ---------- */
+const LP={home:[],all:false,deal:null};
+// Mark as read: gone from the lists (a newer email in that conversation brings it back). Undo puts them back.
+async function lpRead(ids,btn,every){
+  if(!ids||!ids.length)return;
+  if(every&&!confirm(`Mark all ${ids.length} as read? They leave this list.`))return;
+  try{
+    await plApi('/api/crm/me/loop/read',{body:{ids,read:true}});
+    const refresh=()=>{lpToday(LP.all);if(LP.deal)lpLoad(LP.deal.dealId,LP.deal.elId);};
+    if(every)refresh();
+    else{const row=btn&&btn.closest('.lp-item');if(row)row.remove();setTimeout(refresh,300);}
+    crUndo(ids.length>1?`${ids.length} emails marked as read`:'Marked as read',async()=>{await plApi('/api/crm/me/loop/read',{body:{ids,read:false}});refresh();});
+  }catch(e){showNotif('Could not save',e.message);}
+}
 async function lpToday(all){
   const el=document.getElementById('lp-today');if(!el)return;
   try{
     const {items}=await plApi('/api/crm/me/loop');
     if(!items.length){el.innerHTML='';return;}
-    const show=all?items:items.slice(0,5);
+    const show=all?items:items.slice(0,5);LP.home=items.map(i=>i.id);LP.all=!!all;
     el.innerHTML=`<div class="pl-h">📨 For your information: no action needed (${items.length})</div><div class="sm" style="margin-top:0">Emails this week that need nothing from you: you were only copied, it was for someone else, or there’s nothing to answer. Here so you know what’s going on; you’re never reminded about these.</div>
-      <div class="pl-list">${show.map(i=>`<div class="pl-item lp-item"><div class="pl-item-t">${uxEsc(i.subject||'(no subject)')}</div>
+      <div class="pl-list">${show.map(i=>`<div class="pl-item lp-item" data-lp="${uxEsc(i.id)}"><div class="pl-item-t">${uxEsc(i.subject||'(no subject)')}</div>
         <div class="pl-item-d">${uxEsc(i.from)}${i.to?' to '+uxEsc(i.to):''} · ${crWhen(i.lastAt)}${i.messages>1?' · '+i.messages+' emails':''}${i.deal?' · '+uxEsc(i.deal):''}</div>
         ${i.snippet?`<div class="pl-item-d" style="color:var(--ink)">${uxEsc(i.snippet)}</div>`:''}
-        <div class="pl-acts"><span class="pl-tag gA">${i.why==='fyi'?'Nothing to answer':i.why==='for'?'For '+uxEsc(i.to||'a teammate'):'You were copied'}</span><a class="btn-xs" href="${uxEsc(i.gmail)}" target="_blank" rel="noopener">Open in Gmail</a>${i.dealId?`<button class="btn-xs" onclick="plOpenDeal('${i.dealId}')">Its project</button>`:''}</div></div>`).join('')}</div>
-      ${!all&&items.length>5?`<div class="vd-mbtns"><button class="btn-xs" onclick="lpToday(true)">Show all ${items.length}</button></div>`:''}`;
+        <div class="pl-acts"><span class="pl-tag gA">${i.why==='fyi'?'Nothing to answer':i.why==='for'?'For '+uxEsc(i.to||'a teammate'):'You were copied'}</span><button class="btn-xs p" onclick="lpRead(['${uxEsc(i.id)}'],this)">✓ Mark as read</button><a class="btn-xs" href="${uxEsc(i.gmail)}" target="_blank" rel="noopener">Open in Gmail</a>${i.dealId?`<button class="btn-xs" onclick="plOpenDeal('${i.dealId}')">Its project</button>`:''}</div></div>`).join('')}</div>
+      <div class="vd-mbtns">${!all&&items.length>5?`<button class="btn-xs" onclick="lpToday(true)">Show all ${items.length}</button>`:''}${items.length>1?`<button class="btn-xs" onclick="lpRead(LP.home,this,true)">✓ Mark all ${items.length} as read</button>`:''}</div>`;
   }catch(e){el.innerHTML='';}
 }
 /* ---------- kept in the loop: emails I was only copied on for this project ---------- */
 async function lpLoad(dealId,elId){
   const el=document.getElementById(elId);if(!el)return;
   try{
-    const {items}=await plApi('/api/crm/deals/'+dealId+'/loop');
+    const {items}=await plApi('/api/crm/deals/'+dealId+'/loop');LP.deal={dealId,elId};
     if(!items.length){el.innerHTML='';return;}
     el.innerHTML=`<div class="pl-h">For your information</div><div class="sm" style="margin-top:0">Emails about this project that need nothing from you: you were only copied, it was for someone else, or there’s nothing to answer. <b>No action needed</b>. Only you see these.</div>
-      <div class="pl-list">${items.map(i=>`<div class="pl-item lp-item"><div class="pl-item-t">${uxEsc(i.subject||'(no subject)')}</div>
+      <div class="pl-list">${items.map(i=>`<div class="pl-item lp-item" data-lp="${uxEsc(i.id)}"><div class="pl-item-t">${uxEsc(i.subject||'(no subject)')}</div>
         <div class="pl-item-d">${uxEsc(i.from)}${i.to?' to '+uxEsc(i.to):''} · ${crWhen(i.lastAt)}${i.messages>1?' · '+i.messages+' emails':''}</div>
         ${i.snippet?`<div class="pl-item-d" style="color:var(--ink)">${uxEsc(i.snippet)}</div>`:''}
-        <div class="pl-acts"><span class="pl-tag gA">No action needed</span><a class="btn-xs" href="${uxEsc(i.gmail)}" target="_blank" rel="noopener">Open in Gmail</a></div></div>`).join('')}</div>`;
+        <div class="pl-acts"><span class="pl-tag gA">No action needed</span><button class="btn-xs p" onclick="lpRead(['${uxEsc(i.id)}'],this)">✓ Mark as read</button><a class="btn-xs" href="${uxEsc(i.gmail)}" target="_blank" rel="noopener">Open in Gmail</a></div></div>`).join('')}</div>`;
     crGuide('loop');
   }catch(e){el.innerHTML='';}
 }

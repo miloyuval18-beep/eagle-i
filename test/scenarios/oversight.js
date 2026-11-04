@@ -128,6 +128,18 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null, at 
     // 7. On the project: Levi's own only.
     assert.ok((await w.loopFor({ tenantId: t, userId: levi.id, dealId: deal.id })).length >= 2);
     assert.equal((await w.loopFor({ tenantId: t, userId: dana.id, dealId: deal.id })).length, 0);
+    // Mark as read: gone from the project and the week's list; only Levi's own; Undo puts it back;
+    // a newer email in that conversation brings it back on its own.
+    const cabId = (await w.loopFor({ tenantId: t, userId: levi.id, dealId: deal.id })).find(x => x.subject === 'Re: Cabinet color').id;
+    assert.equal((await w.loopRead({ tenantId: t, userId: dana.id, ids: [cabId] })).changed, 0, 'not someone else’s');
+    assert.equal((await w.loopRead({ tenantId: t, userId: levi.id, ids: [cabId] })).changed, 1);
+    assert.ok(!(await w.loopFor({ tenantId: t, userId: levi.id, dealId: deal.id })).some(x => x.id === cabId), 'read: off the project');
+    assert.ok(!(await w.loopRecent({ tenantId: t, userId: levi.id, days: 30 })).some(x => x.id === cabId), 'read: off the week');
+    await w.loopRead({ tenantId: t, userId: levi.id, ids: [cabId], read: false });
+    assert.ok((await w.loopFor({ tenantId: t, userId: levi.id, dealId: deal.id })).some(x => x.id === cabId), 'undo');
+    await w.loopRead({ tenantId: t, userId: levi.id, ids: [cabId] });
+    await see(levi, msg({ from: 'rita@home.test', to: [dana.email], cc: [levi.email], subject: 'Re: Cabinet color', snippet: 'Actually, matte black.', thread: m1.threadId, at: new Date(NOW.getTime() + 120000) }));
+    assert.ok((await w.loopFor({ tenantId: t, userId: levi.id, dealId: deal.id })).some(x => x.id === cabId), 'a new email brings it back');
 
     // 8. No email about what needs no action: copied emails aren't in the morning email, and alone don't send one.
     const u = await fresh(levi);
