@@ -1408,6 +1408,15 @@ body.on-home .ai-fab{display:none}
 .cp-rule{width:64px;height:1px;background:#d4af61;opacity:.75;margin:24px 0 0}
 .cp-web{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;margin-top:14px;color:#b8ab8e;font-size:16.5px;text-decoration:none}
 @media (max-width:640px){.cp-photo{width:100%;opacity:.5}.cp-body{padding:26px 20px 22px;min-height:0}.cp-logo{width:84px;height:84px}.cp-name{font-size:34px}.cp-tag{font-size:20px}.cp-top{gap:14px}}
+.pl-card[role=button]{cursor:pointer;display:block;text-align:left}
+.pl-card[role=button]:focus-visible{outline:3px solid var(--lx-gold,#d4af61);outline-offset:2px}
+.pl-status{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(212,175,97,.2);cursor:default}
+.pl-status span{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--lx-gold,#d4af61)}
+.pl-status select{flex:1;min-width:0;max-width:280px;min-height:44px;font:inherit;font-size:17px;font-weight:700;padding:8px 12px;border-radius:12px;border:1.5px solid rgba(212,175,97,.55);background:#100e0b;color:#f6ecd4;cursor:pointer}
+.pl-status select.st-production{border-color:#4fc36c;color:#bff0cb}
+.pl-status select.st-complete{border-color:#6aa9e8;color:#cfe5ff}
+.pl-status select.st-lost{border-color:#a0574f;color:#e7b7b0}
+.pl-status select.st-signed{border-color:#e8b04a;color:#ffe2a8}
 .gb-i{display:block;padding:0}
 .gb-i summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:14px 16px;cursor:pointer;list-style:none;font-size:18px}
 .gb-i summary::-webkit-details-marker{display:none}
@@ -4168,10 +4177,10 @@ function plRender(){
     if(x.pm_user_id){const pm=CR.team.find(m=>m.id===x.pm_user_id);if(pm)tags.push(`<span class="pl-tag">PM: ${uxEsc(pm.name||pm.email)}</span>`);}
     if(!CR.sub&&x.subsidiary_id&&sbName(x.subsidiary_id))tags.unshift(`<span class="pl-tag co">${uxEsc(sbName(x.subsidiary_id))}</span>`);
     if(x.automations_waiting)tags.push(`<span class="pl-tag auto">✓ ${x.automations_waiting} automatic email${x.automations_waiting>1?'s':''} scheduled</span>`);
-    return `<button class="pl-card" onclick="plOpenDeal('${x.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(x.title)}</div><div class="pl-card-val">${uxEsc(plMoney(x.value))}</div></div>
+    return `<div class="pl-card" role="button" tabindex="0" onclick="plOpenDeal('${x.id}')" onkeydown="if(event.key==='Enter'&&event.target===this)this.click()"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(x.title)}</div><div class="pl-card-val">${uxEsc(plMoney(x.value))}</div></div>
       <div class="pl-card-sub">${uxEsc([x.contact_name,x.contact_phone,x.contact_email].filter(Boolean).join(' · '))}</div>
       ${x.property_address?`<div class="pl-card-sub">📍 ${uxEsc(x.property_address)}</div>`:''}
-      <div class="pl-tags">${tags.join('')}</div></button>`;
+      <div class="pl-tags">${tags.join('')}</div>${plStatusSel(x.id,x.stage)}</div>`;
   }).join('');
 }
 
@@ -4600,9 +4609,10 @@ async function cpLoad(){
     return;
   }
   try{
+    if(!PL.data)await plLoad(); // the status names come from the pipeline
     const p=await plApi('/api/crm/subsidiaries/'+encodeURIComponent(CR.coSlug));const c=p.company;
     const site=u=>{try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return '';}};
-    const row=(d,job)=>`<button class="pl-card" onclick="${job?`jbOpen('${d.id}')`:`plOpenDeal('${d.id}')`}"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(d.title)}</div><div class="pl-card-val">${uxEsc(plMoney(d.value))}</div></div><div class="pl-card-sub">${uxEsc(d.contact_name||'')}${d.address?' · 📍 '+uxEsc(d.address):''}</div>${job?'':`<div class="pl-tags"><span class="pl-tag st-${uxEsc(d.stage)}">${uxEsc(plStage(d.stage).label)}</span></div>`}</button>`;
+    const row=(d,job)=>`<div class="pl-card" role="button" tabindex="0" onclick="${job?`jbOpen('${d.id}')`:`plOpenDeal('${d.id}')`}" onkeydown="if(event.key==='Enter'&&event.target===this)this.click()"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(d.title)}</div><div class="pl-card-val">${uxEsc(plMoney(d.value))}</div></div><div class="pl-card-sub">${uxEsc(d.contact_name||'')}${d.address?' · 📍 '+uxEsc(d.address):''}</div>${plStatusSel(d.id,d.stage)}</div>`;
     const sec=(t,rows,job,empty)=>`<div class="pl-h">${t} (${rows.length})</div><div class="pl-list">${rows.map(d=>row(d,job)).join('')||`<div class="sm">${empty}</div>`}</div>`;
     el.innerHTML=`<div class="vd-mbtns" style="margin:0 0 6px"><button class="btn-xs" onclick="cpOpen('')">← All companies</button></div>
       <section class="cp-feat">${CP_PHOTO.has(c.slug)?`<div class="cp-photo" style="background-image:url('/portfolio/${uxEsc(c.slug)}.jpg')" aria-hidden="true"></div>`:''}
@@ -5148,14 +5158,15 @@ const JB={vendors:[],dealId:null};
 const ymdOf=d=>d?String(d).slice(0,10):'';
 const fdate=d=>d?new Date(ymdOf(d)+'T12:00:00Z').toLocaleDateString([], {month:'short',day:'numeric'}):'';
 async function jbList(){
+  if(!PL.data)await plLoad(); // the status names come from the pipeline
   const el=document.getElementById('jb-list');
   try{
     let [{jobs},{vendors}]=await Promise.all([plApi('/api/crm/jobs'),plApi('/api/crm/vendors')]);JB.vendors=vendors;
     jobs=sbKeep(jobs);const bar=document.getElementById('jb-subbar');if(bar)bar.innerHTML=sbBar('jbList');
-    el.innerHTML=jobs.length?jobs.map(j=>{const pct=j.phases?Math.round(j.done/j.phases*100):0;return `<button class="pl-card" onclick="jbOpen('${j.id}')"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${plMoney(j.value)}</div></div>
+    el.innerHTML=jobs.length?jobs.map(j=>{const pct=j.phases?Math.round(j.done/j.phases*100):0;return `<div class="pl-card" role="button" tabindex="0" onclick="jbOpen('${j.id}')" onkeydown="if(event.key==='Enter'&&event.target===this)this.click()"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${plMoney(j.value)}</div></div>
       <div class="pl-card-sub">${!CR.sub&&j.subsidiary_id&&sbName(j.subsidiary_id)?'🏢 '+uxEsc(sbName(j.subsidiary_id))+' · ':''}${uxEsc(j.contact_name)}${j.address?' · '+uxEsc(j.address):''}</div>
       <div style="height:8px;background:var(--bg4);border-radius:6px;overflow:hidden;margin-top:8px" aria-label="${pct}% done"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>
-      <div class="pl-tags">${j.current_phase?`<span class="pl-tag">Now: ${uxEsc(j.current_phase)}</span>`:j.phases?'<span class="pl-tag auto">All phases done</span>':'<span class="pl-tag warn">No schedule yet</span>'}${j.finish?`<span class="pl-tag">Finish ${fdate(j.finish)}</span>`:''}${j.cos_waiting?`<span class="pl-tag warn">${j.cos_waiting} change order${j.cos_waiting>1?'s':''} waiting</span>`:''}${j.selections_open?`<span class="pl-tag warn">${j.selections_open} selection${j.selections_open>1?'s':''} open</span>`:''}</div></button>`;}).join(''):'<div class="pl-empty">No signed jobs yet. When a contract is signed, the job shows up here with its schedule.</div>';
+      <div class="pl-tags">${j.current_phase?`<span class="pl-tag">Now: ${uxEsc(j.current_phase)}</span>`:j.phases?'<span class="pl-tag auto">All phases done</span>':'<span class="pl-tag warn">No schedule yet</span>'}${j.finish?`<span class="pl-tag">Finish ${fdate(j.finish)}</span>`:''}${j.cos_waiting?`<span class="pl-tag warn">${j.cos_waiting} change order${j.cos_waiting>1?'s':''} waiting</span>`:''}${j.selections_open?`<span class="pl-tag warn">${j.selections_open} selection${j.selections_open>1?'s':''} open</span>`:''}</div>${plStatusSel(j.id,j.stage)}</div>`;}).join(''):'<div class="pl-empty">No signed jobs yet. When a contract is signed, the job shows up here with its schedule.</div>';
     vdRender();
   }catch(e){el.innerHTML='<div class="pl-empty">'+uxEsc(e.message)+'</div>';}
 }
@@ -5639,6 +5650,27 @@ async function ptEmail(dealId,btn){
   btn.disabled=true;try{const r=await plApi('/api/crm/deals/'+dealId+'/portal/email',{body:{}});showNotif('Link sent','To '+r.to);}catch(e){showNotif('Could not send it',e.message);}btn.disabled=false;}
 async function ptReset(dealId){if(!confirm('Make a new portal link? The old one stops working.'))return;try{await plApi('/api/crm/deals/'+dealId+'/portal/reset',{body:{}});ptLoad(dealId);}catch(e){showNotif('Could not change it',e.message);}}
 
+// A job's status, right on its card: pick one and it moves (it asks first if something looks
+// wrong, asks why for No Opportunity, and offers Undo). The same as changing it on the job.
+function plStatusSel(id,stage){
+  return `<label class="pl-status" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()"><span>Status</span><select class="st-${uxEsc(stage)}" aria-label="Status" onchange="plQuickStage('${id}',this)">${plStageOptions(stage)}</select></label>`;
+}
+function plRefreshCards(){if(CR.view==='pipeline')plLoad();else if(CR.view==='jobs')jbList();else if(CR.view==='co')cpLoad();else if(CR.view==='home')hmLoad();}
+async function plQuickStage(id,sel){
+  const stage=sel.value,before=[...sel.options].find(o=>o.defaultSelected);const was=before?before.value:null;
+  const back=()=>{if(was)sel.value=was;};
+  let lostReason=null;
+  try{const {warnings}=await plApi('/api/crm/deals/'+id+'/stage-check?stage='+encodeURIComponent(stage));
+    if(warnings.length&&!confirm(`Change the status to “${plStage(stage).label}”?\n\n• ${warnings.join('\n• ')}\n\nChange it anyway?`)){back();return;}}catch(e){}
+  if(stage==='lost'){lostReason=prompt('Why is there no opportunity? (optional, e.g. "went with another builder", "budget", "timing")','');if(lostReason===null){back();return;}}
+  sel.disabled=true;
+  try{
+    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{stage,lostReason}});
+    if(PL.data){const d=PL.data.deals.find(x=>x.id===id);if(d)d.stage=stage;}
+    crUndo('Status: '+plStage(stage).label+'.',async()=>{await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{stage:was}});await plLoad();plRefreshCards();});
+    await plLoad();plRefreshCards();
+  }catch(e){back();sel.disabled=false;showNotif('Couldn’t change the status',e.message);}
+}
 async function plStageChanged(id,sel){
   const stage=sel.value;let lostReason=null;
   try{const {warnings}=await plApi('/api/crm/deals/'+id+'/stage-check?stage='+encodeURIComponent(stage));
