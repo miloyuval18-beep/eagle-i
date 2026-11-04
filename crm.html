@@ -1395,6 +1395,19 @@ body.on-home .ai-fab{display:none}
   .db-sts{grid-template-rows:none;grid-template-columns:1fr;gap:12px}
   .db-vb{flex-direction:column;align-items:stretch;gap:14px;padding:16px}.db-vbi{flex:0 0 auto;height:120px}.db-vbt{border-left:0;padding-left:0}.db-vbt b{font-size:25px}.db-vbb{justify-content:center}
 }
+.cp-feat{position:relative;overflow:hidden;border-radius:18px;border:1.5px solid rgba(212,175,97,.45);background:#13110d;margin:4px 0 22px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 28px -6px rgba(212,175,97,.4),0 24px 50px -20px rgba(0,0,0,.8)}
+.cp-photo{position:absolute;inset:0 0 0 auto;width:48%;background-size:cover;background-position:center}
+.cp-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#13110d 0%,#13110d 6%,rgba(19,17,13,.85) 30%,rgba(19,17,13,.3) 70%,rgba(19,17,13,.08) 100%)}
+.cp-body{position:relative;padding:36px 34px 28px;min-height:300px;display:flex;flex-direction:column;justify-content:center}
+.cp-top{display:flex;align-items:center;gap:20px}
+.cp-logo{width:120px;height:120px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+.cp-bar{width:1.5px;align-self:stretch;margin:6px 0;background:rgba(212,175,97,.45)}
+.cp-name{margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:44px;line-height:1;color:#f6efe0}
+.cp-tag{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:24px;color:#d4af61;margin-top:6px}
+.cp-rule{width:64px;height:1px;background:#d4af61;opacity:.75;margin:24px 0 0}
+.cp-web{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;margin-top:14px;color:#b8ab8e;font-size:16.5px;text-decoration:none}
+@media (max-width:640px){.cp-photo{width:100%;opacity:.5}.cp-body{padding:26px 20px 22px;min-height:0}.cp-logo{width:84px;height:84px}.cp-name{font-size:34px}.cp-tag{font-size:20px}.cp-top{gap:14px}}
 .gb-i{display:block;padding:0}
 .gb-i summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:14px 16px;cursor:pointer;list-style:none;font-size:18px}
 .gb-i summary::-webkit-details-marker{display:none}
@@ -1885,7 +1898,7 @@ const CR_GUIDES={
     ['The homeowner’s page','Further down: a private page for the homeowner with updates, visits, estimates and photos. Post an update there to keep them in the loop.'],
     ['Not sure what to do next?','Tap “What should I do next?” under Coach. Every email asks you first, showing who it goes to, before anything is sent.',null,()=>!crPm()]]},
   co:{icon:'🏢',steps:[
-    ['Each company in the group','Every company has its own profile: what it does, how to reach it, and its own projects and files. The team, roles and permissions are the same for all of them.'],
+    ['Each company in the group','Every company has its own page: its name and what it does at the top, then its jobs, what’s being sold and its files. Its address, phone and email are under “Edit details”. The team, roles and permissions are the same for all of them.'],
     ['Its projects','Jobs going, deals being sold and finished projects for this company. Tap one to open it. “Add a deal” here puts the new deal under this company.'],
     ['Pick a company anywhere','On Customers and Jobs, the Company box at the top shows just one company’s projects, or all of them.']]},
   checkin:{icon:'📝',steps:[
@@ -4571,6 +4584,8 @@ function sbBar(then){
 function sbPick(id,then){CR.sub=id;try{localStorage.setItem('cr-sub',id);}catch(e){}crMark();if(then==='plRender')plRender();else if(then==='jbList')jbList();}
 
 // A company's profile (#co/levi-homes), or the list of companies (#co).
+// The companies with a photo of their own (public/portfolio/<slug>.jpg), as on the /crm page.
+const CP_PHOTO=new Set(['levi-homes','trace-the-leak','levidular','7d-kitchen','construction-police','yoodale','sewer-repair','levish-properties']);
 function cpOpen(slug){CR.coSlug=slug||'';crView('co');}
 // A company's logo (or 🏢 without one).
 function cpMark(c,size){size=size||28;return c.logo?`<img src="${uxEsc(c.logo)}" alt="" style="width:${size}px;height:${size}px;border-radius:7px;object-fit:cover;vertical-align:middle;background:#111318">`:'🏢';}
@@ -4590,11 +4605,15 @@ async function cpLoad(){
     const row=(d,job)=>`<button class="pl-card" onclick="${job?`jbOpen('${d.id}')`:`plOpenDeal('${d.id}')`}"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(d.title)}</div><div class="pl-card-val">${uxEsc(plMoney(d.value))}</div></div><div class="pl-card-sub">${uxEsc(d.contact_name||'')}${d.address?' · 📍 '+uxEsc(d.address):''}</div>${job?'':`<div class="pl-tags"><span class="pl-tag st-${uxEsc(d.stage)}">${uxEsc(plStage(d.stage).label)}</span></div>`}</button>`;
     const sec=(t,rows,job,empty)=>`<div class="pl-h">${t} (${rows.length})</div><div class="pl-list">${rows.map(d=>row(d,job)).join('')||`<div class="sm">${empty}</div>`}</div>`;
     el.innerHTML=`<div class="vd-mbtns" style="margin:0 0 6px"><button class="btn-xs" onclick="cpOpen('')">← All companies</button></div>
-      <div class="cp-head"><div class="st">${cpMark(c,40)} ${uxEsc(c.name)}${c.upcoming?' <span class="pl-tag" style="vertical-align:middle">Upcoming</span>':''}</div>${c.what?`<div class="ss">${uxEsc(c.what)}</div>`:''}
-        ${c.about?`<p class="sm" style="color:var(--ink)">${uxEsc(c.about)}</p>`:''}
-        ${(c.services||[]).length?`<div class="pl-tags" style="margin-top:8px">${c.services.map(x=>`<span class="pl-tag">${uxEsc(x)}</span>`).join('')}</div>`:''}
-        <div class="pl-item-d" style="margin-top:8px">${[c.address&&uxEsc(c.address),c.phone&&`<a href="tel:${uxEsc(String(c.phone).replace(/[^\d+]/g,''))}">${uxEsc(c.phone)}</a>`,c.email&&`<a href="mailto:${uxEsc(c.email)}">${uxEsc(c.email)}</a>`,c.website&&site(c.website)&&`<a href="${uxEsc(c.website)}" target="_blank" rel="noopener">${uxEsc(site(c.website))}</a>`].filter(Boolean).join(' · ')}</div>
-        <div class="vd-mbtns"><button class="btn btn-blue" onclick="plNewDeal('${c.id}')">＋ Add a deal for ${uxEsc(c.name)}</button><button class="btn-xs" onclick="sbPick('${c.id}','');crView('pipeline')">Its pipeline</button>${edit?`<button class="btn-xs" onclick="cpEdit('${c.id}')">Edit details</button>`:''}</div></div>
+      <section class="cp-feat">${CP_PHOTO.has(c.slug)?`<div class="cp-photo" style="background-image:url('/portfolio/${uxEsc(c.slug)}.jpg')" aria-hidden="true"></div>`:''}
+        <div class="cp-body">
+          <div class="cp-top">${c.slug==='levi-homes'||c.logo?`<img class="cp-logo" src="${uxEsc(c.slug==='levi-homes'?'/home/lion.png':c.logo)}" alt="${uxEsc(c.name)} logo"><span class="cp-bar" aria-hidden="true"></span>`:''}
+            <div><h1 class="cp-name">${uxEsc(c.name)}</h1>${c.what?`<div class="cp-tag">${uxEsc(c.what)}</div>`:''}${c.upcoming?'<span class="pl-tag" style="margin-top:8px">Upcoming</span>':''}</div></div>
+          <div class="cp-rule" aria-hidden="true"></div>
+          <div class="vd-mbtns" style="margin-top:18px"><button class="btn btn-blue" onclick="plNewDeal('${c.id}')">＋ Add a deal</button><button class="btn-xs" onclick="sbPick('${c.id}','');crView('pipeline')">Its customers</button>${edit?`<button class="btn-xs" onclick="cpEdit('${c.id}')">Edit details</button>`:''}</div>
+          ${c.website&&site(c.website)?`<a class="cp-web" href="${uxEsc(c.website)}" target="_blank" rel="noopener">🌐 ${uxEsc(site(c.website))}</a>`:''}
+        </div>
+      </section>
       ${sec('Jobs going',p.jobs,true,'No signed jobs right now.')}
       ${sec('Being sold',p.selling,false,'Nothing being sold right now.')}
       ${p.done.length?sec('Finished',p.done,false,''):''}
