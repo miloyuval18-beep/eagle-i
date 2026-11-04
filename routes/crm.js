@@ -404,7 +404,7 @@ router.post('/api/crm/deals', requireAuth, async (req, res) => {
     const deal = await crm.createDeal({
       tenantId: req.tenantId, name: b.name, email: b.email, phone: b.phone, address: b.address, zip: b.zip,
       title: b.title, stage: b.stage || 'new', value: b.value, source: b.source || 'manual', note: b.note || null, baseUrl: baseUrlOf(req),
-      userId: req.userId, ownerUserId: b.ownerUserId || null, subsidiaryId: b.subsidiaryId || null
+      userId: req.userId, ownerUserId: b.ownerUserId || null, subsidiaryId: b.subsidiaryId || null, projectType: b.projectType || null
     });
     // Its project manager: the one picked, or a project manager adding their own project.
     const pm = b.pmUserId || (req.crmUser && req.crmUser.role === 'project_manager' && !req.adminView ? req.userId : null);

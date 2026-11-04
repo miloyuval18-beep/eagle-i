@@ -1410,6 +1410,14 @@ body.on-home .ai-fab{display:none}
 @media (max-width:640px){.cp-photo{width:100%;opacity:.5}.cp-body{padding:26px 20px 22px;min-height:0}.cp-logo{width:84px;height:84px}.cp-name{font-size:34px}.cp-tag{font-size:20px}.cp-top{gap:14px}}
 .pl-card[role=button]{cursor:pointer;display:block;text-align:left}
 .pl-card[role=button]:focus-visible{outline:3px solid var(--lx-gold,#d4af61);outline-offset:2px}
+.pl-card-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.pl-card-meta>*{min-width:0;display:block;background:rgba(212,175,97,.06);border:1px solid rgba(212,175,97,.18);border-radius:10px;padding:6px 10px;cursor:default}
+.pl-card-meta span{display:block;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--lx-gold,#d4af61)}
+.pl-card-meta b{display:block;font-size:16px;font-weight:700;color:var(--text,#f3ecdc);overflow-wrap:anywhere;padding:4px 0}
+.pl-card-meta select{display:block;width:100%;min-height:34px;font:inherit;font-size:16px;font-weight:700;color:var(--text,#f3ecdc);background:transparent;border:0;border-bottom:1px dashed rgba(212,175,97,.45);padding:2px 0;cursor:pointer;text-overflow:ellipsis}
+.pl-card-meta select option{background:#15130f;color:#f3ecdc}
+.pl-card-meta select.none{color:var(--text3,#9a917f);font-weight:600}
+@media(max-width:420px){.pl-card-meta{grid-template-columns:1fr 1fr}.pl-card-meta>:first-child{grid-column:1/-1}}
 .pl-status{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(212,175,97,.2);cursor:default}
 .pl-status span{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--lx-gold,#d4af61)}
 .pl-status select{flex:1;min-width:0;max-width:280px;min-height:44px;font:inherit;font-size:17px;font-weight:700;padding:8px 12px;border-radius:12px;border:1.5px solid rgba(212,175,97,.55);background:#100e0b;color:#f6ecd4;cursor:pointer}
@@ -4170,7 +4178,7 @@ function plRender(){
   el.innerHTML=list.map(x=>{
     const st=plStage(x.stage);
     const waiting=x.stage==='new'&&!x.first_response_at;
-    const tags=[...(x.grade?[`<span class="pl-tag g${x.grade}" title="Fit score ${x.score}">Fit ${x.grade}</span>`]:[]),`<span class="pl-tag st-${uxEsc(x.stage)}">${uxEsc(st.label)}</span>`,`<span class="pl-tag">${uxEsc(plSourceLabel(x.source))}</span>`,`<span class="pl-tag">${plAgo(x.stage_entered_at)} in stage</span>`];
+    const tags=[...(x.grade?[`<span class="pl-tag g${x.grade}" title="Fit score ${x.score}">Fit ${x.grade}</span>`]:[]),`<span class="pl-tag st-${uxEsc(x.stage)}">${uxEsc(st.label)}</span>`,`<span class="pl-tag">${plAgo(x.stage_entered_at)} in stage</span>`];
     if(waiting)tags.push(`<span class="pl-tag warn">Waiting ${plAgo(x.created_at)}</span>`);
     if(x.site_visit_at&&new Date(x.site_visit_at)>new Date(Date.now()-86400000))tags.push(`<span class="pl-tag">📅 ${new Date(x.site_visit_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span>`);
     if(CR.team.length>1)tags.push(`<span class="pl-tag">${x.owner_name?'👤 '+uxEsc(x.owner_name):'Unassigned'}</span>`);
@@ -4180,13 +4188,33 @@ function plRender(){
     return `<div class="pl-card" role="button" tabindex="0" onclick="plOpenDeal('${x.id}')" onkeydown="if(event.key==='Enter'&&event.target===this)this.click()"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(x.title)}</div><div class="pl-card-val">${uxEsc(plMoney(x.value))}</div></div>
       <div class="pl-card-sub">${uxEsc([x.contact_name,x.contact_phone,x.contact_email].filter(Boolean).join(' · '))}</div>
       ${x.property_address?`<div class="pl-card-sub">📍 ${uxEsc(x.property_address)}</div>`:''}
-      <div class="pl-tags">${tags.join('')}</div>${plStatusSel(x.id,x.stage)}</div>`;
+      ${plCardMeta(x)}<div class="pl-tags">${tags.join('')}</div>${plStatusSel(x.id,x.stage)}</div>`;
   }).join('');
 }
 
 // A stored time as the value a datetime-local box expects, in this device's time zone.
 function plLocalInput(ts){const d=new Date(ts);const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;}
 function plStageOptions(sel){return (PL.data?PL.data.stages:[]).filter(s=>!s.hidden||s.key===sel).map(s=>`<option value="${s.key}"${s.key===sel?' selected':''}>${uxEsc(s.label)}</option>`).join('');}
+const PL_TYPES=[['new_home','New custom home'],['whole_home','Whole-home remodel'],['kitchen_bath','Kitchen + bath'],['kitchen','Kitchen remodel'],['bathroom','Bathroom remodel'],['addition','Addition'],['outdoor','Outdoor living'],['exterior','Roof / exterior'],['repair','Repair / small job'],['commercial','Commercial'],['other','Other']];
+const plTypeLabel=k=>(PL_TYPES.find(t=>t[0]===k)||[,''])[1];
+function plTypeOptions(sel){return `<option value="">Not set yet</option>`+PL_TYPES.map(([k,l])=>`<option value="${k}"${k===sel?' selected':''}>${uxEsc(l)}</option>`).join('');}
+// The facts every project card shows: what kind of project, where it came from, when it came in.
+// Type and where it came from can be picked right on the card, like the status.
+function plCardMeta(x){
+  const day=x.created_at?new Date(x.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+  const stop='onclick="event.stopPropagation()" onkeydown="event.stopPropagation()"';
+  const src=PL_SOURCES.map(([k,l])=>`<option value="${k}"${k===x.source?' selected':''}>${uxEsc(k==='manual'?'Not set':l)}</option>`).join('');
+  return `<div class="pl-card-meta"><label ${stop}><span>Type</span><select class="${x.project_type?'':'none'}" aria-label="Type of project" onchange="plQuickField('${x.id}',this,'projectType')">${plTypeOptions(x.project_type||'')}</select></label><label ${stop}><span>Came from</span><select class="${x.source&&x.source!=='manual'?'':'none'}" aria-label="Where it came from" onchange="plQuickField('${x.id}',this,'source')">${src}</select></label><div><span>Received</span><b>${uxEsc(day||'—')}</b></div></div>`;
+}
+async function plQuickField(id,sel,key){
+  sel.disabled=true;
+  try{await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{[key]:sel.value||null}});
+    sel.classList.toggle('none',!sel.value||sel.value==='manual');
+    const d=PL.data&&PL.data.deals.find(x=>x.id===id);if(d)d[key==='projectType'?'project_type':'source']=sel.value||null;
+    showNotif('Saved',key==='projectType'?'Type of project updated':'Where it came from updated');
+  }catch(e){alert(e.message);}
+  sel.disabled=false;
+}
 function plSourceOptions(sel){return PL_SOURCES.map(([k,l])=>`<option value="${k}"${k===sel?' selected':''}>${uxEsc(l)}</option>`).join('');}
 function plField(id,label,val,attrs){return `<div class="${attrs&&attrs.full?'full':''}"><label for="${id}">${label}</label><input id="${id}" class="cred-input" value="${uxEsc(val==null?'':val)}" ${attrs&&attrs.type?'type="'+attrs.type+'"':''} ${attrs&&attrs.ph?'placeholder="'+uxEsc(attrs.ph)+'"':''} ${attrs&&attrs.mode?'inputmode="'+attrs.mode+'"':''}></div>`;}
 
@@ -4198,6 +4226,7 @@ function plNewDeal(subId){
       ${plField('pln-email','Email','',{type:'email',mode:'email',full:true})}
       ${plField('pln-address','Property address','',{ph:'Street, city, ZIP',full:true})}
       ${plField('pln-title','Project','',{ph:'e.g. Kitchen + primary bath'})}${plField('pln-value','Estimated value','',{ph:'e.g. 85k',mode:'decimal'})}
+      <div><label for="pln-type">Type of project</label><select id="pln-type">${plTypeOptions('')}</select></div>
       <div><label for="pln-stage">Stage</label><select id="pln-stage">${plStageOptions('new')}</select></div>
       <div><label for="pln-source">Where it came from</label><select id="pln-source">${plSourceOptions('manual')}</select></div>
       ${CR.team.length>1?`<div class="full"><label for="pln-owner">Who's handling it</label><select id="pln-owner">${crOwnerOptions(CR.me&&CR.me.userId)}</select></div>`:''}
@@ -4216,7 +4245,7 @@ async function plSaveNew(btn,anyway){
   if(!anyway){try{const {matches}=await plApi('/api/crm/deals/duplicates',{body:{name:v('pln-name'),email:v('pln-email'),phone:v('pln-phone'),address:v('pln-address')}});
     if(matches.length){btn.disabled=false;document.getElementById('pln-err').innerHTML=`<div class="pl-banner" style="display:block"><b>This may already be in Customers:</b>${matches.map(m=>`<div style="margin-top:8px">“${uxEsc(m.title)}” · ${uxEsc(m.name)} · ${uxEsc(m.stage)} <span class="sm">(${uxEsc(m.why)})</span> <button class="btn-xs p" onclick="CR.dirty=false;uxClose();plOpenDeal('${m.id}')">Open that deal</button></div>`).join('')}<div class="vd-mbtns"><button class="btn-xs" onclick="plSaveNew(this,true)">It’s different: add a new one anyway</button></div></div>`;return;}}catch(e){}}
   try{
-    const r=await plApi('/api/crm/deals',{body:{...(document.getElementById('pln-sub')?{subsidiaryId:v('pln-sub')||null}:{}),name:v('pln-name'),phone:v('pln-phone'),email:v('pln-email'),address:v('pln-address'),title:v('pln-title'),value:v('pln-value'),stage:v('pln-stage'),source:v('pln-source'),note:v('pln-note'),ownerUserId:document.getElementById('pln-owner')?v('pln-owner'):undefined}});
+    const r=await plApi('/api/crm/deals',{body:{...(document.getElementById('pln-sub')?{subsidiaryId:v('pln-sub')||null}:{}),name:v('pln-name'),phone:v('pln-phone'),email:v('pln-email'),address:v('pln-address'),title:v('pln-title'),projectType:v('pln-type')||null,value:v('pln-value'),stage:v('pln-stage'),source:v('pln-source'),note:v('pln-note'),ownerUserId:document.getElementById('pln-owner')?v('pln-owner'):undefined}});
     uxClose();showNotif('Deal added',r.deal.title);await plLoad();
   }catch(e){document.getElementById('pln-err').textContent=e.message;btn.disabled=false;}
 }
@@ -4490,6 +4519,7 @@ async function plOpenDeal(id){
     plNextStep(x,d.nextStep)+`<div class="pl-form">
       <div class="full"><label for="pld-stage">Stage</label><select id="pld-stage" onchange="plStageChanged('${x.id}',this)">${plStageOptions(x.stage)}</select></div>
       ${plField('pld-title','Project',x.title)}${crCan('money')?plField('pld-value','Estimated value',x.value==null?'':Math.round(x.value),{mode:'decimal',ph:'e.g. 85k'}):''}
+      <div class="full"><label for="pld-type">Type of project</label><select id="pld-type">${plTypeOptions(x.project_type||'')}</select></div>
       ${plField('pld-name','Name',x.contact_name)}${plField('pld-phone','Phone',x.contact_phone,{type:'tel',mode:'tel'})}
       ${plField('pld-email','Email',x.contact_email,{type:'email',mode:'email',full:true})}
       ${plField('pld-address','Property address',x.property_address,{full:true})}
@@ -4612,7 +4642,7 @@ async function cpLoad(){
     if(!PL.data)await plLoad(); // the status names come from the pipeline
     const p=await plApi('/api/crm/subsidiaries/'+encodeURIComponent(CR.coSlug));const c=p.company;
     const site=u=>{try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return '';}};
-    const row=(d,job)=>`<div class="pl-card" role="button" tabindex="0" onclick="${job?`jbOpen('${d.id}')`:`plOpenDeal('${d.id}')`}" onkeydown="if(event.key==='Enter'&&event.target===this)this.click()"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(d.title)}</div><div class="pl-card-val">${uxEsc(plMoney(d.value))}</div></div><div class="pl-card-sub">${uxEsc(d.contact_name||'')}${d.address?' · 📍 '+uxEsc(d.address):''}</div>${plStatusSel(d.id,d.stage)}</div>`;
+    const row=(d,job)=>`<div class="pl-card" role="button" tabindex="0" onclick="${job?`jbOpen('${d.id}')`:`plOpenDeal('${d.id}')`}" onkeydown="if(event.key==='Enter'&&event.target===this)this.click()"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(d.title)}</div><div class="pl-card-val">${uxEsc(plMoney(d.value))}</div></div><div class="pl-card-sub">${uxEsc(d.contact_name||'')}${d.address?' · 📍 '+uxEsc(d.address):''}</div>${plCardMeta(d)}${plStatusSel(d.id,d.stage)}</div>`;
     const sec=(t,rows,job,empty)=>`<div class="pl-h">${t} (${rows.length})</div><div class="pl-list">${rows.map(d=>row(d,job)).join('')||`<div class="sm">${empty}</div>`}</div>`;
     el.innerHTML=`<div class="vd-mbtns" style="margin:0 0 6px"><button class="btn-xs" onclick="cpOpen('')">← All companies</button></div>
       <section class="cp-feat">${CP_PHOTO.has(c.slug)?`<div class="cp-photo" style="background-image:url('/portfolio/${uxEsc(c.slug)}.jpg')" aria-hidden="true"></div>`:''}
@@ -5164,7 +5194,7 @@ async function jbList(){
     let [{jobs},{vendors}]=await Promise.all([plApi('/api/crm/jobs'),plApi('/api/crm/vendors')]);JB.vendors=vendors;
     jobs=sbKeep(jobs);const bar=document.getElementById('jb-subbar');if(bar)bar.innerHTML=sbBar('jbList');
     el.innerHTML=jobs.length?jobs.map(j=>{const pct=j.phases?Math.round(j.done/j.phases*100):0;return `<div class="pl-card" role="button" tabindex="0" onclick="jbOpen('${j.id}')" onkeydown="if(event.key==='Enter'&&event.target===this)this.click()"><div class="pl-card-top"><div class="pl-card-title">${uxEsc(j.title)}</div><div class="pl-card-val">${plMoney(j.value)}</div></div>
-      <div class="pl-card-sub">${!CR.sub&&j.subsidiary_id&&sbName(j.subsidiary_id)?'🏢 '+uxEsc(sbName(j.subsidiary_id))+' · ':''}${uxEsc(j.contact_name)}${j.address?' · '+uxEsc(j.address):''}</div>
+      <div class="pl-card-sub">${!CR.sub&&j.subsidiary_id&&sbName(j.subsidiary_id)?'🏢 '+uxEsc(sbName(j.subsidiary_id))+' · ':''}${uxEsc(j.contact_name)}${j.address?' · '+uxEsc(j.address):''}</div>${plCardMeta(j)}
       <div style="height:8px;background:var(--bg4);border-radius:6px;overflow:hidden;margin-top:8px" aria-label="${pct}% done"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>
       <div class="pl-tags">${j.current_phase?`<span class="pl-tag">Now: ${uxEsc(j.current_phase)}</span>`:j.phases?'<span class="pl-tag auto">All phases done</span>':'<span class="pl-tag warn">No schedule yet</span>'}${j.finish?`<span class="pl-tag">Finish ${fdate(j.finish)}</span>`:''}${j.cos_waiting?`<span class="pl-tag warn">${j.cos_waiting} change order${j.cos_waiting>1?'s':''} waiting</span>`:''}${j.selections_open?`<span class="pl-tag warn">${j.selections_open} selection${j.selections_open>1?'s':''} open</span>`:''}</div>${plStatusSel(j.id,j.stage)}</div>`;}).join(''):'<div class="pl-empty">No signed jobs yet. When a contract is signed, the job shows up here with its schedule.</div>';
     vdRender();
@@ -5694,7 +5724,7 @@ async function plSaveDeal(id,btn){
   if(vis&&vis.value&&new Date(vis.value)<new Date()&&(!was||Math.abs(new Date(was)-new Date(vis.value))>60000)&&!confirm('That site visit time has already passed ('+new Date(vis.value).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})+'). Save it anyway?'))return;
   btn.disabled=true;
   try{
-    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{...(document.getElementById('pld-sub')?{subsidiaryId:v('pld-sub')||null}:{}),title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),language:v('pld-lang'),source:v('pld-source'),siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{}),...(document.getElementById('pld-pm')?{pmUserId:v('pld-pm')||null}:{})}});
+    await plApi('/api/crm/deals/'+id,{method:'PATCH',body:{...(document.getElementById('pld-sub')?{subsidiaryId:v('pld-sub')||null}:{}),title:v('pld-title'),value:v('pld-value'),name:v('pld-name'),phone:v('pld-phone'),email:v('pld-email'),address:v('pld-address'),language:v('pld-lang'),source:v('pld-source'),projectType:v('pld-type')||null,siteVisitAt:v('pld-visit')?new Date(v('pld-visit')).toISOString():null,...(document.getElementById('pld-owner')?{ownerUserId:v('pld-owner')||null}:{}),...(document.getElementById('pld-pm')?{pmUserId:v('pld-pm')||null}:{})}});
     document.getElementById('pld-msg').textContent='Saved.';btn.disabled=false;plLoad();
   }catch(e){document.getElementById('pld-msg').textContent=e.message;btn.disabled=false;}
 }
