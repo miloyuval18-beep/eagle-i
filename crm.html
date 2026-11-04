@@ -1710,7 +1710,7 @@ body.on-home .ai-fab{display:none}
       <div class="full"><label for="co-address">Business address</label><input id="co-address" class="cred-input" autocomplete="street-address" placeholder="Street, city, state, ZIP"></div>
     </div>
     <div class="vd-mbtns"><button class="btn btn-blue" onclick="coSave(this)">Save</button><span class="sm" id="co-msg" style="margin:0"></span></div>
-    <div class="pl-h" style="margin-top:26px">Online payments</div>
+    <div class="pl-h" id="pay-h" style="margin-top:26px">Online payments</div>
     <div id="pay-box"><div class="sm">Loading…</div></div>
     <div class="pl-h" style="margin-top:26px">Google: email &amp; Drive</div>
     <div class="ss" style="margin-bottom:10px">Connect Google and every email between your team and a customer lands on that customer’s deal by itself. A customer’s email stops the follow-ups; your team’s email to a new lead counts as picking it up. Only emails with people in your CRM are kept (who, when, subject and what was written). Personal mail and attachments are never stored. Optionally, keep every job’s files in Google Drive too.</div>
@@ -3495,8 +3495,9 @@ async function payLoad(){
   try{
     if(!PL.data)await plLoad();
     const tool=PL.data&&PL.data.settings&&PL.data.settings.paymentsTool;
-    // Payments taken somewhere else (QuickBooks…): no Stripe, no reminders about it.
-    if(tool){el.innerHTML=`<div class="pl-pb"><div class="pl-item-t">Payments are handled in ${uxEsc(tool)}</div><div class="pl-item-d">Eagle I won’t offer online payments or remind anyone to set them up. Invoices and payments stay in ${uxEsc(tool)}.</div>${crCan('settings')?`<div class="vd-mbtns"><button class="btn-xs" onclick="payTool(null)">Take payments through Eagle I instead</button></div>`:''}</div>`;return;}
+    // Payments taken somewhere else (QuickBooks…): the whole section goes, nothing about online payments.
+    const hd=document.getElementById('pay-h');if(hd)hd.style.display=tool?'none':'';el.style.display=tool?'none':'';
+    if(tool){el.innerHTML='';return;}
     const st=await plApi('/api/crm/payments'+(location.search.includes('stripe=return')?'?refresh=1':''));
     if(!st.available){el.innerHTML='<div class="pl-banner"><span>Online payments aren’t set up on the Eagle I server yet. Invoices still work: homeowners see how to pay, and you mark checks and cash as paid.</span></div>'+(crCan('settings')?'<div class="vd-mbtns"><button class="btn-xs" onclick="payTool()">We take payments in QuickBooks or another program</button></div>':'');return;}
     el.innerHTML=st.ready?'<div class="pl-pb"><div class="pl-card-top"><div><div class="pl-item-t">Stripe connected</div><div class="pl-item-d">Homeowners can pay invoices by card or bank transfer. Money goes straight to your Stripe account.</div></div><span class="pl-pill on">● On</span></div></div>'

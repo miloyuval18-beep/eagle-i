@@ -78,7 +78,7 @@ async function load(){
   try{
     const r=await fetch('/api/crm-public/invoices/'+token+(session?'?session='+encodeURIComponent(session):''));const d=await r.json();
     if(!r.ok)throw new Error((d.error&&d.error.message)||t('invalid'));
-    I=d.invoice;if(I.lang==='es'&&!chosenLang){L='es';setLangBtn();}render(I);if(I.status!=='paid'&&I.status!=='void'){const co=(I.company||{}).name||'your builder';ccTips({key:'invoice',lang:()=>L,button:'#lang-btn',steps:[{en:['Your invoice','What it’s for, how much, and when it’s due. If you see a Pay button you can pay online, by card or bank. Otherwise pay '+co+' the way you agreed, and they mark it paid.'],es:['Su factura','De qué es, cuánto y cuándo vence. Si ve un botón de Pagar, puede pagar en línea con tarjeta o banco. Si no, pague a '+co+' como acordaron y ellos la marcan como pagada.']}]});}
+    I=d.invoice;if(I.lang==='es'&&!chosenLang){L='es';setLangBtn();}render(I);if(I.status!=='paid'&&I.status!=='void'){const co=(I.company||{}).name||'your builder';ccTips({key:'invoice',lang:()=>L,button:'#lang-btn',steps:[{en:['Your invoice','What it’s for, how much, and when it’s due. '+(I.payOnline?'Tap the Pay button to pay online, by card or bank.':'Pay '+co+' the way you agreed, and they mark it paid.')],es:['Su factura','De qué es, cuánto y cuándo vence. '+(I.payOnline?'Toque el botón Pagar para pagar en línea con tarjeta o banco.':'Pague a '+co+' como acordaron y ellos la marcan como pagada.')]}]});}
     if(session)history.replaceState(null,'',location.pathname);
   }catch(e){document.getElementById('app').textContent=e.message;}
 }
