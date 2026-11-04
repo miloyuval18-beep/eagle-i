@@ -1224,36 +1224,40 @@ body.pm .pm-hide{display:none!important}
 body:not(.pm) .pm-only{display:none!important}
 body.pm .cr-tab[data-view=pipeline]{display:none}
 body.pm .cr-tab[data-view=home]{order:1}body.pm .cr-tab[data-view=jobs]{order:2}body.pm .cr-tab[data-view=calendar]{order:3}body.pm .cr-tab[data-view=ask]{order:4}body.pm .cr-tab[data-view=estimates]{order:5}
-/* Project managers' Ask page: a chat app (ChatGPT / Claude style). */
-body.pm .ask-host{max-width:none}
-body.pm .ai-panel.inline{border:0;box-shadow:none;background:transparent;height:calc(100dvh - 130px)}
-body.pm .ai-panel.inline .ai-main{background:transparent}
-body.pm .ai-panel.inline .ai-head{background:transparent;border-bottom:0;padding:6px 8px}
-body.pm .ai-panel.inline .ai-head .t small{display:none}
-body.pm .ai-panel.inline .ai-body{padding:8px max(16px,calc((100% - 780px)/2)) 12px}
-body.pm .ai-panel.inline .ai-foot{background:transparent;border-top:0;padding:8px max(16px,calc((100% - 780px)/2)) 12px}
-body.pm .ai-panel.inline .ai-comp{border-radius:26px;padding:8px 8px 8px 12px;border:1.5px solid var(--lx-gold-dim,rgba(212,175,97,.45));background:#15130f;box-shadow:0 0 0 1px #000,0 10px 40px -12px rgba(212,175,97,.35)}
-body.pm .ai-panel.inline .ai-comp:focus-within{border-color:var(--lx-gold,#d4af61)}
-body.pm .ai-panel.inline .ai-comp textarea{font-size:19px;min-height:40px}
-body.pm .ai-panel.inline .ai-send{width:42px;height:42px;border-radius:50%;background:var(--lx-btn,linear-gradient(180deg,#f2d690,#dab364 45%,#b98d3c));color:#16130c;font-weight:800}
-body.pm .ai-panel.inline .ai-msg.bot .ai-b{background:transparent;border:0;box-shadow:none;padding:2px 0;max-width:100%;font-size:18.5px;line-height:1.65}
-body.pm .ai-panel.inline .ai-msg.bot{position:relative;padding-left:34px}
-body.pm .ai-panel.inline .ai-msg.bot::before{content:"✦";position:absolute;left:0;top:2px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;color:#16130c;background:var(--lx-btn,linear-gradient(180deg,#f2d690,#dab364 45%,#b98d3c))}
-body.pm .ai-panel.inline .ai-msg.me .ai-b{border-radius:20px 20px 6px 20px;padding:11px 16px;max-width:80%}
-body.pm .ai-panel.inline .ai-msg{margin:16px 0}
+/* The Ask page: a chat app (ChatGPT / Claude style), for everyone. */
+html body .ask-host{max-width:none}
+html body .ai-panel.inline{border:0;box-shadow:none;background:transparent;height:calc(100dvh - 130px)}
+html body .ai-panel.inline .ai-main{background:transparent}
+html body .ai-panel.inline .ai-head{background:transparent;border-bottom:0;padding:6px 8px}
+html body .ai-panel.inline .ai-head .t small{display:none}
+html body .ai-panel.inline .ai-body{padding:8px max(16px,calc((100% - 780px)/2)) 12px}
+html body .ai-panel.inline .ai-foot{background:transparent;border-top:0;padding:8px max(16px,calc((100% - 780px)/2)) 12px}
+html body .ai-panel.inline .ai-comp{border-radius:26px;padding:8px 8px 8px 12px;border:1.5px solid var(--lx-gold-dim,rgba(212,175,97,.45));background:#15130f;box-shadow:0 0 0 1px #000,0 10px 40px -12px rgba(212,175,97,.35)}
+html body .ai-panel.inline .ai-comp:focus-within{border-color:var(--lx-gold,#d4af61)}
+html body .ai-panel.inline .ai-comp textarea{font-size:19px;min-height:40px}
+html body .ai-panel.inline .ai-send{width:42px;height:42px;border-radius:50%;background:var(--lx-btn,linear-gradient(180deg,#f2d690,#dab364 45%,#b98d3c));color:#16130c;font-weight:800}
+html body .ai-panel.inline .ai-msg.bot .ai-b{background:transparent;border:0;box-shadow:none;padding:2px 0;max-width:100%;font-size:18.5px;line-height:1.65}
+html body .ai-panel.inline .ai-msg.bot{position:relative;padding-left:34px}
+html body .ai-panel.inline .ai-msg.bot::before{content:"✦";position:absolute;left:0;top:2px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;color:#16130c;background:var(--lx-btn,linear-gradient(180deg,#f2d690,#dab364 45%,#b98d3c))}
+html body .ai-panel.inline .ai-msg.me .ai-b{border-radius:20px 20px 6px 20px;padding:11px 16px;max-width:80%}
+html body .ai-panel.inline .ai-msg{margin:16px 0}
 /* A new chat: the question and the box together in the middle, like a chat app's first screen. */
-body.pm .ai-panel.inline.fresh .ai-body{flex:0 0 auto;margin-top:auto;overflow:visible}
-body.pm .ai-panel.inline.fresh .ai-foot{margin-bottom:auto}
-body.pm .ai-hello.llm{text-align:center;padding:10px 0 4px}
-body.pm .ai-hello.llm .g{font-size:42px}
-body.pm .ai-hello.llm .s{max-width:560px;margin:10px auto 0;font-size:18px}
-body.pm .ai-hello.llm .ai-chips{grid-template-columns:repeat(2,minmax(0,1fr));max-width:780px;margin:22px auto 0;text-align:left}
-body.pm .ai-hello.llm .ai-chip{border-radius:16px;padding:14px 16px;font-size:17px}
+html body .ai-panel.inline.fresh .ai-body{flex:0 0 auto;margin-top:auto;overflow:visible}
+html body .ai-panel.inline.fresh .ai-foot{margin-bottom:auto}
+html body .ai-hello.llm{text-align:center;padding:10px 0 4px}
+html body .ai-hello.llm .g{font-size:42px}
+html body .ai-hello.llm .s{max-width:560px;margin:10px auto 0;font-size:18px}
+html body .ai-hello.llm .ai-chips{grid-template-columns:repeat(2,minmax(0,1fr));max-width:780px;margin:22px auto 0;text-align:left}
+html body .ai-hello.llm .ai-chip{border-radius:16px;padding:14px 16px;font-size:17px}
 /* Phones: the box stays at the bottom, the way chat apps do, with the welcome above it. */
-@media(max-width:600px){body.pm .ai-hello.llm .g{font-size:34px}body.pm .ai-hello.llm .ai-chips{grid-template-columns:1fr}body.pm .ai-hello.llm .ai-chip:nth-child(n+4){display:none}
-  body.pm .ai-panel.inline{height:calc(100dvh - 150px)}
-  body.pm .ai-panel.inline.fresh .ai-body{flex:1 1 auto;margin-top:0;overflow-y:auto;display:flex;flex-direction:column}body.pm .ai-panel.inline.fresh .ai-hello.llm{margin-top:auto}
-  body.pm .ai-panel.inline.fresh .ai-foot{margin-bottom:0}}
+@media(max-width:600px){html body .ai-hello.llm .g{font-size:34px}html body .ai-hello.llm .ai-chips{grid-template-columns:1fr}html body .ai-hello.llm .ai-chip:nth-child(n+4){display:none}
+  html body .ai-panel.inline{height:calc(100dvh - 150px)}
+  html body .ai-panel.inline.fresh .ai-body{flex:1 1 auto;margin-top:0;overflow-y:auto;display:flex;flex-direction:column}html body .ai-panel.inline.fresh .ai-hello.llm{margin-top:auto}
+  html body .ai-panel.inline.fresh .ai-foot{margin-bottom:0}}
+/* The chat list button says what it is on a phone; on a computer the list is always open on the left. */
+.ai-panel.inline .ai-menu{width:auto;height:40px;padding:0 14px;border-radius:999px;font-weight:700;font-size:16px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+@media (min-width:900px){.ai-panel.inline .ai-menu-l{display:none}.ai-panel.inline .ai-menu{padding:0;width:38px}}
+.ai-panel:not(.inline) .ai-menu-l{display:none}
 .gb-i{display:block;padding:0}
 .gb-i summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:14px 16px;cursor:pointer;list-style:none;font-size:18px}
 .gb-i summary::-webkit-details-marker{display:none}
@@ -1305,7 +1309,7 @@ body.pm .ai-hello.llm .ai-chip{border-radius:16px;padding:14px 16px;font-size:17
     <button class="cr-tab" data-view="pipeline" onclick="crView('pipeline')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Customers</button>
     <button class="cr-tab" data-view="calendar" onclick="crView('calendar')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M7.5 14h2M11 14h2M14.5 14h2M7.5 17h2M11 17h2"/></svg>Calendar</button>
     <button class="cr-tab" data-view="jobs" onclick="crView('jobs')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Jobs</button>
-    <button class="cr-tab pm-only" data-view="ask" onclick="crView('ask')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.9 5 5.1 1.9-5.1 1.9L12 17.4l-1.9-5.1L5 10.4l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Ask</button>
+    <button class="cr-tab" data-view="ask" onclick="crView('ask')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.9 5 5.1 1.9-5.1 1.9L12 17.4l-1.9-5.1L5 10.4l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Ask</button>
     <button class="cr-tab" data-view="estimates" onclick="crView('estimates')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v.01M17.5 14.5v.01"/></svg>Money</button>
   </nav>
 </header>
@@ -1784,7 +1788,7 @@ const CR_GUIDES={
     ['Your email','📬 Email lists the emails waiting for your answer (Eagle I can draft the reply), and the ones you were only copied on, marked “No action needed”.'],
     ['Your tasks','Type a task in the box and tap Add. Tick it when it’s done.','#td-new'],
     ['Reminders and updates','Further down: the next few days (site visits, tasks, job phases, orders, permits), and what happened lately on your projects.'],
-    ['Everything else','The bar at the bottom has Customers, Calendar, Jobs and Money. Settings, reports and help are under Account at the top. ✦ Ask Eagle I is on every screen.','.hm-jumpw',()=>!crPm()],
+    ['Everything else','The bar at the bottom has Customers, Calendar, Jobs, Ask and Money. Ask is Eagle I on its own page, with your past chats; the ✦ button opens it over any screen. Settings, reports and help are under Account at the top.','.hm-jumpw',()=>!crPm()],
     ['Everything else','The bar at the bottom has Jobs, Calendar, Ask and Money. Ask opens Eagle I on its own page; the ✦ button opens it over any screen. A customer’s details are one tap away from their job, or under “Jump to”. Help is under Account at the top.','.hm-jumpw',()=>crPm()]]},
   sops:{icon:'📋',steps:[
     ['How every job is done','An SOP is a step-by-step guide to doing a job the same way every time. Pick a kind of work, or Company SOPs for rules that apply to every job.'],
@@ -5740,7 +5744,7 @@ crInit();
   </nav>
   <div class="ai-side-shade" onclick="aiSide(false)"></div>
   <div class="ai-main">
-  <div class="ai-head"><button class="ai-hb ai-menu" onclick="aiSide()" title="Your chats" aria-label="Your chats" aria-controls="ai-side">☰</button>
+  <div class="ai-head"><button class="ai-hb ai-menu" onclick="aiSide()" title="Your chats" aria-label="Your chats" aria-controls="ai-side">☰<span class="ai-menu-l"> Chats</span></button>
     <div class="t"><span>✦</span> <b id="ai-ctitle">Eagle I</b> <small id="ai-csub">your assistant</small></div>
     <button class="ai-mode" id="ai-mode" onclick="tkToggle()" hidden></button>
     <button class="ai-hb" onclick="aiNew()" title="New chat" aria-label="New chat">＋</button>
@@ -5762,7 +5766,7 @@ crInit();
       <button class="ai-ib" id="ai-mic" onclick="aiMic()" title="Talk" aria-label="Talk" hidden>🎤</button>
       <button class="ai-send" id="ai-go" onclick="aiSend()" aria-label="Send">↑</button>
     </div>
-    <div class="ai-hint"><span class="pm-hide">Eagle I asks you before anything is sent.</span><span class="pm-only">Eagle I can get things wrong, so check what matters. It always asks before sending or changing anything.</span></div>
+    <div class="ai-hint">Eagle I can get things wrong, so check what matters. It always asks before sending or changing anything.</div>
     <div style="text-align:center"><button class="btn-xs ai-help-call" id="ai-help-call" onclick="hpCall()" hidden>📞 Still stuck? Request a call</button></div>
   </div>
   </div>
@@ -5822,14 +5826,15 @@ async function aiHome(){
     const h=AI.home=await plApi('/api/crm/assistant/home');
     const g=h.glance||{},inl=document.getElementById('ai-panel').classList.contains('inline');
     const tile=(n,l,v)=>`<button class="ai-glance-t" onclick="crView('${v}')"><b>${n}</b><span>${l}</span></button>`;
-    // Project managers' Ask page looks like a chat app: one question, a few ideas, the box.
-    if(crPm()&&inl){
+    // The Ask page looks like a chat app: one question, a few ideas, the box (the numbers are on Home).
+    if(inl){
       const first=String((CR.me&&CR.me.name)||'').split(/\s+/)[0];
       document.getElementById('ai-panel').classList.add('fresh');
       el.innerHTML=`<div class="ai-hello llm"><div class="g">How can I help${first?', '+uxEsc(first):''}?</div>
         <div class="s">Ask about any job, customer, sub, date or number, or tell me what to do. Attach plans or photos with 📎.</div>
         ${h.ai?'':'<div class="ai-off">The assistant needs its AI key on the server (ANTHROPIC_API_KEY) before it can answer.</div>'}
-        <div class="ai-chips">${h.chips.slice(0,4).map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div></div>`;
+        <div class="ai-chips">${h.chips.slice(0,4).map(c=>`<button class="ai-chip" onclick="aiChip(this)">${uxEsc(c)}</button>`).join('')}</div>
+        ${h.ai&&h.canTest?'<div style="margin-top:14px"><button class="btn-xs" onclick="aiTest(this)">Test the AI connection</button></div>':''}</div>`;
       return;
     }
     el.innerHTML=`<div class="ai-hello"><div class="g">${uxEsc(h.greeting)}</div><div class="s">Ask me anything about your jobs and numbers. I can read plans, draft estimates, email anyone, book visits${h.drive?', find files in your Google Drive':''}, and file what happened today.</div>
