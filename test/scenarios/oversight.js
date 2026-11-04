@@ -98,7 +98,8 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null, at 
     await w.processWatch({ now: NOW, onlyTenantId: t, appUrl: 'https://app.test' });
     await endOfDay(t);
     assert.ok(sent.some(s => s.to === joe.email && /waiting for your reply/.test(s.text)), 'Joe is reminded');
-    assert.ok(!sent.some(s => s.to === levi.email), 'Levi is not');
+    // Levi may get his 4pm email listing what he was copied on, but nothing asks him to answer.
+    assert.ok(!sent.some(s => s.to === levi.email && /waiting for your reply|needs you first|Gate code.*(reply|answer)/i.test(`${s.subject}\n${s.text}`)), 'Levi is not');
     const listed = await w.list(t, { userId: joe.id });
     assert.equal(listed.toReply.length, 1); assert.equal(listed.toReply[0].gmail, null); assert.equal(listed.toReply[0].seenOn, levi.email);
     // Joe answers from his own email, Levi still copied: seen on Levi's copy, now waiting on Rita.

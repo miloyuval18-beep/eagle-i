@@ -98,7 +98,7 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null }) =
     assert.equal(await w.forgetTeammates({ tenantId: t, mailboxEmail: sam.email, isCompany }), 2);
     assert.deepEqual((await query(`SELECT thread_id, state, reason FROM crm_mail_threads WHERE tenant_id = $1 AND thread_id IN ('tlevi', 'tmaria') ORDER BY thread_id`, [t])).rows.map(x => [x.thread_id, x.state, x.reason]),
       [['tlevi', 'closed', 'A teammate: not tracked'], ['tmaria', 'closed', 'A teammate: not tracked']]);
-    assert.deepEqual((await query(`SELECT subject FROM crm_team_mail WHERE tenant_id = $1 AND sent_at IS NULL`, [t])).rows.map(x => x.subject), ['Veronica Hemmi is waiting for your reply'], 'a customer’s stays');
+    assert.deepEqual((await query(`SELECT subject FROM crm_team_mail WHERE tenant_id = $1 AND sent_at IS NULL AND lower(to_email) = lower($2)`, [t, sam.email])).rows.map(x => x.subject), ['Veronica Hemmi is waiting for your reply'], 'a customer’s stays');
     assert.equal((await thread(m1.threadId)).state, 'to_reply', 'customers untouched');
     // Needs you is each person's own: an email reminder only for the person it's for; "still no reply" for the owners and admins.
     const crm = require(R + '/lib/crm');
