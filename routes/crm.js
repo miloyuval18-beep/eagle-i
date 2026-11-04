@@ -357,7 +357,7 @@ router.post('/api/crm/me/devices/sign-out-others', requireAuth, async (req, res)
 // The getting-started checklist: each step ticks itself off when it's done.
 router.get('/api/crm/checklist', requireAuth, async (req, res) => {
   try {
-    const t = req.tenantId, u = req.userId, can = (k) => team.can(req.crmUser, k);
+    const t = req.tenantId, u = req.userId, can = (k) => team.can(req.crmUser, k), pm = req.crmUser && req.crmUser.role === 'project_manager';
     const one = async (sql, p) => (await query(sql, p)).rows[0] || {};
     const [bp, mail, people, pb, deals, subs, cal] = await Promise.all([
       one('SELECT address, phone, email FROM business_profile WHERE tenant_id = $1', [t]),
@@ -373,8 +373,9 @@ router.get('/api/crm/checklist', requireAuth, async (req, res) => {
       { key: 'gmail', text: 'Connect your Gmail so customer emails land on their deals', done: !!mail.y, go: 'company' },
       can('team') && { key: 'team', text: 'Invite your team', done: (people.n || 1) > 1, go: 'team' },
       can('emails') && { key: 'emails', text: 'Read and turn on the automatic emails', done: !!pb.y, go: 'auto' },
-      { key: 'deal', text: 'Add your first customer', done: (deals.n || 0) > 0, go: 'newdeal' },
-      { key: 'subs', text: 'Add your subs and suppliers', done: (subs.n || 0) > 0, go: 'jobs' },
+      // A project manager's list is only their own setup; customers and subs are the company's.
+      !pm && { key: 'deal', text: 'Add your first customer', done: (deals.n || 0) > 0, go: 'newdeal' },
+      !pm && { key: 'subs', text: 'Add your subs and suppliers', done: (subs.n || 0) > 0, go: 'jobs' },
       { key: 'calendar', text: 'Put the Eagle I calendar on your phone', done: !!cal.y, go: 'phone' }
     ].filter(Boolean);
     res.json({ steps, done: steps.filter(x => x.done).length, total: steps.length, practice: await require('../lib/crmAssist').practiceInfo(t) });
