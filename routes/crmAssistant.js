@@ -19,7 +19,7 @@ function fail(res, err, what) {
   res.status(status).json({ error: { message: status === 500 ? `${what}: ${err.message}` : err.message } });
 }
 const wrap = (what, fn) => async (req, res) => { try { await fn(req, res); } catch (err) { fail(res, err, what); } };
-const ctxOf = (req) => ({ tenantId: req.tenantId, userId: req.userId, name: (req.crmUser && (req.crmUser.name || req.crmUser.email)) || 'someone', role: (req.crmUser && req.crmUser.role) || 'member', manager: team.isManager(req.crmUser && req.crmUser.role), perms: team.permsOf(req.crmUser), baseUrl: baseUrlOf(req) });
+const ctxOf = (req) => ({ tenantId: req.tenantId, userId: req.userId, name: (req.crmUser && (req.crmUser.name || req.crmUser.email)) || 'someone', role: (req.crmUser && req.crmUser.role) || 'member', manager: team.isManager(req.crmUser && req.crmUser.role), perms: team.aiPermsOf(req.crmUser), baseUrl: baseUrlOf(req) });
 
 // Owners and admins can check the AI key and which model answers.
 router.post('/api/crm/assistant/test', requireAuth, wrap('The AI didn’t answer', async (req, res) => {

@@ -1515,3 +1515,18 @@ describe('AI answers that run out of room (lib/anthropic.js generateJSON)', () =
     } finally { global.fetch = real; if (key === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = key; }
   });
 });
+
+describe('Ask Eagle I for project managers', () => {
+  const T = require('../lib/crmTeam');
+  test('a project manager’s assistant can do anything, except what was unticked for them', () => {
+    const pm = { role: 'project_manager' };
+    assert.equal(T.permsOf(pm).settings, false, 'their own screens are unchanged');
+    assert.ok(T.PERM_KEYS.every(k => T.aiPermsOf(pm)[k]), 'the assistant: everything');
+    const unticked = { role: 'project_manager', permissions: { money: false } };
+    assert.equal(T.aiPermsOf(unticked).money, false, 'an owner’s untick still holds');
+    assert.equal(T.aiPermsOf(unticked).data, true);
+  });
+  test('other roles keep their usual permissions in the assistant', () => {
+    for (const role of ['sales', 'office', 'member', 'superintendent']) assert.deepEqual(T.aiPermsOf({ role }), T.permsOf({ role }), role);
+  });
+});
