@@ -105,15 +105,28 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null }) =
     const levis = (await query(`INSERT INTO crm_mail_threads (tenant_id, mailbox_email, user_id, thread_id, counterpart_email, subject, last_dir, last_at, state, status)
       VALUES ($1, $2, $3, 'tl2', 'bank@b.test', 'Loan', 'in', now(), 'to_reply', 'open') RETURNING id`, [t, levi.email, levi.id])).rows[0].id;
     const sams = (await thread(m2.threadId)).id;
-    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'Bank is waiting for a reply', dedupeKey: `mw:re:${levis}:1` });
-    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'LJ is waiting for a reply', dedupeKey: `mw:re:${sams}:1` });
-    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'Bank still has no reply', dedupeKey: `mw:esc:${levis}:1` });
+    // Items for emails still waiting on an answer (an item for one that's settled clears by itself).
+    await query(`UPDATE crm_mail_threads SET expects = true WHERE id IN ($1, $2)`, [levis, sams]);
+    const at = async (id) => new Date((await query('SELECT last_at FROM crm_mail_threads WHERE id = $1', [id])).rows[0].last_at).getTime();
+    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'Bank is waiting for a reply', dedupeKey: `mw:re:${levis}:${await at(levis)}` });
+    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'LJ is waiting for a reply', dedupeKey: `mw:re:${sams}:${await at(sams)}` });
+    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'Bank still has no reply', dedupeKey: `mw:esc:${levis}:${await at(levis)}` });
     await crm.addInboxItem({ tenantId: t, kind: 'checkin_problem', title: 'A problem', dedupeKey: `ci:x:${tag}` });
     const titles = async (u, all = false) => (await crm.listInbox(t, { user: u, all })).map(i => i.title).sort();
     const mineOf = async (u, all) => (await titles(u, all)).filter(x => ['A problem', 'Bank still has no reply', 'LJ is waiting for a reply', 'Bank is waiting for a reply'].includes(x));
     assert.deepEqual(await mineOf(sam), ['A problem', 'Bank still has no reply', 'LJ is waiting for a reply'], 'not Levi’s email');
     assert.deepEqual(await mineOf(levi), ['A problem', 'Bank is waiting for a reply'], 'not about himself');
     assert.equal((await mineOf(sam, true)).length, 4, 'the whole team');
+    // Settled elsewhere (answered by a teammate, an FYI, a copy): its Needs you item clears by itself.
+    await query(`UPDATE crm_mail_threads SET state = 'closed', reason = 'Answered by Maria Vidal' WHERE id = $1`, [sams]);
+    assert.ok(!(await titles(sam)).includes('LJ is waiting for a reply'), 'a settled email leaves Needs you');
+    // Marked done: the conversation closes too, so it can't come back as "still no reply"; Undo opens it again.
+    const bank = (await crm.listInbox(t, { user: levi })).find(i => i.title === 'Bank is waiting for a reply');
+    await crm.actOnInbox({ tenantId: t, id: bank.id, action: 'done' });
+    assert.equal((await query('SELECT status FROM crm_mail_threads WHERE id = $1', [levis])).rows[0].status, 'dismissed');
+    await crm.actOnInbox({ tenantId: t, id: bank.id, action: 'reopen' });
+    assert.equal((await query('SELECT status FROM crm_mail_threads WHERE id = $1', [levis])).rows[0].status, 'open');
+    assert.ok((await titles(levi)).includes('Bank is waiting for a reply'), 'undo brings it back');
     console.log('GREETED SCENARIO PASSED');
   } catch (e) {
     console.error('GREETED SCENARIO FAILED:', e);
