@@ -114,9 +114,13 @@ const msg = ({ from, to = [], cc = [], subject, snippet = '', thread = null }) =
     await crm.addInboxItem({ tenantId: t, kind: 'checkin_problem', title: 'A problem', dedupeKey: `ci:x:${tag}` });
     const titles = async (u, all = false) => (await crm.listInbox(t, { user: u, all })).map(i => i.title).sort();
     const mineOf = async (u, all) => (await titles(u, all)).filter(x => ['A problem', 'Bank still has no reply', 'LJ is waiting for a reply', 'Bank is waiting for a reply'].includes(x));
-    assert.deepEqual(await mineOf(sam), ['A problem', 'Bank still has no reply', 'LJ is waiting for a reply'], 'not Levi’s email');
+    assert.deepEqual(await mineOf(sam), ['A problem', 'LJ is waiting for a reply'], 'not Levi’s email, and an admin isn’t told the owner hasn’t answered');
     assert.deepEqual(await mineOf(levi), ['A problem', 'Bank is waiting for a reply'], 'not about himself');
     assert.equal((await mineOf(sam, true)).length, 4, 'the whole team');
+    // Someone else's email still unanswered: the owner hears about it.
+    await crm.addInboxItem({ tenantId: t, kind: 'email_reply', title: 'LJ still has no reply', dedupeKey: `mw:esc:${sams}:${await at(sams)}` });
+    assert.ok((await titles(levi)).includes('LJ still has no reply'), 'the owner sees a teammate’s');
+    assert.ok(!(await titles(sam)).includes('LJ still has no reply'), 'not about their own');
     // Settled elsewhere (answered by a teammate, an FYI, a copy): its Needs you item clears by itself.
     await query(`UPDATE crm_mail_threads SET state = 'closed', reason = 'Answered by Maria Vidal' WHERE id = $1`, [sams]);
     assert.ok(!(await titles(sam)).includes('LJ is waiting for a reply'), 'a settled email leaves Needs you');
