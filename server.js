@@ -59,6 +59,7 @@ const crmMarketingRoutes = require('./routes/crmMarketing');
 const crmAssistRoutes = require('./routes/crmAssist');
 const crmDrawsPulseRoutes = require('./routes/crmDrawsPulse');
 const crmDailyRoutes = require('./routes/crmDaily');
+const crmConnectorRoutes = require('./routes/crmConnector'); // Claude and ChatGPT: OAuth sign-in and the MCP endpoint at /mcp
 const crmSubsRoutes = require('./routes/crmSubs');
 const crmAssistantRoutes = require('./routes/crmAssistant');
 const crmCheckinRoutes = require('./routes/crmCheckins');
@@ -241,6 +242,7 @@ app.use(crmMarketingRoutes);
 app.use(crmAssistRoutes);
 app.use(crmDrawsPulseRoutes);
 app.use(crmDailyRoutes);
+app.use(crmConnectorRoutes);
 app.use(crmSubsRoutes);
 app.use(crmAssistantRoutes);
 app.use(crmCheckinRoutes);

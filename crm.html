@@ -1468,6 +1468,7 @@ body.on-home .ai-fab{display:none}
       <button onclick="crMenu(false);dyOpen()">📅 My calendar &amp; morning email</button>
       <button onclick="crMenu(false);ckOpen('mine')">📝 My daily check-in</button>
       <button onclick="crMenu(false);dvOpen()">📱 Devices signed in</button>
+      <button onclick="crMenu(false);acOpen()">🔌 Claude &amp; ChatGPT</button>
       <a href="/forgot-password.html">🔑 Change password</a>
       <div class="cr-mh">Company</div>
       <button class="pm-hide" onclick="crMenu(false);crView('company')">🏢 Company details</button>
@@ -2233,6 +2234,8 @@ async function crInit(){
   try{const r=await fetch('/api/crm/me');if(r.status===401){location.href='/crm/login';return;}me=await r.json();}
   catch(e){document.getElementById('pl-list').innerHTML='<div class="pl-empty">Could not reach Eagle I. Check your connection and reload.</div>';return;}
   CR.me=me;
+  // Signed in to connect Claude or ChatGPT (through Google, which lands here): back to its Allow page.
+  try{const n=sessionStorage.getItem('crm-oauth-next');if(n){sessionStorage.removeItem('crm-oauth-next');if(/^\/oauth\/authorize\?/.test(n)){location.href=n;return;}}}catch(e){}
   // The Eagle I admin looking at this company: say so, and how to stop.
   // An owner or admin seeing it as one of their roles or people: say so, switch, or stop.
   if(me.lookAs){const b=document.createElement('div');b.className='vo-bar';b.setAttribute('role','status');
@@ -2274,12 +2277,15 @@ async function crInit(){
   const priceDeal=start==='price'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||'')?hashParts[1]:null;
   // An email link to a job (#job/<deal id>): orders to send, permits.
   const jobDeal=start==='job'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||'')?hashParts[1]:null;
+  // A link to one project (#deal/<deal id>, from Claude or ChatGPT): opens it.
+  const openDeal=start==='deal'&&/^[0-9a-f-]{36}$/.test(hashParts[1]||'')?hashParts[1]:null;
   // A new company (or a new person) is walked through setting up first.
-  crView(me.needsSetup?'start':priceDeal||jobDeal?'pipeline':['home','sops','ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'home');
+  crView(me.needsSetup?'start':priceDeal||jobDeal||openDeal?'pipeline':['home','sops','ask','pipeline','needs','calendar','jobs','estimates','auto','team','company','reports','refs','growth','setup','billing','start','co','checkin'].includes(start)?start:'home');
   if(priceDeal&&!me.needsSetup)prOpen(priceDeal);
   if(jobDeal&&!me.needsSetup)jbOpen(jobDeal);
+  if(openDeal&&!me.needsSetup)plOpenDeal(openDeal);
   // Important things not set up yet: a reminder each time the CRM is opened (a slim bar when they came from a link to something).
-  crSetupRemind(!!priceDeal||!!jobDeal||start==='checkin'||(start==='ask'&&!!hashParts[1]));
+  crSetupRemind(!!priceDeal||!!jobDeal||!!openDeal||start==='checkin'||(start==='ask'&&!!hashParts[1]));
   crSetupBanner();
   if(AI.loading)aiLoad(AI.loading);
   plApi('/api/crm/today').then(d=>plBadge(d.inbox.length+tdOverdue(d.tasks))).catch(()=>{});
@@ -4839,6 +4845,38 @@ async function ckBanner(){
   try{const d=await plApi('/api/crm/checkins/today');const c=d.checkin;
     el.innerHTML=!c||c.status==='done'?'':`<div class="nx" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div class="nx-l">Daily check-in</div><div class="nx-t">${c.status==='started'?'Finish today’s check-in':'How did today go? Two minutes with Eagle I.'}</div></div><button class="btn btn-blue" onclick="ckOpen('mine')">${c.status==='started'?'Keep going':'Start my check-in'}</button></div>`;
   }catch(e){el.innerHTML='';}
+}
+/* ---------- Account → Claude & ChatGPT: Eagle I as a connector in their AI (routes/crmConnector.js) ---------- */
+async function acOpen(){
+  uxOpen(uxHead('Claude & ChatGPT','Loading…'));
+  let d;try{d=await plApi('/api/crm/connectors');}catch(e){uxOpen(uxHead('Claude & ChatGPT',uxEsc(e.message)));return;}
+  const step=(n,t)=>`<li style="margin:6px 0">${t}</li>`;
+  uxOpen(uxHead('Claude & ChatGPT','Use Eagle I from inside Claude or ChatGPT. Ask about your jobs there, and save what you work out (a scope, meeting notes, a list of tasks) straight to the right project.')+`
+    <div class="nx" style="margin-top:4px"><div class="nx-l">The Eagle I connector address</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px"><input id="ac-url" class="cred-input" readonly value="${uxEsc(d.url)}" style="flex:1;min-width:200px;font-size:17px" onclick="this.select()"><button class="btn btn-blue" onclick="acCopy(this)">Copy</button></div></div>
+    <div class="pl-h">In Claude</div>
+    <ol style="padding-left:24px;margin:4px 0 0;font-size:17px">${step(1,'Open <b>Settings</b> → <b>Connectors</b>.')}${step(2,'Tap <b>Add</b>, then <b>Add custom connector</b>.')}${step(3,'Name it <b>Eagle I</b> and paste the address above.')}${step(4,'Tap <b>Add</b>, then <b>Connect</b>. Sign in to Eagle I and tap <b>Allow</b>.')}</ol>
+    <div class="sm">Needs a paid Claude plan. On a Claude Team or Enterprise plan, the person who manages it adds the connector first (Organization settings → Connectors).</div>
+    <div class="pl-h">In ChatGPT</div>
+    <ol style="padding-left:24px;margin:4px 0 0;font-size:17px">${step(1,'Open <b>Settings</b> → <b>Apps &amp; Connectors</b> → <b>Advanced settings</b>, and turn on <b>Developer mode</b>.')}${step(2,'Back in Apps &amp; Connectors, tap <b>Create</b>.')}${step(3,'Name it <b>Eagle I</b>, paste the address above, and set Authentication to <b>OAuth</b>.')}${step(4,'Tap <b>Create</b>. Sign in to Eagle I and tap <b>Allow</b>.')}</ol>
+    <div class="sm">Developer mode is on ChatGPT Plus, Pro, Business and Enterprise. The names of the menus can change a little.</div>
+    <div class="pl-h">Then just ask</div>
+    <div class="sm" style="font-size:17px;color:var(--ink)">“What’s left on the Shapiro job?” · “Save this scope to the Weissman kitchen.” · “Add these as tasks on the back porch job.” · “Log a $412 Home Depot receipt on the Rivercrest job.”</div>
+    <div class="sm">It works as you, with your permissions. It can see and save what you can in Eagle I, and it can’t email or text your customers or subs.</div>
+    <div class="pl-h">Connected</div>
+    <div id="ac-list">${acList(d.apps)}</div>
+    <div class="vd-mbtns"><button class="btn-xs" onclick="uxClose()">Close</button></div>`);
+}
+function acList(apps){
+  if(!apps||!apps.length)return '<div class="sm">Nothing connected yet.</div>';
+  return `<div class="pl-list">${apps.map(a=>`<div class="pl-item"><div class="pl-item-t">${uxEsc(a.app)}</div><div class="pl-item-d">Connected ${crWhen(a.since)}${a.lastUsed?' · last used '+crWhen(a.lastUsed):''}</div>
+    <div class="pl-acts"><button class="btn-xs" onclick="acOff('${uxEsc(a.id)}','${uxEsc(a.app)}',this)">Disconnect</button></div></div>`).join('')}</div>`;
+}
+async function acCopy(btn){const i=document.getElementById('ac-url');try{await navigator.clipboard.writeText(i.value);btn.textContent='Copied ✓';setTimeout(()=>btn.textContent='Copy',2000);}catch(e){i.select();document.execCommand&&document.execCommand('copy');}}
+async function acOff(id,app,btn){
+  if(!confirm(`Disconnect ${app}? It won’t be able to reach Eagle I until you connect it again.`))return;
+  try{await plApi('/api/crm/connectors/'+encodeURIComponent(id),{method:'DELETE'});const d=await plApi('/api/crm/connectors');document.getElementById('ac-list').innerHTML=acList(d.apps);showNotif('Disconnected',app+' can’t reach Eagle I anymore.');}
+  catch(e){showNotif('Could not disconnect',e.message);}
 }
 /* ---------- the drop box on Home: any file, sorted and put where it goes (lib/crmDrop.js) ---------- */
 const DZ={kinds:{},items:[],files:{}};
