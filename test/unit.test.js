@@ -1386,6 +1386,31 @@ describe('CRM AI: estimate checks, forecasts, matching, coaching', () => {
   });
 });
 
+describe('The drop box reads every kind of document (lib/crmDrop.js)', () => {
+  const dz = require('../lib/crmDrop');
+  const zipOf = (name, xml) => require('../lib/zip').zip([{ name, data: Buffer.from(xml) }]);
+  const read = (buf, name) => dz.contentsOf(buf, dz.typeOf(buf, name));
+  test('Word, PowerPoint and OpenDocument: their words', () => {
+    assert.match(read(zipOf('word/document.xml', '<w:p><w:r><w:t>Change order #3 &amp; pot filler</w:t></w:r></w:p>'), 'CO.docx').text, /Change order #3 & pot filler/);
+    assert.match(read(zipOf('ppt/slides/slide1.xml', '<a:p><a:r><a:t>Bath selections</a:t></a:r></a:p>'), 'deck.pptx').text, /Bath selections/);
+    assert.match(read(zipOf('content.xml', '<text:p>Scope of work</text:p>'), 'scope.odt').text, /Scope of work/);
+  });
+  test('emails, RTF, CAD text and old Word files', () => {
+    const eml = read(Buffer.from('From: Ana <a@b.test>\r\nSubject: Lien waiver\r\nX-Junk: 1\r\n\r\n<p>Payment #2, $3,400</p>'), 'w.eml').text;
+    assert.match(eml, /Subject: Lien waiver/); assert.match(eml, /Payment #2, \$3,400/); assert.doesNotMatch(eml, /X-Junk|<p>/);
+    assert.match(read(Buffer.from('{\\rtf1\\ansi\\f0 Kitchen scope\\par Demo cabinets}'), 's.rtf').text, /Kitchen scope\nDemo cabinets/);
+    assert.match(read(Buffer.from('0\nTEXT\n1\nFLOOR PLAN LEVEL 1\n0\nEOF\n'), 'A1.dxf').text, /FLOOR PLAN LEVEL 1/);
+    const doc = Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(100), Buffer.from('Construction agreement for 101 Sample St', 'utf16le')]);
+    assert.match(read(doc, 'Contract.doc').text, /Construction agreement for 101 Sample St/);
+  });
+  test('Pages files: the preview inside; unreadable files: just the name', () => {
+    const pages = require('../lib/zip').zip([{ name: 'preview.jpg', data: Buffer.from([0xff, 0xd8, 0xff, 1, 2]) }]);
+    assert.equal(read(pages, 'Bid.pages').file.mediaType, 'image/jpeg');
+    assert.equal(dz.typeOf(Buffer.from('AC1032xx'), 'plan.dwg').ai, 'name');
+    assert.equal(read(Buffer.from('PK\u0003\u0004broken', 'latin1'), 'bad.docx'), null, 'a broken file never throws');
+  });
+});
+
 describe('CRM project files: types, folders, plan versions, Drive uploads', () => {
   const pt = require('../lib/crmPortal');
   test('more kinds of files, checked by their bytes; nothing a browser could run', () => {
@@ -1395,7 +1420,14 @@ describe('CRM project files: types, folders, plan versions, Drive uploads', () =
     assert.equal(pt.sniffType(zip, 'thing.exe'), null);
     assert.equal(pt.sniffType(Buffer.from('AC1032abc'), 'plan.dwg').ext, 'dwg');
     assert.equal(pt.sniffType(Buffer.concat([Buffer.alloc(4), Buffer.from('ftypisom')]), 'walk.mp4').kind, 'video');
-    assert.equal(pt.sniffType(Buffer.concat([Buffer.alloc(4), Buffer.from('ftypheic')]), 'IMG.heic'), null);
+    assert.equal(pt.sniffType(Buffer.concat([Buffer.alloc(4), Buffer.from('ftypheic')]), 'IMG.heic').type, 'image/heic');
+    assert.equal(pt.sniffType(Buffer.from('II*\u0000xxxx', 'latin1'), 'scan.tif').type, 'image/tiff');
+    assert.equal(pt.sniffType(Buffer.from('GIF89axx'), 'a.gif').type, 'image/gif');
+    assert.equal(pt.sniffType(Buffer.from('{\\rtf1 hi'), 'scope.rtf').type, 'application/rtf');
+    assert.equal(pt.sniffType(zip, 'Scope.pages').ext, 'pages');
+    assert.equal(pt.sniffType(zip, 'Scope.odt').ext, 'odt');
+    assert.equal(pt.sniffType(Buffer.from('From: a@b.test\r\nSubject: Hi\r\n\r\n<html>x</html>'), 'note.eml').type, 'message/rfc822', 'kept, but only ever downloaded');
+    assert.equal(pt.sniffType(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), 'mail.msg').ext, 'msg');
     assert.equal(pt.sniffType(Buffer.from('a,b\n1,2'), 'takeoff.csv').type, 'text/csv');
     assert.equal(pt.sniffType(Buffer.from('<script>x</script>'), 'notes.txt'), null);
     assert.equal(pt.sniffType(Buffer.from('<svg/>'), 'logo.svg'), null);

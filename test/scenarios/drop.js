@@ -92,6 +92,15 @@ const server = http.createServer((req, res) => {
     const r7 = await dz.drop({ tenantId: t, user: me, filename: 'IMG_1.jpg', buf: jpg });
     assert.equal(r7.status, 'needs_project'); assert.equal(r7.kind, 'photo');
     await assert.rejects(dz.drop({ tenantId: t, user: me, filename: 'empty.pdf', buf: Buffer.alloc(0) }), /empty/);
+    // Every kind of file a builder has: an iPhone HEIC photo is kept as it is; a Word file is read for its words.
+    const heic = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypheic'), Buffer.alloc(100, 3)]);
+    const r8 = await dz.drop({ tenantId: t, user: me, filename: 'IMG_7.HEIC', buf: heic });
+    assert.equal(r8.kind, 'photo');
+    const r8b = await dz.move({ tenantId: t, user: me, id: r8.id, dealId: deal.id });
+    assert.equal(r8b.status, 'done'); assert.match(r8b.text, /Photos/);
+    assert.equal((await query(`SELECT content_type FROM crm_files WHERE tenant_id = $1 AND filename LIKE 'IMG_7%'`, [t])).rows[0].content_type, 'image/heic');
+    const dwg = Buffer.concat([Buffer.from('AC1032'), Buffer.alloc(100, 4)]);
+    assert.equal((await dz.drop({ tenantId: t, user: me, filename: 'A2 elevations.dwg', buf: dwg })).kind, 'plans', 'a CAD drawing is plans');
     console.log('DROP SCENARIO PASSED');
   } catch (e) {
     console.error('DROP SCENARIO FAILED:', e);

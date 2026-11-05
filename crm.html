@@ -4844,7 +4844,7 @@ async function ckBanner(){
 const DZ={kinds:{},items:[],files:{}};
 function dzHtml(){
   return `<section class="db-box dz" aria-label="Drop a file"><label class="dz-zone" id="dz-zone" tabindex="0" ondragover="dzOver(event,true)" ondragenter="dzOver(event,true)" ondragleave="dzOver(event,false)" ondrop="dzDrop(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.querySelector('input').click()}">
-    ${dbI('cloud')}<span class="dz-t"><b>Drop any file here</b><span>A receipt, plans, a permit, a contract, insurance, a business card, a list of subs… Eagle I works out what it is, puts it in the right project and fills in what it says.</span></span>
+    ${dbI('cloud')}<span class="dz-t"><b>Drop any file here</b><span>A receipt, plans, a permit, a contract, insurance, a business card, a list of subs… PDFs, photos, Word, Excel, emails or CAD. Eagle I works out what it is, puts it in the right project and fills in what it says.</span></span>
     <span class="btn btn-blue">Choose a file</span><input type="file" multiple hidden onchange="dzPick(this)"></label>
     <div class="dz-list" id="dz-list" aria-live="polite"></div></section>`;
 }
@@ -4879,10 +4879,11 @@ async function dzFiles(files){
   if(!PL.data)plLoad();
   for(const f of files){
     const key='w'+Date.now()+Math.random().toString(36).slice(2,6);
-    if(f.size>25*1024*1024){DZ.files[key]={name:f.name,err:'Over 25 MB. Add it on the project instead, or send a smaller copy.'};dzRender();continue;}
+    if(f.size>50*1024*1024){DZ.files[key]={name:f.name,err:'Over 50 MB. Send a smaller copy, or add it in Google Drive.'};dzRender();continue;}
     DZ.files[key]={name:f.name};dzRender();
     try{
-      const res=await fetch('/api/crm/drop',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/octet-stream','X-Filename':encodeURIComponent(f.name)},body:f});
+      const up=await dzPhoto(f);
+      const res=await fetch('/api/crm/drop',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/octet-stream','X-Filename':encodeURIComponent(up.name)},body:up});
       const r=await res.json().catch(()=>({}));
       if(!res.ok)throw new Error((r.error&&r.error.message)||'Couldn’t sort that file.');
       delete DZ.files[key];
@@ -4892,6 +4893,17 @@ async function dzFiles(files){
     }catch(e){DZ.files[key]={name:f.name,err:e.message};dzRender();}
   }
   if(CR.view==='home')plLoadNeeds&&plLoadNeeds();
+}
+// iPhone HEIC, TIFF and BMP photos: turned into a JPEG here when this browser can open them,
+// so Eagle I can read them and every browser can show them. Otherwise sent as they are.
+async function dzPhoto(f){
+  if(!/\.(heic|heif|tiff?|bmp)$/i.test(f.name)&&!/^image\/(heic|heif|tiff|bmp)$/.test(f.type))return f;
+  try{
+    const bmp=await createImageBitmap(f);const k=Math.min(1,4000/Math.max(bmp.width,bmp.height));
+    const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.9));if(!blob)return f;
+    return new File([blob],f.name.replace(/\.[a-z0-9]+$/i,'')+'.jpg',{type:'image/jpeg'});
+  }catch(e){return f;}
 }
 async function dzUndo(id){
   try{await plApi('/api/crm/drop/'+id+'/undo',{body:{}});const x=DZ.items.find(i=>i.id===id);if(x)x.undone=true;dzRender();showNotif('Undone','The file and what it filled in were taken back.');}
