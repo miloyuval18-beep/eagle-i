@@ -88,6 +88,27 @@ router.post('/api/crm/deals/:id/files/raw', requireAuth, rawFile, async (req, re
   } catch (err) { fail(res, err.type === 'entity.too.large' ? Object.assign(err, { status: 413, message: 'That file is too big. The limit is 50 MB.' }) : err, 'Failed to upload'); }
 });
 
+// The drop box on Home (lib/crmDrop.js): any file, worked out and put where it goes.
+router.post('/api/crm/drop', requireAuth, rawFile, async (req, res) => {
+  try {
+    if (!req.is('application/octet-stream')) return res.status(415).json({ error: { message: 'Send the file as application/octet-stream.' } });
+    const h = (k) => { const v = req.get(k); try { return v == null ? null : decodeURIComponent(v); } catch (e) { return v; } };
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: { message: 'Choose a file.' } });
+    res.json(await require('../lib/crmDrop').drop({ tenantId: req.tenantId, user: req.crmUser, filename: h('X-Filename') || 'file', buf: req.body, hint: h('X-Hint') }));
+  } catch (err) { fail(res, err, 'Couldn’t sort that file'); }
+});
+router.get('/api/crm/drop', requireAuth, async (req, res) => {
+  try { res.json({ items: await require('../lib/crmDrop').recent({ tenantId: req.tenantId, user: req.crmUser }), kinds: Object.fromEntries(Object.entries(require('../lib/crmDrop').KINDS).map(([k, v]) => [k, v.label])) }); }
+  catch (err) { fail(res, err, 'Failed to load'); }
+});
+router.post('/api/crm/drop/:id/undo', requireAuth, async (req, res) => {
+  try { res.json(await require('../lib/crmDrop').undo({ tenantId: req.tenantId, user: req.crmUser, id: req.params.id })); } catch (err) { fail(res, err, 'Couldn’t undo it'); }
+});
+router.post('/api/crm/drop/:id/move', requireAuth, async (req, res) => {
+  const b = req.body || {};
+  try { res.json(await require('../lib/crmDrop').move({ tenantId: req.tenantId, user: req.crmUser, id: req.params.id, kind: b.kind || null, dealId: b.dealId || null })); } catch (err) { fail(res, err, 'Couldn’t move it'); }
+});
+
 router.get('/api/crm/files/:fileId', requireAuth, async (req, res) => {
   try {
     const f = await portal.getFile(req.tenantId, req.params.fileId);

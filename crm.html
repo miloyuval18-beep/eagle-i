@@ -1376,6 +1376,24 @@ body.on-home .ai-fab{display:none}
 .db-stt b{display:flex;align-items:center;gap:8px;font-family:'Cormorant Garamond',Georgia,serif;font-size:23px;font-weight:700;color:#f6ecd4}
 .db-stt b .db-i{width:26px;height:26px;flex-basis:26px}
 .db-vb{display:flex;align-items:center;gap:22px;padding:18px 22px}
+.dz{padding:18px 20px;margin-top:16px}
+.dz-zone{display:flex;align-items:center;gap:18px;border:2.5px dashed rgba(212,175,97,.55);border-radius:16px;padding:20px 22px;background:rgba(212,175,97,.04);cursor:pointer;transition:background .15s,border-color .15s}
+.dz-zone:hover,.dz-zone:focus-visible{background:rgba(212,175,97,.09)}
+.dz-zone.over{background:rgba(212,175,97,.16);border-color:#e8c983;border-style:solid}
+.dz-zone .db-i{width:46px;height:46px;flex:0 0 46px}
+.dz-t b{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:27px;font-weight:700;color:#f6ecd4;line-height:1.15}
+.dz-t span{display:block;font-size:17px;color:var(--ink2,#cfc5ae);margin-top:4px}
+.dz-zone .btn{margin-left:auto;white-space:nowrap}
+.dz-list{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.dz-item{border:1px solid rgba(212,175,97,.25);border-radius:14px;padding:12px 14px;background:#100e0b}
+.dz-item .dz-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:18px;font-weight:700;color:#f6ecd4}
+.dz-item .dz-k{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#d4af61}
+.dz-item .dz-d{font-size:17px;margin-top:4px;color:var(--ink2,#cfc5ae)}
+.dz-item.ask{border-color:#e8c983;box-shadow:0 0 0 1px rgba(232,201,131,.3)}
+.dz-item.bad{border-color:rgba(220,120,100,.6)}
+.dz-item.off{opacity:.6}
+.dz-item select{font:inherit;font-size:17px;min-height:44px;border-radius:10px;padding:6px 10px;background:#15130f;color:#f3ecdc;border:1px solid rgba(212,175,97,.5);max-width:100%}
+@media(max-width:640px){.dz-zone{flex-direction:column;align-items:stretch;text-align:center;gap:10px;padding:18px 14px}.dz-zone .db-i{margin:0 auto}.dz-zone .btn{margin-left:0}}
 .db-vbi{flex:0 0 210px;height:110px;border-radius:12px;background:var(--img) center/cover no-repeat}
 .db-vbt{display:flex;flex-direction:column;gap:6px;flex:1;border-left:1px solid var(--gdim);padding-left:22px}
 .db-vbt b{font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:700;color:#f6ecd4;line-height:1.1}
@@ -1953,6 +1971,7 @@ const CR_GUIDES={
   activity:{icon:'📋',steps:[['Who changed what','Every change to the team, deletes, imports and settings, newest first. Pick a person to see only theirs.']]},
   home:{icon:'🏠',steps:[
     ['Your dashboard','Eagle I opens here every time. Each tile opens what it says: your leads, active projects, Ask Eagle I, draws due, orders, quotes, takeoffs and more. Tools for one project ask which project first.','.db-r1'],
+    ['Drop any file','Drag a file onto the box at the top, or tap “Choose a file”. Eagle I works out what it is, puts it in the right project and fills in what it says: a receipt’s cost, a permit’s number and dates, a sub’s insurance date, new vendors from a business card. Wrong? Tap “Wrong? Change it”, or Undo.','#dz-zone'],
     ['Needs you','What Eagle I flagged for you. When it’s taken care of, tap ✓ Done. Not now? Snooze it and it comes back later. Tapped by mistake? Undo.','#pl-needs'],
     ['Your email','📬 Email lists the emails waiting for your answer (Eagle I can draft the reply), and the ones you were only copied on, marked “No action needed”.'],
     ['Maybe needs you','Emails Eagle I wasn’t sure about. It doesn’t flag them or send reminders. Tap “Yes, it needs me” and it moves to Needs you, or “No, nothing needed” and it’s cleared.','#mb-today .mb-item',()=>!!document.querySelector('#mb-today .mb-item')],
@@ -4321,7 +4340,7 @@ async function hmLoad(){
     [crCan('reports')?'reports':'refs','Reports','Weekly reports, referrals, marketing','/crm-art/tip-house.jpg',!crPm()],['ask','Ask Eagle I','Ask anything, or talk','/crm-art/setup-emails.jpg',true]];
   const card=(title,icon,body,empty,foot='')=>`<section class="hm-card"><h2 class="hm-h">${hmI(icon)}${title}</h2>${body||`<div class="hm-empty">${empty}</div>`}${foot}</section>`;
   // Top: the dashboard. Middle (in the page): Today, what needs a person. Bottom: what's coming and what happened.
-  box.innerHTML=dbHtml(d);
+  box.innerHTML=dbHtml(d);dzLoad();
   const rest=document.getElementById('hm-rest');
   if(rest)rest.innerHTML=`<div class="hm-grid" style="margin-top:18px">
       <div>${card('Reminders','task',setup+rem.slice(0,10).join(''),'Nothing coming up in the next few days.')}</div>
@@ -4382,11 +4401,10 @@ function dbHtml(d){
   return `<section class="db">
     <header class="db-hero"><div class="db-hl"><h1 class="db-co">${uxEsc(dbCompany())}</h1><div class="db-role">${uxEsc(role)} Dashboard</div>
       <div class="db-hi">${uxEsc(document.getElementById('hm-hi').textContent)}. ${uxEsc(document.getElementById('hm-sub').textContent)}</div></div></header>
+    ${dzHtml()}
     <div class="db-r1">${lead}${tile('layers','Active Projects',`${pl(c.jobs,'job')} underway`,"crView('jobs')")}${ask}${draw}${orders}</div>
     <div class="db-r2">${photo('quotes','cloud','Send Plans for Quotes',"dbPick('quotes')",est&&crCan('subs'))}${photo('takeoff','clip','Upload Plans for Takeoff',"dbPick('takeoff')",est)}${photo('scope','clip','Upload Scope of Work',"crView('sops')")}${photo('design','bed','Design My Space',"dbPick('design')")}${photo('visit','pin','Create Site Visit Report',"dbPick('visit')")}</div>
     <div class="db-r3">${gantt}${prio}${status}</div>
-    ${crCan('subs')?`<section class="db-box db-vb"><span class="db-vbi" style="--img:url('/dash/card.jpg')"></span><span class="db-vbt"><b>Upload Business Card or Vendor List</b><span>Add a photo of a business card or upload a whole vendor list to build your trade partner network.</span></span>
-      <label class="btn btn-blue db-vbb">${dbI('cloud')}Upload Here<input type="file" accept="image/*,application/pdf,.pdf,.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden onchange="vbFile(this)"></label></section>`:''}
   </section>`;
 }
 // The schedule check: Eagle I goes through every job (or the Jobs screen, if the AI isn't on).
@@ -4821,6 +4839,83 @@ async function ckBanner(){
   try{const d=await plApi('/api/crm/checkins/today');const c=d.checkin;
     el.innerHTML=!c||c.status==='done'?'':`<div class="nx" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div class="nx-l">Daily check-in</div><div class="nx-t">${c.status==='started'?'Finish today’s check-in':'How did today go? Two minutes with Eagle I.'}</div></div><button class="btn btn-blue" onclick="ckOpen('mine')">${c.status==='started'?'Keep going':'Start my check-in'}</button></div>`;
   }catch(e){el.innerHTML='';}
+}
+/* ---------- the drop box on Home: any file, sorted and put where it goes (lib/crmDrop.js) ---------- */
+const DZ={kinds:{},items:[],files:{}};
+function dzHtml(){
+  return `<section class="db-box dz" aria-label="Drop a file"><label class="dz-zone" id="dz-zone" tabindex="0" ondragover="dzOver(event,true)" ondragenter="dzOver(event,true)" ondragleave="dzOver(event,false)" ondrop="dzDrop(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.querySelector('input').click()}">
+    ${dbI('cloud')}<span class="dz-t"><b>Drop any file here</b><span>A receipt, plans, a permit, a contract, insurance, a business card, a list of subs… Eagle I works out what it is, puts it in the right project and fills in what it says.</span></span>
+    <span class="btn btn-blue">Choose a file</span><input type="file" multiple hidden onchange="dzPick(this)"></label>
+    <div class="dz-list" id="dz-list" aria-live="polite"></div></section>`;
+}
+function dzOver(e,on){e.preventDefault();const z=document.getElementById('dz-zone');if(z)z.classList.toggle('over',on);}
+function dzDrop(e){e.preventDefault();dzOver(e,false);dzFiles([...(e.dataTransfer&&e.dataTransfer.files||[])]);}
+function dzPick(inp){dzFiles([...inp.files]);inp.value='';}
+async function dzLoad(){
+  try{const r=await plApi('/api/crm/drop');DZ.kinds=r.kinds||{};DZ.items=r.items||[];dzRender();}catch(e){}
+}
+function dzRender(){
+  const el=document.getElementById('dz-list');if(!el)return;
+  const working=Object.entries(DZ.files).map(([k,f])=>`<div class="dz-item"><div class="dz-h">⏳ ${uxEsc(f.name)}</div><div class="dz-d">${f.err?'⚠ '+uxEsc(f.err):'Reading it and working out where it goes…'}</div>${f.err?`<div class="pl-acts"><button class="btn-xs" onclick="delete DZ.files['${k}'];dzRender()">OK</button></div>`:''}</div>`);
+  el.innerHTML=working.join('')+DZ.items.slice(0,6).map(dzItem).join('');
+}
+function dzProjects(sel){
+  const ds=(PL.data&&PL.data.deals||[]).filter(d=>d.stage!=='lost');
+  return `<option value="">Pick the project…</option>`+ds.map(d=>`<option value="${d.id}"${d.id===sel?' selected':''}>${uxEsc(d.title)}${d.contact_name?' · '+uxEsc(d.contact_name):''}</option>`).join('');
+}
+function dzItem(x){
+  const k=x.kindLabel||'File';
+  if(x.undone)return `<div class="dz-item off"><div class="dz-h"><span class="dz-k">Undone</span>${uxEsc(x.filename)}</div></div>`;
+  if(x.status==='failed')return `<div class="dz-item bad"><div class="dz-h">${uxEsc(x.filename)}</div><div class="dz-d">⚠ ${uxEsc(x.summary||'Couldn’t sort it.')}</div></div>`;
+  if(x.status==='needs_project')return `<div class="dz-item ask"><div class="dz-h"><span class="dz-k">${uxEsc(k)}</span>${uxEsc(x.filename)}</div><div class="dz-d">${uxEsc(x.summary||'')}${x.summary?' · ':''}<b>Which project is this for?</b></div>
+    <div class="pl-acts"><select id="dz-p-${x.id}" aria-label="Project">${dzProjects(x.guess&&x.guess.id)}</select><button class="btn-xs p" onclick="dzMove('${x.id}',{dealId:document.getElementById('dz-p-${x.id}').value},this)">Put it there</button><button class="btn-xs" onclick="dzChange('${x.id}')">It’s something else</button></div></div>`;
+  if(x.status==='import')return `<div class="dz-item ask"><div class="dz-h"><span class="dz-k">${uxEsc(k)}</span>${uxEsc(x.filename)}</div><div class="dz-d">${uxEsc(x.text||'A list of projects or customers. Check how its columns line up, then bring them in.')}</div>
+    <div class="pl-acts">${DZ.files['f'+x.id]||DZ.raw&&DZ.raw[x.id]?`<button class="btn-xs p" onclick="dzImport('${x.id}')">Bring them in</button>`:'<button class="btn-xs p" onclick="crView(\'setup\')">Open Import &amp; setup</button>'}<button class="btn-xs" onclick="dzChange('${x.id}')">It’s something else</button></div></div>`;
+  return `<div class="dz-item"><div class="dz-h"><span class="dz-k">✓ ${uxEsc(k)}</span>${uxEsc(x.filename)}</div><div class="dz-d">${uxEsc(x.text||x.summary||'')}${!x.text&&x.deal?' · '+uxEsc(x.deal):''}</div>
+    <div class="pl-acts">${x.dealId?`<button class="btn-xs p" onclick="plOpenDeal('${x.dealId}')">Open the project</button>`:x.kind==='business_card'||x.kind==='vendor_list'||x.kind==='insurance'?`<button class="btn-xs p" onclick="crView('jobs')">Open subs &amp; vendors</button>`:''}<button class="btn-xs" onclick="dzChange('${x.id}')">Wrong? Change it</button><button class="btn-xs" onclick="dzUndo('${x.id}')">Undo</button></div></div>`;
+}
+async function dzFiles(files){
+  if(!files.length)return;
+  if(!PL.data)plLoad();
+  for(const f of files){
+    const key='w'+Date.now()+Math.random().toString(36).slice(2,6);
+    if(f.size>25*1024*1024){DZ.files[key]={name:f.name,err:'Over 25 MB. Add it on the project instead, or send a smaller copy.'};dzRender();continue;}
+    DZ.files[key]={name:f.name};dzRender();
+    try{
+      const res=await fetch('/api/crm/drop',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/octet-stream','X-Filename':encodeURIComponent(f.name)},body:f});
+      const r=await res.json().catch(()=>({}));
+      if(!res.ok)throw new Error((r.error&&r.error.message)||'Couldn’t sort that file.');
+      delete DZ.files[key];
+      if(r.status==='import'){DZ.raw=DZ.raw||{};DZ.raw[r.id]=f;}
+      DZ.items=[r,...DZ.items.filter(i=>i.id!==r.id)];dzRender();
+      if(r.status==='done')showNotif('Filed: '+(r.kindLabel||'file'),r.text||'');
+    }catch(e){DZ.files[key]={name:f.name,err:e.message};dzRender();}
+  }
+  if(CR.view==='home')plLoadNeeds&&plLoadNeeds();
+}
+async function dzUndo(id){
+  try{await plApi('/api/crm/drop/'+id+'/undo',{body:{}});const x=DZ.items.find(i=>i.id===id);if(x)x.undone=true;dzRender();showNotif('Undone','The file and what it filled in were taken back.');}
+  catch(e){showNotif('Could not undo',e.message);}
+}
+async function dzMove(id,body,btn){
+  if(body.dealId==='')return showNotif('Pick the project','Choose which project it’s for.');
+  if(btn)btn.disabled=true;
+  try{const r=await plApi('/api/crm/drop/'+id+'/move',{body});DZ.items=DZ.items.map(i=>i.id===id?r:i);dzRender();uxClose();if(r.status==='done')showNotif('Filed: '+(r.kindLabel||'file'),r.text||'');}
+  catch(e){if(btn)btn.disabled=false;showNotif('Could not move it',e.message);}
+}
+function dzChange(id){
+  const x=DZ.items.find(i=>i.id===id);if(!x)return;
+  if(!PL.data){plLoad().then(()=>dzChange(id));return;}
+  uxOpen(uxHead('Put it somewhere else',uxEsc(x.filename))+`<div class="pl-form">
+    <div class="full"><label for="dzc-k">What it is</label><select id="dzc-k">${Object.entries(DZ.kinds).map(([k,l])=>`<option value="${k}"${k===x.kind?' selected':''}>${uxEsc(l)}</option>`).join('')}</select></div>
+    <div class="full"><label for="dzc-p">Which project</label><select id="dzc-p">${dzProjects(x.dealId)}</select></div></div>
+    <div class="sm">Eagle I takes back what it did with this file and puts it here instead. Business cards, lists of subs and insurance don’t need a project.</div>
+    <div class="vd-mbtns"><button class="btn btn-blue" onclick="dzMove('${id}',{kind:document.getElementById('dzc-k').value,dealId:document.getElementById('dzc-p').value||null},this)">Put it here</button><button class="btn-xs" onclick="uxClose()">Cancel</button></div>`);
+}
+async function dzImport(id){
+  const f=DZ.raw&&DZ.raw[id];if(!f){crView('setup');return;}
+  crView('setup');
+  setTimeout(async()=>{try{IM.file={filename:f.name,dataBase64:await flRead(f)};await imPreview();}catch(e){showNotif('Could not read it',e.message);}},300);
 }
 /* ---------- Maybe needs you: emails Eagle I wasn't sure about ---------- */
 async function mbToday(){
