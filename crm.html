@@ -1956,7 +1956,7 @@ const CR_GUIDES={
     ['Needs you','What Eagle I flagged for you. When it’s taken care of, tap ✓ Done. Not now? Snooze it and it comes back later. Tapped by mistake? Undo.','#pl-needs'],
     ['Your email','📬 Email lists the emails waiting for your answer (Eagle I can draft the reply), and the ones you were only copied on, marked “No action needed”.'],
     ['Maybe needs you','Emails Eagle I wasn’t sure about. It doesn’t flag them or send reminders. Tap “Yes, it needs me” and it moves to Needs you, or “No, nothing needed” and it’s cleared.','#mb-today .mb-item',()=>!!document.querySelector('#mb-today .mb-item')],
-    ['Your tasks','Type a task in the box and tap Add. Tick it when it’s done.','#td-new'],
+    ['Your tasks','Type a task in the box and tap Add. Tap ✓ Done when it’s finished, or Remove if it’s not needed. Either way it leaves the list; Undo brings it back.','#td-new'],
     ['Reminders and updates','Further down: the next few days (site visits, tasks, job phases, orders, permits), and what happened lately on your projects.'],
     ['Everything else','The bar at the bottom has Customers, Calendar, Jobs, Ask and Money. Ask is Eagle I on its own page, with your past chats; the ✦ button opens it over any screen. Settings, reports and help are under Account at the top.',null,()=>!crPm()],
     ['Everything else','The bar at the bottom has Jobs, Calendar, Ask and Money. Ask opens Eagle I on its own page; the ✦ button opens it over any screen. A customer’s details are one tap away from their job. Help is under Account at the top.',null,()=>crPm()]]},
@@ -4523,7 +4523,7 @@ async function plOpenDeal(id){
   uxOpen(uxHead('Loading…'));
   let d;
   try{d=await plApi('/api/crm/deals/'+id);}catch(e){uxOpen(uxHead('Could not open this deal',uxEsc(e.message)));return;}
-  const x=d.deal;
+  const x=d.deal;PL.openDeal=id;
   const upcoming=d.automations.filter(a=>a.status==='pending');
   const actorLbl={owner:'Your team',eagle_i:'Eagle I',contact:x.contact_name};
   const kindIcon={lead_in:'📥',note:'📝',stage:'➡️',email:'✉️',reply:'💬',system:'✏️',text:'📱',call:'📞'};
@@ -4582,7 +4582,7 @@ async function plOpenDeal(id){
     <div class="pl-h pm-hide">Referrals${['signed','production','complete'].includes(x.stage)?' &amp; home file':''}</div>
     <div id="pld-life" class="pm-hide" data-stage="${x.stage}"><div class="sm">Loading…</div></div>
     <div class="pl-h">Tasks</div>
-    <div class="pl-list">${(d.tasks||[]).map(t=>tdRow(t,false)).join('')||'<div class="sm">No tasks yet.</div>'}</div>
+    <div class="pl-list">${(d.tasks||[]).filter(t=>!t.done_at).map(t=>tdRow(t,false)).join('')||'<div class="sm">No open tasks.</div>'}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><input id="pld-task" class="cred-input" placeholder="Add a task…" style="flex:1;min-width:150px" onkeydown="if(event.key==='Enter')tdAdd('${x.id}')"><input id="pld-task-due" type="date" class="cred-input" style="width:auto" aria-label="Due date">${CR.team.length>1?`<select id="pld-task-who" aria-label="Who">${crOwnerOptions(x.owner_user_id||(CR.me&&CR.me.userId)).replace('Unassigned','Anyone')}</select>`:''}<button class="btn-xs p" onclick="tdAdd('${x.id}')">Add</button></div>
     <div class="pl-h">Add a note</div>
     <div style="position:relative"><textarea id="pld-note" class="cred-input" rows="3" placeholder="What happened, what's next… or tap 🎤 and talk"></textarea></div>
@@ -5891,8 +5891,9 @@ function tdDue(t){
   return `<span class="pl-tag${d<now&&!t.done_at?' warn':''}">${diff<0&&!t.done_at?'Overdue · ':''}${uxEsc(txt)}</span>`;
 }
 function tdRow(t,showDeal){
-  return `<div class="pl-item" style="padding:9px 11px"><label class="pl-switch" style="align-items:flex-start"><input type="checkbox" ${t.done_at?'checked':''} onchange="tdDone('${t.id}',this.checked)" aria-label="Done: ${uxEsc(t.title)}"><span style="min-width:0;flex:1"><span style="${t.done_at?'text-decoration:line-through;color:var(--ink3)':''}">${uxEsc(t.title)}</span>
-    <span class="pl-tags" style="margin-top:4px">${tdDue(t)}${t.source==='auto'?'<span class="pl-tag auto">Added by Eagle I</span>':t.source==='voice'?'<span class="pl-tag auto">From your note</span>':''}${CR.team.length>1?`<span class="pl-tag">${t.assignee_name?'👤 '+uxEsc(t.assignee_name):'Anyone'}</span>`:''}${showDeal&&t.deal_title?`<button class="pl-tag" style="cursor:pointer;background:none" onclick="event.preventDefault();plOpenDeal('${t.deal_id}')">${uxEsc(t.deal_title)}</button>`:''}</span></span></label></div>`;
+  return `<div class="pl-item td-item" data-td="${t.id}" style="padding:10px 12px"><div style="font-size:18px;font-weight:600">${uxEsc(t.title)}</div>
+    <div class="pl-tags" style="margin-top:4px">${tdDue(t)}${t.source==='auto'?'<span class="pl-tag auto">Added by Eagle I</span>':t.source==='voice'?'<span class="pl-tag auto">From your note</span>':''}${CR.team.length>1?`<span class="pl-tag">${t.assignee_name?'👤 '+uxEsc(t.assignee_name):'Anyone'}</span>`:''}${showDeal&&t.deal_title?`<button class="pl-tag" style="cursor:pointer;background:none" onclick="plOpenDeal('${t.deal_id}')">${uxEsc(t.deal_title)}</button>`:''}</div>
+    <div class="pl-acts"><button class="btn-xs p" onclick="tdDone('${t.id}',true,false,this)" aria-label="Mark done: ${uxEsc(t.title)}">✓ Done</button><button class="btn-xs" onclick="tdRemove('${t.id}',this)" aria-label="Remove: ${uxEsc(t.title)}">Remove</button></div></div>`;
 }
 function tdRender(d){
   const wrap=document.getElementById('td-allwrap');
@@ -5910,7 +5911,21 @@ async function tdAdd(dealId){
     if(dealId)plOpenDeal(dealId);else plLoadNeeds();
   }catch(e){showNotif('Could not add the task',e.message);}
 }
-async function tdDone(id,done,quiet){try{await plApi('/api/crm/tasks/'+id,{method:'PATCH',body:{done}});if(CR.view==='home')plLoadNeeds();if(done&&!quiet)crUndo('Marked done.',()=>tdDone(id,false,true));}catch(e){showNotif('Could not save',e.message);}}
+// Done or removed: the task leaves the list at once (Home and the project). Undo puts it back.
+function tdGone(btn){const row=btn&&btn.closest('.td-item');if(row)row.remove();}
+function tdRefresh(){if(PL.openDeal&&document.querySelector('.ux-ov.open #pld-task,#pld-task'))plOpenDeal(PL.openDeal);}
+async function tdDone(id,done,quiet,btn){
+  try{await plApi('/api/crm/tasks/'+id,{method:'PATCH',body:{done}});
+    if(done)tdGone(btn);else tdRefresh();
+    if(CR.view==='home')plLoadNeeds();
+    if(done&&!quiet)crUndo('Task done.',()=>tdDone(id,false,true));
+  }catch(e){showNotif('Could not save',e.message);}
+}
+async function tdRemove(id,btn){
+  if(!confirm('Remove this task? It goes to the recycle bin.'))return;
+  try{await plApi('/api/crm/tasks/'+id,{method:'DELETE'});tdGone(btn);if(CR.view==='home')plLoadNeeds();}
+  catch(e){showNotif('Could not remove it',e.message);}
+}
 
 async function plInboxAct(id,action,days){
   try{await plApi('/api/crm/inbox/'+id,{body:{action,days}});plLoadNeeds();
