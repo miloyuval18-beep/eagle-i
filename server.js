@@ -147,6 +147,7 @@ app.use((err, req, res, next) => {
   next(err);
 });
 app.use(sessionMiddleware());
+app.use(require('./lib/email').asPerson); // during the email pause: what a person sends themselves still goes
 
 // Public, unauthenticated pages (login/signup/onboarding UI).
 app.use(express.static(path.join(__dirname, 'public')));
